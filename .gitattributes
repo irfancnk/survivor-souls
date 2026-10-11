@@ -1,0 +1,10 @@
+# Unity YAML: merge as text
+*.unity text merge=unityyamlmerge eol=lf
+*.prefab text merge=unityyamlmerge eol=lf
+*.asset text merge=unityyamlmerge eol=lf
+*.mat text merge=unityyamlmerge eol=lf
+*.anim text merge=unityyamlmerge eol=lf
+*.controller text merge=unityyamlmerge eol=lf
+*.meta text eol=lf
+*.cs text diff=csharp eol=lf
+# TODO: enable Git LFS for binary assets (png, psd, fbx, wav, ...) once git-lfs is installed
