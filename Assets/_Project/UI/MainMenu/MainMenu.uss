@@ -1,0 +1,234 @@
+/* Survivor Souls main menu. Palette: ember gold on deep slate, warm not grim.
+   Reference resolution 1920x1080 (landscape). Keep sizes in px; PanelSettings scales. */
+
+:root {
+    --ss-gold: rgb(232, 196, 120);
+    --ss-gold-bright: rgb(255, 222, 150);
+    --ss-ember: rgb(214, 110, 46);
+    --ss-ash: rgb(206, 200, 188);
+    --ss-ash-dim: rgba(206, 200, 188, 0.55);
+    --ss-panel: rgba(12, 14, 20, 0.72);
+    --ss-panel-solid: rgba(16, 18, 26, 0.94);
+    --ss-line: rgba(232, 196, 120, 0.45);
+}
+
+.ss-root {
+    flex-grow: 1;
+    position: absolute;
+    left: 0; right: 0; top: 0; bottom: 0;
+}
+
+.ss-hidden {
+    display: none;
+}
+
+/* ---------- Left menu column ---------- */
+
+.ss-menu-column {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 720px;
+    padding-left: 120px;
+    padding-right: 60px;
+    justify-content: center;
+    background-color: var(--ss-panel);
+    border-right-width: 2px;
+    border-right-color: var(--ss-line);
+}
+
+.ss-title-block {
+    margin-bottom: 72px;
+}
+
+.ss-title {
+    color: var(--ss-gold);
+    -unity-font-style: bold;
+    letter-spacing: 18px;
+    margin: 0;
+    padding: 0;
+    text-shadow: 0 4px 12px rgba(0, 0, 0, 0.8);
+}
+
+.ss-title--top {
+    font-size: 64px;
+    color: var(--ss-ash);
+}
+
+.ss-title--bottom {
+    font-size: 132px;
+    margin-top: -18px;
+    -unity-text-outline-width: 0.5px;
+    -unity-text-outline-color: rgba(120, 60, 20, 0.9);
+}
+
+.ss-divider {
+    height: 2px;
+    width: 320px;
+    margin-top: 18px;
+    margin-bottom: 18px;
+    background-color: var(--ss-ember);
+}
+
+.ss-divider--wide {
+    width: 100%;
+}
+
+.ss-tagline {
+    font-size: 30px;
+    color: var(--ss-ash-dim);
+    -unity-font-style: italic;
+    letter-spacing: 2px;
+    margin: 0;
+    padding: 0;
+}
+
+/* ---------- Buttons ---------- */
+/* Selectors use .unity-button.ss-button so they beat the default runtime theme (same class count otherwise). */
+
+.ss-button-stack {
+    align-items: flex-start;
+}
+
+.unity-button.ss-button {
+    min-width: 420px;
+    height: 96px; /* comfortable thumb target on phones */
+    margin: 0 0 22px 0;
+    padding: 0 36px;
+    font-size: 40px;
+    letter-spacing: 8px;
+    -unity-text-align: middle-left;
+    -unity-font-style: bold;
+    color: var(--ss-ash);
+    background-color: rgba(20, 22, 30, 0.55);
+    background-image: none;
+    border-width: 0;
+    border-left-width: 6px;
+    border-left-color: rgba(232, 196, 120, 0.25);
+    border-radius: 0;
+    transition-property: background-color, border-left-color, color, translate;
+    transition-duration: 0.12s;
+}
+
+.unity-button.ss-button:hover {
+    color: var(--ss-gold-bright);
+    background-color: rgba(232, 196, 120, 0.10);
+    border-left-color: var(--ss-gold);
+}
+
+.unity-button.ss-button:active {
+    translate: 8px 0;
+    background-color: rgba(214, 110, 46, 0.25);
+    border-left-color: var(--ss-ember);
+}
+
+.unity-button.ss-button:focus {
+    border-left-color: var(--ss-gold);
+}
+
+.unity-button.ss-button--primary {
+    color: var(--ss-gold);
+    border-left-color: var(--ss-ember);
+    background-color: rgba(214, 110, 46, 0.14);
+}
+
+.unity-button.ss-button--muted {
+    color: var(--ss-ash-dim);
+}
+
+/* ---------- Footer + toast ---------- */
+
+.ss-version {
+    position: absolute;
+    right: 40px;
+    bottom: 28px;
+    font-size: 22px;
+    color: var(--ss-ash-dim);
+    letter-spacing: 2px;
+}
+
+.ss-toast {
+    position: absolute;
+    bottom: 80px;
+    left: 760px;
+    right: 60px;
+    -unity-text-align: middle-center;
+    font-size: 32px;
+    color: var(--ss-gold-bright);
+    background-color: var(--ss-panel-solid);
+    padding: 18px 28px;
+    border-width: 1px;
+    border-color: var(--ss-line);
+    transition-property: opacity;
+    transition-duration: 0.25s;
+}
+
+/* ---------- Settings modal ---------- */
+
+.ss-overlay {
+    position: absolute;
+    left: 0; right: 0; top: 0; bottom: 0;
+    background-color: rgba(0, 0, 0, 0.6);
+    align-items: center;
+    justify-content: center;
+}
+
+.ss-modal {
+    width: 900px;
+    padding: 48px 64px 32px 64px;
+    background-color: var(--ss-panel-solid);
+    border-width: 2px;
+    border-color: var(--ss-line);
+}
+
+.ss-modal-title {
+    font-size: 56px;
+    letter-spacing: 12px;
+    -unity-font-style: bold;
+    color: var(--ss-gold);
+    margin: 0;
+    padding: 0;
+}
+
+.ss-field {
+    margin: 14px 0;
+    min-height: 72px;
+    align-items: center;
+}
+
+.ss-field > .unity-label {
+    font-size: 34px;
+    color: var(--ss-ash);
+    min-width: 260px;
+}
+
+/* Slider internals: thicker track and larger thumb for touch. */
+.ss-field .unity-base-slider__tracker {
+    height: 8px;
+    margin-top: -4px;
+    background-color: rgba(206, 200, 188, 0.2);
+    border-width: 0;
+}
+
+.ss-field .unity-base-slider__dragger {
+    width: 40px;
+    height: 40px;
+    margin-top: -20px;
+    border-radius: 20px;
+    background-color: var(--ss-gold);
+    border-width: 0;
+}
+
+.ss-field .unity-toggle__checkmark {
+    width: 48px;
+    height: 48px;
+    background-color: rgba(206, 200, 188, 0.12);
+    border-color: var(--ss-line);
+    border-width: 2px;
+    -unity-background-image-tint-color: var(--ss-gold);
+}
+
+.unity-button.ss-button--modal {
+    margin-top: 28px;
+    -unity-text-align: middle-center;
+    align-self: center;
+}

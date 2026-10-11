@@ -1,0 +1,32 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <Style src="MainMenu.uss" />
+    <ui:VisualElement name="safe-root" class="ss-root" picking-mode="Ignore">
+        <ui:VisualElement name="menu-column" class="ss-menu-column">
+            <ui:VisualElement class="ss-title-block">
+                <ui:Label text="SURVIVOR" class="ss-title ss-title--top" />
+                <ui:Label text="SOULS" class="ss-title ss-title--bottom" />
+                <ui:VisualElement class="ss-divider" />
+                <ui:Label text="Kindle the flame. Outlast the dark." class="ss-tagline" />
+            </ui:VisualElement>
+            <ui:VisualElement class="ss-button-stack">
+                <ui:Button name="btn-play" text="PLAY" class="ss-button ss-button--primary" />
+                <ui:Button name="btn-settings" text="SETTINGS" class="ss-button" />
+                <ui:Button name="btn-quit" text="QUIT" class="ss-button ss-button--muted" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:Label name="lbl-version" text="v0.0.0" class="ss-version" picking-mode="Ignore" />
+        <ui:Label name="lbl-toast" text="" class="ss-toast ss-hidden" picking-mode="Ignore" />
+    </ui:VisualElement>
+
+    <ui:VisualElement name="settings-overlay" class="ss-overlay ss-hidden">
+        <ui:VisualElement class="ss-modal">
+            <ui:Label text="SETTINGS" class="ss-modal-title" />
+            <ui:VisualElement class="ss-divider ss-divider--wide" />
+            <ui:Slider name="sld-music" label="Music" low-value="0" high-value="1" class="ss-field" />
+            <ui:Slider name="sld-sfx" label="Effects" low-value="0" high-value="1" class="ss-field" />
+            <ui:Toggle name="tgl-vibration" label="Vibration" class="ss-field" />
+            <ui:Toggle name="tgl-fps" label="60 FPS" class="ss-field" />
+            <ui:Button name="btn-settings-close" text="BACK" class="ss-button ss-button--primary ss-button--modal" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>
