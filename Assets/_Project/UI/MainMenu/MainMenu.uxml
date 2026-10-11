@@ -1,21 +1,26 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
     <Style src="MainMenu.uss" />
+    <!-- Portrait layout: title top, bonfire (3D) in the middle, actions at the bottom (thumb zone). -->
+    <ui:VisualElement name="shade-top" class="ss-shade ss-shade--top" picking-mode="Ignore" />
+    <ui:VisualElement name="shade-bottom" class="ss-shade ss-shade--bottom" picking-mode="Ignore" />
+
     <ui:VisualElement name="safe-root" class="ss-root" picking-mode="Ignore">
-        <ui:VisualElement name="menu-column" class="ss-menu-column">
-            <ui:VisualElement class="ss-title-block">
-                <ui:Label text="SURVIVOR" class="ss-title ss-title--top" />
-                <ui:Label text="SOULS" class="ss-title ss-title--bottom" />
-                <ui:VisualElement class="ss-divider" />
-                <ui:Label text="Kindle the flame. Outlast the dark." class="ss-tagline" />
-            </ui:VisualElement>
-            <ui:VisualElement class="ss-button-stack">
-                <ui:Button name="btn-play" text="PLAY" class="ss-button ss-button--primary" />
-                <ui:Button name="btn-settings" text="SETTINGS" class="ss-button" />
-                <ui:Button name="btn-quit" text="QUIT" class="ss-button ss-button--muted" />
-            </ui:VisualElement>
+        <ui:VisualElement class="ss-title-block" picking-mode="Ignore">
+            <ui:Label text="SURVIVOR" class="ss-title ss-title--top" />
+            <ui:Label text="SOULS" class="ss-title ss-title--bottom" />
+            <ui:VisualElement class="ss-divider" />
+            <ui:Label text="Kindle the flame. Outlast the dark." class="ss-tagline" />
         </ui:VisualElement>
-        <ui:Label name="lbl-version" text="v0.0.0" class="ss-version" picking-mode="Ignore" />
-        <ui:Label name="lbl-toast" text="" class="ss-toast ss-hidden" picking-mode="Ignore" />
+
+        <ui:VisualElement class="ss-spacer" picking-mode="Ignore" />
+
+        <ui:VisualElement class="ss-actions">
+            <ui:Label name="lbl-toast" text="" class="ss-toast ss-hidden" picking-mode="Ignore" />
+            <ui:Button name="btn-play" text="PLAY" class="ss-button ss-button--primary" />
+            <ui:Button name="btn-settings" text="SETTINGS" class="ss-button" />
+            <ui:Button name="btn-quit" text="QUIT" class="ss-button ss-button--muted" />
+            <ui:Label name="lbl-version" text="v0.0.0" class="ss-version" picking-mode="Ignore" />
+        </ui:VisualElement>
     </ui:VisualElement>
 
     <ui:VisualElement name="settings-overlay" class="ss-overlay ss-hidden">

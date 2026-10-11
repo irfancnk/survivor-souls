@@ -25,23 +25,27 @@ namespace SurvivorSouls.Editor
         private const string Root = "Assets/_Project";
         private const string ScenePath = Root + "/Scenes/" + SceneNames.MainMenu + ".unity";
         private const string UxmlPath = Root + "/UI/MainMenu/MainMenu.uxml";
+        private const string UssPath = Root + "/UI/MainMenu/MainMenu.uss";
         private const string ThemePath = Root + "/UI/Theme/SurvivorSoulsTheme.tss";
         private const string PanelSettingsPath = Root + "/UI/MainMenu/MainMenuPanelSettings.asset";
         private const string MaterialsDir = Root + "/Art/Materials";
         private const string TexturesDir = Root + "/Art/Textures";
         private const string SoftDotPath = TexturesDir + "/T_SoftDot.png";
+        private const string FadeVPath = TexturesDir + "/T_FadeV.png"; // referenced by MainMenu.uss
 
         // Palette: cool dusk around a warm fire. Warm, not grim.
         private static readonly Color DuskColor = new Color(0.1f, 0.125f, 0.18f);
         private static readonly Color AmbientColor = new Color(0.26f, 0.28f, 0.36f);
         private static readonly Color MoonColor = new Color(0.55f, 0.66f, 0.9f);
         private static readonly Color FireLightColor = new Color(1f, 0.55f, 0.25f);
-        private static readonly Vector3 BonfirePos = new Vector3(2.2f, 0f, 0.5f);
+        private static readonly Vector3 BonfirePos = Vector3.zero; // portrait: fire sits centre frame
 
         [MenuItem("Survivor Souls/Rebuild Main Menu Scene")]
         public static void Build()
         {
             var materials = CreateMaterials();
+            CreateFadeTexture();
+            AssetDatabase.ImportAsset(UssPath, ImportAssetOptions.ForceUpdate); // resolve url() to the fade texture
             var panelSettings = CreatePanelSettings();
 
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
@@ -149,34 +153,52 @@ namespace SurvivorSouls.Editor
         /// <summary>64x64 radial falloff used by all menu particles. Generated, so no art dependency.</summary>
         private static Texture2D CreateSoftDotTexture()
         {
-            EnsureFolder(TexturesDir);
-            if (!File.Exists(SoftDotPath))
+            return WriteAlphaTexture(SoftDotPath, 64, 64, (u, v) =>
             {
-                const int size = 64;
-                var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
-                var pixels = new Color32[size * size];
-                for (int y = 0; y < size; y++)
-                for (int x = 0; x < size; x++)
+                float dx = u * 2f - 1f;
+                float dy = v * 2f - 1f;
+                float d = Mathf.Clamp01(Mathf.Sqrt(dx * dx + dy * dy));
+                return Mathf.Pow(1f - d, 2.2f);
+            });
+        }
+
+        /// <summary>Vertical fade, opaque at the bottom. UI shades tint it (see MainMenu.uss).</summary>
+        private static Texture2D CreateFadeTexture()
+        {
+            return WriteAlphaTexture(FadeVPath, 4, 128, (u, v) =>
+            {
+                float t = 1f - v; // v = 0 is the bottom row
+                return t * t * (3f - 2f * t); // smoothstep
+            });
+        }
+
+        /// <summary>Writes a white RGBA PNG whose alpha is alpha(u, v), u/v in [0,1]. Skips if the file exists.</summary>
+        private static Texture2D WriteAlphaTexture(string path, int width, int height, System.Func<float, float, float> alpha)
+        {
+            EnsureFolder(TexturesDir);
+            if (!File.Exists(path))
+            {
+                var tex = new Texture2D(width, height, TextureFormat.RGBA32, false);
+                var pixels = new Color32[width * height];
+                for (int y = 0; y < height; y++)
+                for (int x = 0; x < width; x++)
                 {
-                    float dx = (x + 0.5f) / size * 2f - 1f;
-                    float dy = (y + 0.5f) / size * 2f - 1f;
-                    float d = Mathf.Clamp01(Mathf.Sqrt(dx * dx + dy * dy));
-                    float a = Mathf.Pow(1f - d, 2.2f);
-                    pixels[y * size + x] = new Color32(255, 255, 255, (byte)(a * 255f));
+                    float a = Mathf.Clamp01(alpha((x + 0.5f) / width, (y + 0.5f) / height));
+                    pixels[y * width + x] = new Color32(255, 255, 255, (byte)(a * 255f));
                 }
                 tex.SetPixels32(pixels);
-                File.WriteAllBytes(SoftDotPath, tex.EncodeToPNG());
+                File.WriteAllBytes(path, tex.EncodeToPNG());
                 Object.DestroyImmediate(tex);
-                AssetDatabase.ImportAsset(SoftDotPath);
+                AssetDatabase.ImportAsset(path);
 
-                var importer = (TextureImporter)AssetImporter.GetAtPath(SoftDotPath);
+                var importer = (TextureImporter)AssetImporter.GetAtPath(path);
                 importer.textureType = TextureImporterType.Default;
                 importer.alphaIsTransparency = true;
                 importer.mipmapEnabled = false;
                 importer.wrapMode = TextureWrapMode.Clamp;
                 importer.SaveAndReimport();
             }
-            return AssetDatabase.LoadAssetAtPath<Texture2D>(SoftDotPath);
+            return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
         }
 
         private static PanelSettings CreatePanelSettings()
@@ -190,9 +212,9 @@ namespace SurvivorSouls.Editor
 
             settings.themeStyleSheet = AssetDatabase.LoadAssetAtPath<ThemeStyleSheet>(ThemePath);
             settings.scaleMode = PanelScaleMode.ScaleWithScreenSize;
-            settings.referenceResolution = new Vector2Int(1920, 1080);
+            settings.referenceResolution = new Vector2Int(1080, 1920);
             settings.screenMatchMode = PanelScreenMatchMode.MatchWidthOrHeight;
-            settings.match = 1f; // landscape: lock to height, phones vary in width
+            settings.match = 0f; // portrait: lock to width, phones vary in height
             settings.sortingOrder = 0;
             EditorUtility.SetDirty(settings);
             return settings;
@@ -218,13 +240,14 @@ namespace SurvivorSouls.Editor
         private static void CreateCamera()
         {
             var go = new GameObject("Main Camera") { tag = "MainCamera" };
-            go.transform.position = new Vector3(0f, 1.6f, -6f);
-            go.transform.LookAt(new Vector3(0.6f, 0.9f, 0f));
+            // Portrait framing: fire spans ~33%-57% of screen height, between title and buttons.
+            go.transform.position = new Vector3(0f, 2.1f, -5.2f);
+            go.transform.LookAt(new Vector3(0f, 0.45f, 0f));
 
             var cam = go.AddComponent<Camera>();
             cam.clearFlags = CameraClearFlags.SolidColor;
             cam.backgroundColor = DuskColor;
-            cam.fieldOfView = 50f;
+            cam.fieldOfView = 60f; // vertical FOV; portrait needs more height
             cam.nearClipPlane = 0.3f;
             cam.farClipPlane = 60f;
 
@@ -368,15 +391,16 @@ namespace SurvivorSouls.Editor
         {
             // Silhouettes that fade into fog. Hand-placed for composition: frame the fire, leave the left for UI.
             var root = new GameObject("Ruins").transform;
+            // Portrait view is narrow (~±15° horizontal), so ruins stack in depth behind the fire.
             (Vector3 pos, Vector3 scale, float tilt)[] pillars =
             {
-                (new Vector3(-3.5f, 0f, 9f), new Vector3(0.9f, 7f, 0.9f), 0f),
-                (new Vector3(0.5f, 0f, 12f), new Vector3(1f, 9f, 1f), 0f),
-                (new Vector3(4.6f, 0f, 7f), new Vector3(0.8f, 4.2f, 0.8f), 0f),
-                (new Vector3(7.5f, 0f, 10f), new Vector3(0.9f, 8f, 0.9f), 3f),
-                (new Vector3(10.5f, 0f, 14f), new Vector3(1.1f, 6f, 1.1f), -6f),
-                (new Vector3(-8f, 0f, 15f), new Vector3(1.1f, 10f, 1.1f), 0f),
-                (new Vector3(13f, 0f, 6f), new Vector3(0.9f, 2.2f, 0.9f), 12f),
+                (new Vector3(-2.6f, 0f, 9f), new Vector3(0.9f, 7f, 0.9f), 0f),   // arch left
+                (new Vector3(2.6f, 0f, 9f), new Vector3(0.9f, 6.4f, 0.9f), 2f),  // arch right
+                (new Vector3(-0.9f, 0f, 15f), new Vector3(1.1f, 10f, 1.1f), 0f),
+                (new Vector3(4.6f, 0f, 13f), new Vector3(1f, 8f, 1f), -5f),
+                (new Vector3(-5f, 0f, 14f), new Vector3(1.1f, 9f, 1.1f), 4f),
+                (new Vector3(1.8f, 0f, 19f), new Vector3(1.2f, 12f, 1.2f), 0f),
+                (new Vector3(-3.6f, 0f, 5f), new Vector3(0.8f, 2.4f, 0.8f), 14f), // broken stump
             };
             for (int i = 0; i < pillars.Length; i++)
             {
@@ -387,18 +411,25 @@ namespace SurvivorSouls.Editor
                 p.transform.localScale = scale;
             }
 
-            // Fallen lintel across two pillars.
+            // Cracked lintel resting on the arch pillars: frames the fire.
             var lintel = Primitive(PrimitiveType.Cube, "Lintel", root, m.Ruin);
-            lintel.transform.position = new Vector3(6f, 7.6f, 10f);
-            lintel.transform.rotation = Quaternion.Euler(0f, 0f, -8f);
-            lintel.transform.localScale = new Vector3(5f, 0.7f, 1f);
+            lintel.transform.position = new Vector3(0f, 6.7f, 9f);
+            lintel.transform.rotation = Quaternion.Euler(0f, 0f, -4f);
+            lintel.transform.localScale = new Vector3(6.4f, 0.75f, 1f);
 
-            // Grave slabs near the fire for scale.
-            for (int i = 0; i < 4; i++)
+            // Grave slabs around the fire for scale.
+            Vector3[] slabs =
+            {
+                new Vector3(-1.7f, 0.4f, 2.4f),
+                new Vector3(1.8f, 0.4f, 3f),
+                new Vector3(-0.7f, 0.4f, 4.6f),
+                new Vector3(2.9f, 0.4f, 5.4f),
+            };
+            for (int i = 0; i < slabs.Length; i++)
             {
                 var slab = Primitive(PrimitiveType.Cube, $"Slab_{i}", root, m.Stone);
-                slab.transform.position = new Vector3(4.3f + i * 1.1f, 0.4f, 3f + (i % 2) * 1.4f);
-                slab.transform.rotation = Quaternion.Euler(-6f + i * 4f, -20f + i * 9f, (i % 2 == 0 ? 7f : -5f));
+                slab.transform.position = slabs[i];
+                slab.transform.rotation = Quaternion.Euler(-6f + i * 4f, -20f + i * 13f, i % 2 == 0 ? 7f : -5f);
                 slab.transform.localScale = new Vector3(0.6f, 0.9f, 0.14f);
             }
         }
