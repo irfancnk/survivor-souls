@@ -1,13 +1,15 @@
 using System;
 using System.Collections;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace SurvivorSouls.Dev
 {
     /// <summary>
     /// Automation hook for development builds. Launch the player with
-    /// <c>-ss-screenshot &lt;path.png&gt; [-ss-delay &lt;seconds&gt;] [-ss-quality &lt;name&gt;]</c>
+    /// <c>-ss-screenshot &lt;path.png&gt; [-ss-delay &lt;seconds&gt;] [-ss-quality &lt;name&gt;] [-ss-scene &lt;name&gt;]</c>
     /// to save one frame and quit. -ss-quality picks a quality level by name (e.g. Mobile) to preview mobile visuals on desktop.
+    /// -ss-scene loads that scene first (it must be in the build).
     /// Used by tools/agents to verify visuals without a human. Inactive in release builds (Debug.isDebugBuild).
     /// </summary>
     public sealed class DevScreenshot : MonoBehaviour
@@ -30,6 +32,9 @@ namespace SurvivorSouls.Dev
             var shot = go.AddComponent<DevScreenshot>();
             shot._path = path;
             shot._delay = float.TryParse(GetArg("-ss-delay"), out float d) ? d : 3f;
+
+            string scene = GetArg("-ss-scene");
+            if (!string.IsNullOrEmpty(scene)) SceneManager.LoadScene(scene);
         }
 
         private IEnumerator Start()

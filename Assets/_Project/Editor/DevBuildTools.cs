@@ -28,6 +28,31 @@ namespace SurvivorSouls.Editor
             EditorApplication.Exit(report.summary.result == BuildResult.Succeeded ? 0 : 1);
         }
 
+        /// <summary>
+        /// Exports the iOS Xcode project. Sign and install with xcodebuild + devicectl afterwards.
+        /// <c>-buildTarget iOS -executeMethod SurvivorSouls.Editor.DevBuildTools.BuildIOS -ss-out &lt;dir&gt; [-ss-team &lt;TeamID&gt;]</c>
+        /// </summary>
+        public static void BuildIOS()
+        {
+            string outDir = GetArg("-ss-out") ?? "Builds/iOS";
+            string team = GetArg("-ss-team");
+            if (!string.IsNullOrEmpty(team))
+            {
+                PlayerSettings.iOS.appleDeveloperTeamID = team;
+                PlayerSettings.iOS.appleEnableAutomaticSigning = true;
+            }
+            var options = new BuildPlayerOptions
+            {
+                scenes = EditorBuildSettings.scenes.Where(s => s.enabled).Select(s => s.path).ToArray(),
+                locationPathName = outDir,
+                target = BuildTarget.iOS,
+                options = BuildOptions.None,
+            };
+            BuildReport report = BuildPipeline.BuildPlayer(options);
+            Debug.Log($"[DevBuildTools] {report.summary.result} errors={report.summary.totalErrors} -> {options.locationPathName}");
+            EditorApplication.Exit(report.summary.result == BuildResult.Succeeded ? 0 : 1);
+        }
+
         private static string GetArg(string name)
         {
             string[] args = System.Environment.GetCommandLineArgs();

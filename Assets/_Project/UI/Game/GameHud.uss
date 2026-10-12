@@ -1,0 +1,175 @@
+/* Survivor Souls in-run HUD. Same palette and reference resolution as MainMenu.uss (1080x1920, match width).
+   Everything except the death overlay ignores picking, so touches reach the joystick. */
+
+:root {
+    --ss-gold: rgb(232, 196, 120);
+    --ss-gold-bright: rgb(255, 222, 150);
+    --ss-ember: rgb(214, 110, 46);
+    --ss-ash: rgb(206, 200, 188);
+    --ss-ash-dim: rgba(206, 200, 188, 0.6);
+    --ss-blood: rgb(150, 18, 14);
+    --ss-panel: rgba(12, 14, 20, 0.72);
+    --ss-line: rgba(232, 196, 120, 0.45);
+}
+
+.ss-hidden {
+    display: none;
+}
+
+/* ---------- Damage flash ---------- */
+
+.ss-flash {
+    position: absolute;
+    left: 0; right: 0; top: 0; bottom: 0;
+    background-color: rgba(150, 10, 6, 1);
+    opacity: 0;
+}
+
+/* ---------- Top bar ---------- */
+
+.ss-hud-root {
+    position: absolute;
+    left: 0; right: 0; top: 0; bottom: 0;
+    flex-direction: column;
+}
+
+.ss-hud-top {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    margin: 36px 44px 0 44px;
+}
+
+.ss-hp-frame {
+    width: 560px;
+    height: 54px;
+    background-color: var(--ss-panel);
+    border-width: 3px;
+    border-color: var(--ss-line);
+    border-radius: 6px;
+    padding: 5px;
+}
+
+.ss-hp-track {
+    flex-grow: 1;
+    justify-content: center;
+}
+
+.ss-hp-fill {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 100%; /* set from code */
+    background-color: var(--ss-blood);
+    border-radius: 3px;
+}
+
+.ss-hp-text {
+    font-size: 30px;
+    -unity-font-style: bold;
+    color: var(--ss-ash);
+    -unity-text-align: middle-center;
+    -unity-text-outline-width: 1px;
+    -unity-text-outline-color: rgba(0, 0, 0, 0.8);
+}
+
+.ss-stats {
+    align-items: flex-end;
+}
+
+.ss-stat {
+    font-size: 40px;
+    -unity-font-style: bold;
+    color: var(--ss-gold);
+    -unity-text-outline-width: 1px;
+    -unity-text-outline-color: rgba(0, 0, 0, 0.8);
+}
+
+.ss-stat--dim {
+    font-size: 32px;
+    color: var(--ss-ash-dim);
+}
+
+.ss-hint {
+    position: absolute;
+    left: 0; right: 0;
+    bottom: 220px;
+    font-size: 34px;
+    -unity-font-style: italic;
+    color: var(--ss-ash-dim);
+    -unity-text-align: middle-center;
+    transition-property: opacity;
+    transition-duration: 0.6s;
+}
+
+/* ---------- Joystick (size and position set from code) ---------- */
+
+.ss-stick-base {
+    position: absolute;
+    border-width: 4px;
+    border-color: rgba(232, 196, 120, 0.35);
+    border-radius: 50%;
+    background-color: rgba(10, 12, 18, 0.25);
+    align-items: center;
+    justify-content: center;
+}
+
+.ss-stick-knob {
+    position: absolute;
+    width: 42%;
+    height: 42%;
+    border-radius: 50%;
+    background-color: rgba(214, 110, 46, 0.55);
+    border-width: 3px;
+    border-color: rgba(255, 222, 150, 0.6);
+}
+
+/* ---------- Death ---------- */
+
+.ss-death {
+    position: absolute;
+    left: 0; right: 0; top: 0; bottom: 0;
+    background-color: rgba(0, 0, 0, 0.72);
+    align-items: center;
+    justify-content: center;
+}
+
+.ss-death-title {
+    font-size: 150px;
+    color: var(--ss-blood);
+    -unity-font-style: bold;
+    letter-spacing: 12px;
+    -unity-text-outline-width: 2px;
+    -unity-text-outline-color: rgba(0, 0, 0, 0.9);
+    margin-bottom: 24px;
+}
+
+.ss-death-stats {
+    font-size: 40px;
+    color: var(--ss-ash);
+    -unity-text-align: middle-center;
+    margin-bottom: 80px;
+}
+
+.unity-button.ss-button {
+    width: 620px;
+    height: 128px;
+    margin: 14px 0;
+    font-size: 46px;
+    -unity-font-style: bold;
+    color: var(--ss-ash);
+    background-color: rgba(20, 22, 30, 0.8);
+    border-width: 3px;
+    border-radius: 8px;
+    border-color: rgba(232, 196, 120, 0.3);
+}
+
+.unity-button.ss-button:active {
+    background-color: rgba(214, 110, 46, 0.3);
+    border-color: var(--ss-ember);
+}
+
+.unity-button.ss-button--primary {
+    color: var(--ss-gold-bright);
+    background-color: rgba(150, 70, 28, 0.85);
+    border-color: var(--ss-gold);
+}

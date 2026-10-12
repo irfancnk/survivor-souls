@@ -1,0 +1,32 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <Style src="GameHud.uss" />
+    <!-- In-run HUD. Top: health + run stats. Joystick ring follows the thumb. Death overlay on top of all. -->
+    <ui:VisualElement name="damage-flash" class="ss-flash" picking-mode="Ignore" />
+
+    <ui:VisualElement name="joystick-base" class="ss-stick-base ss-hidden" picking-mode="Ignore">
+        <ui:VisualElement name="joystick-knob" class="ss-stick-knob" picking-mode="Ignore" />
+    </ui:VisualElement>
+
+    <ui:VisualElement name="safe-root" class="ss-hud-root" picking-mode="Ignore">
+        <ui:VisualElement class="ss-hud-top" picking-mode="Ignore">
+            <ui:VisualElement class="ss-hp-frame" picking-mode="Ignore">
+                <ui:VisualElement class="ss-hp-track" picking-mode="Ignore">
+                    <ui:VisualElement name="hp-fill" class="ss-hp-fill" picking-mode="Ignore" />
+                    <ui:Label name="lbl-hp" text="100" class="ss-hp-text" picking-mode="Ignore" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+            <ui:VisualElement class="ss-stats" picking-mode="Ignore">
+                <ui:Label name="lbl-kills" text="0 slain" class="ss-stat" picking-mode="Ignore" />
+                <ui:Label name="lbl-time" text="0:00" class="ss-stat ss-stat--dim" picking-mode="Ignore" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:Label name="lbl-hint" text="Drag to move. Stand still to strike." class="ss-hint" picking-mode="Ignore" />
+    </ui:VisualElement>
+
+    <ui:VisualElement name="death-overlay" class="ss-death ss-hidden">
+        <ui:Label text="YOU DIED" class="ss-death-title" />
+        <ui:Label name="lbl-death-stats" text="" class="ss-death-stats" />
+        <ui:Button name="btn-retry" text="RISE AGAIN" class="ss-button ss-button--primary" />
+        <ui:Button name="btn-menu" text="MAIN MENU" class="ss-button" />
+    </ui:VisualElement>
+</ui:UXML>

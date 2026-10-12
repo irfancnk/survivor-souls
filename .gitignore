@@ -54,3 +54,6 @@ ExportedObj/
 # OS
 .DS_Store
 Thumbs.db
+
+# Meshy CLI job records (contain signed download URLs)
+/meshy_output/
