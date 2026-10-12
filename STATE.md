@@ -58,6 +58,16 @@
   - Palette atlas now 4 x 5 cells (+Grass, Moss, Bark, Foliage).
   - Lights: 4 braziers + 4 sconces + hero light. 4 Z chunks (edges -6, 3, 10). Camera lookZRange (-2.4, 11.5).
   - Door is visual only (no open logic yet).
+- 2026-10-12 (4): OPEN WORLD replaces fixed arena (KAN-10). `Editor/Arena/ArenaBuilder.cs` deleted (history has it).
+  - `Editor/World/WorldBuilder.cs`: builds tile prefabs `Prefabs/World/Tile_*.prefab` (12 m, content local -6..6, meshes per material: Floor flagstone / Stone wall / Props palette + box colliders + fires) and scene objects. Variants + weights: Meadow 4, Grove 3, Ruins 2.2, Road 1.6, Rocks 1.6, Camp 0.9, Shrine 0.8. Special: Spawn (0,0), Exit, Edge (forest ring outside bounds).
+  - `Editor/World/PropKit.cs`: shared prop geometry (trees, bushes, rocks, tufts, flowers, walls, pillars, banners, brazier, sconce, barrel, crate, fallen column, door gate) + Fire FX.
+  - Runtime `Gameplay/World/WorldStreamer.cs`: keeps tiles x+-1, z -1..+2 around player, pools prefabs, random seed per run (`fixedSeed` for tests). Bounds 11 x 11 tiles (+-66 m), invisible walls. Exit tile at ring distance 3-4, biased north.
+  - `SnapFollow`: ground quad 144 m (texture tile 12 m) and mist emitter follow player on a grid. `FloatBob`: exit beacon (gold arrow above door).
+  - Player aids (children of player): `ObjectiveArrow` (gold ground arrow r 1.9 m points to exit, hides < 7 m), `DirectionMarker` (ring 1.7 m ahead while moving), Hero Ring under feet.
+  - Contrast: ground = grass/dirt (green), plazas pale sand stone (tint 1.25), knight dark metal reads on both.
+  - Camera: followX 1, no Z clamp.
+  - Dev: DevScreenshot `-ss-near-exit`.
+  - Door: visual only; no "level complete" yet.
 
 ## DECISIONS
 - Orientation: portrait only, iOS + Android. User decision 2026-10-12.
@@ -84,7 +94,7 @@
 - Test menu on real phone (safe area, touch).
 - Get Irem feedback from iPhone playtest. Profile draw calls / FPS on device. Android test later.
 - Archer shoot: auto-aim nearest enemy when stopped (Archero rule). Arrow projectile.
-- First enemy + spawn waves. Room clear -> door opens -> next room.
+- Reach exit door -> level complete / next level. First enemies + waves in open world. Minimap? (ask Irem).
 - Better Meshy export: A-pose or T-pose, bow (not crossbow), hood. Then Unity Humanoid avatar + Mixamo/Quaternius CC0 clips + Animator blend tree. Bone names: rename to Mixamo names or map in importer.
 - Custom serif title font (OFL, e.g. Cinzel). Needs user OK to download.
 - Menu music + click SFX. Hook to GameSettings volumes.

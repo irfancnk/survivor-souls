@@ -15,6 +15,7 @@ namespace SurvivorSouls.Editor.Procedural
         private const string SoftDotPath = "Assets/_Project/Art/Textures/T_SoftDot.png"; // made by MainMenuSceneBuilder
 
         public Material Palette, Floor, OuterGround, Wall, RuneDecal, BlobShadow, Flame, Ember, Mist;
+        public Material HeroRing, DirectionMarker, Gold;
         public Texture2D SoftDot;
         public Mesh Quad;
 
@@ -32,7 +33,7 @@ namespace SurvivorSouls.Editor.Procedural
             kit.Palette = EditorAssetUtil.SimpleLitMaterial($"{MatDir}/M_Palette.mat", paletteAlbedo, Color.white, specMap: paletteSpec);
 
             var (floorAlbedo, floorNormal) = MakeStone("T_Flagstone", FlagstoneSample);
-            kit.Floor = EditorAssetUtil.SimpleLitMaterial($"{MatDir}/M_Floor.mat", floorAlbedo, new Color(0.88f, 0.86f, 0.84f), floorNormal,
+            kit.Floor = EditorAssetUtil.SimpleLitMaterial($"{MatDir}/M_Floor.mat", floorAlbedo, new Color(1.25f, 1.2f, 1.1f), floorNormal, // pale sand stone: the dark knight reads on it
                 smoothness: 0.25f, specColor: new Color(0.18f, 0.17f, 0.16f));
             var (groundAlbedo, groundNormal) = MakeStone("T_GrassDirt", GroundSample);
             kit.OuterGround = EditorAssetUtil.SimpleLitMaterial($"{MatDir}/M_OuterGround.mat", groundAlbedo, Color.white, groundNormal,
@@ -52,6 +53,16 @@ namespace SurvivorSouls.Editor.Procedural
             kit.Flame = EditorAssetUtil.ParticleMaterial($"{MatDir}/M_FX_Flame.mat", kit.SoftDot, additive: true);
             kit.Ember = EditorAssetUtil.ParticleMaterial($"{MatDir}/M_FX_Ember.mat", kit.SoftDot, additive: true);
             kit.Mist = EditorAssetUtil.ParticleMaterial($"{MatDir}/M_FX_Mist.mat", kit.SoftDot, additive: false);
+
+            // Player readability: pale ring under the feet, move-direction ring, gold objective arrow.
+            var ring = TextureFactory.Write($"{TexDir}/T_Ring.png", 128, 128, RingPixel, TextureFactory.Kind.Color,
+                wrap: TextureWrapMode.Clamp, maxSize: 128);
+            kit.HeroRing = EditorAssetUtil.TransparentMaterial($"{MatDir}/M_HeroRing.mat", EditorAssetUtil.Unlit, ring, new Color(1f, 0.9f, 0.6f, 0.55f));
+            kit.DirectionMarker = EditorAssetUtil.TransparentMaterial($"{MatDir}/M_DirectionMarker.mat", EditorAssetUtil.Unlit, ring, new Color(1f, 0.95f, 0.8f, 0.85f));
+            kit.Gold = EditorAssetUtil.LoadOrCreateMaterial($"{MatDir}/M_Gold.mat", EditorAssetUtil.Unlit);
+            kit.Gold.SetColor("_BaseColor", new Color(1f, 0.78f, 0.22f));
+            kit.Gold.SetFloat("_Cull", 0f); // flat arrow: visible from both sides
+            EditorUtility.SetDirty(kit.Gold);
             AssetDatabase.SaveAssets();
             return kit;
         }
@@ -128,9 +139,9 @@ namespace SurvivorSouls.Editor.Procedural
         /// <summary>Grass and dirt patches for the ground outside the walls.</summary>
         private static (Color, float) GroundSample(float u, float v)
         {
-            float patches = TextureFactory.Fbm(u, v, 3, 5, 51);
-            float grain = TextureFactory.Fbm(u, v, 32, 3, 53);
-            float grass = TextureFactory.SmoothStep(0.3f, 0.5f, patches); // mostly grass, sparse dirt
+            float patches = TextureFactory.Fbm(u, v, 2, 6, 51);
+            float grain = TextureFactory.Fbm(u, v, 48, 3, 53);
+            float grass = TextureFactory.SmoothStep(0.24f, 0.4f, patches); // mostly grass, rare dirt
             var dirt = new Color(0.34f, 0.29f, 0.23f) * (0.8f + grain * 0.35f);
             var green = Color.Lerp(new Color(0.3f, 0.36f, 0.2f), new Color(0.38f, 0.42f, 0.25f), grain) * (0.85f + TextureFactory.Hash((int)(u * 512), (int)(v * 512), 7) * 0.3f);
             var c = Color.Lerp(dirt, green, grass);
@@ -167,6 +178,15 @@ namespace SurvivorSouls.Editor.Procedural
             var c = Color.Lerp(stone, new Color(0.1f, 0.095f, 0.09f), mortar);
             c.a = 1f;
             return (c, Mathf.Lerp(bevel * 0.8f + grain * 0.2f, 0f, mortar));
+        }
+
+        /// <summary>Soft ring (white + alpha) for the hero ring and the direction marker.</summary>
+        private static Color RingPixel(int x, int y)
+        {
+            float u = (x + 0.5f) / 128f * 2f - 1f, v = (y + 0.5f) / 128f * 2f - 1f;
+            float r = Mathf.Sqrt(u * u + v * v);
+            float a = 1f - TextureFactory.SmoothStep(0.06f, 0.16f, Mathf.Abs(r - 0.8f));
+            return new Color(1f, 1f, 1f, a);
         }
 
         /// <summary>Carved ring of runes for the arena centre. White + alpha; the material tints it.</summary>

@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using SurvivorSouls.Core;
-using SurvivorSouls.Editor.Arena;
+using SurvivorSouls.Editor.World;
 using SurvivorSouls.Editor.Characters;
 using SurvivorSouls.Editor.Procedural;
 using SurvivorSouls.Gameplay;
@@ -53,12 +53,12 @@ namespace SurvivorSouls.Editor
             SetupEnvironment();
             new GameObject("Game").AddComponent<GameSceneController>();
             CreateMoonLight();
-            ArenaBuilder.Build(null, kit);
 
             var joystick = new GameObject("Input").AddComponent<FloatingJoystick>();
             var player = (GameObject)PrefabUtility.InstantiatePrefab(archerPrefab);
-            player.transform.SetPositionAndRotation(ArenaBuilder.PlayerSpawn, Quaternion.identity);
+            player.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity); // centre of the spawn tile
             SetRef(player.GetComponent<PlayerMover>(), "joystick", joystick);
+            WorldBuilder.Build(kit, player.transform, player.GetComponent<PlayerMover>());
 
             CreateCamera(player.transform);
             CreateHud(panelSettings, joystick);
@@ -128,8 +128,9 @@ namespace SurvivorSouls.Editor
             var follow = go.AddComponent<TopDownFollowCamera>();
             follow.Target = target;
             var so = new SerializedObject(follow);
-            // Min keeps the south wall at the screen bottom (see TopDownFollowCamera geometry); max keeps the far wall in view.
-            so.FindProperty("lookZRange").vector2Value = new Vector2(ArenaBuilder.SouthZ + 11.6f, ArenaBuilder.DoorZ - 6f);
+            // Open world: follow the player freely in X and Z.
+            so.FindProperty("followX").floatValue = 1f;
+            so.FindProperty("lookZRange").vector2Value = new Vector2(-10000f, 10000f);
             so.ApplyModifiedPropertiesWithoutUndo();
             go.transform.SetPositionAndRotation(target.position + new Vector3(0f, 34f, -20f), Quaternion.Euler(60f, 0f, 0f));
         }
