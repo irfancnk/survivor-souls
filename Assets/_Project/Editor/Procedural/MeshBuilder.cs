@@ -195,6 +195,13 @@ namespace SurvivorSouls.Editor.Procedural
             foreach (int t in other._triangles) _triangles.Add(t + offset);
         }
 
+        /// <summary>Every triangle as three positions (for placement tests, e.g. keep grass off the floor).</summary>
+        public IEnumerable<(Vector3 a, Vector3 b, Vector3 c)> Triangles()
+        {
+            for (int i = 0; i + 2 < _triangles.Count; i += 3)
+                yield return (_positions[_triangles[i]], _positions[_triangles[i + 1]], _positions[_triangles[i + 2]]);
+        }
+
         // ------------------------------------------------------------ Output
 
         /// <summary>Writes into <paramref name="mesh"/>. With bones, adds 1-bone weights + bindposes (rigid skinning).</summary>

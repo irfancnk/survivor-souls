@@ -69,14 +69,28 @@
   - Dev: DevScreenshot `-ss-near-exit`.
   - Door: visual only; no "level complete" yet.
 
-- 2026-10-12 (5): Knight holds crossbow + first combat (branch `feat/crossbow-combat`, not committed yet).
+- 2026-10-12 (5): Knight holds crossbow + first combat (branch `feat/crossbow-combat`, commit fc06c44).
   - Source `ArtSource/Characters/Archer/Knight_Crossbow.glb` (replaces Meshy_Sentinel.glb). Made in Blender from Irem `~/survivor-souls-assets/models/` (knight + Meshy crossbow). Crossbow decimated 780k -> 5.1k tris, parented to `mixamorig:RightHand`, socket `Crossbow_Muzzle`. One-hand hip carry (right arm IK-baked into Walking/Running/Hit_Reaction/Idle; two-hand hold out of arm reach). GLB now has own Idle clip.
   - Importer: finds skinned node (not meshes[0]), builds bone-attached static meshes (`BuildAttachments`) + their child sockets, per-material textures (crossbow 512), uses GLB Idle if present.
   - Combat (`Scripts/Gameplay/Combat`): `AutoShooter` (stand still -> turn to nearest enemy in 10 m, 1 bolt / 1 s, dmg 100; `fireWhileMoving` off), `Bolt` (pooled, cylinder hit test, no physics), `Enemy` (150 HP = 2 bolts, chase 2.2 m/s, separation, knockback, flash, fall + sink, static `Active` list + `Damaged` event), `EnemySpawner` (max 6, every 1.4 s, ring 7.5-10 m, clamp to world). Enemy body = procedural archer without bow/quiver, pale tint (`Editor/Combat/CombatBuilder`).
   - `UI/Hud/CombatHud`: UI Toolkit overlay, 96x8 px health bar per enemy, floating "-N" = health deducted (red on kill). Styles `combat-*` in GameHud.uss.
   - Verified: mac dev build screenshots, iOS build + install on iPhone 14 Pro Max OK.
 
+- 2026-10-12 (6): Two-hand crossbow, recoil, new bolt, grass, sounds (KAN-11, branch `feat/crossbow-combat`).
+  - Blender script `Tools/Blender/build_knight_crossbow.py` (run: `blender -b --python Tools/Blender/build_knight_crossbow.py -- [--preview DIR]`). Rebuilds `ArtSource/Characters/Archer/Knight_Crossbow.glb` from Meshy knight + crossbow .blend. Also saves `~/survivor-souls-assets/models/knight_crossbow/Knight_Crossbow_2H.blend`.
+  - Arm reach fix: crossbow scale 0.84 (0.72 m), crossbow parented to `Spine2` (not hand), spine stance (left shoulder 27 deg fwd, small lean), head turns back to front. Both arms IK (forearm chain 2 + hand copy-rot) to hand targets on crossbow, elbow poles, fingers curled, right index on trigger. Left wrist 0.433 m of 0.446 m reach.
+  - Clips baked by hand (pose matrix -> local quat keys): Walking, Running, Hit_Reaction + new Idle (bladed ready stance, feet pinned by leg IK, breathing). Spine motion damped 50% while moving (steady aim).
+  - Recoil: `Combat/CrossbowRecoil` (LateUpdate, spine+chest kick 7 deg back + 2.5 deg twist, fast rise, settle 0.11 s). Hands stay on (arms + crossbow under chest).
+  - Events: `AutoShooter.Fired(muzzle, dir)`, static `Bolt.Hit(point, dir)`. Listeners: recoil, `Combat/CombatFx` (muzzle flash + sparks, impact sparks + dust, Emit only), `Audio/GameAudio`.
+  - Bolt: 0.5 m, wood shaft, steel bodkin head, 3 red vanes, spins 900 deg/s, white-amber trail 0.16 s.
+  - Grass: shader `Art/Shaders/Grass.shader` (opaque, 2-sided, vertex colour, wind waves + gusts, player push via `FX/GrassPusher` global `_SS_GrassPusher`, main light + SH + per-vertex point lights + fog). `Editor/World/GrassBuilder`: 1-tri blades in clumps, 11 clumps/m2, off floor + wall blocks, ~1.8% flowers. One mesh per tile (~7k tris open tile). Soil texture darker/mossy + pebbles. Floor tint 1.25 -> 1.06 (less orange). Foliage palette darker.
+  - Sounds: `Editor/Audio/SfxBuilder` (menu "Survivor Souls/Rebuild Sounds"), procedural DSP, no downloads. `Audio/Sfx/`: crossbow shot x3, bolt impact x3, hollow death x2, armour footstep x4 (ADPCM), meadow wind+birds loop 24 s (Vorbis 22 kHz). `GameAudio`: 8-voice pool, pitch jitter, footsteps by distance (stride 0.75 m), SFX vol / music vol from GameSettings.
+  - Verified: batch rebuild 0 errors, mac dev screenshots (`Docs/screenshots/game-crossbow-2h-*.png`, `game-grass-*.png`), iOS build + install + launch on iPhone 14 Pro Max OK.
+
 ## DECISIONS
+- Crossbow hold: two hands, crossbow on Spine2 + arm IK baked in Blender script. Recoil procedural in Unity (no extra clip). 2026-10-12 (KAN-11).
+- Sounds: procedural (SfxBuilder). No paid packs (Irem rule). 2026-10-12.
+- Grass: geometry blades per tile (opaque, no alpha test: cheap on mobile TBDR). 2026-10-12.
 - Orientation: portrait only, iOS + Android. User decision 2026-10-12.
 - Render pipeline: URP. Reason: mobile perf, good look.
 - Git LFS: NOT on. git-lfs not installed. Add later before big binary assets.
@@ -99,6 +113,8 @@
 ## NEXT
 - Jira: KAN-4 = welcome screen work.
 - Test menu on real phone (safe area, touch).
+- Irem playtest KAN-11 on iPhone: grip look, recoil size, grass density, sound mix. Tune numbers (CONFIG in Blender script, GrassBuilder, GameAudio).
+- Enemy real model (Meshy). Enemy attacks player. Shoot anim layer (string reload) optional.
 - Get Irem feedback from iPhone playtest. Profile draw calls / FPS on device. Android test later.
 - Archer shoot: auto-aim nearest enemy when stopped (Archero rule). Arrow projectile.
 - Reach exit door -> level complete / next level. First enemies + waves in open world. Minimap? (ask Irem).

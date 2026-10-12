@@ -14,7 +14,7 @@ namespace SurvivorSouls.Editor.Procedural
         private const string MatDir = "Assets/_Project/Art/Materials/Game";
         private const string SoftDotPath = "Assets/_Project/Art/Textures/T_SoftDot.png"; // made by MainMenuSceneBuilder
 
-        public Material Palette, Floor, OuterGround, Wall, RuneDecal, BlobShadow, Flame, Ember, Mist;
+        public Material Palette, Floor, OuterGround, Grass, Wall, RuneDecal, BlobShadow, Flame, Ember, Mist;
         public Material HeroRing, DirectionMarker, Gold;
         public Texture2D SoftDot;
         public Mesh Quad;
@@ -33,11 +33,16 @@ namespace SurvivorSouls.Editor.Procedural
             kit.Palette = EditorAssetUtil.SimpleLitMaterial($"{MatDir}/M_Palette.mat", paletteAlbedo, Color.white, specMap: paletteSpec);
 
             var (floorAlbedo, floorNormal) = MakeStone("T_Flagstone", FlagstoneSample);
-            kit.Floor = EditorAssetUtil.SimpleLitMaterial($"{MatDir}/M_Floor.mat", floorAlbedo, new Color(1.25f, 1.2f, 1.1f), floorNormal, // pale sand stone: the dark knight reads on it
+            kit.Floor = EditorAssetUtil.SimpleLitMaterial($"{MatDir}/M_Floor.mat", floorAlbedo, new Color(1.06f, 1.03f, 0.98f), floorNormal, // weathered pale stone: the dark knight reads on it
                 smoothness: 0.25f, specColor: new Color(0.18f, 0.17f, 0.16f));
             var (groundAlbedo, groundNormal) = MakeStone("T_GrassDirt", GroundSample);
             kit.OuterGround = EditorAssetUtil.SimpleLitMaterial($"{MatDir}/M_OuterGround.mat", groundAlbedo, Color.white, groundNormal,
                 smoothness: 0.1f, specColor: new Color(0.04f, 0.04f, 0.04f));
+
+            kit.Grass = EditorAssetUtil.LoadOrCreateMaterial($"{MatDir}/M_Grass.mat", "SurvivorSouls/Grass");
+            kit.Grass.enableInstancing = false; // one static mesh per tile; SRP Batcher handles it
+            kit.Grass.SetFloat("_TipLight", 0.15f);
+            EditorUtility.SetDirty(kit.Grass);
 
             var (wallAlbedo, wallNormal) = MakeStone("T_StoneBlocks", BlockSample);
             kit.Wall = EditorAssetUtil.SimpleLitMaterial($"{MatDir}/M_Wall.mat", wallAlbedo, new Color(0.78f, 0.76f, 0.76f), wallNormal,
@@ -136,17 +141,23 @@ namespace SurvivorSouls.Editor.Procedural
             return (c, h);
         }
 
-        /// <summary>Grass and dirt patches for the ground outside the walls.</summary>
+        /// <summary>
+        /// Soil under the grass blades: dark mossy earth with fine grain, small pebbles and some bare dirt patches.
+        /// Darker than the blades so the 3D grass reads; gaps look like real soil, not green paint.
+        /// </summary>
         private static (Color, float) GroundSample(float u, float v)
         {
             float patches = TextureFactory.Fbm(u, v, 2, 6, 51);
             float grain = TextureFactory.Fbm(u, v, 48, 3, 53);
-            float grass = TextureFactory.SmoothStep(0.24f, 0.4f, patches); // mostly grass, rare dirt
-            var dirt = new Color(0.34f, 0.29f, 0.23f) * (0.8f + grain * 0.35f);
-            var green = Color.Lerp(new Color(0.3f, 0.36f, 0.2f), new Color(0.38f, 0.42f, 0.25f), grain) * (0.85f + TextureFactory.Hash((int)(u * 512), (int)(v * 512), 7) * 0.3f);
-            var c = Color.Lerp(dirt, green, grass);
+            float fine = TextureFactory.Hash((int)(u * StoneSize), (int)(v * StoneSize), 7);
+            float moss = TextureFactory.SmoothStep(0.3f, 0.48f, patches);
+            float pebble = TextureFactory.SmoothStep(0.78f, 0.86f, TextureFactory.Fbm(u, v, 64, 2, 59));
+            var dirt = Color.Lerp(new Color(0.24f, 0.19f, 0.14f), new Color(0.33f, 0.27f, 0.2f), grain) * (0.85f + fine * 0.25f);
+            var green = Color.Lerp(new Color(0.16f, 0.2f, 0.09f), new Color(0.24f, 0.29f, 0.12f), grain) * (0.8f + fine * 0.35f);
+            var c = Color.Lerp(dirt, green, moss);
+            c = Color.Lerp(c, new Color(0.45f, 0.42f, 0.38f) * (0.8f + fine * 0.3f), pebble * 0.8f);
             c.a = 1f;
-            return (c, grass * 0.6f + grain * 0.4f);
+            return (c, moss * 0.35f + grain * 0.45f + pebble * 0.6f);
         }
 
         /// <summary>Wall blocks: rows of cut stone with offset joints.</summary>

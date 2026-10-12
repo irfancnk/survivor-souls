@@ -66,7 +66,7 @@ namespace SurvivorSouls.Editor.Procedural
                 case Swatch.Grass: return new Cell(Hex(0x5E7A3A), Hex(0x7A8A44), 0.45f, 0.12f, 0.08f, 0.25f);
                 case Swatch.Moss: return new Cell(Hex(0x46582E), Hex(0x33402A), 0.5f, 0.12f, 0.05f, 0.15f);
                 case Swatch.Bark: return new Cell(Hex(0x3E3024), Hex(0x2A2019), 0.5f, 0.12f, 0.05f, 0.15f);
-                case Swatch.Foliage: return new Cell(Hex(0x4E6B34), Hex(0x6E7E3C), 0.5f, 0.14f, 0.06f, 0.2f);
+                case Swatch.Foliage: return new Cell(Hex(0x3C5528), Hex(0x55653A), 0.5f, 0.14f, 0.06f, 0.2f);
                 default: return new Cell(Color.magenta, Color.magenta, 0f, 0f, 0f, 0f);
             }
         }

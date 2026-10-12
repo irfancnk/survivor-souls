@@ -1,10 +1,14 @@
 using System.Collections.Generic;
 using System.Linq;
+using SurvivorSouls.Audio;
 using SurvivorSouls.Core;
+using SurvivorSouls.Editor.Audio;
 using SurvivorSouls.Editor.Combat;
 using SurvivorSouls.Editor.World;
 using SurvivorSouls.Editor.Characters;
 using SurvivorSouls.Editor.Procedural;
+using SurvivorSouls.FX;
+using SurvivorSouls.Gameplay.Characters;
 using SurvivorSouls.Gameplay;
 using SurvivorSouls.Gameplay.CameraRig;
 using SurvivorSouls.Gameplay.Combat;
@@ -64,7 +68,10 @@ namespace SurvivorSouls.Editor
             SetRef(player.GetComponent<PlayerMover>(), "joystick", joystick);
             var world = WorldBuilder.Build(kit, player.transform, player.GetComponent<PlayerMover>());
             var combat = CombatBuilder.Load();
-            CreateCombat(player, combat.bolt, combat.enemy, world);
+            var shooter = CreateCombat(player, combat.bolt, combat.enemy, world);
+            CombatBuilder.CreateFx(kit, shooter);
+            CreateAudio(SfxBuilder.Build(), shooter, player.GetComponent<PlayerMover>());
+            player.AddComponent<GrassPusher>();
 
             var camera = CreateCamera(player.transform);
             CreateHud(panelSettings, joystick, camera);
@@ -117,18 +124,43 @@ namespace SurvivorSouls.Editor
             light.shadows = LightShadows.None; // blob shadows instead of shadow maps
         }
 
-        /// <summary>Auto-shooter on the player (bolts leave the crossbow muzzle) + enemy spawner around them.</summary>
-        private static void CreateCombat(GameObject player, Bolt bolt, Enemy enemy, WorldStreamer world)
+        /// <summary>
+        /// Auto-shooter on the player (bolts leave the crossbow muzzle), upper-body recoil, enemy spawner around them.
+        /// </summary>
+        private static AutoShooter CreateCombat(GameObject player, Bolt bolt, Enemy enemy, WorldStreamer world)
         {
             var shooter = player.AddComponent<AutoShooter>();
             SetRef(shooter, "boltPrefab", bolt);
             var muzzle = player.GetComponentsInChildren<Transform>(true).FirstOrDefault(t => t.name == "Crossbow_Muzzle");
             if (muzzle != null) SetRef(shooter, "muzzle", muzzle);
+            SetRef(player.AddComponent<CrossbowRecoil>(), "rig", player.GetComponentInChildren<HumanoidRig>());
 
             var spawner = new GameObject("Enemies").AddComponent<EnemySpawner>();
             SetRef(spawner, "prefab", enemy);
             SetRef(spawner, "player", player.transform);
             SetRef(spawner, "world", world);
+            return shooter;
+        }
+
+        /// <summary>Procedural sound set (shots, impacts, deaths, footsteps, meadow ambience) on one audio object.</summary>
+        private static void CreateAudio(SfxBuilder.Set sfx, AutoShooter shooter, PlayerMover mover)
+        {
+            var audio = new GameObject("Audio").AddComponent<GameAudio>();
+            var so = new SerializedObject(audio);
+            so.FindProperty("shooter").objectReferenceValue = shooter;
+            so.FindProperty("player").objectReferenceValue = mover;
+            SetClips(so.FindProperty("shots"), sfx.Shots);
+            SetClips(so.FindProperty("impacts"), sfx.Impacts);
+            SetClips(so.FindProperty("deaths"), sfx.Deaths);
+            SetClips(so.FindProperty("footsteps"), sfx.Footsteps);
+            so.FindProperty("ambience").objectReferenceValue = sfx.Ambience;
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        private static void SetClips(SerializedProperty array, AudioClip[] clips)
+        {
+            array.arraySize = clips.Length;
+            for (int i = 0; i < clips.Length; i++) array.GetArrayElementAtIndex(i).objectReferenceValue = clips[i];
         }
 
         private static Camera CreateCamera(Transform target)

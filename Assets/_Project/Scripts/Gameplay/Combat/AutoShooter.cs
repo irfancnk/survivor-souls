@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using SurvivorSouls.Gameplay.Player;
 using UnityEngine;
@@ -24,6 +25,9 @@ namespace SurvivorSouls.Gameplay.Combat
         [SerializeField, Range(1f, 90f)] private float aimTolerance = 15f;
 
         private const float MovingSpeed = 0.2f;
+
+        /// <summary>Raised on every shot: muzzle position, flight direction. Recoil, muzzle FX and audio listen.</summary>
+        public event Action<Vector3, Vector3> Fired;
 
         private readonly Stack<Bolt> _pool = new Stack<Bolt>();
         private PlayerMover _mover;
@@ -75,6 +79,7 @@ namespace SurvivorSouls.Gameplay.Combat
             Vector3 dir = (target.AimPoint - from).normalized;
             var bolt = _pool.Count > 0 ? _pool.Pop() : Instantiate(boltPrefab);
             bolt.Launch(from, dir, boltSpeed, damage, range * 1.5f / boltSpeed, b => _pool.Push(b));
+            Fired?.Invoke(from, dir);
         }
     }
 }

@@ -254,6 +254,14 @@ namespace SurvivorSouls.Editor.World
                 Part(root.transform, name, "Floor", d.Floor, kit.Floor);
                 Part(root.transform, name, "Stone", d.Stone, kit.Wall);
                 Part(root.transform, name, "Props", d.Props, kit.Palette);
+                var grass = GrassBuilder.Build($"{MeshDir}/Tile_{name}_Grass.asset", TileSize, d.Floor, d.Blocks, seed * 31 + 7);
+                if (grass != null)
+                {
+                    var go = new GameObject("Grass");
+                    go.transform.SetParent(root.transform, false);
+                    go.AddComponent<MeshFilter>().sharedMesh = grass;
+                    PropKit.SetupRenderer(go.AddComponent<MeshRenderer>(), kit.Grass);
+                }
                 if (d.Rune)
                 {
                     var rune = new GameObject("RuneCircle");
