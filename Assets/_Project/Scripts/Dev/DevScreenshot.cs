@@ -1,6 +1,12 @@
 using System;
 using System.Collections;
+using System.Globalization;
+using SurvivorSouls.Gameplay.CameraRig;
+using SurvivorSouls.Gameplay.Controls;
+using SurvivorSouls.Gameplay.Player;
 using UnityEngine;
+using UnityEngine.SceneManagement;
+using UnityEngine.UIElements;
 
 namespace SurvivorSouls.Dev
 {
@@ -8,12 +14,17 @@ namespace SurvivorSouls.Dev
     /// Automation hook for development builds. Launch the player with
     /// <c>-ss-screenshot &lt;path.png&gt; [-ss-delay &lt;seconds&gt;] [-ss-quality &lt;name&gt;]</c>
     /// to save one frame and quit. -ss-quality picks a quality level by name (e.g. Mobile) to preview mobile visuals on desktop.
+    /// Game options: <c>-ss-scene &lt;name&gt;</c> loads a scene first; <c>-ss-move x,y</c> holds the joystick;
+    /// <c>-ss-closeup &lt;yawDeg&gt;</c> frames the player up close (0 = from the front).
     /// Used by tools/agents to verify visuals without a human. Inactive in release builds (Debug.isDebugBuild).
     /// </summary>
     public sealed class DevScreenshot : MonoBehaviour
     {
         private string _path;
         private float _delay;
+        private string _scene;
+        private string _move;
+        private string _closeup;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void Bootstrap()
@@ -29,17 +40,53 @@ namespace SurvivorSouls.Dev
             DontDestroyOnLoad(go);
             var shot = go.AddComponent<DevScreenshot>();
             shot._path = path;
-            shot._delay = float.TryParse(GetArg("-ss-delay"), out float d) ? d : 3f;
+            shot._delay = float.TryParse(GetArg("-ss-delay"), NumberStyles.Float, CultureInfo.InvariantCulture, out float d) ? d : 3f;
+            shot._scene = GetArg("-ss-scene");
+            shot._move = GetArg("-ss-move");
+            shot._closeup = GetArg("-ss-closeup");
         }
 
         private IEnumerator Start()
         {
+            if (!string.IsNullOrEmpty(_scene))
+            {
+                SceneManager.LoadScene(_scene);
+                yield return null;
+                yield return null;
+            }
+            if (!string.IsNullOrEmpty(_move))
+            {
+                string[] xy = _move.Split(',');
+                FloatingJoystick.SimulatedValue = new Vector2(
+                    float.Parse(xy[0], CultureInfo.InvariantCulture), float.Parse(xy[1], CultureInfo.InvariantCulture));
+            }
+
             yield return new WaitForSecondsRealtime(_delay);
+            if (!string.IsNullOrEmpty(_closeup)) FrameCloseup(float.Parse(_closeup, CultureInfo.InvariantCulture));
+            yield return null;
             yield return new WaitForEndOfFrame();
             ScreenCapture.CaptureScreenshot(_path);
             yield return new WaitForSecondsRealtime(1f); // capture writes asynchronously
             Debug.Log($"[DevScreenshot] Saved {_path}");
             Application.Quit();
+        }
+
+        /// <summary>Stops the follow camera and frames the player's upper body from <paramref name="yaw"/> degrees.</summary>
+        private static void FrameCloseup(float yaw)
+        {
+            var player = FindAnyObjectByType<PlayerMover>();
+            var cam = Camera.main;
+            if (player == null || cam == null) return;
+            var follow = cam.GetComponent<TopDownFollowCamera>();
+            if (follow != null) follow.enabled = false;
+            foreach (var doc in FindObjectsByType<UIDocument>()) doc.gameObject.SetActive(false); // hide HUD
+
+            Transform t = player.transform;
+            Vector3 dir = Quaternion.AngleAxis(yaw, Vector3.up) * t.forward;
+            cam.nearClipPlane = 0.05f;
+            cam.fieldOfView = 32f;
+            cam.transform.position = t.position + dir * 3.6f + Vector3.up * 1.45f;
+            cam.transform.LookAt(t.position + Vector3.up * 0.98f);
         }
 
         private static void ApplyQualityOverride(string qualityName)

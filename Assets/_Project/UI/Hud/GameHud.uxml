@@ -1,0 +1,15 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <Style src="GameHud.uss" />
+    <!-- Joystick is positioned in code (GameHudController) at the touch point. Never blocks touches. -->
+    <ui:VisualElement name="joystick" class="hud-joystick hud-hidden" picking-mode="Ignore">
+        <ui:VisualElement name="joystick-knob" class="hud-joystick__knob" picking-mode="Ignore" />
+    </ui:VisualElement>
+
+    <ui:VisualElement name="safe-root" class="hud-root" picking-mode="Ignore">
+        <ui:VisualElement class="hud-top" picking-mode="Ignore">
+            <ui:Button name="btn-pause" text="II" class="hud-button" />
+        </ui:VisualElement>
+        <ui:VisualElement class="hud-spacer" picking-mode="Ignore" />
+        <ui:Label name="lbl-hint" text="Drag anywhere to move" class="hud-hint" picking-mode="Ignore" />
+    </ui:VisualElement>
+</ui:UXML>

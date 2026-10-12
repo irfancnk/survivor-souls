@@ -1,0 +1,81 @@
+/* In-game HUD. Reference 1080x1920, match width (see GameHudPanelSettings). Sizes in px. */
+
+:root {
+    --hud-gold: rgb(232, 196, 120);
+    --hud-ash: rgba(206, 200, 188, 0.75);
+    --hud-ring: rgba(232, 196, 120, 0.35);
+    --hud-ring-fill: rgba(10, 12, 18, 0.28);
+    --hud-knob: rgba(232, 196, 120, 0.85);
+    --hud-panel: rgba(16, 18, 26, 0.7);
+}
+
+.hud-hidden {
+    display: none;
+}
+
+.hud-root {
+    position: absolute;
+    left: 0; right: 0; top: 0; bottom: 0;
+    flex-direction: column;
+}
+
+.hud-top {
+    flex-direction: row;
+    padding: 36px 40px 0 40px;
+}
+
+.hud-spacer {
+    flex-grow: 1;
+}
+
+.hud-button {
+    width: 120px;
+    height: 120px;
+    border-radius: 60px;
+    border-width: 3px;
+    border-color: var(--hud-ring);
+    background-color: var(--hud-panel);
+    color: var(--hud-gold);
+    font-size: 44px;
+    -unity-font-style: bold;
+    margin: 0;
+    padding: 0;
+}
+
+.hud-button:active {
+    background-color: rgba(60, 46, 28, 0.85);
+}
+
+.hud-hint {
+    align-self: center;
+    margin-bottom: 220px;
+    font-size: 40px;
+    color: var(--hud-ash);
+    -unity-text-align: middle-center;
+    transition-property: opacity;
+    transition-duration: 0.6s;
+}
+
+.hud-hint--gone {
+    opacity: 0;
+}
+
+/* Joystick: size set in code from the input radius; these are the looks. */
+.hud-joystick {
+    position: absolute;
+    border-width: 4px;
+    border-color: var(--hud-ring);
+    background-color: var(--hud-ring-fill);
+    align-items: center;
+    justify-content: center;
+}
+
+.hud-joystick__knob {
+    position: absolute;
+    width: 120px;
+    height: 120px;
+    border-radius: 60px;
+    background-color: var(--hud-knob);
+    border-width: 3px;
+    border-color: rgba(255, 236, 190, 0.9);
+}
