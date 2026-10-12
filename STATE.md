@@ -38,6 +38,13 @@
     2. `xcodebuild -project <dir>/Unity-iPhone.xcodeproj -scheme Unity-iPhone -configuration Release -destination 'id=<UDID>' -allowProvisioningUpdates DEVELOPMENT_TEAM=7F44HW939L CODE_SIGN_STYLE=Automatic CODE_SIGN_IDENTITY="Apple Development" build`
     3. `xcrun devicectl device install app --device <UDID> <app>` then `xcrun devicectl device process launch --device <UDID> com.irfancnk.survivorsouls`.
   - Phone UDID: `00008120-00123DE8110BC01E`. Developer Mode on. Find with `xcrun devicectl list devices`.
+- 2026-10-12: Meshy character is main player (KAN-8). Source `ArtSource/Characters/Archer/Meshy_Archer.glb` (outside Assets, 20 MB, from Irem `~/survivor-souls-assets`).
+  - Importer: `Editor/Characters/MeshyCharacterImporter.cs`. Own GLB reader, no package. glTF->Unity: x=-x, quat (x,-y,-z,w), flip winding, v=1-v. Makes mesh asset, URP Lit mat, textures max 1024 (MR repacked to metal R / smooth A). Prefab `Prefabs/Player_ArcherMeshy.prefab`.
+  - Model: 10.3k tris, 13.4k verts, 44 bones named Bone_000.. (no human names). `BoneMap` in importer maps them to HumanoidRig. Bind pose = weapon-hold pose (both hands on crossbow), not T/A pose. No animation clips.
+  - GameSceneBuilder uses Meshy prefab when GLB exists, else procedural archer.
+  - HumanoidRig.SetRotation: offsets in character space from rest pose. Same ProceduralLocomotion runs on any rig. Meshy prefab: `armWeight = 0` (arms keep weapon pose; legs/hips/spine/head animate).
+  - Look: generated model is knight with closed helmet + crossbow, not hooded archer of sheet.
+  - Deployed to iPhone OK.
 
 ## DECISIONS
 - Orientation: portrait only, iOS + Android. User decision 2026-10-12.
@@ -65,7 +72,7 @@
 - Get Irem feedback from iPhone playtest. Profile draw calls / FPS on device. Android test later.
 - Archer shoot: auto-aim nearest enemy when stopped (Archero rule). Arrow projectile.
 - First enemy + spawn waves. Room clear -> door.
-- Meshy archer model + Mixamo-like rig; keep HumanoidRig API.
+- Better Meshy export: A-pose or T-pose, bow (not crossbow), hood. Then Unity Humanoid avatar + Mixamo/Quaternius CC0 clips + Animator blend tree. Bone names: rename to Mixamo names or map in importer.
 - Custom serif title font (OFL, e.g. Cinzel). Needs user OK to download.
 - Menu music + click SFX. Hook to GameSettings volumes.
 - Install git-lfs, track binaries.

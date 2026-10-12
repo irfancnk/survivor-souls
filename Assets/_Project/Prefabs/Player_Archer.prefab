@@ -478,6 +478,7 @@ MonoBehaviour:
   bowArmSwing: 18
   forwardLean: 11
   bob: 0.05
+  armWeight: 1
 --- !u!1 &3546302558378390208
 GameObject:
   m_ObjectHideFlags: 0

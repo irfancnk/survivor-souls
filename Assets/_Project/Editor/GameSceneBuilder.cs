@@ -43,7 +43,9 @@ namespace SurvivorSouls.Editor
         public static void Build()
         {
             var kit = GameArtKit.Build();
+            // Main character: the Meshy model when its source GLB exists, else the procedural placeholder.
             var archerPrefab = ArcherModelBuilder.BuildPrefab(kit.Palette, kit.BlobShadow, kit.Quad);
+            if (MeshyCharacterImporter.SourceExists) archerPrefab = MeshyCharacterImporter.BuildPrefab(kit.BlobShadow, kit.Quad);
             var panelSettings = CreatePanelSettings();
 
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);

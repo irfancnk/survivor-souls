@@ -138,7 +138,7 @@ namespace SurvivorSouls.Editor.Characters
             rig.thighR = b[(int)B.ThighR]; rig.shinR = b[(int)B.ShinR]; rig.footR = b[(int)B.FootR];
         }
 
-        private static void AddBlobShadow(Transform root, Material mat, Mesh quad)
+        internal static void AddBlobShadow(Transform root, Material mat, Mesh quad)
         {
             var go = new GameObject("BlobShadow");
             go.transform.SetParent(root, false);
