@@ -32,6 +32,12 @@
   - DevScreenshot new args: `-ss-scene Game`, `-ss-move x,y`, `-ss-closeup <yaw>`. Screenshots: `Docs/screenshots/game-*.png`.
   - 2026-10-12 fidelity pass vs concept sheet: darker palette (leather, boots, iron w/ rust), maroon crimson, pointed hood tip, knee-length ragged tunic w/ side slits, long crimson drapes front + back.
   - Verified: compile 0 errors, mac dev build OK, no runtime exceptions in screenshot runs.
+- 2026-10-12: Deployed to Irem iPhone 14 Pro Max (KAN-7). Free personal team `7F44HW939L` (no paid account). Profile lives 7 days, then re-deploy.
+  - Deploy to iPhone (3 steps):
+    1. Unity: `-buildTarget iOS -executeMethod SurvivorSouls.Editor.DevBuildTools.BuildIosXcode -ss-out <dir>` (add `-ss-dev` for dev build).
+    2. `xcodebuild -project <dir>/Unity-iPhone.xcodeproj -scheme Unity-iPhone -configuration Release -destination 'id=<UDID>' -allowProvisioningUpdates DEVELOPMENT_TEAM=7F44HW939L CODE_SIGN_STYLE=Automatic CODE_SIGN_IDENTITY="Apple Development" build`
+    3. `xcrun devicectl device install app --device <UDID> <app>` then `xcrun devicectl device process launch --device <UDID> com.irfancnk.survivorsouls`.
+  - Phone UDID: `00008120-00123DE8110BC01E`. Developer Mode on. Find with `xcrun devicectl list devices`.
 
 ## DECISIONS
 - Orientation: portrait only, iOS + Android. User decision 2026-10-12.
@@ -56,7 +62,7 @@
 ## NEXT
 - Jira: KAN-4 = welcome screen work.
 - Test menu on real phone (safe area, touch).
-- Test joystick + 60 FPS on real phone (iOS + Android). Profile draw calls.
+- Get Irem feedback from iPhone playtest. Profile draw calls / FPS on device. Android test later.
 - Archer shoot: auto-aim nearest enemy when stopped (Archero rule). Arrow projectile.
 - First enemy + spawn waves. Room clear -> door.
 - Meshy archer model + Mixamo-like rig; keep HumanoidRig API.

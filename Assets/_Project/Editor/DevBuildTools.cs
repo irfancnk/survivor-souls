@@ -28,6 +28,27 @@ namespace SurvivorSouls.Editor
             EditorApplication.Exit(report.summary.result == BuildResult.Succeeded ? 0 : 1);
         }
 
+        /// <summary>
+        /// iOS Xcode project for device installs. Sign and install with xcodebuild + devicectl
+        /// (see STATE.md, "Deploy to iPhone"). Optional <c>-ss-dev</c> makes a development build.
+        /// <c>-executeMethod SurvivorSouls.Editor.DevBuildTools.BuildIosXcode -ss-out &lt;dir&gt;</c>
+        /// </summary>
+        public static void BuildIosXcode()
+        {
+            string outDir = GetArg("-ss-out") ?? "Builds/iOS";
+            bool dev = System.Environment.GetCommandLineArgs().Contains("-ss-dev");
+            var options = new BuildPlayerOptions
+            {
+                scenes = EditorBuildSettings.scenes.Where(s => s.enabled).Select(s => s.path).ToArray(),
+                locationPathName = outDir,
+                target = BuildTarget.iOS,
+                options = dev ? BuildOptions.Development : BuildOptions.None,
+            };
+            BuildReport report = BuildPipeline.BuildPlayer(options);
+            Debug.Log($"[DevBuildTools] iOS {report.summary.result} errors={report.summary.totalErrors} -> {outDir}");
+            EditorApplication.Exit(report.summary.result == BuildResult.Succeeded ? 0 : 1);
+        }
+
         private static string GetArg(string name)
         {
             string[] args = System.Environment.GetCommandLineArgs();
