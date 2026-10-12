@@ -25,17 +25,18 @@ namespace SurvivorSouls.Editor.Procedural
             if (kit.SoftDot == null) throw new System.InvalidOperationException($"Missing {SoftDotPath}. Rebuild the main menu scene first.");
             kit.Quad = Resources.GetBuiltinResource<Mesh>("Quad.fbx");
 
-            var paletteAlbedo = TextureFactory.Write($"{TexDir}/T_Palette.png", PaletteAtlas.Size, PaletteAtlas.Size,
+            var paletteAlbedo = TextureFactory.Write($"{TexDir}/T_Palette.png", PaletteAtlas.Width, PaletteAtlas.Height,
                 PaletteAtlas.AlbedoPixel, TextureFactory.Kind.Color, mipmaps: false, wrap: TextureWrapMode.Clamp);
-            var paletteSpec = TextureFactory.Write($"{TexDir}/T_Palette_Spec.png", PaletteAtlas.Size, PaletteAtlas.Size,
+            var paletteSpec = TextureFactory.Write($"{TexDir}/T_Palette_Spec.png", PaletteAtlas.Width, PaletteAtlas.Height,
                 PaletteAtlas.SpecularPixel, TextureFactory.Kind.Linear, mipmaps: false, wrap: TextureWrapMode.Clamp);
             kit.Palette = EditorAssetUtil.SimpleLitMaterial($"{MatDir}/M_Palette.mat", paletteAlbedo, Color.white, specMap: paletteSpec);
 
             var (floorAlbedo, floorNormal) = MakeStone("T_Flagstone", FlagstoneSample);
             kit.Floor = EditorAssetUtil.SimpleLitMaterial($"{MatDir}/M_Floor.mat", floorAlbedo, new Color(0.88f, 0.86f, 0.84f), floorNormal,
                 smoothness: 0.25f, specColor: new Color(0.18f, 0.17f, 0.16f));
-            kit.OuterGround = EditorAssetUtil.SimpleLitMaterial($"{MatDir}/M_OuterGround.mat", floorAlbedo, new Color(0.42f, 0.42f, 0.45f), floorNormal,
-                smoothness: 0.1f, specColor: new Color(0.05f, 0.05f, 0.05f));
+            var (groundAlbedo, groundNormal) = MakeStone("T_GrassDirt", GroundSample);
+            kit.OuterGround = EditorAssetUtil.SimpleLitMaterial($"{MatDir}/M_OuterGround.mat", groundAlbedo, Color.white, groundNormal,
+                smoothness: 0.1f, specColor: new Color(0.04f, 0.04f, 0.04f));
 
             var (wallAlbedo, wallNormal) = MakeStone("T_StoneBlocks", BlockSample);
             kit.Wall = EditorAssetUtil.SimpleLitMaterial($"{MatDir}/M_Wall.mat", wallAlbedo, new Color(0.78f, 0.76f, 0.76f), wallNormal,
@@ -122,6 +123,19 @@ namespace SurvivorSouls.Editor.Procedural
             c.a = 1f;
             float h = Mathf.Lerp(bevel * 0.85f + grain * 0.15f, 0f, mortar);
             return (c, h);
+        }
+
+        /// <summary>Grass and dirt patches for the ground outside the walls.</summary>
+        private static (Color, float) GroundSample(float u, float v)
+        {
+            float patches = TextureFactory.Fbm(u, v, 3, 5, 51);
+            float grain = TextureFactory.Fbm(u, v, 32, 3, 53);
+            float grass = TextureFactory.SmoothStep(0.3f, 0.5f, patches); // mostly grass, sparse dirt
+            var dirt = new Color(0.34f, 0.29f, 0.23f) * (0.8f + grain * 0.35f);
+            var green = Color.Lerp(new Color(0.3f, 0.36f, 0.2f), new Color(0.38f, 0.42f, 0.25f), grain) * (0.85f + TextureFactory.Hash((int)(u * 512), (int)(v * 512), 7) * 0.3f);
+            var c = Color.Lerp(dirt, green, grass);
+            c.a = 1f;
+            return (c, grass * 0.6f + grain * 0.4f);
         }
 
         /// <summary>Wall blocks: rows of cut stone with offset joints.</summary>

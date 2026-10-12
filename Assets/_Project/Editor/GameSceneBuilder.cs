@@ -33,11 +33,12 @@ namespace SurvivorSouls.Editor
         private const string ThemePath = Root + "/UI/Theme/SurvivorSoulsTheme.tss";
 
         // Night courtyard: cool moonlit ambient, warm braziers. Readable, not grim.
-        private static readonly Color BackgroundColor = new Color(0.055f, 0.065f, 0.09f);
-        private static readonly Color AmbientSky = new Color(0.46f, 0.48f, 0.57f);
-        private static readonly Color AmbientEquator = new Color(0.36f, 0.33f, 0.33f);
-        private static readonly Color AmbientGround = new Color(0.24f, 0.2f, 0.17f);
-        private static readonly Color MoonColor = new Color(0.62f, 0.7f, 0.9f);
+        // Morning: pale sky haze, soft warm low sun, braziers still burning. Bright and readable, not grim.
+        private static readonly Color BackgroundColor = new Color(0.6f, 0.65f, 0.7f);
+        private static readonly Color AmbientSky = new Color(0.66f, 0.72f, 0.84f);
+        private static readonly Color AmbientEquator = new Color(0.56f, 0.53f, 0.5f);
+        private static readonly Color AmbientGround = new Color(0.36f, 0.31f, 0.26f);
+        private static readonly Color MoonColor = new Color(1f, 0.9f, 0.74f); // morning sun
 
         [MenuItem("Survivor Souls/Rebuild Game Scene")]
         public static void Build()
@@ -94,19 +95,19 @@ namespace SurvivorSouls.Editor
             // Distance fog only softens the far edge; ground mist particles give the near haze.
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Linear;
-            RenderSettings.fogStartDistance = 38f;
-            RenderSettings.fogEndDistance = 70f;
+            RenderSettings.fogStartDistance = 34f;
+            RenderSettings.fogEndDistance = 80f;
             RenderSettings.fogColor = BackgroundColor;
         }
 
         private static void CreateMoonLight()
         {
-            var go = new GameObject("Moon Light");
-            go.transform.rotation = Quaternion.Euler(52f, -35f, 0f);
+            var go = new GameObject("Sun Light");
+            go.transform.rotation = Quaternion.Euler(38f, -50f, 0f); // low morning sun from the front-left
             var light = go.AddComponent<Light>();
             light.type = LightType.Directional;
             light.color = MoonColor;
-            light.intensity = 0.9f;
+            light.intensity = 1.25f;
             light.shadows = LightShadows.None; // blob shadows instead of shadow maps
         }
 
@@ -128,7 +129,7 @@ namespace SurvivorSouls.Editor
             follow.Target = target;
             var so = new SerializedObject(follow);
             // Min keeps the south wall at the screen bottom (see TopDownFollowCamera geometry); max keeps the far wall in view.
-            so.FindProperty("lookZRange").vector2Value = new Vector2(-2.4f, 3f);
+            so.FindProperty("lookZRange").vector2Value = new Vector2(ArenaBuilder.SouthZ + 11.6f, ArenaBuilder.DoorZ - 6f);
             so.ApplyModifiedPropertiesWithoutUndo();
             go.transform.SetPositionAndRotation(target.position + new Vector3(0f, 34f, -20f), Quaternion.Euler(60f, 0f, 0f));
         }

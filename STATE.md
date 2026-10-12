@@ -52,6 +52,12 @@
   - Generic, not Humanoid: clips come from same skeleton, no retarget needed. Humanoid avatar only needed for outside clips (Mixamo/Quaternius).
   - Look: armoured knight with cape + closed helmet, no bow/quiver. Not the hooded archer of the sheet.
   - Deployed to iPhone OK.
+- 2026-10-12 (3): Level 1 polish (KAN-9). Morning light: sun warm 1.25 from front-left, sky ambient bright, pale haze bg/fog. Braziers kept.
+  - Layout (`ArenaBuilder`, constants at top): courtyard Z -14..3 half width 5 (spawn z -9.5) -> funnel Z 3..9 narrows 5 -> 2 -> corridor Z 9..17.5 half width 2 -> closed double door (stone arch) at Z 17.5. `HalfWidthAt(z)` + `Outline` drive walls, floor, colliders, grass.
+  - Detail: banners on pillars, barrels + crates, fallen pillar drums, 4 wall sconces (corridor + door), grass tufts, 34 trees/bushes/rocks outside, grass/dirt ground texture `T_GrassDirt`.
+  - Palette atlas now 4 x 5 cells (+Grass, Moss, Bark, Foliage).
+  - Lights: 4 braziers + 4 sconces + hero light. 4 Z chunks (edges -6, 3, 10). Camera lookZRange (-2.4, 11.5).
+  - Door is visual only (no open logic yet).
 
 ## DECISIONS
 - Orientation: portrait only, iOS + Android. User decision 2026-10-12.
@@ -78,7 +84,7 @@
 - Test menu on real phone (safe area, touch).
 - Get Irem feedback from iPhone playtest. Profile draw calls / FPS on device. Android test later.
 - Archer shoot: auto-aim nearest enemy when stopped (Archero rule). Arrow projectile.
-- First enemy + spawn waves. Room clear -> door.
+- First enemy + spawn waves. Room clear -> door opens -> next room.
 - Better Meshy export: A-pose or T-pose, bow (not crossbow), hood. Then Unity Humanoid avatar + Mixamo/Quaternius CC0 clips + Animator blend tree. Bone names: rename to Mixamo names or map in importer.
 - Custom serif title font (OFL, e.g. Cinzel). Needs user OK to download.
 - Menu music + click SFX. Hook to GameSettings volumes.

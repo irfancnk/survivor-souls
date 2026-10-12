@@ -9,19 +9,22 @@ namespace SurvivorSouls.Editor.Procedural
         TunicCloth, Leather, DarkLeather, Gunmetal,
         Rust, Crimson, Wood, BrightMetal,
         Stone, Coal, Pants, Fletching,
+        Grass, Moss, Bark, Foliage,
     }
 
     /// <summary>
-    /// One small texture (4x4 cells) that colours every procedural character and prop, so they all share
+    /// One small texture (4 x 5 cells) that colours every procedural character and prop, so they all share
     /// one material and batch well. Each cell holds a base colour plus wear noise (rust on metal, grain on
     /// cloth). A matching specular atlas (RGB spec, A smoothness) gives metal its sheen.
     /// To retune the look, edit <see cref="Define"/> and rebuild the scene.
     /// </summary>
     public static class PaletteAtlas
     {
-        public const int Grid = 4;
+        public const int Columns = 4;
+        public const int Rows = 5;
         public const int CellPixels = 32;
-        public const int Size = Grid * CellPixels;
+        public const int Width = Columns * CellPixels;
+        public const int Height = Rows * CellPixels;
         private const float Margin = 0.18f; // keep UVs inside the cell, away from bilinear bleed
 
         private readonly struct Cell
@@ -60,6 +63,10 @@ namespace SurvivorSouls.Editor.Procedural
                 case Swatch.Coal: return new Cell(Hex(0x1A1512), Hex(0xC2491A), 0.25f, 0.1f, 0.05f, 0.1f);
                 case Swatch.Pants: return new Cell(Hex(0x262422), Hex(0x332A22), 0.4f, 0.08f, 0.05f, 0.15f);
                 case Swatch.Fletching: return new Cell(Hex(0x8E1A1A), Hex(0x5A1010), 0.3f, 0.1f, 0.05f, 0.2f);
+                case Swatch.Grass: return new Cell(Hex(0x5E7A3A), Hex(0x7A8A44), 0.45f, 0.12f, 0.08f, 0.25f);
+                case Swatch.Moss: return new Cell(Hex(0x46582E), Hex(0x33402A), 0.5f, 0.12f, 0.05f, 0.15f);
+                case Swatch.Bark: return new Cell(Hex(0x3E3024), Hex(0x2A2019), 0.5f, 0.12f, 0.05f, 0.15f);
+                case Swatch.Foliage: return new Cell(Hex(0x4E6B34), Hex(0x6E7E3C), 0.5f, 0.14f, 0.06f, 0.2f);
                 default: return new Cell(Color.magenta, Color.magenta, 0f, 0f, 0f, 0f);
             }
         }
@@ -71,21 +78,21 @@ namespace SurvivorSouls.Editor.Procedural
         public static MeshBuilder.UvMapper For(Swatch swatch)
         {
             int index = (int)swatch;
-            float cx = index % Grid, cy = index / Grid;
+            float cx = index % Columns, cy = index / Columns;
             return (p, n) =>
             {
                 float u = 0.5f + 0.5f * Mathf.Sin(p.x * 23f + p.z * 17f + p.y * 5f);
                 float v = 0.5f + 0.5f * Mathf.Sin(p.y * 29f - p.x * 7f + p.z * 11f);
                 u = Mathf.Lerp(Margin, 1f - Margin, u);
                 v = Mathf.Lerp(Margin, 1f - Margin, v);
-                return new Vector2((cx + u) / Grid, (cy + v) / Grid);
+                return new Vector2((cx + u) / Columns, (cy + v) / Rows);
             };
         }
 
         public static Color AlbedoPixel(int x, int y)
         {
             var cell = Define(CellAt(x, y));
-            float wear = TextureFactory.Fbm(x / (float)Size, y / (float)Size, 8, 3, 11);
+            float wear = TextureFactory.Fbm(x / (float)Width, y / (float)Height, 8, 3, 11);
             float mask = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(1f - cell.WearAmount, 1f - cell.WearAmount + 0.25f, wear));
             float grain = (TextureFactory.Hash(x, y, 5) - 0.5f) * cell.Grain;
             var c = Color.Lerp(cell.Base, cell.Wear, mask);
@@ -95,7 +102,7 @@ namespace SurvivorSouls.Editor.Procedural
         public static Color SpecularPixel(int x, int y)
         {
             var cell = Define(CellAt(x, y));
-            float wear = TextureFactory.Fbm(x / (float)Size, y / (float)Size, 8, 3, 11);
+            float wear = TextureFactory.Fbm(x / (float)Width, y / (float)Height, 8, 3, 11);
             float mask = Mathf.InverseLerp(1f - cell.WearAmount, 1f, wear);
             // Worn/rusted spots are duller.
             float spec = cell.Specular * Mathf.Lerp(1f, 0.35f, mask);
@@ -103,7 +110,7 @@ namespace SurvivorSouls.Editor.Procedural
             return new Color(spec, spec, spec, smooth);
         }
 
-        private static Swatch CellAt(int x, int y) => (Swatch)(y / CellPixels * Grid + x / CellPixels);
+        private static Swatch CellAt(int x, int y) => (Swatch)(y / CellPixels * Columns + x / CellPixels);
 
         private static Color Hex(int rgb) =>
             new Color(((rgb >> 16) & 0xFF) / 255f, ((rgb >> 8) & 0xFF) / 255f, (rgb & 0xFF) / 255f, 1f);

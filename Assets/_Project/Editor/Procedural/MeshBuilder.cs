@@ -134,6 +134,18 @@ namespace SurvivorSouls.Editor.Procedural
             }
         }
 
+        /// <summary>Flat quad a-b-c-d (clockwise seen from the front), one shared normal.</summary>
+        public void Quad(Vector3 a, Vector3 b, Vector3 c, Vector3 d, UvMapper uv, int bone)
+        {
+            var n = Vector3.Cross(b - a, c - a).normalized;
+            int start = _positions.Count;
+            AddVertex(a, n, uv, bone);
+            AddVertex(b, n, uv, bone);
+            AddVertex(c, n, uv, bone);
+            AddVertex(d, n, uv, bone);
+            _triangles.AddRange(new[] { start, start + 1, start + 2, start, start + 2, start + 3 });
+        }
+
         /// <summary>Round tube along a polyline. <paramref name="radius"/> is sampled per point (t in 0..1).</summary>
         public void Tube(IReadOnlyList<Vector3> points, Func<float, float> radius, UvMapper uv, int bone, int sides = 6, bool caps = true)
         {
