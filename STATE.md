@@ -45,6 +45,13 @@
   - HumanoidRig.SetRotation: offsets in character space from rest pose. Same ProceduralLocomotion runs on any rig. Meshy prefab: `armWeight = 0` (arms keep weapon pose; legs/hips/spine/head animate).
   - Look: generated model is knight with closed helmet + crossbow, not hooded archer of sheet.
   - Deployed to iPhone OK.
+- 2026-10-12 (2): New Meshy export "Ironclad Sentinel" replaces first one (KAN-8). Source `ArtSource/Characters/Archer/Meshy_Sentinel.glb` (from Irem `~/survivor-souls-assets/models/`). Old GLB removed (git history has it).
+  - Model: 10.2k tris, 15.7k verts, A-pose, 66 bones with Mixamo names (`mixamorig:*`), up to 16 weights/vertex (importer keeps top 4). Clips: Walking, Running, Hit_Reaction. No idle.
+  - Importer now: glTF anims -> Generic `.anim` clips (hips X/Z frozen = in place), generated Idle (bind pose, arms lowered 38 deg, breathing bob), AnimatorController `AC_ArcherMeshy` (1D blend on Speed: Idle 0, Walk 1.6, Run 5; Any->Hit on trigger). `LocomotionAnimatorDriver` sets Speed from motion. ProceduralLocomotion not used on Meshy prefab.
+  - Hero Light: small point light on player so dark armour reads.
+  - Generic, not Humanoid: clips come from same skeleton, no retarget needed. Humanoid avatar only needed for outside clips (Mixamo/Quaternius).
+  - Look: armoured knight with cape + closed helmet, no bow/quiver. Not the hooded archer of the sheet.
+  - Deployed to iPhone OK.
 
 ## DECISIONS
 - Orientation: portrait only, iOS + Android. User decision 2026-10-12.

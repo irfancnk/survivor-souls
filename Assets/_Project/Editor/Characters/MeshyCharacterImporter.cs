@@ -16,27 +16,34 @@ namespace SurvivorSouls.Editor.Characters
     /// material, then builds the player prefab with the same components as the procedural archer.
     ///
     /// glTF -> Unity: mirror X (x = -x), quaternion (x, -y, -z, w), flip triangle winding, uv.y = 1 - uv.y.
-    /// The rig uses generic bone names (Bone_000...), so <see cref="BoneMap"/> names which bone is which.
-    /// To use a new export: replace the GLB in ArtSource, check BoneMap, then "Survivor Souls/Rebuild Game Scene".
+    /// The rig uses Mixamo bone names (mixamorig:*). glTF animations become Generic AnimationClips that play on the
+    /// same bones (no retargeting), driven by an Animator blend tree on Speed (Idle / Walking / Running) + a Hit state.
+    /// To use a new export: replace the GLB in ArtSource, check BoneMap and clip names, then "Survivor Souls/Rebuild Game Scene".
     /// </summary>
     public static class MeshyCharacterImporter
     {
-        public const string SourcePath = "ArtSource/Characters/Archer/Meshy_Archer.glb"; // outside Assets: Unity does not import it
+        public const string SourcePath = "ArtSource/Characters/Archer/Meshy_Sentinel.glb"; // outside Assets: Unity does not import it
         private const string Dir = "Assets/_Project/Art/Characters/ArcherMeshy";
         private const string MeshPath = Dir + "/ArcherMeshy_Mesh.asset";
         private const string MaterialPath = Dir + "/M_ArcherMeshy.mat";
         public const string PrefabPath = "Assets/_Project/Prefabs/Player_ArcherMeshy.prefab";
+        private const string ControllerPath = Dir + "/AC_ArcherMeshy.controller";
+        private const string HipsBone = "mixamorig:Hips";
         private const int TextureSize = 1024; // character is ~100 px tall on screen; 1k is plenty on phones
 
-        /// <summary>HumanoidRig field -> glTF node name, for this export (found from bone positions).</summary>
+        /// <summary>HumanoidRig field -> glTF node name (Mixamo naming).</summary>
         private static readonly (string field, string bone)[] BoneMap =
         {
-            ("hips", "Bone_000"), ("spine", "Bone_005"), ("chest", "Bone_002"), ("neck", "Bone_020"), ("head", "Bone_019"),
-            ("upperArmL", "Bone_029"), ("foreArmL", "Bone_028"), ("handL", "Bone_027"),
-            ("upperArmR", "Bone_024"), ("foreArmR", "Bone_023"), ("handR", "Bone_022"),
-            ("thighL", "Bone_011"), ("shinL", "Bone_010"), ("footL", "Bone_009"),
-            ("thighR", "Bone_017"), ("shinR", "Bone_016"), ("footR", "Bone_015"),
+            ("hips", "mixamorig:Hips"), ("spine", "mixamorig:Spine"), ("chest", "mixamorig:Spine2"), ("neck", "mixamorig:Neck"), ("head", "mixamorig:Head"),
+            ("upperArmL", "mixamorig:LeftArm"), ("foreArmL", "mixamorig:LeftForeArm"), ("handL", "mixamorig:LeftHand"),
+            ("upperArmR", "mixamorig:RightArm"), ("foreArmR", "mixamorig:RightForeArm"), ("handR", "mixamorig:RightHand"),
+            ("thighL", "mixamorig:LeftUpLeg"), ("shinL", "mixamorig:LeftLeg"), ("footL", "mixamorig:LeftFoot"),
+            ("thighR", "mixamorig:RightUpLeg"), ("shinR", "mixamorig:RightLeg"), ("footR", "mixamorig:RightFoot"),
         };
+
+        // glTF animation names in the Meshy export, and blend thresholds (planar speed, m/s).
+        private const string WalkClip = "Walking", RunClip = "Running", HitClip = "Hit_Reaction";
+        private const float WalkSpeed = 1.6f, RunSpeed = 5f;
 
         public static bool SourceExists => File.Exists(SourcePath);
 
@@ -63,7 +70,7 @@ namespace SurvivorSouls.Editor.Characters
                 for (int i = 0; i < bones.Length; i++) bones[i] = nodes[jointNodes[i]];
 
                 // Centre the hips over the root (the export is off-centre).
-                Vector3 hips = FindBone(bones, "Bone_000").position;
+                Vector3 hips = FindBone(bones, HipsBone).position;
                 model.localPosition = new Vector3(-hips.x, 0f, -hips.z);
 
                 var mesh = BuildMesh(glb, bones, model);
@@ -72,7 +79,7 @@ namespace SurvivorSouls.Editor.Characters
                 var smr = body.AddComponent<SkinnedMeshRenderer>();
                 smr.sharedMesh = mesh;
                 smr.bones = bones;
-                smr.rootBone = FindBone(bones, "Bone_000");
+                smr.rootBone = FindBone(bones, HipsBone);
                 smr.sharedMaterial = material;
                 smr.quality = SkinQuality.Bone4;
                 smr.shadowCastingMode = ShadowCastingMode.Off;
@@ -87,6 +94,7 @@ namespace SurvivorSouls.Editor.Characters
                 rigSo.ApplyModifiedPropertiesWithoutUndo();
 
                 ArcherModelBuilder.AddBlobShadow(root.transform, blobShadow, quad);
+                AddHeroLight(root.transform);
                 var cc = root.AddComponent<CharacterController>();
                 cc.height = 1.75f;
                 cc.radius = 0.32f;
@@ -94,10 +102,16 @@ namespace SurvivorSouls.Editor.Characters
                 cc.skinWidth = 0.03f;
                 cc.stepOffset = 0.3f;
                 root.AddComponent<PlayerMover>();
-                var loco = new SerializedObject(root.AddComponent<ProceduralLocomotion>());
-                loco.FindProperty("rig").objectReferenceValue = rig;
-                loco.FindProperty("armWeight").floatValue = 0f; // the model holds its bow in front with both hands
-                loco.ApplyModifiedPropertiesWithoutUndo();
+
+                // Authored animations: clips from the GLB, Animator on the Model (curve paths are relative to it).
+                var clips = BuildClips(glb, nodes, model);
+                var animator = model.gameObject.AddComponent<Animator>();
+                animator.runtimeAnimatorController = BuildController(clips);
+                animator.applyRootMotion = false;
+                animator.cullingMode = AnimatorCullingMode.CullUpdateTransforms;
+                var driver = new SerializedObject(root.AddComponent<LocomotionAnimatorDriver>());
+                driver.FindProperty("animator").objectReferenceValue = animator;
+                driver.ApplyModifiedPropertiesWithoutUndo();
 
                 EditorAssetUtil.EnsureFolder("Assets/_Project/Prefabs");
                 var prefab = PrefabUtility.SaveAsPrefabAsset(root, PrefabPath);
@@ -108,6 +122,20 @@ namespace SurvivorSouls.Editor.Characters
             {
                 UnityEngine.Object.DestroyImmediate(root);
             }
+        }
+
+        /// <summary>Soft key light that follows the player so dark armour reads against the stone floor.</summary>
+        private static void AddHeroLight(Transform root)
+        {
+            var go = new GameObject("Hero Light");
+            go.transform.SetParent(root, false);
+            go.transform.localPosition = new Vector3(0.6f, 2.6f, -1.4f);
+            var light = go.AddComponent<Light>();
+            light.type = LightType.Point;
+            light.color = new Color(0.85f, 0.88f, 1f);
+            light.intensity = 2.2f;
+            light.range = 4.5f;
+            light.shadows = LightShadows.None;
         }
 
         // ------------------------------------------------------------ Nodes
@@ -147,8 +175,14 @@ namespace SurvivorSouls.Editor.Characters
             var pos = glb.ReadFloats(attrs["POSITION"].AsInt(), 3);
             var nrm = glb.ReadFloats(attrs["NORMAL"].AsInt(), 3);
             var uv = glb.ReadFloats(attrs["TEXCOORD_0"].AsInt(), 2);
-            var joints = glb.ReadInts(attrs["JOINTS_0"].AsInt(), 4);
-            var weights = glb.ReadFloats(attrs["WEIGHTS_0"].AsInt(), 4);
+            // Meshy can export up to 16 influences (JOINTS_0..3). Mobile skinning uses the strongest 4.
+            var jointSets = new List<int[]>();
+            var weightSets = new List<float[]>();
+            for (int k = 0; attrs["JOINTS_" + k] != null; k++)
+            {
+                jointSets.Add(glb.ReadInts(attrs["JOINTS_" + k].AsInt(), 4));
+                weightSets.Add(glb.ReadFloats(attrs["WEIGHTS_" + k].AsInt(), 4));
+            }
             var idx = glb.ReadInts(prim["indices"].AsInt(), 1);
             int n = pos.Length / 3;
 
@@ -161,15 +195,7 @@ namespace SurvivorSouls.Editor.Characters
                 v[i] = new Vector3(-pos[i * 3], pos[i * 3 + 1], pos[i * 3 + 2]);
                 vn[i] = new Vector3(-nrm[i * 3], nrm[i * 3 + 1], nrm[i * 3 + 2]);
                 vt[i] = new Vector2(uv[i * 2], 1f - uv[i * 2 + 1]);
-                float sum = weights[i * 4] + weights[i * 4 + 1] + weights[i * 4 + 2] + weights[i * 4 + 3];
-                if (sum <= 0f) sum = 1f;
-                bw[i] = new BoneWeight
-                {
-                    boneIndex0 = joints[i * 4], weight0 = weights[i * 4] / sum,
-                    boneIndex1 = joints[i * 4 + 1], weight1 = weights[i * 4 + 1] / sum,
-                    boneIndex2 = joints[i * 4 + 2], weight2 = weights[i * 4 + 2] / sum,
-                    boneIndex3 = joints[i * 4 + 3], weight3 = weights[i * 4 + 3] / sum,
-                };
+                bw[i] = TopFourWeights(jointSets, weightSets, i);
             }
             var tris = new int[idx.Length];
             for (int i = 0; i < idx.Length; i += 3) { tris[i] = idx[i]; tris[i + 1] = idx[i + 2]; tris[i + 2] = idx[i + 1]; }
@@ -191,6 +217,202 @@ namespace SurvivorSouls.Editor.Characters
             mesh.RecalculateTangents();
             EditorUtility.SetDirty(mesh);
             return mesh;
+        }
+
+        private static BoneWeight TopFourWeights(List<int[]> jointSets, List<float[]> weightSets, int vertex)
+        {
+            var influences = new List<(int bone, float weight)>();
+            for (int set = 0; set < jointSets.Count; set++)
+            for (int c = 0; c < 4; c++)
+            {
+                float w = weightSets[set][vertex * 4 + c];
+                if (w > 0f) influences.Add((jointSets[set][vertex * 4 + c], w));
+            }
+            influences.Sort((a, b) => b.weight.CompareTo(a.weight));
+            while (influences.Count < 4) influences.Add((0, 0f));
+            float sum = influences[0].weight + influences[1].weight + influences[2].weight + influences[3].weight;
+            if (sum <= 0f) sum = 1f;
+            return new BoneWeight
+            {
+                boneIndex0 = influences[0].bone, weight0 = influences[0].weight / sum,
+                boneIndex1 = influences[1].bone, weight1 = influences[1].weight / sum,
+                boneIndex2 = influences[2].bone, weight2 = influences[2].weight / sum,
+                boneIndex3 = influences[3].bone, weight3 = influences[3].weight / sum,
+            };
+        }
+
+        // ------------------------------------------------------------ Animation
+
+        /// <summary>
+        /// glTF animations -> Generic AnimationClip assets. Hips X/Z translation is held at frame 0 (in-place clips;
+        /// PlayerMover moves the character). Adds a generated "Idle" clip because the export has none.
+        /// </summary>
+        private static Dictionary<string, AnimationClip> BuildClips(Glb glb, Dictionary<int, Transform> nodes, Transform model)
+        {
+            var result = new Dictionary<string, AnimationClip>();
+            var anims = glb.Json["animations"];
+            for (int a = 0; a < (anims?.Count ?? 0); a++)
+            {
+                var anim = anims[a];
+                string name = anim["name"]?.AsString() ?? $"Anim_{a}";
+                var clip = new AnimationClip { name = name, frameRate = 30f };
+                var channels = anim["channels"];
+                var samplers = anim["samplers"];
+                for (int c = 0; c < channels.Count; c++)
+                {
+                    var target = channels[c]["target"];
+                    if (!nodes.TryGetValue(target["node"].AsInt(), out var bone)) continue;
+                    var sampler = samplers[channels[c]["sampler"].AsInt()];
+                    var times = glb.ReadFloats(sampler["input"].AsInt(), 1);
+                    string path = AnimationUtility.CalculateTransformPath(bone, model);
+                    string channel = target["path"].AsString();
+                    bool hips = bone.name == HipsBone;
+                    if (channel == "translation") AddVectorCurves(clip, path, times, glb.ReadFloats(sampler["output"].AsInt(), 3), hips);
+                    else if (channel == "rotation") AddRotationCurves(clip, path, times, glb.ReadFloats(sampler["output"].AsInt(), 4));
+                }
+                clip.EnsureQuaternionContinuity();
+                SetLoop(clip, name != HitClip);
+                result[name] = SaveClip(clip);
+            }
+            result["Idle"] = SaveClip(MakeIdle(nodes, model));
+            return result;
+        }
+
+        private static void AddVectorCurves(AnimationClip clip, string path, float[] t, float[] v, bool inPlace)
+        {
+            var x = new AnimationCurve(); var y = new AnimationCurve(); var z = new AnimationCurve();
+            for (int i = 0; i < t.Length; i++)
+            {
+                x.AddKey(new Keyframe(t[i], inPlace ? -v[0] : -v[i * 3]));
+                y.AddKey(new Keyframe(t[i], v[i * 3 + 1]));
+                z.AddKey(new Keyframe(t[i], inPlace ? v[2] : v[i * 3 + 2]));
+            }
+            SetLinear(x); SetLinear(y); SetLinear(z);
+            clip.SetCurve(path, typeof(Transform), "localPosition.x", x);
+            clip.SetCurve(path, typeof(Transform), "localPosition.y", y);
+            clip.SetCurve(path, typeof(Transform), "localPosition.z", z);
+        }
+
+        private static void AddRotationCurves(AnimationClip clip, string path, float[] t, float[] q)
+        {
+            var c = new[] { new AnimationCurve(), new AnimationCurve(), new AnimationCurve(), new AnimationCurve() };
+            var prev = Quaternion.identity;
+            for (int i = 0; i < t.Length; i++)
+            {
+                var r = new Quaternion(q[i * 4], -q[i * 4 + 1], -q[i * 4 + 2], q[i * 4 + 3]);
+                if (i > 0 && Quaternion.Dot(prev, r) < 0f) r = new Quaternion(-r.x, -r.y, -r.z, -r.w); // shortest path
+                prev = r;
+                c[0].AddKey(t[i], r.x); c[1].AddKey(t[i], r.y); c[2].AddKey(t[i], r.z); c[3].AddKey(t[i], r.w);
+            }
+            string[] props = { "localRotation.x", "localRotation.y", "localRotation.z", "localRotation.w" };
+            for (int k = 0; k < 4; k++) { SetLinear(c[k]); clip.SetCurve(path, typeof(Transform), props[k], c[k]); }
+        }
+
+        /// <summary>
+        /// Idle from the bind pose (A-pose): arms lowered toward the body, elbows a little bent, slow breathing
+        /// bob on the hips. Arm offsets are in character space (see HumanoidRig.SetRotation for the math).
+        /// </summary>
+        private static AnimationClip MakeIdle(Dictionary<int, Transform> nodes, Transform model)
+        {
+            var idle = new AnimationClip { name = "Idle", frameRate = 30f };
+            const float length = 3f;
+            var offsets = new Dictionary<string, Quaternion>
+            {
+                ["mixamorig:LeftArm"] = Quaternion.Euler(0f, 0f, 38f),
+                ["mixamorig:RightArm"] = Quaternion.Euler(0f, 0f, -38f),
+                ["mixamorig:LeftForeArm"] = Quaternion.Euler(-14f, 0f, 0f),
+                ["mixamorig:RightForeArm"] = Quaternion.Euler(-14f, 0f, 0f),
+            };
+            var inv = Quaternion.Inverse(model.rotation);
+            foreach (var bone in nodes.Values)
+            {
+                if (bone == model) continue;
+                string path = AnimationUtility.CalculateTransformPath(bone, model);
+                var rot = bone.localRotation;
+                if (offsets.TryGetValue(bone.name, out var d))
+                {
+                    var restChar = inv * bone.rotation;
+                    rot = rot * (Quaternion.Inverse(restChar) * d * restChar);
+                }
+                SetConstant(idle, path, "localRotation.x", rot.x, length);
+                SetConstant(idle, path, "localRotation.y", rot.y, length);
+                SetConstant(idle, path, "localRotation.z", rot.z, length);
+                SetConstant(idle, path, "localRotation.w", rot.w, length);
+                if (bone.name == HipsBone)
+                {
+                    var p = bone.localPosition;
+                    SetConstant(idle, path, "localPosition.x", p.x, length);
+                    SetConstant(idle, path, "localPosition.z", p.z, length);
+                    idle.SetCurve(path, typeof(Transform), "localPosition.y",
+                        new AnimationCurve(new Keyframe(0f, p.y), new Keyframe(length * 0.5f, p.y - 0.012f), new Keyframe(length, p.y)));
+                }
+            }
+            idle.EnsureQuaternionContinuity();
+            SetLoop(idle, true);
+            return idle;
+        }
+
+        private static void SetConstant(AnimationClip clip, string path, string property, float value, float length) =>
+            clip.SetCurve(path, typeof(Transform), property, new AnimationCurve(new Keyframe(0f, value), new Keyframe(length, value)));
+
+        private static void SetLinear(AnimationCurve curve)
+        {
+            for (int i = 0; i < curve.length; i++)
+            {
+                AnimationUtility.SetKeyLeftTangentMode(curve, i, AnimationUtility.TangentMode.Linear);
+                AnimationUtility.SetKeyRightTangentMode(curve, i, AnimationUtility.TangentMode.Linear);
+            }
+        }
+
+        private static void SetLoop(AnimationClip clip, bool loop)
+        {
+            var settings = AnimationUtility.GetAnimationClipSettings(clip);
+            settings.loopTime = loop;
+            AnimationUtility.SetAnimationClipSettings(clip, settings);
+        }
+
+        private static AnimationClip SaveClip(AnimationClip clip)
+        {
+            string path = $"{Dir}/Anim_{clip.name}.anim";
+            var existing = AssetDatabase.LoadAssetAtPath<AnimationClip>(path);
+            if (existing == null) { AssetDatabase.CreateAsset(clip, path); return clip; }
+            EditorUtility.CopySerialized(clip, existing);
+            EditorUtility.SetDirty(existing);
+            return existing;
+        }
+
+        /// <summary>Locomotion blend tree on Speed (Idle 0, Walking, Running) + Hit reaction on trigger.</summary>
+        private static UnityEditor.Animations.AnimatorController BuildController(Dictionary<string, AnimationClip> clips)
+        {
+            AssetDatabase.DeleteAsset(ControllerPath); // rebuilt from scratch each import
+            var ctrl = UnityEditor.Animations.AnimatorController.CreateAnimatorControllerAtPath(ControllerPath);
+            ctrl.AddParameter("Speed", AnimatorControllerParameterType.Float);
+            ctrl.AddParameter("Hit", AnimatorControllerParameterType.Trigger);
+
+            var locoState = ctrl.CreateBlendTreeInController("Locomotion", out var tree, 0);
+            tree.blendType = UnityEditor.Animations.BlendTreeType.Simple1D;
+            tree.blendParameter = "Speed";
+            tree.useAutomaticThresholds = false;
+            tree.AddChild(clips["Idle"], 0f);
+            tree.AddChild(clips[WalkClip], WalkSpeed);
+            tree.AddChild(clips[RunClip], RunSpeed);
+
+            var sm = ctrl.layers[0].stateMachine;
+            if (clips.TryGetValue(HitClip, out var hitClip))
+            {
+                var hit = sm.AddState("Hit");
+                hit.motion = hitClip;
+                var toHit = sm.AddAnyStateTransition(hit);
+                toHit.AddCondition(UnityEditor.Animations.AnimatorConditionMode.If, 0f, "Hit");
+                toHit.duration = 0.05f;
+                var back = hit.AddTransition(locoState);
+                back.hasExitTime = true;
+                back.exitTime = 0.9f;
+                back.duration = 0.15f;
+            }
+            sm.defaultState = locoState;
+            EditorUtility.SetDirty(ctrl);
+            return ctrl;
         }
 
         // ------------------------------------------------------------ Material + textures
