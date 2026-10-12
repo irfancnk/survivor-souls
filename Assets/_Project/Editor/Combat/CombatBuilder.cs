@@ -1,9 +1,10 @@
 using SurvivorSouls.Editor.Characters;
 using SurvivorSouls.Editor.Procedural;
 using SurvivorSouls.Editor.World;
-using SurvivorSouls.Gameplay.Characters;
+using System.Linq;
 using SurvivorSouls.Gameplay.Combat;
 using UnityEditor;
+using UnityEditor.Animations;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -11,7 +12,7 @@ namespace SurvivorSouls.Editor.Combat
 {
     /// <summary>
     /// Builds the combat prefabs from code: the crossbow bolt (palette mesh + short glowing trail) and the
-    /// "Hollow" enemy (the procedural figure without bow and quiver, pale sickly tint, procedural walk).
+    /// zombie enemy (Meshy model, Art/Characters/Zombie, running clip).
     /// Called by GameSceneBuilder; re-run is safe (assets are updated in place).
     /// </summary>
     public static class CombatBuilder
@@ -19,10 +20,16 @@ namespace SurvivorSouls.Editor.Combat
         private const string ArtDir = "Assets/_Project/Art/Combat";
         private const string PrefabDir = "Assets/_Project/Prefabs/Combat";
         private const string BoltMeshPath = ArtDir + "/Bolt_Mesh.asset";
-        private const string HollowMeshPath = ArtDir + "/Hollow_Mesh.asset";
         public const string BoltPrefabPath = PrefabDir + "/Bolt.prefab";
-        public const string EnemyPrefabPath = PrefabDir + "/Enemy_Hollow.prefab";
-        private static readonly Color HollowTint = new Color(0.78f, 0.9f, 0.7f);
+        public const string EnemyPrefabPath = PrefabDir + "/Enemy_Zombie.prefab";
+        private const string ZombieDir = "Assets/_Project/Art/Characters/Zombie";
+        private const string ZombieModelPath = ZombieDir + "/SK_Zombie.fbx";
+        private const string ZombieRunPath = ZombieDir + "/A_Zombie_Run.fbx";
+        private const string ZombieTexturePath = ZombieDir + "/T_Zombie_BaseColor.jpg"; // extracted from the Meshy FBX
+        private const string ZombieControllerPath = ZombieDir + "/AC_Zombie.controller";
+        private const string ZombieMaterialPath = ZombieDir + "/M_Zombie.mat";
+        private const int ZombieTextureSize = 1024; // 2k source; ~100 px tall on screen
+        private const float ZombieSpeed = 3f; // m/s: a run, still slower than the player (5)
 
         public static void Build(GameArtKit kit)
         {
@@ -174,27 +181,45 @@ namespace SurvivorSouls.Editor.Combat
             return ps;
         }
 
+        /// <summary>
+        /// Meshy zombie: rigged FBX + in-place running clip, imported by Unity (Generic rig). The FBX's embedded
+        /// material does not pick up its packed texture in URP, so the extracted base colour is bound to our own material.
+        /// </summary>
         private static void BuildEnemy(GameArtKit kit)
         {
-            var mat = EditorAssetUtil.SimpleLitMaterial(ArtDir + "/M_Hollow.mat", (Texture2D)kit.Palette.GetTexture("_BaseMap"), HollowTint,
-                specMap: (Texture2D)kit.Palette.GetTexture("_SpecGlossMap"));
+            ConfigureModelImport(ZombieModelPath, importAnimation: false);
+            ConfigureModelImport(ZombieRunPath, importAnimation: true);
+            ConfigureTextureImport(ZombieTexturePath, ZombieTextureSize);
 
-            var root = new GameObject("Enemy_Hollow");
+            var run = AssetDatabase.LoadAllAssetsAtPath(ZombieRunPath).OfType<AnimationClip>()
+                .First(c => !c.name.StartsWith("__preview__"));
+            AssetDatabase.DeleteAsset(ZombieControllerPath);
+            var controller = AnimatorController.CreateAnimatorControllerAtPathWithClip(ZombieControllerPath, run);
+            var mat = EditorAssetUtil.SimpleLitMaterial(ZombieMaterialPath, AssetDatabase.LoadAssetAtPath<Texture2D>(ZombieTexturePath),
+                Color.white, smoothness: 0.15f);
+
+            var root = new GameObject("Enemy_Zombie");
             try
             {
-                var rig = ArcherModelBuilder.BuildModel(root.transform, mat, HollowMeshPath, withGear: false, out _);
-                ArcherModelBuilder.AddBlobShadow(root.transform, kit.BlobShadow, kit.Quad);
+                var model = (GameObject)PrefabUtility.InstantiatePrefab(AssetDatabase.LoadAssetAtPath<GameObject>(ZombieModelPath));
+                model.transform.SetParent(root.transform, false);
+                var animator = model.GetComponent<Animator>();
+                if (animator == null) animator = model.AddComponent<Animator>();
+                animator.runtimeAnimatorController = controller;
+                animator.applyRootMotion = false; // the clip runs in place; Enemy moves the root
+                animator.cullingMode = AnimatorCullingMode.CullUpdateTransforms;
 
-                var loco = new SerializedObject(root.AddComponent<ProceduralLocomotion>());
-                loco.FindProperty("rig").objectReferenceValue = rig;
-                loco.FindProperty("runSpeed").floatValue = 3.2f;  // 2.2 m/s chase reads as a heavy jog
-                loco.FindProperty("forwardLean").floatValue = 18f; // hunched
-                loco.ApplyModifiedPropertiesWithoutUndo();
+                var body = model.GetComponentInChildren<SkinnedMeshRenderer>();
+                body.sharedMaterials = Enumerable.Repeat(mat, body.sharedMaterials.Length).ToArray();
+                Quiet(body);
+                ArcherModelBuilder.AddBlobShadow(root.transform, kit.BlobShadow, kit.Quad);
 
                 var enemy = root.AddComponent<Enemy>();
                 var so = new SerializedObject(enemy);
-                so.FindProperty("body").objectReferenceValue = root.GetComponentInChildren<SkinnedMeshRenderer>();
-                so.FindProperty("baseTint").colorValue = HollowTint;
+                so.FindProperty("body").objectReferenceValue = body;
+                so.FindProperty("baseTint").colorValue = Color.white;
+                so.FindProperty("animator").objectReferenceValue = animator;
+                so.FindProperty("moveSpeed").floatValue = ZombieSpeed;
                 so.ApplyModifiedPropertiesWithoutUndo();
                 PrefabUtility.SaveAsPrefabAsset(root, EnemyPrefabPath);
             }
@@ -202,6 +227,35 @@ namespace SurvivorSouls.Editor.Combat
             {
                 Object.DestroyImmediate(root);
             }
+        }
+
+        private static void ConfigureModelImport(string path, bool importAnimation)
+        {
+            var importer = (ModelImporter)AssetImporter.GetAtPath(path);
+            if (importer == null) throw new System.InvalidOperationException($"Model missing: {path}");
+            bool dirty = importer.animationType != ModelImporterAnimationType.Generic
+                || importer.importAnimation != importAnimation
+                || importer.materialImportMode != ModelImporterMaterialImportMode.None;
+            importer.animationType = ModelImporterAnimationType.Generic;
+            importer.importAnimation = importAnimation;
+            importer.materialImportMode = ModelImporterMaterialImportMode.None; // material is ours, see BuildEnemy
+            if (importAnimation && (importer.clipAnimations.Length == 0 || !importer.clipAnimations.All(c => c.loopTime)))
+            {
+                var clips = importer.defaultClipAnimations;
+                foreach (var clip in clips) clip.loopTime = true;
+                importer.clipAnimations = clips;
+                dirty = true;
+            }
+            if (dirty) importer.SaveAndReimport();
+        }
+
+        private static void ConfigureTextureImport(string path, int maxSize)
+        {
+            var importer = (TextureImporter)AssetImporter.GetAtPath(path);
+            if (importer == null) throw new System.InvalidOperationException($"Texture missing: {path}");
+            if (importer.maxTextureSize == maxSize) return;
+            importer.maxTextureSize = maxSize;
+            importer.SaveAndReimport();
         }
 
         private static void Quiet(Renderer r)

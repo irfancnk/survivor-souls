@@ -5262,7 +5262,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c0f476879c23d4ef4b6bacc20b8d6230, type: 3}
   m_Name: 
   m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Combat.EnemySpawner
-  prefab: {fileID: 6194591723531279668, guid: 09b77bb786e274707b3b53f1add1c0ef, type: 3}
+  prefab: {fileID: 4089396135186074829, guid: 8915a6ebe25ca4e9e95cb85bf0ff1017, type: 3}
   player: {fileID: 1671227806}
   world: {fileID: 1904321796}
   maxAlive: 6

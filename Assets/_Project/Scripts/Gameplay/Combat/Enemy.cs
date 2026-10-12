@@ -7,6 +7,7 @@ namespace SurvivorSouls.Gameplay.Combat
     /// <summary>
     /// Melee chaser: walks to the player and stops at arm's length. Has health; <see cref="TakeDamage"/>
     /// knocks it back and flashes the body. At 0 health it falls, sinks into the ground and returns to its pool.
+    /// Optional <see cref="animator"/> plays an in-place locomotion clip; it freezes when the enemy dies.
     /// Living enemies are listed in <see cref="Active"/> (targeting, health bars). Pooled by <see cref="EnemySpawner"/>.
     /// </summary>
     public sealed class Enemy : MonoBehaviour
@@ -28,6 +29,7 @@ namespace SurvivorSouls.Gameplay.Combat
         [SerializeField, Min(0f)] private float separation = 0.9f;
         [SerializeField] private Renderer body;
         [SerializeField] private Color baseTint = Color.white;
+        [SerializeField] private Animator animator;
 
         private const float KnockbackSpeed = 4f;
         private const float FlashTime = 0.12f;
@@ -66,6 +68,12 @@ namespace SurvivorSouls.Gameplay.Combat
             transform.SetPositionAndRotation(position, toTarget.sqrMagnitude > 0.01f ? Quaternion.LookRotation(toTarget) : Quaternion.identity);
             gameObject.SetActive(true);
             SetTint(baseTint);
+            if (animator != null)
+            {
+                // Random phase and a small speed spread, so a crowd does not run in lockstep.
+                animator.speed = UnityEngine.Random.Range(0.9f, 1.1f);
+                animator.Play(0, 0, UnityEngine.Random.value);
+            }
             Active.Add(this);
         }
 
@@ -89,6 +97,7 @@ namespace SurvivorSouls.Gameplay.Combat
             Active.Remove(this);
             _deadTime = 0f;
             _deathStart = transform.rotation;
+            if (animator != null) animator.speed = 0f; // hold the pose while the body falls
         }
 
         private void OnDisable() => Active.Remove(this);
