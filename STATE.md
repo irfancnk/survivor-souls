@@ -69,6 +69,13 @@
   - Dev: DevScreenshot `-ss-near-exit`.
   - Door: visual only; no "level complete" yet.
 
+- 2026-10-12 (5): Knight holds crossbow + first combat (branch `feat/crossbow-combat`, not committed yet).
+  - Source `ArtSource/Characters/Archer/Knight_Crossbow.glb` (replaces Meshy_Sentinel.glb). Made in Blender from Irem `~/survivor-souls-assets/models/` (knight + Meshy crossbow). Crossbow decimated 780k -> 5.1k tris, parented to `mixamorig:RightHand`, socket `Crossbow_Muzzle`. One-hand hip carry (right arm IK-baked into Walking/Running/Hit_Reaction/Idle; two-hand hold out of arm reach). GLB now has own Idle clip.
+  - Importer: finds skinned node (not meshes[0]), builds bone-attached static meshes (`BuildAttachments`) + their child sockets, per-material textures (crossbow 512), uses GLB Idle if present.
+  - Combat (`Scripts/Gameplay/Combat`): `AutoShooter` (stand still -> turn to nearest enemy in 10 m, 1 bolt / 1 s, dmg 100; `fireWhileMoving` off), `Bolt` (pooled, cylinder hit test, no physics), `Enemy` (150 HP = 2 bolts, chase 2.2 m/s, separation, knockback, flash, fall + sink, static `Active` list + `Damaged` event), `EnemySpawner` (max 6, every 1.4 s, ring 7.5-10 m, clamp to world). Enemy body = procedural archer without bow/quiver, pale tint (`Editor/Combat/CombatBuilder`).
+  - `UI/Hud/CombatHud`: UI Toolkit overlay, 96x8 px health bar per enemy, floating "-N" = health deducted (red on kill). Styles `combat-*` in GameHud.uss.
+  - Verified: mac dev build screenshots, iOS build + install on iPhone 14 Pro Max OK.
+
 ## DECISIONS
 - Orientation: portrait only, iOS + Android. User decision 2026-10-12.
 - Render pipeline: URP. Reason: mobile perf, good look.

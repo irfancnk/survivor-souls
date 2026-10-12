@@ -79,3 +79,51 @@
     border-width: 3px;
     border-color: rgba(255, 236, 190, 0.9);
 }
+
+/* Combat (CombatHud): placed in code with translate at a world point; margins centre each element on it. */
+.combat-layer {
+    position: absolute;
+    left: 0; right: 0; top: 0; bottom: 0;
+    overflow: hidden;
+}
+
+.combat-bar {
+    position: absolute;
+    left: 0; top: 0;
+    width: 96px;
+    height: 8px;
+    margin-left: -48px;
+    margin-top: -4px;
+    background-color: rgba(8, 6, 6, 0.7);
+    border-width: 1px;
+    border-color: rgba(0, 0, 0, 0.9);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.combat-bar__fill {
+    height: 100%;
+    width: 100%;
+    background-color: rgb(196, 38, 34);
+}
+
+.combat-number {
+    position: absolute;
+    left: 0; top: 0;
+    width: 200px;
+    height: 60px;
+    margin-left: -100px;
+    margin-top: -30px;
+    padding: 0;
+    font-size: 46px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    color: rgb(255, 236, 190);
+    -unity-text-outline-width: 2px;
+    -unity-text-outline-color: rgba(0, 0, 0, 0.9);
+}
+
+.combat-number--kill {
+    color: rgb(255, 92, 72);
+    font-size: 54px;
+}

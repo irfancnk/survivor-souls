@@ -54,40 +54,7 @@ namespace SurvivorSouls.Editor.Characters
             var root = new GameObject("Player_Archer");
             try
             {
-                var model = new GameObject("Model").transform;
-                model.SetParent(root.transform, false);
-                var bones = CreateBones(model);
-
-                var bindposes = new Matrix4x4[bones.Length];
-                for (int i = 0; i < bones.Length; i++) bindposes[i] = bones[i].worldToLocalMatrix * model.localToWorldMatrix;
-
-                _mb = new MeshBuilder();
-                BuildBody();
-                BuildHead();
-                BuildArms();
-                BuildLegs();
-                BuildQuiver();
-                BuildBow();
-                var mesh = EditorAssetUtil.LoadOrCreateMesh(MeshPath);
-                _mb.WriteTo(mesh, bindposes);
-                EditorUtility.SetDirty(mesh);
-
-                var body = new GameObject("Body");
-                body.transform.SetParent(model, false);
-                var smr = body.AddComponent<SkinnedMeshRenderer>();
-                smr.sharedMesh = mesh;
-                smr.bones = bones;
-                smr.rootBone = bones[(int)B.Hips];
-                smr.sharedMaterial = palette;
-                smr.quality = SkinQuality.Bone1;
-                smr.shadowCastingMode = ShadowCastingMode.Off; // blob shadow instead
-                smr.receiveShadows = false;
-                smr.lightProbeUsage = LightProbeUsage.Off;
-                smr.reflectionProbeUsage = ReflectionProbeUsage.Off;
-                smr.localBounds = new Bounds(new Vector3(0f, 0f, 0f), new Vector3(1.8f, 2.2f, 1.8f)); // relative to hips, covers bow swing
-
-                var rig = model.gameObject.AddComponent<HumanoidRig>();
-                AssignRig(rig, bones);
+                var rig = BuildModel(root.transform, palette, MeshPath, withGear: true, out var mesh);
 
                 AddBlobShadow(root.transform, blobShadow, quad);
 
@@ -111,8 +78,60 @@ namespace SurvivorSouls.Editor.Characters
             finally
             {
                 Object.DestroyImmediate(root);
+            }
+        }
+
+        /// <summary>
+        /// Adds the "Model" child: bones, one rigid-skinned mesh written to <paramref name="meshPath"/>, HumanoidRig.
+        /// <paramref name="withGear"/> = false leaves out the quiver and bow (enemy bodies reuse this figure).
+        /// </summary>
+        internal static HumanoidRig BuildModel(Transform root, Material material, string meshPath, bool withGear, out Mesh mesh)
+        {
+            var model = new GameObject("Model").transform;
+            model.SetParent(root, false);
+            var bones = CreateBones(model);
+
+            var bindposes = new Matrix4x4[bones.Length];
+            for (int i = 0; i < bones.Length; i++) bindposes[i] = bones[i].worldToLocalMatrix * model.localToWorldMatrix;
+
+            _mb = new MeshBuilder();
+            try
+            {
+                BuildBody();
+                BuildHead();
+                BuildArms();
+                BuildLegs();
+                if (withGear)
+                {
+                    BuildQuiver();
+                    BuildBow();
+                }
+                mesh = EditorAssetUtil.LoadOrCreateMesh(meshPath);
+                _mb.WriteTo(mesh, bindposes);
+                EditorUtility.SetDirty(mesh);
+            }
+            finally
+            {
                 _mb = null;
             }
+
+            var body = new GameObject("Body");
+            body.transform.SetParent(model, false);
+            var smr = body.AddComponent<SkinnedMeshRenderer>();
+            smr.sharedMesh = mesh;
+            smr.bones = bones;
+            smr.rootBone = bones[(int)B.Hips];
+            smr.sharedMaterial = material;
+            smr.quality = SkinQuality.Bone1;
+            smr.shadowCastingMode = ShadowCastingMode.Off; // blob shadow instead
+            smr.receiveShadows = false;
+            smr.lightProbeUsage = LightProbeUsage.Off;
+            smr.reflectionProbeUsage = ReflectionProbeUsage.Off;
+            smr.localBounds = new Bounds(new Vector3(0f, 0f, 0f), new Vector3(1.8f, 2.2f, 1.8f)); // relative to hips, covers bow swing
+
+            var rig = model.gameObject.AddComponent<HumanoidRig>();
+            AssignRig(rig, bones);
+            return rig;
         }
 
         private static Transform[] CreateBones(Transform model)

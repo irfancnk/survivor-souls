@@ -11,9 +11,11 @@ using UnityEngine.Rendering;
 namespace SurvivorSouls.Editor.Characters
 {
     /// <summary>
-    /// Imports a rigged Meshy GLB (single skinned mesh, one PBR material) without extra packages:
+    /// Imports a rigged Meshy GLB (one skinned body mesh + PBR material) without extra packages:
     /// parses the binary glTF, converts to Unity space, writes a Mesh asset, mobile textures and a URP Lit
     /// material, then builds the player prefab with the same components as the procedural archer.
+    /// Non-skinned mesh nodes parented to a bone (the crossbow) become MeshRenderers under that bone, with
+    /// their child nodes (Crossbow_Muzzle socket) kept as empty transforms.
     ///
     /// glTF -> Unity: mirror X (x = -x), quaternion (x, -y, -z, w), flip triangle winding, uv.y = 1 - uv.y.
     /// The rig uses Mixamo bone names (mixamorig:*). glTF animations become Generic AnimationClips that play on the
@@ -22,7 +24,7 @@ namespace SurvivorSouls.Editor.Characters
     /// </summary>
     public static class MeshyCharacterImporter
     {
-        public const string SourcePath = "ArtSource/Characters/Archer/Meshy_Sentinel.glb"; // outside Assets: Unity does not import it
+        public const string SourcePath = "ArtSource/Characters/Archer/Knight_Crossbow.glb"; // outside Assets: Unity does not import it
         private const string Dir = "Assets/_Project/Art/Characters/ArcherMeshy";
         private const string MeshPath = Dir + "/ArcherMeshy_Mesh.asset";
         private const string MaterialPath = Dir + "/M_ArcherMeshy.mat";
@@ -30,6 +32,7 @@ namespace SurvivorSouls.Editor.Characters
         private const string ControllerPath = Dir + "/AC_ArcherMeshy.controller";
         private const string HipsBone = "mixamorig:Hips";
         private const int TextureSize = 1024; // character is ~100 px tall on screen; 1k is plenty on phones
+        private const int AttachmentTextureSize = 512; // weapon covers a few dozen pixels
 
         /// <summary>HumanoidRig field -> glTF node name (Mixamo naming).</summary>
         private static readonly (string field, string bone)[] BoneMap =
@@ -51,7 +54,10 @@ namespace SurvivorSouls.Editor.Characters
         {
             var glb = Glb.Load(SourcePath);
             EditorAssetUtil.EnsureFolder(Dir);
-            var material = CreateMaterial(glb);
+            int bodyNode = FindSkinnedNode(glb);
+            int bodyMesh = glb.Json["nodes"][bodyNode]["mesh"].AsInt();
+            var material = CreateMaterial(glb, glb.Json["meshes"][bodyMesh]["primitives"][0]["material"].AsInt(),
+                "T_ArcherMeshy", MaterialPath, TextureSize);
 
             var root = new GameObject("Player_ArcherMeshy");
             try
@@ -73,7 +79,7 @@ namespace SurvivorSouls.Editor.Characters
                 Vector3 hips = FindBone(bones, HipsBone).position;
                 model.localPosition = new Vector3(-hips.x, 0f, -hips.z);
 
-                var mesh = BuildMesh(glb, bones, model);
+                var mesh = BuildMesh(glb, bodyMesh, bones, model);
                 var body = new GameObject("Body");
                 body.transform.SetParent(model, false);
                 var smr = body.AddComponent<SkinnedMeshRenderer>();
@@ -87,6 +93,8 @@ namespace SurvivorSouls.Editor.Characters
                 smr.lightProbeUsage = LightProbeUsage.Off;
                 smr.reflectionProbeUsage = ReflectionProbeUsage.Off;
                 smr.localBounds = new Bounds(Vector3.zero, new Vector3(2f, 2.4f, 2f));
+
+                BuildAttachments(glb, nodes, armatureNode, armature);
 
                 var rig = model.gameObject.AddComponent<HumanoidRig>();
                 var rigSo = new SerializedObject(rig);
@@ -163,14 +171,51 @@ namespace SurvivorSouls.Editor.Characters
             return CreateNode(glb, index, parentT, nodes);
         }
 
+        private static int FindSkinnedNode(Glb glb)
+        {
+            var nodes = glb.Json["nodes"];
+            for (int i = 0; i < nodes.Count; i++)
+                if (nodes[i]["skin"] != null && nodes[i]["mesh"] != null) return i;
+            throw new InvalidOperationException("GLB has no skinned mesh node.");
+        }
+
+        /// <summary>
+        /// Rigid props held by the rig: mesh nodes without a skin whose parent is a bone. Each gets a static
+        /// Mesh asset + material; its child nodes (sockets such as Crossbow_Muzzle) are created as empties.
+        /// </summary>
+        private static void BuildAttachments(Glb glb, Dictionary<int, Transform> nodes, int armatureNode, Transform armature)
+        {
+            var json = glb.Json["nodes"];
+            for (int i = 0; i < json.Count; i++)
+            {
+                var node = json[i];
+                if (node["mesh"] == null || node["skin"] != null) continue;
+                if (!nodes.ContainsKey(glb.ParentOf(i))) continue; // only meshes attached to the skeleton
+                var t = EnsureNode(glb, i, nodes, armatureNode, armature);
+                int meshIndex = node["mesh"].AsInt();
+                var prim = glb.Json["meshes"][meshIndex]["primitives"][0];
+                string name = t.name;
+                var mat = CreateMaterial(glb, prim["material"].AsInt(), $"T_{name}", $"{Dir}/M_{name}.mat", AttachmentTextureSize);
+                t.gameObject.AddComponent<MeshFilter>().sharedMesh = BuildStaticMesh(glb, meshIndex, $"{Dir}/{name}_Mesh.asset");
+                var r = t.gameObject.AddComponent<MeshRenderer>();
+                r.sharedMaterial = mat;
+                r.shadowCastingMode = ShadowCastingMode.Off;
+                r.receiveShadows = false;
+                r.lightProbeUsage = LightProbeUsage.Off;
+                r.reflectionProbeUsage = ReflectionProbeUsage.Off;
+                for (int c = 0; c < json.Count; c++)
+                    if (glb.ParentOf(c) == i) EnsureNode(glb, c, nodes, armatureNode, armature);
+            }
+        }
+
         private static Transform FindBone(Transform[] bones, string name) =>
             Array.Find(bones, b => b.name == name) ?? throw new InvalidOperationException($"Bone {name} not in GLB. Update BoneMap.");
 
         // ------------------------------------------------------------ Mesh
 
-        private static Mesh BuildMesh(Glb glb, Transform[] bones, Transform model)
+        private static Mesh BuildMesh(Glb glb, int meshIndex, Transform[] bones, Transform model)
         {
-            var prim = glb.Json["meshes"][0]["primitives"][0];
+            var prim = glb.Json["meshes"][meshIndex]["primitives"][0];
             var attrs = prim["attributes"];
             var pos = glb.ReadFloats(attrs["POSITION"].AsInt(), 3);
             var nrm = glb.ReadFloats(attrs["NORMAL"].AsInt(), 3);
@@ -219,6 +264,41 @@ namespace SurvivorSouls.Editor.Characters
             return mesh;
         }
 
+        /// <summary>Unskinned primitive in its node's local space (same axis conversion as the body).</summary>
+        private static Mesh BuildStaticMesh(Glb glb, int meshIndex, string path)
+        {
+            var prim = glb.Json["meshes"][meshIndex]["primitives"][0];
+            var attrs = prim["attributes"];
+            var pos = glb.ReadFloats(attrs["POSITION"].AsInt(), 3);
+            var nrm = glb.ReadFloats(attrs["NORMAL"].AsInt(), 3);
+            var uv = glb.ReadFloats(attrs["TEXCOORD_0"].AsInt(), 2);
+            var idx = glb.ReadInts(prim["indices"].AsInt(), 1);
+            int n = pos.Length / 3;
+            var v = new Vector3[n];
+            var vn = new Vector3[n];
+            var vt = new Vector2[n];
+            for (int i = 0; i < n; i++)
+            {
+                v[i] = new Vector3(-pos[i * 3], pos[i * 3 + 1], pos[i * 3 + 2]);
+                vn[i] = new Vector3(-nrm[i * 3], nrm[i * 3 + 1], nrm[i * 3 + 2]);
+                vt[i] = new Vector2(uv[i * 2], 1f - uv[i * 2 + 1]);
+            }
+            var tris = new int[idx.Length];
+            for (int i = 0; i < idx.Length; i += 3) { tris[i] = idx[i]; tris[i + 1] = idx[i + 2]; tris[i + 2] = idx[i + 1]; }
+
+            var mesh = EditorAssetUtil.LoadOrCreateMesh(path);
+            mesh.Clear();
+            mesh.indexFormat = n > 65000 ? IndexFormat.UInt32 : IndexFormat.UInt16;
+            mesh.vertices = v;
+            mesh.normals = vn;
+            mesh.uv = vt;
+            mesh.triangles = tris;
+            mesh.RecalculateBounds();
+            mesh.RecalculateTangents();
+            EditorUtility.SetDirty(mesh);
+            return mesh;
+        }
+
         private static BoneWeight TopFourWeights(List<int[]> jointSets, List<float[]> weightSets, int vertex)
         {
             var influences = new List<(int bone, float weight)>();
@@ -245,7 +325,7 @@ namespace SurvivorSouls.Editor.Characters
 
         /// <summary>
         /// glTF animations -> Generic AnimationClip assets. Hips X/Z translation is held at frame 0 (in-place clips;
-        /// PlayerMover moves the character). Adds a generated "Idle" clip because the export has none.
+        /// PlayerMover moves the character). Generates an "Idle" clip when the export has none.
         /// </summary>
         private static Dictionary<string, AnimationClip> BuildClips(Glb glb, Dictionary<int, Transform> nodes, Transform model)
         {
@@ -274,7 +354,7 @@ namespace SurvivorSouls.Editor.Characters
                 SetLoop(clip, name != HitClip);
                 result[name] = SaveClip(clip);
             }
-            result["Idle"] = SaveClip(MakeIdle(nodes, model));
+            if (!result.ContainsKey("Idle")) result["Idle"] = SaveClip(MakeIdle(nodes, model));
             return result;
         }
 
@@ -417,15 +497,15 @@ namespace SurvivorSouls.Editor.Characters
 
         // ------------------------------------------------------------ Material + textures
 
-        private static Material CreateMaterial(Glb glb)
+        private static Material CreateMaterial(Glb glb, int materialIndex, string texturePrefix, string materialPath, int maxSize)
         {
-            var mat = glb.Json["materials"][0];
+            var mat = glb.Json["materials"][materialIndex];
             var pbr = mat["pbrMetallicRoughness"];
-            var albedo = WriteTexture(glb, pbr["baseColorTexture"]["index"].AsInt(), "T_ArcherMeshy_Albedo", TextureImporterType.Default, true);
-            var normal = WriteTexture(glb, mat["normalTexture"]["index"].AsInt(), "T_ArcherMeshy_Normal", TextureImporterType.NormalMap, false);
-            var metal = WriteMetallicSmoothness(glb, pbr["metallicRoughnessTexture"]["index"].AsInt(), "T_ArcherMeshy_MetalSmooth");
+            var albedo = WriteTexture(glb, pbr["baseColorTexture"]["index"].AsInt(), texturePrefix + "_Albedo", TextureImporterType.Default, true, maxSize);
+            var normal = WriteTexture(glb, mat["normalTexture"]["index"].AsInt(), texturePrefix + "_Normal", TextureImporterType.NormalMap, false, maxSize);
+            var metal = WriteMetallicSmoothness(glb, pbr["metallicRoughnessTexture"]["index"].AsInt(), texturePrefix + "_MetalSmooth", maxSize);
 
-            var m = EditorAssetUtil.LoadOrCreateMaterial(MaterialPath, "Universal Render Pipeline/Lit");
+            var m = EditorAssetUtil.LoadOrCreateMaterial(materialPath, "Universal Render Pipeline/Lit");
             m.SetTexture("_BaseMap", albedo);
             m.SetColor("_BaseColor", Color.white);
             m.SetTexture("_BumpMap", normal);
@@ -448,15 +528,15 @@ namespace SurvivorSouls.Editor.Characters
             return glb.BufferView(glb.Json["images"][image]["bufferView"].AsInt());
         }
 
-        private static Texture2D WriteTexture(Glb glb, int textureIndex, string name, TextureImporterType type, bool srgb)
+        private static Texture2D WriteTexture(Glb glb, int textureIndex, string name, TextureImporterType type, bool srgb, int maxSize)
         {
             string path = $"{Dir}/{name}.png";
             File.WriteAllBytes(path, ImageBytes(glb, textureIndex));
-            return ImportTexture(path, type, srgb);
+            return ImportTexture(path, type, srgb, maxSize);
         }
 
         /// <summary>glTF metallicRoughness (G = roughness, B = metallic) -> URP (R = metallic, A = smoothness), half size.</summary>
-        private static Texture2D WriteMetallicSmoothness(Glb glb, int textureIndex, string name)
+        private static Texture2D WriteMetallicSmoothness(Glb glb, int textureIndex, string name, int maxSize)
         {
             var src = new Texture2D(2, 2, TextureFormat.RGBA32, false, true);
             src.LoadImage(ImageBytes(glb, textureIndex));
@@ -482,17 +562,17 @@ namespace SurvivorSouls.Editor.Characters
             File.WriteAllBytes(path, dst.EncodeToPNG());
             UnityEngine.Object.DestroyImmediate(src);
             UnityEngine.Object.DestroyImmediate(dst);
-            return ImportTexture(path, TextureImporterType.Default, false);
+            return ImportTexture(path, TextureImporterType.Default, false, maxSize);
         }
 
-        private static Texture2D ImportTexture(string path, TextureImporterType type, bool srgb)
+        private static Texture2D ImportTexture(string path, TextureImporterType type, bool srgb, int maxSize)
         {
             AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate);
             var importer = (TextureImporter)AssetImporter.GetAtPath(path);
             importer.textureType = type;
             importer.sRGBTexture = srgb;
             importer.mipmapEnabled = true;
-            importer.maxTextureSize = TextureSize;
+            importer.maxTextureSize = maxSize;
             importer.textureCompression = TextureImporterCompression.Compressed;
             importer.SaveAndReimport();
             return AssetDatabase.LoadAssetAtPath<Texture2D>(path);

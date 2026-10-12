@@ -1,13 +1,16 @@
 using System.Collections.Generic;
 using System.Linq;
 using SurvivorSouls.Core;
+using SurvivorSouls.Editor.Combat;
 using SurvivorSouls.Editor.World;
 using SurvivorSouls.Editor.Characters;
 using SurvivorSouls.Editor.Procedural;
 using SurvivorSouls.Gameplay;
 using SurvivorSouls.Gameplay.CameraRig;
+using SurvivorSouls.Gameplay.Combat;
 using SurvivorSouls.Gameplay.Controls;
 using SurvivorSouls.Gameplay.Player;
+using SurvivorSouls.Gameplay.World;
 using SurvivorSouls.UI.Hud;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -20,7 +23,7 @@ namespace SurvivorSouls.Editor
 {
     /// <summary>
     /// Builds the Game scene from code: art kit (textures, materials), Archer prefab, arena, camera,
-    /// joystick input and HUD. Re-run after edits: menu "Survivor Souls/Rebuild Game Scene", or batchmode
+    /// joystick input, HUD and combat (auto-shooting crossbow, enemy spawner, health bars). Re-run after edits: menu "Survivor Souls/Rebuild Game Scene", or batchmode
     /// <c>-executeMethod SurvivorSouls.Editor.GameSceneBuilder.BuildFromCommandLine</c>.
     /// Hand edits to the generated scene are overwritten on rebuild.
     /// </summary>
@@ -47,6 +50,7 @@ namespace SurvivorSouls.Editor
             // Main character: the Meshy model when its source GLB exists, else the procedural placeholder.
             var archerPrefab = ArcherModelBuilder.BuildPrefab(kit.Palette, kit.BlobShadow, kit.Quad);
             if (MeshyCharacterImporter.SourceExists) archerPrefab = MeshyCharacterImporter.BuildPrefab(kit.BlobShadow, kit.Quad);
+            CombatBuilder.Build(kit);
             var panelSettings = CreatePanelSettings();
 
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
@@ -58,10 +62,12 @@ namespace SurvivorSouls.Editor
             var player = (GameObject)PrefabUtility.InstantiatePrefab(archerPrefab);
             player.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity); // centre of the spawn tile
             SetRef(player.GetComponent<PlayerMover>(), "joystick", joystick);
-            WorldBuilder.Build(kit, player.transform, player.GetComponent<PlayerMover>());
+            var world = WorldBuilder.Build(kit, player.transform, player.GetComponent<PlayerMover>());
+            var combat = CombatBuilder.Load();
+            CreateCombat(player, combat.bolt, combat.enemy, world);
 
-            CreateCamera(player.transform);
-            CreateHud(panelSettings, joystick);
+            var camera = CreateCamera(player.transform);
+            CreateHud(panelSettings, joystick, camera);
 
             EditorSceneManager.SaveScene(scene, ScenePath);
             AddToBuild(ScenePath, index: 1);
@@ -111,7 +117,21 @@ namespace SurvivorSouls.Editor
             light.shadows = LightShadows.None; // blob shadows instead of shadow maps
         }
 
-        private static void CreateCamera(Transform target)
+        /// <summary>Auto-shooter on the player (bolts leave the crossbow muzzle) + enemy spawner around them.</summary>
+        private static void CreateCombat(GameObject player, Bolt bolt, Enemy enemy, WorldStreamer world)
+        {
+            var shooter = player.AddComponent<AutoShooter>();
+            SetRef(shooter, "boltPrefab", bolt);
+            var muzzle = player.GetComponentsInChildren<Transform>(true).FirstOrDefault(t => t.name == "Crossbow_Muzzle");
+            if (muzzle != null) SetRef(shooter, "muzzle", muzzle);
+
+            var spawner = new GameObject("Enemies").AddComponent<EnemySpawner>();
+            SetRef(spawner, "prefab", enemy);
+            SetRef(spawner, "player", player.transform);
+            SetRef(spawner, "world", world);
+        }
+
+        private static Camera CreateCamera(Transform target)
         {
             var go = new GameObject("Main Camera") { tag = "MainCamera" };
             var cam = go.AddComponent<Camera>();
@@ -133,9 +153,10 @@ namespace SurvivorSouls.Editor
             so.FindProperty("lookZRange").vector2Value = new Vector2(-10000f, 10000f);
             so.ApplyModifiedPropertiesWithoutUndo();
             go.transform.SetPositionAndRotation(target.position + new Vector3(0f, 34f, -20f), Quaternion.Euler(60f, 0f, 0f));
+            return cam;
         }
 
-        private static void CreateHud(PanelSettings panelSettings, FloatingJoystick joystick)
+        private static void CreateHud(PanelSettings panelSettings, FloatingJoystick joystick, Camera camera)
         {
             var go = new GameObject("HUD");
             var doc = go.AddComponent<UIDocument>();
@@ -143,6 +164,7 @@ namespace SurvivorSouls.Editor
             doc.visualTreeAsset = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(HudUxmlPath);
             if (doc.visualTreeAsset == null) throw new System.InvalidOperationException($"UXML missing: {HudUxmlPath}");
             SetRef(go.AddComponent<GameHudController>(), "joystick", joystick);
+            SetRef(go.AddComponent<CombatHud>(), "worldCamera", camera);
         }
 
         private static PanelSettings CreatePanelSettings()
