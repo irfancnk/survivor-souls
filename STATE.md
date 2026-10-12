@@ -30,6 +30,7 @@
   - Camera: `Gameplay/CameraRig/TopDownFollowCamera.cs`. Pitch 55, FOV 40, distance from aspect so 10.5 m width fits any phone. Follows Z, clamp.
   - HUD: UI Toolkit `UI/Hud/GameHud.uxml/.uss` + `UI/Hud/GameHudController.cs`. Joystick ring/knob, hint, pause button (back to menu). Esc/back = menu.
   - DevScreenshot new args: `-ss-scene Game`, `-ss-move x,y`, `-ss-closeup <yaw>`. Screenshots: `Docs/screenshots/game-*.png`.
+  - 2026-10-12 fidelity pass vs concept sheet: darker palette (leather, boots, iron w/ rust), maroon crimson, pointed hood tip, knee-length ragged tunic w/ side slits, long crimson drapes front + back.
   - Verified: compile 0 errors, mac dev build OK, no runtime exceptions in screenshot runs.
 
 ## DECISIONS

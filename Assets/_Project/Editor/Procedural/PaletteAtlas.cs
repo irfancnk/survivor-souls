@@ -44,21 +44,21 @@ namespace SurvivorSouls.Editor.Procedural
         {
             switch (s)
             {
-                case Swatch.Skin: return new Cell(Hex(0x8E624C), Hex(0x6E4A3A), 0.3f, 0.04f, 0.12f, 0.35f);
+                case Swatch.Skin: return new Cell(Hex(0x96705C), Hex(0x7A5646), 0.3f, 0.04f, 0.12f, 0.35f);
                 case Swatch.Beard: return new Cell(Hex(0x2E221A), Hex(0x4A3A2E), 0.35f, 0.12f, 0.05f, 0.2f);
-                case Swatch.HoodCloth: return new Cell(Hex(0x2C2E32), Hex(0x2A2724), 0.45f, 0.1f, 0.04f, 0.15f);
+                case Swatch.HoodCloth: return new Cell(Hex(0x2E2C2A), Hex(0x221F1C), 0.5f, 0.1f, 0.04f, 0.15f);
                 case Swatch.HoodInner: return new Cell(Hex(0x0E0D0D), Hex(0x161412), 0.3f, 0.05f, 0f, 0.05f);
-                case Swatch.TunicCloth: return new Cell(Hex(0x3C3D40), Hex(0x3A3632), 0.5f, 0.12f, 0.04f, 0.15f);
-                case Swatch.Leather: return new Cell(Hex(0x6B4429), Hex(0x4C2F1D), 0.45f, 0.08f, 0.25f, 0.45f);
-                case Swatch.DarkLeather: return new Cell(Hex(0x33241B), Hex(0x251A14), 0.4f, 0.06f, 0.2f, 0.4f);
-                case Swatch.Gunmetal: return new Cell(Hex(0x5A6066), Hex(0x7A4A2C), 0.28f, 0.06f, 0.85f, 0.62f);
-                case Swatch.Rust: return new Cell(Hex(0x6E4630), Hex(0x4A4E52), 0.35f, 0.1f, 0.35f, 0.3f);
-                case Swatch.Crimson: return new Cell(Hex(0x7C1418), Hex(0x4E0D10), 0.45f, 0.1f, 0.1f, 0.25f);
+                case Swatch.TunicCloth: return new Cell(Hex(0x35332F), Hex(0x28241F), 0.55f, 0.12f, 0.04f, 0.15f);
+                case Swatch.Leather: return new Cell(Hex(0x4E3424), Hex(0x352318), 0.5f, 0.08f, 0.25f, 0.45f);
+                case Swatch.DarkLeather: return new Cell(Hex(0x2A1E17), Hex(0x1E1510), 0.4f, 0.06f, 0.2f, 0.4f);
+                case Swatch.Gunmetal: return new Cell(Hex(0x4C5156), Hex(0x6A3E24), 0.42f, 0.06f, 0.85f, 0.62f);
+                case Swatch.Rust: return new Cell(Hex(0x5A3C2A), Hex(0x43474B), 0.35f, 0.1f, 0.35f, 0.3f);
+                case Swatch.Crimson: return new Cell(Hex(0x6E1A22), Hex(0x4A1016), 0.45f, 0.1f, 0.1f, 0.25f);
                 case Swatch.Wood: return new Cell(Hex(0x4A2E1C), Hex(0x2E1C12), 0.5f, 0.1f, 0.25f, 0.45f);
                 case Swatch.BrightMetal: return new Cell(Hex(0x9AA0A6), Hex(0x6E5038), 0.18f, 0.04f, 1f, 0.75f);
                 case Swatch.Stone: return new Cell(Hex(0x6E6862), Hex(0x4E4944), 0.5f, 0.12f, 0.1f, 0.2f);
                 case Swatch.Coal: return new Cell(Hex(0x1A1512), Hex(0xC2491A), 0.25f, 0.1f, 0.05f, 0.1f);
-                case Swatch.Pants: return new Cell(Hex(0x2B2A29), Hex(0x3A3028), 0.4f, 0.08f, 0.05f, 0.15f);
+                case Swatch.Pants: return new Cell(Hex(0x262422), Hex(0x332A22), 0.4f, 0.08f, 0.05f, 0.15f);
                 case Swatch.Fletching: return new Cell(Hex(0x8E1A1A), Hex(0x5A1010), 0.3f, 0.1f, 0.05f, 0.2f);
                 default: return new Cell(Color.magenta, Color.magenta, 0f, 0f, 0f, 0f);
             }

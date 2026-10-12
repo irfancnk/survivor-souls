@@ -162,13 +162,13 @@ namespace SurvivorSouls.Editor.Characters
             Lathe(Vector3.zero, Swatch.Pants, B.Hips, new Vector2(1f, 0.74f), P(0.84f, 0.13f, 0.92f, 0.152f, 1.0f, 0.158f, 1.06f, 0.152f), capBottom: true);
 
             // Ragged tunic skirt: jagged hem, raised at the sides so the legs can swing.
-            Lathe(Vector3.zero, Swatch.TunicCloth, B.Hips, new Vector2(1f, 0.8f), P(0.72f, 0.215f, 0.86f, 0.192f, 1.0f, 0.165f),
-                segments: 18, rowShape: (row, theta) =>
+            Lathe(Vector3.zero, Swatch.TunicCloth, B.Hips, new Vector2(1f, 0.8f), P(0.56f, 0.225f, 0.74f, 0.205f, 0.88f, 0.19f, 1.0f, 0.165f),
+                segments: 22, rowShape: (row, theta) =>
                 {
                     if (row != 0) return new Vector2(1f, 0f);
-                    int s = Mathf.RoundToInt(theta / (Mathf.PI * 2f) * 18f);
-                    float side = Mathf.Pow(Mathf.Abs(Mathf.Sin(theta)), 4f) * 0.1f; // slits at +-X
-                    float jag = (s % 2) * 0.045f + TextureFactory.Hash(s % 18, 3, 9) * 0.04f;
+                    int s = Mathf.RoundToInt(theta / (Mathf.PI * 2f) * 22f);
+                    float side = Mathf.Pow(Mathf.Abs(Mathf.Sin(theta)), 6f) * 0.24f; // deep slits at +-X for the legs
+                    float jag = (s % 2) * 0.07f + TextureFactory.Hash(s % 22, 3, 9) * 0.06f;
                     return new Vector2(1f, side + jag);
                 });
 
@@ -180,8 +180,12 @@ namespace SurvivorSouls.Editor.Characters
             Box(new Vector3(0.1f, 0.975f, -0.13f), new Vector3(0.085f, 0.075f, 0.05f), Quaternion.Euler(0f, -25f, 0f), Swatch.Leather, B.Hips);
 
             // Crimson cloth hanging from the belt (front left).
-            Box(new Vector3(-0.075f, 0.88f, 0.178f), new Vector3(0.08f, 0.23f, 0.012f), Quaternion.Euler(-6f, 0f, 5f), Swatch.Crimson, B.Hips);
-            Box(new Vector3(-0.04f, 0.86f, 0.182f), new Vector3(0.04f, 0.17f, 0.01f), Quaternion.Euler(-5f, 0f, -7f), Swatch.Crimson, B.Hips);
+            Box(new Vector3(-0.08f, 0.8f, 0.2f), new Vector3(0.09f, 0.38f, 0.012f), Quaternion.Euler(-6f, 0f, 4f), Swatch.Crimson, B.Hips);
+            Box(new Vector3(-0.035f, 0.76f, 0.205f), new Vector3(0.045f, 0.3f, 0.01f), Quaternion.Euler(-5f, 0f, -6f), Swatch.Crimson, B.Hips);
+            Box(new Vector3(0.11f, 0.83f, 0.17f), new Vector3(0.05f, 0.26f, 0.01f), Quaternion.Euler(-6f, 20f, -4f), Swatch.Crimson, B.Hips);
+            // Long crimson drape at the back of the belt (see BACK view).
+            Box(new Vector3(0.0f, 0.76f, -0.205f), new Vector3(0.17f, 0.44f, 0.012f), Quaternion.Euler(7f, 0f, 2f), Swatch.Crimson, B.Hips);
+            Box(new Vector3(0.07f, 0.68f, -0.21f), new Vector3(0.06f, 0.28f, 0.01f), Quaternion.Euler(8f, 0f, -5f), Swatch.Crimson, B.Hips);
 
             // Torso (tunic).
             Lathe(Vector3.zero, Swatch.TunicCloth, B.Spine, new Vector2(1f, 0.68f), P(1.0f, 0.155f, 1.12f, 0.16f, 1.25f, 0.174f));
@@ -236,6 +240,9 @@ namespace SurvivorSouls.Editor.Characters
             var hoodTilt = Quaternion.Euler(16f, 0f, 0f);
             _mb.Ellipsoid(hoodCentre, hoodRadii, hoodTilt, PaletteAtlas.For(Swatch.HoodCloth), (int)B.Head, 14, 10, Open);
             _mb.Ellipsoid(hoodCentre, hoodRadii * 0.94f, hoodTilt, PaletteAtlas.For(Swatch.HoodInner), (int)B.Head, 14, 10, Open, inward: true);
+            // Pointed hood tip (top-back), leaning forward like the sheet.
+            Lathe(new Vector3(0f, 1.79f, -0.035f), Swatch.HoodCloth, B.Head, new Vector2(1f, 1.1f), P(0f, 0.075f, 0.05f, 0.05f, 0.1f, 0.018f, 0.12f, 0f),
+                segments: 10, rotation: Quaternion.Euler(28f, 0f, 0f));
         }
 
         private static void BuildArms()
