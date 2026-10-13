@@ -402,28 +402,21 @@ namespace SurvivorSouls.Dev
         private static void GrantSkills(string ids)
         {
             var manager = FindAnyObjectByType<SurvivorSouls.Gameplay.Skills.SkillManager>();
-            var table = manager != null ? manager.Progression : null;
-            if (table == null) return;
-            var all = new System.Collections.Generic.List<SurvivorSouls.Gameplay.Skills.SkillDefinition>();
-            table.CollectPool(int.MaxValue, all);
+            if (manager == null) return;
             foreach (string id in ids.Split(','))
             {
-                var skill = all.Find(s => s.Id == id.Trim());
-                if (skill == null || !manager.Grant(skill)) Debug.LogWarning($"[DevScreenshot] -ss-skills: cannot grant '{id}'");
+                if (!manager.Grant(id.Trim())) Debug.LogWarning($"[DevScreenshot] -ss-skills: cannot grant '{id}'");
             }
         }
 
         private static void ForceOffer(string ids)
         {
             var manager = FindAnyObjectByType<SurvivorSouls.Gameplay.Skills.SkillManager>();
-            var table = manager != null ? manager.Progression : null;
-            if (table == null) return;
-            var all = new System.Collections.Generic.List<SurvivorSouls.Gameplay.Skills.SkillDefinition>();
-            table.CollectPool(int.MaxValue, all);
+            if (manager == null) return;
             var offer = new System.Collections.Generic.List<SurvivorSouls.Gameplay.Skills.SkillDefinition>();
             foreach (string id in ids.Split(','))
             {
-                var skill = all.Find(s => s.Id == id.Trim());
+                var skill = manager.FindSkill(id.Trim());
                 if (skill == null) Debug.LogWarning($"[DevScreenshot] -ss-offer: no skill '{id}'");
                 else offer.Add(skill);
             }
