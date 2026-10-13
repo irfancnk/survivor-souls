@@ -160,7 +160,7 @@ namespace SurvivorSouls.Editor.World
         }
 
         /// <summary>Stone arch with a closed double door, facing -Z (towards the camera). Returns flame spots for sconces.</summary>
-        public static Vector3[] DoorGate(MeshBuilder stone, MeshBuilder props, Vector3 c, System.Random rng)
+        public static Vector3[] DoorGate(MeshBuilder stone, MeshBuilder props, Vector3 c, System.Random rng, bool door = true)
         {
             var uv = StoneUv(2f);
             foreach (float side in new[] { -1f, 1f })
@@ -175,7 +175,7 @@ namespace SurvivorSouls.Editor.World
             stone.Box(c + new Vector3(0f, 0.06f, -0.9f), new Vector3(3.0f, 0.12f, 0.7f), Quaternion.identity, uv, 0);
 
             float doorZ = c.z - 0.1f;
-            foreach (float side in new[] { -1f, 1f })
+            foreach (float side in door ? new[] { -1f, 1f } : System.Array.Empty<float>()) // no planks: the exit portal fills the arch (KAN-39)
             {
                 for (int i = 0; i < 4; i++)
                 {

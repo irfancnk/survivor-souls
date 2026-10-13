@@ -653,3 +653,67 @@
     color: rgb(190, 226, 255);
     font-size: 42px;
 }
+
+/* Chamber survival countdown (TimerHud, KAN-39): pill under the XP bar. Scale set in code during the final pulse. */
+.hud-timer {
+    align-self: center;
+    margin-top: 12px;
+    padding: 0 30px;
+    border-radius: 34px;
+    border-width: 2px;
+    border-color: rgba(232, 196, 120, 0.4);
+    background-color: rgba(8, 10, 16, 0.62);
+}
+
+.hud-timer__label {
+    margin: 0;
+    padding: 2px 0;
+    font-size: 54px;
+    letter-spacing: 4px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    color: rgb(246, 236, 212);
+    -unity-text-outline-width: 2px;
+    -unity-text-outline-color: rgba(0, 0, 0, 0.85);
+}
+
+.hud-timer--final {
+    border-color: rgb(226, 64, 40);
+    background-color: rgba(76, 10, 4, 0.72);
+}
+
+.hud-timer--final > .hud-timer__label {
+    color: rgb(255, 128, 100);
+}
+
+.hud-timer--done {
+    border-color: var(--hud-soul);
+}
+
+.hud-timer--done > .hud-timer__label {
+    color: var(--hud-soul-glow);
+}
+
+/* Timer toasts (TimerHud). Gold for warnings, soul blue and bigger when the portal opens. */
+.chamber-toast {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 360px;
+    margin: 0;
+    padding: 0;
+    font-size: 54px;
+    letter-spacing: 5px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    color: var(--hud-gold);
+    -unity-text-outline-width: 3px;
+    -unity-text-outline-color: rgba(20, 10, 0, 0.9);
+}
+
+.chamber-toast--open {
+    font-size: 66px;
+    letter-spacing: 3px;
+    color: var(--hud-soul-glow);
+    -unity-text-outline-color: rgba(10, 30, 60, 0.95);
+}

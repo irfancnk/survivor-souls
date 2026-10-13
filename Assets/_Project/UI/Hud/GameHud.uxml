@@ -30,6 +30,10 @@
                 <ui:VisualElement name="xp-fill" class="hud-xp__fill" picking-mode="Ignore" />
             </ui:VisualElement>
         </ui:VisualElement>
+        <!-- Chamber survival countdown (TimerHud, KAN-39). Hidden in boss Chambers. -->
+        <ui:VisualElement name="timer" class="hud-timer" picking-mode="Ignore">
+            <ui:Label name="timer-label" text="10:00" class="hud-timer__label" picking-mode="Ignore" />
+        </ui:VisualElement>
         <ui:VisualElement class="hud-top" picking-mode="Ignore">
             <ui:Button name="btn-pause" text="II" class="hud-button" />
             <!-- Player health (PlayerHealthHud): trail drains behind the fill. -->
@@ -45,6 +49,8 @@
         <ui:VisualElement name="skill-row" class="hud-skills" picking-mode="Ignore" />
         <ui:VisualElement class="hud-spacer" picking-mode="Ignore" />
         <ui:Label name="lbl-hint" text="Drag anywhere to move" class="hud-hint" picking-mode="Ignore" />
+        <!-- Timer toasts: "5 MINUTES REMAIN", "THE PORTAL IS OPEN" (TimerHud). Opacity and scale set in code. -->
+        <ui:Label name="chamber-toast" text="" class="chamber-toast hud-hidden" picking-mode="Ignore" />
     </ui:VisualElement>
 
     <!-- Small bar over the Knight, placed in code at a world point. -->

@@ -46,6 +46,7 @@ namespace SurvivorSouls.Editor.World
             public readonly List<(Vector3 pos, float size)> Glows = new List<(Vector3, float)>();
             public readonly List<(Vector3 pos, float yaw)> Gates = new List<(Vector3, float)>(); // enemy entry points (KAN-29)
             public Vector3? Beacon;
+            public Vector3? Portal; // exit portal at the arch base, door plane (KAN-39)
             public System.Random Rng;
             public float Density = 1f;
 
@@ -76,12 +77,14 @@ namespace SurvivorSouls.Editor.World
 
         private static RealmArt _art;
         private static GameArtKit _kit;
+        private static AudioClip _portalHum;
 
         /// <summary>Builds tile prefabs and the world objects in the open scene. Returns the streamer.</summary>
-        public static WorldStreamer Build(GameArtKit kit, RealmArt art, Transform player, PlayerMover mover)
+        public static WorldStreamer Build(GameArtKit kit, RealmArt art, Transform player, PlayerMover mover, AudioClip portalHum)
         {
             _kit = kit;
             _art = art;
+            _portalHum = portalHum;
             DeleteStaleTiles();
 
             var root = new GameObject("World");
@@ -390,8 +393,11 @@ namespace SurvivorSouls.Editor.World
             d.Floor.Tint = new Color(1f, 1f, 1f, 0.45f); // drifted snow over the flagstones
             PropKit.Plaza(d.Floor, Vector3.zero, 4.6f, 8, 22.5f);
             var gate = new Vector3(0f, 0f, 2.6f);
-            foreach (var flame in PropKit.DoorGate(d.Stone, d.Props, gate, d.Rng)) d.Fires.Add((flame, 0.6f, 4.5f, 6.5f));
-            d.Blocks.Add((gate + new Vector3(0f, 1.5f, 0.05f), new Vector3(8f, 3f, 1.3f), 0f));
+            foreach (var flame in PropKit.DoorGate(d.Stone, d.Props, gate, d.Rng, door: false)) d.Fires.Add((flame, 0.6f, 4.5f, 6.5f));
+            // Wing walls left and right of the arch; the arch itself is blocked by the portal's own door block until it opens.
+            foreach (float s in new[] { -1f, 1f })
+                d.Blocks.Add((gate + new Vector3(s * 2.54f, 1.5f, 0.05f), new Vector3(2.92f, 3f, 1.3f), 0f));
+            d.Portal = gate + new Vector3(0f, 0f, -0.1f);
             d.Beacon = gate + new Vector3(0f, 5.4f, -0.4f);
             foreach (float s in new[] { -1f, 1f }) Boulder(d, new Vector3(s * 5f, 0f, 3.6f), PropKit.Range(d.Rng, 0.6f, 0.9f));
             Tufts(d, 3);
@@ -599,6 +605,7 @@ namespace SurvivorSouls.Editor.World
                 foreach (var (pos, scale, intensity, range) in d.Fires) PropKit.Fire(root.transform, pos, _kit, scale, intensity, range);
                 foreach (var (pos, size) in d.Glows) Glow(root.transform, pos, size, new Color(1f, 0.72f, 0.38f, 0.75f));
                 if (d.Beacon.HasValue) AddBeacon(root.transform, d.Beacon.Value);
+                if (d.Portal.HasValue) PortalBuilder.Build(root.transform, d.Portal.Value, _kit, _art.Glow, _portalHum);
                 foreach (var (pos, yaw) in d.Gates)
                 {
                     var gate = new GameObject("SpawnGate");

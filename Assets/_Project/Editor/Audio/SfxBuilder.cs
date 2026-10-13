@@ -19,8 +19,8 @@ namespace SurvivorSouls.Editor.Audio
 
         public sealed class Set
         {
-            public AudioClip[] Shots, Impacts, Deaths, Footsteps, HitMarkers, KillMarkers, SoulChimes, LevelUps, BoonPicks;
-            public AudioClip Ambience;
+            public AudioClip[] Shots, Impacts, Deaths, Footsteps, HitMarkers, KillMarkers, SoulChimes, LevelUps, BoonPicks, PortalOpens;
+            public AudioClip Ambience, PortalHum;
         }
 
         [MenuItem("Survivor Souls/Rebuild Sounds")]
@@ -40,8 +40,10 @@ namespace SurvivorSouls.Editor.Audio
                 SoulChimes = Many("sfx_soul_chime", 2, SoulChime),
                 LevelUps = Many("sfx_level_up", 1, LevelUp),
                 BoonPicks = Many("sfx_boon_pick", 1, BoonPick),
+                PortalOpens = Many("sfx_portal_open", 1, PortalOpen),
             };
             set.Ambience = Save("amb_shore_wind_surf_loop", AmbienceRate, ShoreAmbience(AmbienceRate, 24f, 9), ambience: true);
+            set.PortalHum = Save("amb_portal_hum_loop", AmbienceRate, PortalHum(AmbienceRate, 4f, 13), ambience: true);
             return set;
         }
 
@@ -213,6 +215,93 @@ namespace SurvivorSouls.Editor.Audio
                 Click(b, 0.12f + (float)rng.NextDouble() * 0.45f, 0.004f, 0.12f + (float)rng.NextDouble() * 0.1f, 4200f, rng);
             return Normalize(b, 0.8f);
         }
+
+        /// <summary>
+        /// Portal opens (KAN-39): distant low horn (two detuned saw-like voices, slow swell, a fifth above joins), a rising
+        /// airy rush and a bright bell chord on top when the film bursts. Long tail: it plays once, wherever the player is.
+        /// </summary>
+        private static float[] PortalOpen(int seed)
+        {
+            var rng = new System.Random(seed * 1009);
+            float len = 2.8f;
+            var b = new float[(int)(Rate * len)];
+            // Horn: harmonic-rich tone through a low-pass that opens with the swell.
+            var lp = new Biquad();
+            double p1 = 0, p2 = 0, p3 = 0;
+            int hornEnd = (int)(Rate * 2.4f);
+            for (int i = 0; i < hornEnd; i++)
+            {
+                float t = i / (float)Rate;
+                float swell = Mathf.SmoothStep(0f, 1f, t / 0.55f) * Mathf.Exp(-Mathf.Max(0f, t - 1.1f) * 1.6f);
+                float fifth = Mathf.SmoothStep(0f, 1f, (t - 0.35f) / 0.4f);
+                p1 += 98f * (1f + 0.003f * Mathf.Sin(t * 5.1f)) / Rate;    // G2
+                p2 += 98.6f / Rate;                                          // slight beat
+                p3 += 146.8f / Rate;                                         // D3, a fifth up
+                float v = Saw(p1) * 0.5f + Saw(p2) * 0.4f + Saw(p3) * 0.35f * fifth;
+                lp.SetLowPass(Mathf.Lerp(250f, 1400f, swell), 0.8f, Rate);
+                b[i] += lp.Process(v) * swell * 0.9f;
+            }
+            // Rush: band-passed noise rising into the burst at ~1.3 s.
+            var bp = new Biquad();
+            int rushEnd = (int)(Rate * 1.7f);
+            for (int i = 0; i < rushEnd; i++)
+            {
+                float k = i / (float)rushEnd;
+                bp.SetBandPass(Mathf.Lerp(400f, 4200f, k * k), 1.4f, Rate);
+                b[i] += bp.Process(Noise(rng)) * k * k * (1f - Mathf.SmoothStep(0.85f, 1f, k)) * 0.5f;
+            }
+            // Burst: bell chord (G5 B5 D6 G6) + shimmer, at the film break.
+            float[] bell = { 783.99f, 987.77f, 1174.66f, 1567.98f };
+            for (int n = 0; n < bell.Length; n++)
+            {
+                Sweep(b, 1.3f + n * 0.03f, 1.45f - n * 0.03f, bell[n], bell[n], 0.22f, 2.6f, 2);
+                Sweep(b, 1.3f + n * 0.03f, 0.9f, bell[n] * 2.004f, bell[n] * 2f, 0.06f, 4f, 1);
+            }
+            NoiseBurst(b, 1.28f, 0.6f, 0.35f, 2500f, 9000f, 7f, rng);
+            Sweep(b, 1.28f, 0.6f, 70f, 45f, 0.5f, 6f, 1);                      // low thump of the burst
+            return Normalize(b, 0.88f);
+        }
+
+        /// <summary>
+        /// Open portal hum (KAN-39, 3D loop near the arch): low drone with a slow beat, a faint airy swirl.
+        /// Every partial and the swirl modulation make whole cycles over the loop length, so it loops without a seam.
+        /// </summary>
+        private static float[] PortalHum(int rate, float seconds, int seed)
+        {
+            var rng = new System.Random(seed);
+            int n = (int)(rate * seconds);
+            var b = new float[n];
+            var bp = new Biquad();
+            // Whole cycles in `seconds`: 55, 82.5 (x 4 s = 330), 110.25 (441), swirl 0.75 Hz (3 cycles).
+            float[] f = { 55f, 82.5f, 110.25f, 165f };
+            float[] a = { 0.5f, 0.28f, 0.22f, 0.08f };
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)rate;
+                float swirl = 0.5f + 0.5f * Mathf.Sin(t * Mathf.PI * 2f * 0.75f);
+                float v = 0f;
+                for (int k = 0; k < f.Length; k++) v += Mathf.Sin(t * Mathf.PI * 2f * f[k]) * a[k];
+                v *= 0.8f + 0.2f * Mathf.Sin(t * Mathf.PI * 2f * 1.5f);
+                bp.SetBandPass(Mathf.Lerp(700f, 1600f, swirl), 2f, rate);
+                b[i] = v + bp.Process(Noise(rng)) * 0.12f * swirl;
+            }
+            // The filtered noise is not periodic: crossfade the last 0.25 s into the start.
+            int fade = rate / 4;
+            for (int i = 0; i < fade; i++)
+            {
+                float w = i / (float)fade;
+                b[i] = b[i] * w + b[n - fade + i] * (1f - w);
+            }
+            var loop = new float[n - fade];
+            System.Array.Copy(b, loop, loop.Length);
+            // Scale only: Normalize's end fade would dip to silence at the loop point.
+            float max = 1e-6f;
+            foreach (float x in loop) max = Mathf.Max(max, Mathf.Abs(x));
+            for (int i = 0; i < loop.Length; i++) loop[i] *= 0.6f / max;
+            return loop;
+        }
+
+        private static float Saw(double phase) => (float)(2 * (phase - Math.Floor(phase)) - 1);
 
         /// <summary>
         /// Seamless cold shore loop: gusting wind (filtered brown noise), surf (white noise swells every ~6 s with a

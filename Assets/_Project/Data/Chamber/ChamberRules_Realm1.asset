@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe6d18465c68a4729be6d5842968f8d5, type: 3}
+  m_Name: ChamberRules_Realm1
+  m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Chamber.ChamberRules
+  openCondition: 0
+  survivalSeconds: 600
+  warnings: 2c010000780000003c000000i
+  finalCountdown: 10
+  openSequence: 2

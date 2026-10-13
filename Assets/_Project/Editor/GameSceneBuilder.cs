@@ -3,6 +3,7 @@ using System.Linq;
 using SurvivorSouls.Audio;
 using SurvivorSouls.Core;
 using SurvivorSouls.Editor.Audio;
+using SurvivorSouls.Editor.Chamber;
 using SurvivorSouls.Editor.Combat;
 using SurvivorSouls.Editor.Effects;
 using SurvivorSouls.Editor.Progression;
@@ -14,6 +15,7 @@ using SurvivorSouls.FX;
 using SurvivorSouls.Gameplay.Characters;
 using SurvivorSouls.Gameplay;
 using SurvivorSouls.Gameplay.CameraRig;
+using SurvivorSouls.Gameplay.Chamber;
 using SurvivorSouls.Gameplay.Combat;
 using SurvivorSouls.Gameplay.Controls;
 using SurvivorSouls.Gameplay.Player;
@@ -33,7 +35,8 @@ namespace SurvivorSouls.Editor
     /// Builds the Game scene from code: art kit (textures, materials), Realm 1 look (snowy shore, sea, sky),
     /// Archer prefab, streamed world, camera,
     /// joystick input, HUD and combat (auto-shooting crossbow, enemy spawner, health bars, player health + death screen),
-    /// XP (soul wisps, level bar, level-up flow), skills (stat sheet, 3-card pick, owned-skill row). Re-run after edits: menu "Survivor Souls/Rebuild Game Scene", or batchmode
+    /// XP (soul wisps, level bar, level-up flow), skills (stat sheet, 3-card pick, owned-skill row),
+    /// Chamber exit (survival timer + HUD countdown; the portal is in the exit tile prefab). Re-run after edits: menu "Survivor Souls/Rebuild Game Scene", or batchmode
     /// <c>-executeMethod SurvivorSouls.Editor.GameSceneBuilder.BuildFromCommandLine</c>.
     /// Hand edits to the generated scene are overwritten on rebuild.
     /// </summary>
@@ -55,6 +58,7 @@ namespace SurvivorSouls.Editor
             if (MeshyCharacterImporter.SourceExists) archerPrefab = MeshyCharacterImporter.BuildPrefab(kit.BlobShadow, kit.Quad);
             CombatBuilder.Build(kit);
             var panelSettings = CreatePanelSettings();
+            var sfx = SfxBuilder.Build(); // before the world: the exit portal tile needs its hum clip
 
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             SetupEnvironment(realm);
@@ -67,7 +71,7 @@ namespace SurvivorSouls.Editor
             player.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity); // centre of the spawn tile
             player.AddComponent<PlayerStats>(); // skills write here; mover, shooter, health and pickup read from it
             SetRef(player.GetComponent<PlayerMover>(), "joystick", joystick);
-            var world = WorldBuilder.Build(kit, realm, player.transform, player.GetComponent<PlayerMover>());
+            var world = WorldBuilder.Build(kit, realm, player.transform, player.GetComponent<PlayerMover>(), sfx.PortalHum);
             var combat = CombatBuilder.Load();
             var (shooter, spawner) = CreateCombat(player, combat.bolt, combat.enemy, world);
             CombatBuilder.CreateFx(kit, shooter);
@@ -78,12 +82,15 @@ namespace SurvivorSouls.Editor
             var skills = SkillsBuilder.Create(kit, progression.Xp.gameObject, player, shooter, health);
             SetRef(game, "player", health);
             SetRef(game, "spawner", spawner);
-            CreateAudio(SfxBuilder.Build(), shooter, player.GetComponent<PlayerMover>(), health, progression, skills);
+            var timer = ChamberBuilder.Create(player, health); // portal opens when it ends (KAN-39)
+            SetRef(game, "timer", timer);
+            CreateAudio(sfx, shooter, player.GetComponent<PlayerMover>(), health, progression, skills, timer);
             WindTrailBuilder.Create(kit, player);
 
             var camera = CreateCamera(player.transform, realm.Look);
             SetRef(spawner, "viewCamera", camera); // off-screen test uses the live camera (aspect, zoom)
-            CreateHud(panelSettings, joystick, camera, health, death, progression, skills, player.transform);
+            SetRef(game, "followCamera", camera.GetComponent<TopDownFollowCamera>()); // shake when the portal opens
+            CreateHud(panelSettings, joystick, camera, health, death, progression, skills, player.transform, timer);
 
             EditorSceneManager.SaveScene(scene, ScenePath);
             AddToBuild(ScenePath, index: 1);
@@ -191,9 +198,9 @@ namespace SurvivorSouls.Editor
             for (int i = 0; i < values.Count; i++) array.GetArrayElementAtIndex(i).objectReferenceValue = values[i];
         }
 
-        /// <summary>Procedural sound set (shots, impacts, marker ticks, deaths, snow footsteps, soul chimes, level-up, boon pick, wind + surf ambience) on one audio object.</summary>
+        /// <summary>Procedural sound set (shots, impacts, marker ticks, deaths, snow footsteps, soul chimes, level-up, boon pick, portal horn, wind + surf ambience) on one audio object.</summary>
         private static void CreateAudio(SfxBuilder.Set sfx, AutoShooter shooter, PlayerMover mover, PlayerHealth health,
-            ProgressionBuilder.Result progression, SkillManager skills)
+            ProgressionBuilder.Result progression, SkillManager skills, SurvivalTimer timer)
         {
             var audio = new GameObject("Audio").AddComponent<GameAudio>();
             var so = new SerializedObject(audio);
@@ -203,7 +210,9 @@ namespace SurvivorSouls.Editor
             so.FindProperty("souls").objectReferenceValue = progression.Souls;
             so.FindProperty("levelUp").objectReferenceValue = progression.Flow;
             so.FindProperty("skills").objectReferenceValue = skills;
+            so.FindProperty("timer").objectReferenceValue = timer;
             SetClips(so.FindProperty("boonPicks"), sfx.BoonPicks);
+            SetClips(so.FindProperty("portalOpens"), sfx.PortalOpens);
             SetClips(so.FindProperty("soulChimes"), sfx.SoulChimes);
             SetClips(so.FindProperty("levelUps"), sfx.LevelUps);
             SetClips(so.FindProperty("shots"), sfx.Shots);
@@ -248,7 +257,7 @@ namespace SurvivorSouls.Editor
         }
 
         private static void CreateHud(PanelSettings panelSettings, FloatingJoystick joystick, Camera camera, PlayerHealth health, PlayerDeath death,
-            ProgressionBuilder.Result progression, SkillManager skills, Transform player)
+            ProgressionBuilder.Result progression, SkillManager skills, Transform player, SurvivalTimer timer)
         {
             var go = new GameObject("HUD");
             var doc = go.AddComponent<UIDocument>();
@@ -274,6 +283,7 @@ namespace SurvivorSouls.Editor
             SetRef(choice, "skills", skills);
             SetRef(progression.Flow, "choice", choice);
             SetRef(go.AddComponent<SkillHud>(), "skills", skills);
+            SetRef(go.AddComponent<TimerHud>(), "timer", timer); // countdown under the XP bar + toasts (KAN-39)
         }
 
         private static PanelSettings CreatePanelSettings()
