@@ -332,7 +332,10 @@
     flex-direction: row;
     justify-content: center;
     align-items: center;
-    margin-top: 64px;
+    padding: 30px 0 34px 0;
+    background-color: rgba(0, 0, 0, 0.58); /* joins the band: numbers read on bright snow */
+    border-top-width: 1px;
+    border-color: rgba(232, 196, 120, 0.22);
 }
 
 .death__stat {
@@ -357,7 +360,7 @@
     font-size: 30px;
     letter-spacing: 8px;
     -unity-text-align: middle-center;
-    color: rgb(176, 168, 152);
+    color: rgb(206, 198, 182);
 }
 
 .death__stat-rule {
