@@ -34,6 +34,8 @@ namespace SurvivorSouls.Dev
     /// <c>-ss-timer &lt;seconds&gt;</c> sets the Chamber survival clock after load (KAN-39; 0 = the portal opens now).
     /// <c>-ss-portal</c> walks the Knight into the portal right after load (KAN-40): pull, white fade, next Chamber,
     /// title card. With -ss-delay ~2.2 the capture shows the "CHAMBER II" card; skills / health set before it carry over.
+    /// <c>-ss-run-seed &lt;n&gt;</c> starts the run with that seed and <c>-ss-chamber &lt;n&gt;</c> starts it at that Chamber
+    /// (KAN-46: layout seed + difficulty of that Chamber; same run seed + Chamber = same layout).
     /// Used by tools/agents to verify visuals without a human. Inactive in release builds (Debug.isDebugBuild).
     /// </summary>
     public sealed class DevScreenshot : MonoBehaviour
@@ -90,6 +92,15 @@ namespace SurvivorSouls.Dev
             shot._immortal = Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-immortal") >= 0;
             shot._timer = GetArg("-ss-timer");
             shot._portal = Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-portal") >= 0;
+
+            // Before any scene wakes: ChamberSetup reads the run in Awake (KAN-46).
+            int runSeed = int.TryParse(GetArg("-ss-run-seed"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int rs) ? rs : 0;
+            int chamber = int.TryParse(GetArg("-ss-chamber"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int c) ? c : 0;
+            if (runSeed != 0 || chamber > 0)
+            {
+                SurvivorSouls.Gameplay.Chamber.RunState.NewRun(1, runSeed);
+                if (chamber > 0) SurvivorSouls.Gameplay.Chamber.RunState.JumpToChamber(chamber);
+            }
         }
 
         private IEnumerator Start()

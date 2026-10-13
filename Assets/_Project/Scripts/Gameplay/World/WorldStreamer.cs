@@ -6,7 +6,8 @@ namespace SurvivorSouls.Gameplay.World
 {
     /// <summary>
     /// Open world made of square tiles that appear around the player and are recycled behind them.
-    /// Each run picks a new seed, so the layout (tile variants, rotations, exit door spot) changes.
+    /// The seed decides the layout (tile variants, rotations, exit door spot). <see cref="UseSeed"/> sets it per Chamber
+    /// (KAN-46, from the run seed + Realm + Chamber); without it the world picks a random seed.
     /// Coastal layout (Realm 1): playable cells are x in [-halfTiles, halfTiles], z in [-southRows, shoreRow].
     /// Row <see cref="shoreRow"/> holds shore tiles (beach edge, foam, colliders against the sea); rows north of it
     /// are open sea (the sea mesh is a scene object, not a tile). One ring of "edge" tiles (cliffs) closes the
@@ -67,6 +68,7 @@ namespace SurvivorSouls.Gameplay.World
         private readonly List<Vector2Int> _release = new List<Vector2Int>();
         private readonly Dictionary<GameObject, Block[]> _blocks = new Dictionary<GameObject, Block[]>();
         private int _seed;
+        private bool _seeded;
         private float _totalWeight, _shoreWeight;
         private Vector2Int _lastCell = new Vector2Int(int.MinValue, int.MinValue);
 
@@ -81,11 +83,36 @@ namespace SurvivorSouls.Gameplay.World
         public float ShoreLineZ => shoreRow * tileSize + shoreLineLocalZ;
         public event Action<Vector3> ExitPlaced;
 
+        /// <summary>Seed of the current layout.</summary>
+        public int Seed => _seed;
+        /// <summary>A non-zero fixed seed (tests, debug) wins over <see cref="UseSeed"/>.</summary>
+        public int FixedSeed => fixedSeed;
+
         private void Awake()
         {
-            _seed = fixedSeed != 0 ? fixedSeed : Environment.TickCount;
-            foreach (var v in variants) _totalWeight += v.weight;
-            foreach (var v in shoreVariants) _shoreWeight += v.weight;
+            if (variants != null) foreach (var v in variants) _totalWeight += v.weight;
+            if (shoreVariants != null) foreach (var v in shoreVariants) _shoreWeight += v.weight;
+            if (fixedSeed != 0) ApplySeed(fixedSeed);
+            else if (!_seeded) ApplySeed(Environment.TickCount);
+        }
+
+        /// <summary>
+        /// Layout of this Chamber (KAN-46). Called by <c>ChamberSetup</c> before the first tiles appear
+        /// (it runs first); a later call rebuilds the loaded tiles. Ignored when <see cref="FixedSeed"/> is set.
+        /// </summary>
+        public void UseSeed(int seed)
+        {
+            if (fixedSeed != 0) return;
+            ApplySeed(seed != 0 ? seed : 1);
+        }
+
+        private void ApplySeed(int seed)
+        {
+            _seed = seed;
+            _seeded = true;
+            foreach (var kv in _active) Release(kv.Value); // layout changed: loaded tiles are stale
+            _active.Clear();
+            _lastCell = new Vector2Int(int.MinValue, int.MinValue);
             ExitCell = PickExitCell();
             ExitPlaced?.Invoke(ExitPosition);
         }

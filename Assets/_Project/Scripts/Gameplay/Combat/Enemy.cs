@@ -98,6 +98,7 @@ namespace SurvivorSouls.Gameplay.Combat
         private Action<Enemy> _release;
         private MaterialPropertyBlock _block;
         private float _health;
+        private float _maxHealth; // this spawn: type max x Chamber multiplier (KAN-46)
         private float _flash;
         private float _deadTime = -1f;
         private Vector3 _knock;
@@ -136,10 +137,13 @@ namespace SurvivorSouls.Gameplay.Combat
         public static int AnimatorResyncs;
 
         public float Health => _health;
-        public float MaxHealth => maxHealth;
+        /// <summary>This spawn's max health (type max x the Chamber multiplier, KAN-46). The type max before the first spawn.</summary>
+        public float MaxHealth => _maxHealth > 0f ? _maxHealth : maxHealth;
+        /// <summary>Max health of the type, before Chamber scaling.</summary>
+        public float BaseMaxHealth => maxHealth;
         public bool IsAlive => _health > 0f;
         /// <summary>Took damage since spawn (health bars only show for these).</summary>
-        public bool IsHurt => _health < maxHealth;
+        public bool IsHurt => _health < MaxHealth;
         public float HitRadius => hitRadius * _scale;
         public float Height => height * _scale;
         /// <summary>This spawn's move speed (type speed x random spread).</summary>
@@ -162,11 +166,16 @@ namespace SurvivorSouls.Gameplay.Combat
         /// <summary>Above the head: where the health bar sits.</summary>
         public Vector3 BarAnchor => transform.position + Vector3.up * (Height + 0.3f);
 
-        public void Spawn(Vector3 position, Transform target, Action<Enemy> release)
+        /// <summary>
+        /// Starts this pooled enemy at <paramref name="position"/>. <paramref name="healthMultiplier"/> scales the max
+        /// health of this spawn (Chamber difficulty, KAN-46).
+        /// </summary>
+        public void Spawn(Vector3 position, Transform target, Action<Enemy> release, float healthMultiplier = 1f)
         {
             _target = target;
             _release = release;
-            _health = maxHealth;
+            _maxHealth = maxHealth * Mathf.Max(0.01f, healthMultiplier);
+            _health = _maxHealth;
             _deadTime = -1f;
             _knock = Vector3.zero;
             _flash = 0f;

@@ -44,15 +44,34 @@ namespace SurvivorSouls.Gameplay.Chamber
 
         public static int Realm { get; private set; } = 1;
         public static int Chamber { get; private set; } = FirstChamber;
+        /// <summary>
+        /// Random per run (KAN-46). With the Realm and Chamber it makes the world seed (<see cref="ChamberDifficulty.LayoutSeed"/>):
+        /// a new layout every Chamber and every run, the same one when the same Chamber of the same run loads again.
+        /// </summary>
+        public static int RunSeed { get; private set; } = 1;
         /// <summary>A snapshot is waiting for the next Game scene.</summary>
         public static bool HasCarry => _carry != null;
 
-        /// <summary>Start of a run: Chamber 1 of <paramref name="realm"/>, nothing carried.</summary>
-        public static void NewRun(int realm = 1)
+        /// <summary>Start of a run: Chamber 1 of <paramref name="realm"/>, nothing carried. <paramref name="seed"/> 0 = random.</summary>
+        public static void NewRun(int realm = 1, int seed = 0)
         {
             Realm = Mathf.Max(1, realm);
             Chamber = FirstChamber;
+            RunSeed = seed != 0 ? seed : NewSeed();
             _carry = null;
+        }
+
+        /// <summary>Dev and tests: jump the current run to <paramref name="chamber"/> (nothing carried).</summary>
+        public static void JumpToChamber(int chamber)
+        {
+            Chamber = Mathf.Max(FirstChamber, chamber);
+            _carry = null;
+        }
+
+        private static int NewSeed()
+        {
+            int seed = (int)(System.DateTime.UtcNow.Ticks & 0x7fffffff) ^ System.Environment.TickCount;
+            return seed != 0 ? seed : 1;
         }
 
         /// <summary>The Knight left through the portal: next Chamber, <paramref name="carry"/> waits for the new scene.</summary>

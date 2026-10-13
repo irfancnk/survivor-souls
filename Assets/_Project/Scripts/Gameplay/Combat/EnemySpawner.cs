@@ -24,6 +24,11 @@ namespace SurvivorSouls.Gameplay.Combat
     /// <see cref="Counters.OnScreenSpawns"/> and logs a warning (acceptance check). Counters are logged every
     /// <see cref="statsLogInterval"/> s in development builds.
     /// </para>
+    /// <para>
+    /// Chamber difficulty (KAN-46): <see cref="SetDifficulty"/> scales the table at run time (caps and burst sizes up,
+    /// intervals down, enemy max health up) without touching the asset. Call it before <c>Start</c> so the pools are
+    /// prewarmed for the bigger caps.
+    /// </para>
     /// </summary>
     public sealed class EnemySpawner : MonoBehaviour
     {
@@ -131,6 +136,7 @@ namespace SurvivorSouls.Gameplay.Combat
         private Vector2 _heading;
         private float _headingBias;
         private bool _started;
+        private float _capMul = 1f, _intervalMul = 1f, _healthMul = 1f;
 
         /// <summary>An enemy was put into the world: position, true when it was a recycle (moved back in) rather than a spawn.</summary>
         public event Action<Enemy, Vector3, bool> Placed;
@@ -145,6 +151,23 @@ namespace SurvivorSouls.Gameplay.Combat
         public Rules SpawnRules => rules;
         public Camera ViewCamera => viewCamera;
         public EnemyWaveTable Waves => waves;
+        public float CapMultiplier => _capMul;
+        public float IntervalMultiplier => _intervalMul;
+        public float HealthMultiplier => _healthMul;
+
+        /// <summary>
+        /// Chamber scaling (KAN-46): max alive and burst sizes x <paramref name="cap"/>, group and burst intervals x
+        /// <paramref name="interval"/>, enemy max health x <paramref name="health"/>. 1 / 1 / 1 = the table as written.
+        /// </summary>
+        public void SetDifficulty(float cap, float interval, float health)
+        {
+            _capMul = Mathf.Max(0.1f, cap);
+            _intervalMul = Mathf.Max(0.05f, interval);
+            _healthMul = Mathf.Max(0.01f, health);
+        }
+
+        /// <summary>Max alive of <paramref name="phase"/> after Chamber scaling.</summary>
+        public int MaxAliveOf(in EnemyWaveTable.Phase phase) => Mathf.RoundToInt(phase.maxAlive * _capMul);
 
         private void Awake() => _releaseAction = Release;
 
@@ -206,25 +229,27 @@ namespace SurvivorSouls.Gameplay.Combat
             {
                 _phase = index;
                 _groupTimer = 0f; // a new phase opens with a group
-                _burstTimer = phase.burstInterval;
+                _burstTimer = phase.burstInterval * _intervalMul;
             }
+            float interval = phase.spawnInterval * _intervalMul;
+            int maxAlive = MaxAliveOf(phase);
 
             _groupTimer -= dt;
             if (_groupTimer <= 0f)
             {
                 _pending += Random.Range(Mathf.Max(1, phase.groupSize.x), Mathf.Max(1, phase.groupSize.y) + 1);
-                _groupTimer = Mathf.Max(_groupTimer + phase.spawnInterval, 0.5f * phase.spawnInterval); // no catch-up flood after a hitch
+                _groupTimer = Mathf.Max(_groupTimer + interval, 0.5f * interval); // no catch-up flood after a hitch
             }
             if (phase.burstInterval > 0f)
             {
                 _burstTimer -= dt;
                 if (_burstTimer <= 0f)
                 {
-                    _pending += phase.burstSize;
-                    _burstTimer = phase.burstInterval;
+                    _pending += Mathf.RoundToInt(phase.burstSize * _capMul);
+                    _burstTimer = phase.burstInterval * _intervalMul;
                 }
             }
-            _pending = Mathf.Clamp(_pending, 0, Mathf.Max(0, phase.maxAlive - _live.Count)); // groups top up, never bank
+            _pending = Mathf.Clamp(_pending, 0, Mathf.Max(0, maxAlive - _live.Count)); // groups top up, never bank
         }
 
         private void SpawnPending(float dt)
@@ -236,7 +261,8 @@ namespace SurvivorSouls.Gameplay.Combat
             }
             if (_pending <= 0 || _phase < 0) return;
             var phase = waves.GetPhase(_phase);
-            for (int i = 0; i < rules.maxSpawnsPerFrame && _pending > 0 && _live.Count < phase.maxAlive; i++)
+            int maxAlive = MaxAliveOf(phase);
+            for (int i = 0; i < rules.maxSpawnsPerFrame && _pending > 0 && _live.Count < maxAlive; i++)
             {
                 var prefab = EnemyWaveTable.PickEnemy(phase, Random.value);
                 if (prefab == null)
@@ -259,7 +285,7 @@ namespace SurvivorSouls.Gameplay.Combat
         {
             var enemy = Take(prefab);
             _live.Add(enemy);
-            enemy.Spawn(position, player, _releaseAction);
+            enemy.Spawn(position, player, _releaseAction, _healthMul);
             Remember(position);
             Audit(position, "spawn");
             _stats.Spawned++;
@@ -500,7 +526,7 @@ namespace SurvivorSouls.Gameplay.Combat
                 foreach (var entry in entries)
                 {
                     if (entry.prefab == null || _pools.ContainsKey(entry.prefab)) continue;
-                    int count = waves.PrewarmFor(entry.prefab);
+                    int count = Mathf.CeilToInt(waves.PrewarmFor(entry.prefab) * _capMul); // bigger Chamber caps (KAN-46)
                     var pool = _pools[entry.prefab] = new Stack<Enemy>(count);
                     for (int k = 0; k < count; k++) pool.Push(Create(entry.prefab));
                 }
