@@ -149,10 +149,19 @@
   - Screenshots `Docs/screenshots/game-joystick-{idle,up,diagonal,released}.png`.
   - Verified: scene rebuild 0 errors, mac dev build OK, screenshots OK (no exceptions), iOS Xcode export + xcodebuild device build OK. iPhone install failed again: phone locked (`IXRemoteErrorDomain code 6`). Not verified on device: notch/home-indicator spacing and real multi-touch feel.
 
+- 2026-10-13: Local 3D asset pipeline investigation (KAN-27, branch `feat/kan-27-asset-pipeline`, worktree `.claude/worktrees/kan-27-asset-pipeline`). Full notes: `Docs/ASSET_PIPELINE.md`.
+  - Primary model TRELLIS.2 (MIT, PBR GLB), fallback TRELLIS v1 image-large (MIT, 16 GB). Rejected: Hunyuan3D 2.1 (licence not valid EU/UK/KR), SF3D/SPAR3D (revenue cap), TripoSR, InstantMesh (quality). Concept images FLUX.1 [schnell] (Apache 2.0).
+  - Laptop (RTX 5080, sm_120): WSL2 Ubuntu, PyTorch cu128, xformers (no flash-attn), extensions built with `TORCH_CUDA_ARCH_LIST=12.0`. Wrapper `Tools/Pipeline/trellis2_generate.py` writes `Incoming/<Name>/` (GLB + preview + meta.json). NOT run yet.
+  - `Tools/Blender/clean_prop.py`: GLB -> join, floaters, pivot bottom centre, decimate, LODs (50/25 %), textures reused or `--bake`, FBX + `<Name>.json`. `--batch <Incoming> --out <Approved>`.
+  - `Editor/Props/GeneratedPropImporter.cs`: menu "Survivor Souls/Import Generated Props", batch `ImportFromCommandLine [-ss-props <dir>]`, env `SS_PROP_SOURCE`. KAN-26 name check (`PropNaming`), `Art/Environment/<R1_SnowyShore|Shared>/`, ASTC 6x6, URP Lit, prefab `P_*` with collider from meta.
+  - Drive: Drive for Desktop on both machines (chosen). Not installed on Mac yet; stand-in `~/survivor-souls-assets/drive/SurvivorSouls/Assets/{Incoming,Approved,Rejected}`. Drive connector "pending" in session.
+  - Verified on Mac: Meshy crossbow (780k tris) -> 5k/2.5k LODs in 12 s -> Unity prefab OK (rot 0, scale 1, pivot y 0, LODGroup, Lit, collider). Test assets not committed (no git-lfs).
+  - Not done: laptop run, Drive both-way test, 5 PoC props, realism scores.
+
 ## DECISIONS
 - Design language: Archero / Archero 2 (menus, loop, chests, daily/weekly quests, gear merge, talents, energy). Look: Dark Souls, realistic, not dismal. User decision 2026-10-11.
 - Naming map: energy=Estus, gold=Souls, gems=Ember Shards, chests=Reliquaries, daily=Oaths, weekly=Pilgrimage, chapter=Realm, room=Chamber. See GAME_PLAN sec 2.
-- Art source: Meshy.ai -> FBX -> Unity URP. Paid Meshy plan for ship assets (free = CC BY, needs credit). Tri budget: hero 5-8k, enemy 1.5-3k, boss 8-12k, prop <1.5k.
+- Art source (KAN-27): local TRELLIS.2 for static props/environment; Meshy paid for rigged characters, enemies, bosses, held weapons. Meshy.ai -> FBX -> Unity URP. Paid Meshy plan for ship assets (free = CC BY, needs credit). Tri budget: hero 5-8k, enemy 1.5-3k, boss 8-12k, prop <1.5k.
 - Crossbow hold: two hands, crossbow on Spine2 + arm IK baked in Blender script. Recoil procedural in Unity (no extra clip). 2026-10-12 (KAN-11).
 - Sounds: procedural (SfxBuilder). No paid packs (Irem rule). 2026-10-12.
 - Grass: geometry blades per tile (opaque, no alpha test: cheap on mobile TBDR). 2026-10-12.
