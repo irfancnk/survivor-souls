@@ -1,4 +1,5 @@
 using System;
+using SurvivorSouls.Gameplay.Skills;
 using UnityEngine;
 
 namespace SurvivorSouls.Gameplay.Player
@@ -9,6 +10,8 @@ namespace SurvivorSouls.Gameplay.Player
     /// component ignores damage and healing (a retry reloads the scene).
     /// Damage can arrive every frame (contact damage), so feedback (flash, vignette, sound) should listen to
     /// <see cref="OnHurt"/>, which is throttled to one pulse per <see cref="hurtPulseInterval"/>.
+    /// <see cref="maxHealth"/> is the base: max health skills raise it through <see cref="PlayerStats"/>; a raise also heals
+    /// by the amount gained (Archero rule), a drop only clamps.
     /// </summary>
     public sealed class PlayerHealth : MonoBehaviour
     {
@@ -26,15 +29,42 @@ namespace SurvivorSouls.Gameplay.Player
         public event Action OnDeath;
 
         private float _current;
+        private float _max;
+        private PlayerStats _stats;
         private float _lastHurt = float.NegativeInfinity;
         private bool _dead;
 
         public float Current => _current;
-        public float Max => maxHealth;
-        public float Normalized => _current / maxHealth;
+        public float Max => _max;
+        public float Normalized => _current / _max;
         public bool IsDead => _dead;
 
-        private void Awake() => _current = maxHealth;
+        private void Awake()
+        {
+            _stats = GetComponent<PlayerStats>();
+            _max = PlayerStats.Eval(_stats, StatId.MaxHealth, maxHealth);
+            _current = _max;
+        }
+
+        private void OnEnable()
+        {
+            if (_stats != null) _stats.Changed += OnStatsChanged;
+        }
+
+        private void OnDisable()
+        {
+            if (_stats != null) _stats.Changed -= OnStatsChanged;
+        }
+
+        private void OnStatsChanged()
+        {
+            float max = Mathf.Max(1f, PlayerStats.Eval(_stats, StatId.MaxHealth, maxHealth));
+            if (_dead || Mathf.Approximately(max, _max)) return;
+            float gained = max - _max;
+            _max = max;
+            _current = gained > 0f ? _current + gained : Mathf.Min(_current, _max);
+            OnHealthChanged?.Invoke(_current, _max);
+        }
 
         /// <summary>Deducts up to <paramref name="amount"/>. Returns the health actually deducted.</summary>
         public float TakeDamage(float amount)
@@ -44,7 +74,7 @@ namespace SurvivorSouls.Gameplay.Player
             _current -= deducted; // exactly 0 when amount >= current (no float drift past zero)
             _dead = _current <= 0f;
 
-            OnHealthChanged?.Invoke(_current, maxHealth);
+            OnHealthChanged?.Invoke(_current, _max);
             OnDamaged?.Invoke(deducted);
             float now = Time.time;
             if (now - _lastHurt >= hurtPulseInterval)
@@ -60,10 +90,10 @@ namespace SurvivorSouls.Gameplay.Player
         public float Heal(float amount)
         {
             if (_dead || amount <= 0f) return 0f;
-            float added = Mathf.Min(amount, maxHealth - _current);
+            float added = Mathf.Min(amount, _max - _current);
             if (added <= 0f) return 0f;
             _current += added;
-            OnHealthChanged?.Invoke(_current, maxHealth);
+            OnHealthChanged?.Invoke(_current, _max);
             return added;
         }
     }

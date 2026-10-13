@@ -1,0 +1,47 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cfd6295f7e6384034ad50a81fa5b2a60, type: 3}
+  m_Name: SkillProgression_Run
+  m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Skills.SkillProgression
+  tiers:
+  - fromLevel: 2
+    unlocks:
+    - {fileID: 11400000, guid: 548d8a8faf07b45e9804d5430a293062, type: 2}
+    - {fileID: 11400000, guid: eec5ed7397ce642a7ac9683393872436, type: 2}
+    - {fileID: 11400000, guid: 5ed84f9a190dc4f2fa4a9f152ad0df28, type: 2}
+    - {fileID: 11400000, guid: 21216c2eede1f40a5a5c6c2f59b11e1c, type: 2}
+    - {fileID: 11400000, guid: 20442184d1a844541909ed8ac32a9a4e, type: 2}
+    - {fileID: 11400000, guid: 3ccec5f5805d14bef958c4ec6101fdb3, type: 2}
+    - {fileID: 11400000, guid: 199cb3a4d93234cb88829c148da1d8e4, type: 2}
+    common: 75
+    rare: 25
+    epic: 0
+  - fromLevel: 4
+    unlocks:
+    - {fileID: 11400000, guid: 236b0bafbde4e46a8a438ba9b3f4f2cb, type: 2}
+    - {fileID: 11400000, guid: 5240cd9c91fd24b3f9a8777f1ad43835, type: 2}
+    - {fileID: 11400000, guid: 272fcb888b88d4fa2bd771a01cadce8f, type: 2}
+    common: 60
+    rare: 32
+    epic: 8
+  - fromLevel: 6
+    unlocks:
+    - {fileID: 11400000, guid: 5f5d24c2799bd49a98022b32c4ed4fea, type: 2}
+    - {fileID: 11400000, guid: f22d698f6e5d04d73b1c58cab2fdcae6, type: 2}
+    common: 48
+    rare: 34
+    epic: 18
+  guarantees:
+  - level: 4
+    skill: {fileID: 11400000, guid: 5240cd9c91fd24b3f9a8777f1ad43835, type: 2}
+  - level: 6
+    skill: {fileID: 11400000, guid: 5f5d24c2799bd49a98022b32c4ed4fea, type: 2}

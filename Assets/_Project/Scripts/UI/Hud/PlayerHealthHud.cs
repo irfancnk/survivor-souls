@@ -148,7 +148,7 @@ namespace SurvivorSouls.UI.Hud
             int n = Mathf.CeilToInt(health.Current);
             if (n == _lastNumber) return;
             _lastNumber = n;
-            if (_numbers == null)
+            if (_numbers == null || _numbers.Length <= Mathf.CeilToInt(health.Max)) // max health skills grow the cache
             {
                 _numbers = new string[Mathf.CeilToInt(health.Max) + 1];
                 for (int i = 0; i < _numbers.Length; i++) _numbers[i] = i.ToString();

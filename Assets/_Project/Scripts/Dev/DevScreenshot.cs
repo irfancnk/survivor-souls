@@ -22,7 +22,8 @@ namespace SurvivorSouls.Dev
     /// <c>-ss-hit-marker &lt;hit|kill&gt;</c> pops a hit (or kill) marker on the nearest enemy just before the capture.
     /// <c>-ss-release &lt;seconds&gt;</c> lets go of the -ss-move stick that long before the capture (e.g. wind trail tail-off).
     /// <c>-ss-souls &lt;n&gt;</c> drops n soul wisps around the player after load (mostly small, some elite, one boss orb).
-    /// <c>-ss-xp &lt;amount&gt;</c> grants that much XP <see cref="XpLead"/> s before the capture (level-up burst + screen).
+    /// <c>-ss-xp &lt;amount&gt;</c> grants that much XP <see cref="XpLead"/> s before the capture (level-up burst + skill cards).
+    /// <c>-ss-skills id,id,...</c> grants those skills (by SkillDefinition id, repeat an id to stack) after load.
     /// Used by tools/agents to verify visuals without a human. Inactive in release builds (Debug.isDebugBuild).
     /// </summary>
     public sealed class DevScreenshot : MonoBehaviour
@@ -38,8 +39,9 @@ namespace SurvivorSouls.Dev
         private float _release;
         private int _souls;
         private int _xp;
+        private string _skills;
 
-        private const float XpLead = 0.9f; // realtime seconds between the XP grant and the capture
+        private const float XpLead = 1.5f; // realtime seconds between the XP grant and the capture (cards fully in)
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void Bootstrap()
@@ -64,6 +66,7 @@ namespace SurvivorSouls.Dev
             shot._hitMarker = GetArg("-ss-hit-marker");
             shot._release = float.TryParse(GetArg("-ss-release"), NumberStyles.Float, CultureInfo.InvariantCulture, out float r) ? r : 0f;
             shot._souls = int.TryParse(GetArg("-ss-souls"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int n) ? n : 0;
+            shot._skills = GetArg("-ss-skills");
             shot._xp = int.TryParse(GetArg("-ss-xp"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int x) ? x : 0;
         }
 
@@ -85,6 +88,7 @@ namespace SurvivorSouls.Dev
             }
 
             if (_souls > 0) DropSouls(_souls);
+            if (!string.IsNullOrEmpty(_skills)) GrantSkills(_skills);
 
             float release = Mathf.Clamp(_release, 0f, _delay);
             float xpLead = _xp > 0 ? Mathf.Min(XpLead, _delay - release) : 0f;
@@ -131,6 +135,20 @@ namespace SurvivorSouls.Dev
                 float d = 3.2f + (i % 5) * 0.9f;
                 int xp = i == 0 ? 150 : i % 7 == 3 ? 40 : 10;
                 field.Spawn(player.transform.position + new Vector3(Mathf.Cos(a) * d, 1f, Mathf.Sin(a) * d), xp);
+            }
+        }
+
+        private static void GrantSkills(string ids)
+        {
+            var manager = FindAnyObjectByType<SurvivorSouls.Gameplay.Skills.SkillManager>();
+            var table = manager != null ? manager.Progression : null;
+            if (table == null) return;
+            var all = new System.Collections.Generic.List<SurvivorSouls.Gameplay.Skills.SkillDefinition>();
+            table.CollectPool(int.MaxValue, all);
+            foreach (string id in ids.Split(','))
+            {
+                var skill = all.Find(s => s.Id == id.Trim());
+                if (skill == null || !manager.Grant(skill)) Debug.LogWarning($"[DevScreenshot] -ss-skills: cannot grant '{id}'");
             }
         }
 

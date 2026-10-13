@@ -1,4 +1,5 @@
 using SurvivorSouls.Gameplay.Controls;
+using SurvivorSouls.Gameplay.Skills;
 using UnityEngine;
 
 namespace SurvivorSouls.Gameplay.Player
@@ -6,6 +7,7 @@ namespace SurvivorSouls.Gameplay.Player
     /// <summary>
     /// Moves the player on the XZ plane from the joystick. The camera has a fixed yaw of 0,
     /// so stick up = world +Z. The character turns to face the move direction.
+    /// <see cref="maxSpeed"/> is the base; move speed skills raise it through <see cref="PlayerStats"/>.
     /// </summary>
     [RequireComponent(typeof(CharacterController))]
     public sealed class PlayerMover : MonoBehaviour
@@ -18,15 +20,20 @@ namespace SurvivorSouls.Gameplay.Player
         [SerializeField, Min(0f)] private float turnSpeed = 900f; // degrees per second
 
         private CharacterController _controller;
+        private PlayerStats _stats;
         private Vector3 _velocity; // planar
         private float _verticalSpeed;
 
-        public float MaxSpeed => maxSpeed;
+        public float MaxSpeed => PlayerStats.Eval(_stats, StatId.MoveSpeed, maxSpeed);
         public Vector3 Velocity => _velocity;
 
         public void SetJoystick(FloatingJoystick value) => joystick = value;
 
-        private void Awake() => _controller = GetComponent<CharacterController>();
+        private void Awake()
+        {
+            _controller = GetComponent<CharacterController>();
+            _stats = GetComponent<PlayerStats>();
+        }
 
         // Disabled (e.g. on death): report standing still, so footsteps, markers and aim stop at once.
         private void OnDisable() => _velocity = Vector3.zero;
@@ -38,7 +45,7 @@ namespace SurvivorSouls.Gameplay.Player
 
             float magnitude = Mathf.Clamp01(stick.magnitude / fullSpeedAt);
             Vector3 desired = stick.sqrMagnitude > 0f
-                ? new Vector3(stick.x, 0f, stick.y).normalized * (magnitude * maxSpeed)
+                ? new Vector3(stick.x, 0f, stick.y).normalized * (magnitude * MaxSpeed)
                 : Vector3.zero;
             _velocity = Vector3.MoveTowards(_velocity, desired, acceleration * dt);
 

@@ -41,6 +41,8 @@
                 <ui:Label name="player-hp-value" text="" class="hud-hp__value" picking-mode="Ignore" />
             </ui:VisualElement>
         </ui:VisualElement>
+        <!-- Owned skills (SkillHud, KAN-19): icon slots added in code, pick order. -->
+        <ui:VisualElement name="skill-row" class="hud-skills" picking-mode="Ignore" />
         <ui:VisualElement class="hud-spacer" picking-mode="Ignore" />
         <ui:Label name="lbl-hint" text="Drag anywhere to move" class="hud-hint" picking-mode="Ignore" />
     </ui:VisualElement>
@@ -53,11 +55,47 @@
     <!-- "LEVEL UP" over the Knight (XpHud), placed in code at a world point. -->
     <ui:Label name="levelup-pop" text="LEVEL UP" class="levelup-pop hud-hidden" picking-mode="Ignore" />
 
-    <!-- Level-up screen (LevelUpBanner placeholder until the KAN-19 skill cards). Game is paused while shown. -->
-    <ui:VisualElement name="levelup-screen" class="levelup hud-hidden" picking-mode="Ignore">
-        <ui:VisualElement class="levelup__band" picking-mode="Ignore">
-            <ui:Label name="levelup-title" text="LEVEL 2" class="levelup__title" picking-mode="Ignore" />
-            <ui:Label text="YOUR SOUL GROWS STRONGER" class="levelup__sub" picking-mode="Ignore" />
+    <!-- Level-up skill pick (SkillChoiceScreen, KAN-19). Game is paused while shown. hud-modal: a press here never starts
+         the joystick. Cards filled and animated in code; card count/order = SkillChoiceScreen.MaxCards. -->
+    <ui:VisualElement name="skill-choice" class="skills hud-modal hud-hidden">
+        <ui:VisualElement class="skills__band" picking-mode="Ignore">
+            <ui:Label name="skill-choice-title" text="LEVEL 2" class="skills__title" picking-mode="Ignore" />
+            <ui:Label text="CHOOSE AN EMBER BOON" class="skills__sub" picking-mode="Ignore" />
+        </ui:VisualElement>
+        <ui:VisualElement class="skills__cards" picking-mode="Ignore">
+            <ui:Button name="skill-card-0" class="skill-card">
+                <ui:Label text="COMMON" class="skill-card__rarity" picking-mode="Ignore" />
+                <ui:VisualElement class="skill-card__plate" picking-mode="Ignore">
+                    <ui:VisualElement class="skill-card__icon" picking-mode="Ignore" />
+                </ui:VisualElement>
+                <ui:Label text="SKILL" class="skill-card__name" picking-mode="Ignore" />
+                <ui:Label text="" class="skill-card__desc" picking-mode="Ignore" />
+                <ui:VisualElement class="hud-spacer" picking-mode="Ignore" />
+                <ui:VisualElement class="skill-card__pips" picking-mode="Ignore" />
+                <ui:Label text="NEW" class="skill-card__badge" picking-mode="Ignore" />
+            </ui:Button>
+            <ui:Button name="skill-card-1" class="skill-card">
+                <ui:Label text="COMMON" class="skill-card__rarity" picking-mode="Ignore" />
+                <ui:VisualElement class="skill-card__plate" picking-mode="Ignore">
+                    <ui:VisualElement class="skill-card__icon" picking-mode="Ignore" />
+                </ui:VisualElement>
+                <ui:Label text="SKILL" class="skill-card__name" picking-mode="Ignore" />
+                <ui:Label text="" class="skill-card__desc" picking-mode="Ignore" />
+                <ui:VisualElement class="hud-spacer" picking-mode="Ignore" />
+                <ui:VisualElement class="skill-card__pips" picking-mode="Ignore" />
+                <ui:Label text="NEW" class="skill-card__badge" picking-mode="Ignore" />
+            </ui:Button>
+            <ui:Button name="skill-card-2" class="skill-card">
+                <ui:Label text="COMMON" class="skill-card__rarity" picking-mode="Ignore" />
+                <ui:VisualElement class="skill-card__plate" picking-mode="Ignore">
+                    <ui:VisualElement class="skill-card__icon" picking-mode="Ignore" />
+                </ui:VisualElement>
+                <ui:Label text="SKILL" class="skill-card__name" picking-mode="Ignore" />
+                <ui:Label text="" class="skill-card__desc" picking-mode="Ignore" />
+                <ui:VisualElement class="hud-spacer" picking-mode="Ignore" />
+                <ui:VisualElement class="skill-card__pips" picking-mode="Ignore" />
+                <ui:Label text="NEW" class="skill-card__badge" picking-mode="Ignore" />
+            </ui:Button>
         </ui:VisualElement>
     </ui:VisualElement>
 

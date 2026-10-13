@@ -101,7 +101,11 @@ namespace SurvivorSouls.UI.Hud
             _layer.RemoveFromHierarchy();
         }
 
-        private void OnDamaged(Enemy enemy, float deducted, bool killed) => Show(enemy, killed);
+        // Fire ticks and soul bursts are not the player's shot: no marker unless they kill.
+        private void OnDamaged(Enemy enemy, float deducted, bool killed)
+        {
+            if (killed || enemy.LastDamageKind == DamageKind.Direct) Show(enemy, killed);
+        }
 
         /// <summary>Shows a hit (or kill) marker on <paramref name="enemy"/>. Restarts its marker if it already has one.</summary>
         public void Show(Enemy enemy, bool kill)

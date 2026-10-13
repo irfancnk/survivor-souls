@@ -421,27 +421,28 @@
     -unity-text-outline-color: rgba(10, 30, 60, 0.95);
 }
 
-/* Level-up screen (LevelUpBanner placeholder): soft veil, dark band, soul-blue title. Opacity set in code.
-   Band in the upper third: the Knight (screen centre), its burst ring and the "LEVEL UP" pop stay visible below. */
-.levelup {
+/* Level-up skill pick (SkillChoiceScreen, KAN-19): veil, header band, three rune cards. Opacity, translate and scale of the
+   screen and cards are set in code. Rarity: common = worn steel, rare = soul blue, epic = ember gold. */
+.skills {
     position: absolute;
     left: 0; right: 0; top: 0; bottom: 0;
-    justify-content: flex-start;
-    padding-top: 400px;
-    background-color: rgba(4, 10, 20, 0.35);
+    justify-content: center;
+    padding: 0 30px 160px 30px;
+    background-color: rgba(4, 8, 14, 0.62);
 }
 
-.levelup__band {
-    padding: 56px 0;
-    background-color: rgba(4, 8, 16, 0.75);
+.skills__band {
+    padding: 34px 0 30px 0;
+    margin: 0 -30px 56px -30px;
+    background-color: rgba(4, 8, 16, 0.8);
     border-top-width: 2px;
     border-bottom-width: 2px;
-    border-color: rgba(156, 210, 255, 0.45);
+    border-color: rgba(232, 196, 120, 0.45);
     align-items: center;
 }
 
-.levelup__title {
-    font-size: 116px;
+.skills__title {
+    font-size: 104px;
     letter-spacing: 10px;
     -unity-font-style: bold;
     -unity-text-align: middle-center;
@@ -452,11 +453,203 @@
     margin: 0;
 }
 
-.levelup__sub {
-    margin-top: 18px;
+.skills__sub {
+    margin-top: 12px;
     padding: 0;
     font-size: 36px;
     letter-spacing: 6px;
     -unity-text-align: middle-center;
-    color: var(--hud-ash);
+    color: var(--hud-gold);
+}
+
+.skills__cards {
+    flex-direction: row;
+    justify-content: center;
+    align-items: stretch;
+}
+
+.unity-button.skill-card {
+    width: 316px;
+    height: 560px;
+    margin: 0 9px;
+    padding: 22px 16px 22px 16px;
+    flex-direction: column;
+    align-items: center;
+    border-radius: 18px;
+    border-width: 4px;
+    border-color: var(--card-rim);
+    border-top-width: 10px;
+    background-color: rgba(22, 20, 24, 0.96);
+    transition-property: background-color;
+    transition-duration: 0.08s;
+}
+
+.unity-button.skill-card:hover {
+    background-color: rgba(30, 28, 32, 0.96);
+}
+
+.unity-button.skill-card:active {
+    background-color: rgba(48, 40, 30, 0.98);
+}
+
+/* Single-class rules so the rarity classes below (same specificity, later) override the defaults. */
+.skill-card { --card-rim: rgb(150, 146, 138); --card-glow: rgb(222, 216, 204); }
+.skill-card--common { --card-rim: rgb(150, 146, 138); --card-glow: rgb(222, 216, 204); }
+.skill-card--rare { --card-rim: rgb(86, 150, 236); --card-glow: rgb(170, 214, 255); }
+.skill-card--epic { --card-rim: rgb(232, 150, 52); --card-glow: rgb(255, 214, 140); }
+
+.unity-button.skill-card--rare {
+    background-color: rgba(14, 22, 36, 0.96);
+}
+
+.unity-button.skill-card--epic {
+    background-color: rgba(36, 22, 12, 0.96);
+}
+
+.skill-card__rarity {
+    font-size: 26px;
+    letter-spacing: 5px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    color: var(--card-glow);
+    margin: 0 0 14px 0;
+    padding: 0;
+}
+
+.skill-card__plate {
+    width: 196px;
+    height: 196px;
+    border-radius: 98px;
+    border-width: 4px;
+    border-color: var(--card-rim);
+    background-color: rgba(6, 6, 8, 0.85);
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.skill-card__icon {
+    width: 150px;
+    height: 150px;
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: var(--card-glow);
+}
+
+.skill-card__name {
+    font-size: 38px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    white-space: normal;
+    color: rgb(255, 236, 196);
+    -unity-text-outline-width: 1px;
+    -unity-text-outline-color: rgba(0, 0, 0, 0.9);
+    margin: 0 0 12px 0;
+    padding: 0;
+}
+
+.skill-card__desc {
+    font-size: 30px;
+    -unity-text-align: upper-center;
+    white-space: normal;
+    color: rgb(206, 200, 188);
+    margin: 0;
+    padding: 0 4px;
+}
+
+.skill-card__pips {
+    flex-direction: row;
+    justify-content: center;
+    margin-bottom: 12px;
+}
+
+.skill-pip {
+    width: 30px;
+    height: 12px;
+    margin: 0 4px;
+    border-radius: 3px;
+    background-color: rgba(255, 255, 255, 0.12);
+    border-width: 1px;
+    border-color: rgba(0, 0, 0, 0.6);
+}
+
+.skill-pip--on {
+    background-color: var(--card-rim);
+}
+
+.skill-pip--next {
+    background-color: var(--card-glow);
+    border-color: rgb(255, 255, 255);
+}
+
+.skill-card__badge {
+    position: absolute;
+    top: -26px;
+    right: 14px;
+    padding: 4px 14px;
+    border-radius: 8px;
+    font-size: 24px;
+    letter-spacing: 3px;
+    -unity-font-style: bold;
+    color: rgb(30, 18, 8);
+    background-color: var(--hud-gold);
+}
+
+/* Owned skills row (SkillHud, KAN-19): under the health bar, left aligned. */
+.hud-skills {
+    flex-direction: row;
+    flex-wrap: wrap;
+    padding: 14px 40px 0 40px;
+}
+
+.hud-skill {
+    width: 76px;
+    height: 76px;
+    margin: 0 10px 10px 0;
+    border-radius: 38px;
+    border-width: 3px;
+    border-color: var(--slot-rim);
+    background-color: rgba(8, 8, 10, 0.72);
+    align-items: center;
+    justify-content: center;
+    --slot-rim: rgb(150, 146, 138);
+    --slot-glow: rgb(222, 216, 204);
+}
+
+.hud-skill--rare { --slot-rim: rgb(86, 150, 236); --slot-glow: rgb(170, 214, 255); }
+.hud-skill--epic { --slot-rim: rgb(232, 150, 52); --slot-glow: rgb(255, 214, 140); }
+
+.hud-skill__icon {
+    width: 56px;
+    height: 56px;
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: var(--slot-glow);
+}
+
+.hud-skill__stack {
+    position: absolute;
+    right: -8px;
+    bottom: -8px;
+    font-size: 26px;
+    -unity-font-style: bold;
+    color: rgb(255, 236, 196);
+    -unity-text-outline-width: 2px;
+    -unity-text-outline-color: rgba(0, 0, 0, 0.95);
+    margin: 0;
+    padding: 0;
+}
+
+/* Crit and fire damage numbers (CombatHud, KAN-19). */
+.combat-number--crit {
+    color: rgb(255, 214, 92);
+    font-size: 60px;
+}
+
+.combat-number--burn {
+    color: rgb(255, 150, 60);
+    font-size: 36px;
+}
+
+.combat-number--burst {
+    color: rgb(190, 226, 255);
+    font-size: 42px;
 }

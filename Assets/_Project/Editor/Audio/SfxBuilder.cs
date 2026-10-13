@@ -19,7 +19,7 @@ namespace SurvivorSouls.Editor.Audio
 
         public sealed class Set
         {
-            public AudioClip[] Shots, Impacts, Deaths, Footsteps, HitMarkers, KillMarkers, SoulChimes, LevelUps;
+            public AudioClip[] Shots, Impacts, Deaths, Footsteps, HitMarkers, KillMarkers, SoulChimes, LevelUps, BoonPicks;
             public AudioClip Ambience;
         }
 
@@ -39,6 +39,7 @@ namespace SurvivorSouls.Editor.Audio
                 KillMarkers = Many("sfx_killmarker", 1, KillMarker),
                 SoulChimes = Many("sfx_soul_chime", 2, SoulChime),
                 LevelUps = Many("sfx_level_up", 1, LevelUp),
+                BoonPicks = Many("sfx_boon_pick", 1, BoonPick),
             };
             set.Ambience = Save("amb_meadow_wind_loop", AmbienceRate, MeadowAmbience(AmbienceRate, 24f, 9), ambience: true);
             return set;
@@ -187,6 +188,24 @@ namespace SurvivorSouls.Editor.Audio
             }
             Sweep(b, 0f, 0.5f, 98f, 130.8f, 0.3f, 5f, 2);                    // low body under the rise
             return Normalize(b, 0.85f);
+        }
+
+        /// <summary>
+        /// Skill picked (KAN-19): a low ember "whumpf" (fire catching), a bright rune strike (fifth + octave bell) and a
+        /// short crackle tail. Distinct from the level-up arpeggio that plays just before it.
+        /// </summary>
+        private static float[] BoonPick(int seed)
+        {
+            var rng = new System.Random(seed * 907);
+            var b = new float[(int)(Rate * 0.9f)];
+            NoiseBurst(b, 0f, 0.35f, 0.5f, 90f, 600f, 9f, rng);                // fire catching
+            Sweep(b, 0f, 0.3f, 110f, 73.4f, 0.45f, 10f, 2);                    // low body
+            Sweep(b, 0.03f, 0.85f, 880f, 880f, 0.3f, 5f, 2);                   // A5 strike
+            Sweep(b, 0.03f, 0.7f, 1318.5f, 1318.5f, 0.18f, 6f, 1);             // E6 fifth
+            Sweep(b, 0.03f, 0.5f, 1761f, 1760f, 0.08f, 9f, 1);                 // octave shimmer
+            for (int i = 0; i < 9; i++)                                        // ember crackle
+                Click(b, 0.12f + (float)rng.NextDouble() * 0.45f, 0.004f, 0.12f + (float)rng.NextDouble() * 0.1f, 4200f, rng);
+            return Normalize(b, 0.8f);
         }
 
         /// <summary>Seamless meadow loop: soft gusting wind (filtered brown noise) and sparse bird chirps.</summary>

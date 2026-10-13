@@ -7,7 +7,8 @@ namespace SurvivorSouls.UI.Hud
 {
     /// <summary>
     /// World-anchored combat UI on the HUD document: a thin health bar over every living enemy and a
-    /// floating "-N" number per hit (health actually deducted; red on the killing blow).
+    /// floating "-N" number per hit (health actually deducted; red on the killing blow, gold "N!" on a crit, small orange for
+    /// fire ticks, pale blue for soul bursts).
     /// Elements are pooled and placed each frame from world positions (after the camera moved).
     /// Looks live in GameHud.uss (combat-* classes).
     /// </summary>
@@ -20,6 +21,9 @@ namespace SurvivorSouls.UI.Hud
         private const string BarFillClass = "combat-bar__fill";
         private const string NumberClass = "combat-number";
         private const string NumberKillClass = "combat-number--kill";
+        private const string NumberCritClass = "combat-number--crit";
+        private const string NumberBurnClass = "combat-number--burn";
+        private const string NumberBurstClass = "combat-number--burst";
 
         [SerializeField] private Camera worldCamera;
         [SerializeField, Min(0.1f)] private float numberLifetime = 0.85f;
@@ -59,8 +63,13 @@ namespace SurvivorSouls.UI.Hud
         private void OnDamaged(Enemy enemy, float deducted, bool killed)
         {
             var label = _freeLabels.Count > 0 ? _freeLabels.Pop() : NewLabel();
-            label.text = "-" + Mathf.CeilToInt(deducted);
+            bool crit = enemy.LastHitCrit;
+            var kind = enemy.LastDamageKind;
+            label.text = crit ? Mathf.CeilToInt(deducted) + "!" : "-" + Mathf.CeilToInt(deducted);
             label.EnableInClassList(NumberKillClass, killed);
+            label.EnableInClassList(NumberCritClass, crit);
+            label.EnableInClassList(NumberBurnClass, kind == DamageKind.Burn);
+            label.EnableInClassList(NumberBurstClass, kind == DamageKind.Burst);
             label.style.display = DisplayStyle.Flex;
             Vector3 jitter = new Vector3(Random.Range(-0.25f, 0.25f), 0f, 0f);
             _numbers.Add(new Number { Label = label, World = enemy.BarAnchor + Vector3.up * 0.15f + jitter, Age = 0f });

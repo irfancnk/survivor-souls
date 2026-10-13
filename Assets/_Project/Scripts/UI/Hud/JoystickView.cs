@@ -19,6 +19,7 @@ namespace SurvivorSouls.UI.Hud
         private const string RootName = "joystick";
         private const string RingName = "joystick-ring";
         private const string KnobName = "joystick-knob";
+        public const string ModalClass = "hud-modal";
         private static readonly string[] SideNames = { "joystick-side-up", "joystick-side-right", "joystick-side-down", "joystick-side-left" };
         /// <summary>Side directions in joystick space (x = right, y = up), same order as the side elements.</summary>
         public static readonly Vector2[] SideDirections = { Vector2.up, Vector2.right, Vector2.down, Vector2.left };
@@ -144,13 +145,16 @@ namespace SurvivorSouls.UI.Hud
             _written[slot] = value;
         }
 
-        /// <summary>True when a HUD button is under the screen point, so a press there stays a button press.</summary>
+        /// <summary>
+        /// True when a HUD button or a modal screen (class <see cref="ModalClass"/>, e.g. the skill pick) is under the
+        /// screen point, so a press there stays a UI press.
+        /// </summary>
         private bool IsOverButton(Vector2 screen)
         {
             var panel = _root?.panel;
             if (panel == null) return false;
             for (var e = panel.Pick(ToPanel(panel, screen)); e != null; e = e.parent)
-                if (e is Button) return true;
+                if (e is Button || e.ClassListContains(ModalClass)) return true;
             return false;
         }
 
