@@ -708,6 +708,15 @@
     background-color: var(--hud-gold);
 }
 
+/* Upgrade of an owned skill (KAN-50): "LV N → N+1", dark plate + gold text, so NEW stays the louder badge. */
+.skill-card__badge--up {
+    letter-spacing: 1px;
+    color: var(--hud-gold);
+    background-color: rgba(14, 10, 6, 0.92);
+    border-width: 2px;
+    border-color: var(--hud-gold);
+}
+
 /* Owned skills row (SkillHud, KAN-19): under the health bar, left aligned. */
 .hud-skills {
     flex-direction: row;
