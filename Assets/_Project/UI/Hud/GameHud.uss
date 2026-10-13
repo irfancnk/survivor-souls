@@ -133,6 +133,50 @@
     font-size: 54px;
 }
 
+/* Hit / kill marker (HitMarkerHud, KAN-13). Zero-size marker placed with translate; arms rotated in code
+   (45/135/225/315 deg) about their own point; each tick sits above its arm, past the centre gap.
+   Gap = -top - height. Dark border keeps white ticks readable on pale sand plazas. */
+.hit-marker-layer {
+    position: absolute;
+    left: 0; right: 0; top: 0; bottom: 0;
+    overflow: hidden;
+}
+
+.hit-marker {
+    position: absolute;
+    left: 0; top: 0;
+    width: 0;
+    height: 0;
+}
+
+.hit-marker__arm {
+    position: absolute;
+    left: 0; top: 0;
+    width: 0;
+    height: 0;
+}
+
+.hit-marker__tick {
+    position: absolute;
+    width: 9px;
+    height: 30px;
+    left: -4.5px;
+    top: -54px; /* gap 24 px */
+    border-radius: 3px;
+    border-width: 1.5px;
+    border-color: rgba(0, 0, 0, 0.55);
+    background-color: rgb(255, 255, 255);
+}
+
+.hit-marker--kill .hit-marker__tick {
+    width: 12px;
+    height: 42px;
+    left: -6px;
+    top: -72px; /* gap 30 px */
+    border-color: rgba(30, 0, 0, 0.6);
+    background-color: rgb(236, 44, 34);
+}
+
 /* Player health (PlayerHealthHud). Fill/trail widths set in code (percent). Green = the player; red = enemies. */
 .hud-hp {
     flex-grow: 1;

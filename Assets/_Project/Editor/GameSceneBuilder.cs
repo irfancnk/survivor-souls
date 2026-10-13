@@ -183,7 +183,7 @@ namespace SurvivorSouls.Editor
             for (int i = 0; i < values.Count; i++) array.GetArrayElementAtIndex(i).objectReferenceValue = values[i];
         }
 
-        /// <summary>Procedural sound set (shots, impacts, deaths, footsteps, meadow ambience) on one audio object.</summary>
+        /// <summary>Procedural sound set (shots, impacts, marker ticks, deaths, footsteps, meadow ambience) on one audio object.</summary>
         private static void CreateAudio(SfxBuilder.Set sfx, AutoShooter shooter, PlayerMover mover, PlayerHealth health)
         {
             var audio = new GameObject("Audio").AddComponent<GameAudio>();
@@ -195,6 +195,8 @@ namespace SurvivorSouls.Editor
             SetClips(so.FindProperty("impacts"), sfx.Impacts);
             SetClips(so.FindProperty("deaths"), sfx.Deaths);
             SetClips(so.FindProperty("footsteps"), sfx.Footsteps);
+            SetClips(so.FindProperty("hitMarkers"), sfx.HitMarkers);
+            SetClips(so.FindProperty("killMarkers"), sfx.KillMarkers);
             so.FindProperty("ambience").objectReferenceValue = sfx.Ambience;
             so.ApplyModifiedPropertiesWithoutUndo();
         }
@@ -239,6 +241,7 @@ namespace SurvivorSouls.Editor
             if (doc.visualTreeAsset == null) throw new System.InvalidOperationException($"UXML missing: {HudUxmlPath}");
             SetRef(go.AddComponent<GameHudController>(), "joystick", joystick);
             SetRef(go.AddComponent<CombatHud>(), "worldCamera", camera);
+            SetRef(go.AddComponent<HitMarkerHud>(), "worldCamera", camera);
             var hp = go.AddComponent<PlayerHealthHud>();
             SetRef(hp, "health", health);
             SetRef(hp, "death", death);

@@ -19,7 +19,7 @@ namespace SurvivorSouls.Editor.Audio
 
         public sealed class Set
         {
-            public AudioClip[] Shots, Impacts, Deaths, Footsteps;
+            public AudioClip[] Shots, Impacts, Deaths, Footsteps, HitMarkers, KillMarkers;
             public AudioClip Ambience;
         }
 
@@ -35,6 +35,8 @@ namespace SurvivorSouls.Editor.Audio
                 Impacts = Many("sfx_bolt_impact", 3, BoltImpact),
                 Deaths = Many("sfx_hollow_death", 2, HollowDeath),
                 Footsteps = Many("sfx_footstep_armour", 4, Footstep),
+                HitMarkers = Many("sfx_hitmarker_tick", 2, HitMarkerTick),
+                KillMarkers = Many("sfx_killmarker", 1, KillMarker),
             };
             set.Ambience = Save("amb_meadow_wind_loop", AmbienceRate, MeadowAmbience(AmbienceRate, 24f, 9), ambience: true);
             return set;
@@ -114,6 +116,32 @@ namespace SurvivorSouls.Editor.Audio
             NoiseBurst(b, 0.005f, 0.16f, 0.22f, 2500f, 7000f, 22f, rng);
             Sweep(b, 0.012f, 0.12f, 2350f * v, 2300f * v, 0.05f, 40f, 2);
             return Normalize(b, 0.8f);
+        }
+
+        /// <summary>Hit marker confirm (KAN-13): dry, bright, very short metallic tick. Sits on top of the bolt impact.</summary>
+        private static float[] HitMarkerTick(int seed)
+        {
+            var rng = new System.Random(seed * 503);
+            var b = new float[(int)(Rate * 0.07f)];
+            float v = 1f + (float)(rng.NextDouble() - 0.5) * 0.06f;
+            Click(b, 0f, 0.0025f, 0.6f, 9000f, rng);
+            Sweep(b, 0f, 0.06f, 3400f * v, 3150f * v, 0.5f, 85f, 2);        // tick ring
+            Sweep(b, 0f, 0.04f, 5100f * v, 4900f * v, 0.18f, 120f, 1);      // shimmer
+            NoiseBurst(b, 0f, 0.03f, 0.2f, 3000f, 9000f, 140f, rng);
+            return Normalize(b, 0.8f);
+        }
+
+        /// <summary>Kill marker confirm (KAN-13): deeper thunk under a lower two-note ping. Clearly heavier than the hit tick.</summary>
+        private static float[] KillMarker(int seed)
+        {
+            var rng = new System.Random(seed * 601);
+            var b = new float[(int)(Rate * 0.22f)];
+            Click(b, 0f, 0.003f, 0.55f, 7000f, rng);
+            Sweep(b, 0f, 0.14f, 210f, 120f, 0.75f, 28f, 2);                  // thunk
+            Sweep(b, 0f, 0.12f, 1850f, 1780f, 0.35f, 30f, 2);                // ping
+            Sweep(b, 0.035f, 0.15f, 2470f, 2400f, 0.25f, 26f, 1);            // second ping, a fourth up
+            NoiseBurst(b, 0f, 0.05f, 0.25f, 400f, 2400f, 60f, rng);
+            return Normalize(b, 0.85f);
         }
 
         /// <summary>Seamless meadow loop: soft gusting wind (filtered brown noise) and sparse bird chirps.</summary>

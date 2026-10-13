@@ -110,6 +110,16 @@
   - Verified: scene rebuild 0 errors, mac dev build, screenshots (low HP + death screen).
   - Not done: haptic on hit (KAN-12 owns haptics), real death clip (placeholder tip-over).
 
+- 2026-10-13: Hit / kill marker, Call of Duty style (KAN-13, branch `feat/kan-13-hit-marker`, from KAN-18 head).
+  - `UI/Hud/HitMarkerHud` (on HUD object): 4 diagonal ticks around a gap, at the hit enemy's `AimPoint` (follows the body; screen centre if off screen). Hit = white, pop 1.2 -> 1, 0.2 s. Kill = bigger red ticks, pop 1.45 -> 1, 0.38 s. Hold 35 % of life, then ease-out fade.
+  - Listens to `Enemy.Damaged` (already carries the kill flag: no new events needed). Fixed pool of 6 built in OnEnable; same enemy hit again restarts its marker (kill upgrades it, hit never downgrades a kill); pool full = reuse oldest. No allocations per hit. Layer inserted under the joystick, picking ignored.
+  - Looks: `hit-marker*` in GameHud.uss (dark 1.5 px border keeps white readable on pale stone).
+  - Sounds: `SfxBuilder` adds `sfx_hitmarker_tick_01..02` (bright 3.4 kHz tick, 70 ms) + `sfx_killmarker_01` (thunk + two-note ping, 220 ms). `GameAudio` plays them on `Enemy.Damaged` (hit ticks rate limited 40 ms; kill always). SFX volume from GameSettings.
+  - Tests: `Tests/PlayMode/HitMarkerTests` (7): hit marker, kill marker, repeat hits reuse 1 marker, hit then kill upgrades, pool caps at capacity, expiry (kill outlives hit), no GC alloc. All 13 PlayMode tests pass.
+  - DevScreenshot `-ss-hit-marker <hit|kill>` pops a marker on the nearest enemy before capture. Screenshots `Docs/screenshots/game-hit-marker.png`, `game-kill-marker.png`.
+  - Verified: batch scene rebuild 0 errors, mac dev build OK, screenshots OK, no runtime exceptions. Not deployed to iPhone this run.
+  - Not done: haptic on kill (KAN-12, same `Enemy.Damaged` killed flag).
+
 ## DECISIONS
 - Design language: Archero / Archero 2 (menus, loop, chests, daily/weekly quests, gear merge, talents, energy). Look: Dark Souls, realistic, not dismal. User decision 2026-10-11.
 - Naming map: energy=Estus, gold=Souls, gems=Ember Shards, chests=Reliquaries, daily=Oaths, weekly=Pilgrimage, chapter=Realm, room=Chamber. See GAME_PLAN sec 2.

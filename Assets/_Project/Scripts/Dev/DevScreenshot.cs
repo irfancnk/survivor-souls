@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Globalization;
 using SurvivorSouls.Gameplay.CameraRig;
+using SurvivorSouls.Gameplay.Combat;
 using SurvivorSouls.Gameplay.Controls;
 using SurvivorSouls.Gameplay.Player;
 using UnityEngine;
@@ -18,6 +19,7 @@ namespace SurvivorSouls.Dev
     /// <c>-ss-closeup &lt;yawDeg&gt;</c> frames the player up close (0 = from the front).
     /// <c>-ss-near-exit</c> moves the player in front of the exit door (open world).
     /// <c>-ss-player-hp &lt;0..1&gt;</c> sets the player's health fraction after load (0 = death screen).
+    /// <c>-ss-hit-marker &lt;hit|kill&gt;</c> pops a hit (or kill) marker on the nearest enemy just before the capture.
     /// Used by tools/agents to verify visuals without a human. Inactive in release builds (Debug.isDebugBuild).
     /// </summary>
     public sealed class DevScreenshot : MonoBehaviour
@@ -29,6 +31,7 @@ namespace SurvivorSouls.Dev
         private string _closeup;
         private bool _nearExit;
         private string _playerHp;
+        private string _hitMarker;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void Bootstrap()
@@ -50,6 +53,7 @@ namespace SurvivorSouls.Dev
             shot._closeup = GetArg("-ss-closeup");
             shot._nearExit = Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-near-exit") >= 0;
             shot._playerHp = GetArg("-ss-player-hp");
+            shot._hitMarker = GetArg("-ss-hit-marker");
         }
 
         private IEnumerator Start()
@@ -71,6 +75,7 @@ namespace SurvivorSouls.Dev
 
             yield return new WaitForSecondsRealtime(_delay);
             if (!string.IsNullOrEmpty(_closeup)) FrameCloseup(float.Parse(_closeup, CultureInfo.InvariantCulture));
+            if (!string.IsNullOrEmpty(_hitMarker)) ShowHitMarker(_hitMarker == "kill");
             yield return null;
             yield return new WaitForEndOfFrame();
             ScreenCapture.CaptureScreenshot(_path);
@@ -94,6 +99,22 @@ namespace SurvivorSouls.Dev
         {
             var health = FindAnyObjectByType<PlayerHealth>();
             if (health != null) health.TakeDamage(health.Max * (1f - Mathf.Clamp01(fraction)));
+        }
+
+        private static void ShowHitMarker(bool kill)
+        {
+            var hud = FindAnyObjectByType<SurvivorSouls.UI.Hud.HitMarkerHud>();
+            var player = FindAnyObjectByType<PlayerMover>();
+            if (hud == null || player == null) return;
+            Enemy nearest = null;
+            float best = float.MaxValue;
+            foreach (var e in Enemy.Active)
+            {
+                float d = (e.transform.position - player.transform.position).sqrMagnitude;
+                if (d < best) { best = d; nearest = e; }
+            }
+            if (nearest != null) hud.Show(nearest, kill);
+            else Debug.LogWarning("[DevScreenshot] -ss-hit-marker: no enemy alive");
         }
 
         /// <summary>Stops the follow camera and frames the player's upper body from <paramref name="yaw"/> degrees.</summary>
