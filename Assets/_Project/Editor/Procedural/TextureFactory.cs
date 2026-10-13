@@ -16,7 +16,7 @@ namespace SurvivorSouls.Editor.Procedural
         /// <summary>Generates a PNG at <paramref name="path"/> (always overwrites) and returns the imported texture.</summary>
         public static Texture2D Write(string path, int width, int height, Func<int, int, Color> pixel, Kind kind,
             bool mipmaps = true, TextureWrapMode wrap = TextureWrapMode.Repeat, FilterMode filter = FilterMode.Bilinear,
-            int maxSize = 1024)
+            int maxSize = 1024, bool compress = true)
         {
             EditorAssetUtil.EnsureFolder(Path.GetDirectoryName(path).Replace('\\', '/'));
             var tex = new Texture2D(width, height, TextureFormat.RGBA32, false, kind != Kind.Color);
@@ -37,7 +37,8 @@ namespace SurvivorSouls.Editor.Procedural
             importer.filterMode = filter;
             importer.anisoLevel = 1;
             importer.maxTextureSize = maxSize;
-            importer.textureCompression = TextureImporterCompression.Compressed; // ASTC on mobile
+            // ASTC on mobile. Uncompressed only for small masks whose edges get sharpened in a shader (blocks would show).
+            importer.textureCompression = compress ? TextureImporterCompression.Compressed : TextureImporterCompression.Uncompressed;
             importer.SaveAndReimport();
             return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
         }

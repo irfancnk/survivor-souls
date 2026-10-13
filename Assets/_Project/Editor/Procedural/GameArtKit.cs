@@ -15,7 +15,7 @@ namespace SurvivorSouls.Editor.Procedural
         private const string SoftDotPath = "Assets/_Project/Art/Textures/T_SoftDot.png"; // made by MainMenuSceneBuilder
 
         public Material Palette, Floor, OuterGround, Grass, Wall, RuneDecal, BlobShadow, Flame, Ember, Mist;
-        public Material HeroRing, DirectionMarker, Gold;
+        public Material HeroRing, DirectionMarker, Gold, GoldRim;
         public Texture2D SoftDot;
         public Mesh Quad;
 
@@ -59,15 +59,20 @@ namespace SurvivorSouls.Editor.Procedural
             kit.Ember = EditorAssetUtil.ParticleMaterial($"{MatDir}/M_FX_Ember.mat", kit.SoftDot, additive: true);
             kit.Mist = EditorAssetUtil.ParticleMaterial($"{MatDir}/M_FX_Mist.mat", kit.SoftDot, additive: false);
 
-            // Player readability: pale ring under the feet, move-direction ring, gold objective arrow.
+            // Player readability: warm ring under the feet, move-direction ring, gold objective arrow with a dark rim.
+            // Saturated amber, not pale gold: it must read on white snow (Realm 1) as well as on stone.
             var ring = TextureFactory.Write($"{TexDir}/T_Ring.png", 128, 128, RingPixel, TextureFactory.Kind.Color,
                 wrap: TextureWrapMode.Clamp, maxSize: 128);
-            kit.HeroRing = EditorAssetUtil.TransparentMaterial($"{MatDir}/M_HeroRing.mat", EditorAssetUtil.Unlit, ring, new Color(1f, 0.9f, 0.6f, 0.55f));
-            kit.DirectionMarker = EditorAssetUtil.TransparentMaterial($"{MatDir}/M_DirectionMarker.mat", EditorAssetUtil.Unlit, ring, new Color(1f, 0.95f, 0.8f, 0.85f));
+            kit.HeroRing = EditorAssetUtil.TransparentMaterial($"{MatDir}/M_HeroRing.mat", EditorAssetUtil.Unlit, ring, new Color(0.95f, 0.5f, 0.1f, 0.75f));
+            kit.DirectionMarker = EditorAssetUtil.TransparentMaterial($"{MatDir}/M_DirectionMarker.mat", EditorAssetUtil.Unlit, ring, new Color(0.9f, 0.42f, 0.08f, 0.9f));
             kit.Gold = EditorAssetUtil.LoadOrCreateMaterial($"{MatDir}/M_Gold.mat", EditorAssetUtil.Unlit);
             kit.Gold.SetColor("_BaseColor", new Color(1f, 0.78f, 0.22f));
             kit.Gold.SetFloat("_Cull", 0f); // flat arrow: visible from both sides
             EditorUtility.SetDirty(kit.Gold);
+            kit.GoldRim = EditorAssetUtil.LoadOrCreateMaterial($"{MatDir}/M_GoldRim.mat", EditorAssetUtil.Unlit);
+            kit.GoldRim.SetColor("_BaseColor", new Color(0.16f, 0.09f, 0.03f));
+            kit.GoldRim.SetFloat("_Cull", 0f);
+            EditorUtility.SetDirty(kit.GoldRim);
             AssetDatabase.SaveAssets();
             return kit;
         }

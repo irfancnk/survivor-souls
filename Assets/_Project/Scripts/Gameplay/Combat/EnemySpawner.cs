@@ -6,7 +6,7 @@ namespace SurvivorSouls.Gameplay.Combat
 {
     /// <summary>
     /// Keeps up to <see cref="maxAlive"/> enemies around the player: spawns one every <see cref="spawnInterval"/>
-    /// seconds on a ring (<see cref="spawnDistance"/>) and clamps the spot inside the world bounds. Pools enemies.
+    /// seconds on a ring (<see cref="spawnDistance"/>) and clamps the spot inside the playable area (on land). Pools enemies.
     /// </summary>
     public sealed class EnemySpawner : MonoBehaviour
     {
@@ -22,7 +22,11 @@ namespace SurvivorSouls.Gameplay.Combat
         private int _inUse; // alive + dying
         private float _timer;
 
-        private void Start() => _timer = firstSpawnDelay;
+        private void Start()
+        {
+            _timer = firstSpawnDelay;
+            Enemy.LandMaxZ = world != null ? world.PlayableMax.y + 0.8f : float.PositiveInfinity;
+        }
 
         private void Update()
         {
@@ -40,9 +44,9 @@ namespace SurvivorSouls.Gameplay.Combat
             Vector3 pos = player.position + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * dist;
             if (world != null)
             {
-                float limit = world.WorldHalfSize - 2f;
-                pos.x = Mathf.Clamp(pos.x, -limit, limit);
-                pos.z = Mathf.Clamp(pos.z, -limit, limit);
+                Vector2 min = world.PlayableMin + Vector2.one * 2f, max = world.PlayableMax - Vector2.one * 2f;
+                pos.x = Mathf.Clamp(pos.x, min.x, max.x);
+                pos.z = Mathf.Clamp(pos.z, min.y, max.y); // never in the sea
             }
             pos.y = 0f;
 

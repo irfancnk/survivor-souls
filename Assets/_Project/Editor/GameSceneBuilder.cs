@@ -26,7 +26,8 @@ using UnityEngine.UIElements;
 namespace SurvivorSouls.Editor
 {
     /// <summary>
-    /// Builds the Game scene from code: art kit (textures, materials), Archer prefab, arena, camera,
+    /// Builds the Game scene from code: art kit (textures, materials), Realm 1 look (snowy shore, sea, sky),
+    /// Archer prefab, streamed world, camera,
     /// joystick input, HUD and combat (auto-shooting crossbow, enemy spawner, health bars). Re-run after edits: menu "Survivor Souls/Rebuild Game Scene", or batchmode
     /// <c>-executeMethod SurvivorSouls.Editor.GameSceneBuilder.BuildFromCommandLine</c>.
     /// Hand edits to the generated scene are overwritten on rebuild.
@@ -39,18 +40,11 @@ namespace SurvivorSouls.Editor
         private const string HudPanelSettingsPath = Root + "/UI/Hud/GameHudPanelSettings.asset";
         private const string ThemePath = Root + "/UI/Theme/SurvivorSoulsTheme.tss";
 
-        // Night courtyard: cool moonlit ambient, warm braziers. Readable, not grim.
-        // Morning: pale sky haze, soft warm low sun, braziers still burning. Bright and readable, not grim.
-        private static readonly Color BackgroundColor = new Color(0.6f, 0.65f, 0.7f);
-        private static readonly Color AmbientSky = new Color(0.66f, 0.72f, 0.84f);
-        private static readonly Color AmbientEquator = new Color(0.56f, 0.53f, 0.5f);
-        private static readonly Color AmbientGround = new Color(0.36f, 0.31f, 0.26f);
-        private static readonly Color MoonColor = new Color(1f, 0.9f, 0.74f); // morning sun
-
         [MenuItem("Survivor Souls/Rebuild Game Scene")]
         public static void Build()
         {
             var kit = GameArtKit.Build();
+            var realm = RealmArt.Build(kit); // Realm 1 look: values in Art/World/Realm1_Look.asset
             // Main character: the Meshy model when its source GLB exists, else the procedural placeholder.
             var archerPrefab = ArcherModelBuilder.BuildPrefab(kit.Palette, kit.BlobShadow, kit.Quad);
             if (MeshyCharacterImporter.SourceExists) archerPrefab = MeshyCharacterImporter.BuildPrefab(kit.BlobShadow, kit.Quad);
@@ -58,22 +52,21 @@ namespace SurvivorSouls.Editor
             var panelSettings = CreatePanelSettings();
 
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
-            SetupEnvironment();
+            SetupEnvironment(realm);
             new GameObject("Game").AddComponent<GameSceneController>();
-            CreateMoonLight();
+            CreateSunLight(realm.Look);
 
             var joystick = new GameObject("Input").AddComponent<FloatingJoystick>();
             var player = (GameObject)PrefabUtility.InstantiatePrefab(archerPrefab);
             player.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity); // centre of the spawn tile
             SetRef(player.GetComponent<PlayerMover>(), "joystick", joystick);
-            var world = WorldBuilder.Build(kit, player.transform, player.GetComponent<PlayerMover>());
+            var world = WorldBuilder.Build(kit, realm, player.transform, player.GetComponent<PlayerMover>());
             var combat = CombatBuilder.Load();
             var shooter = CreateCombat(player, combat.bolt, combat.enemy, world);
             CombatBuilder.CreateFx(kit, shooter);
             CreateAudio(SfxBuilder.Build(), shooter, player.GetComponent<PlayerMover>());
-            player.AddComponent<GrassPusher>();
 
-            var camera = CreateCamera(player.transform);
+            var camera = CreateCamera(player.transform, realm.Look);
             CreateHud(panelSettings, joystick, camera);
 
             EditorSceneManager.SaveScene(scene, ScenePath);
@@ -97,30 +90,31 @@ namespace SurvivorSouls.Editor
             }
         }
 
-        private static void SetupEnvironment()
+        /// <summary>Cold overcast coast: cool trilight ambient, overcast sky, haze that hides the far edge.</summary>
+        private static void SetupEnvironment(RealmArt realm)
         {
-            RenderSettings.skybox = null;
+            var look = realm.Look;
+            RenderSettings.skybox = realm.Sky;
             RenderSettings.ambientMode = AmbientMode.Trilight;
-            RenderSettings.ambientSkyColor = AmbientSky;
-            RenderSettings.ambientEquatorColor = AmbientEquator;
-            RenderSettings.ambientGroundColor = AmbientGround;
+            RenderSettings.ambientSkyColor = look.ambientSky;
+            RenderSettings.ambientEquatorColor = look.ambientEquator;
+            RenderSettings.ambientGroundColor = look.ambientGround;
 
-            // Distance fog only softens the far edge; ground mist particles give the near haze.
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Linear;
-            RenderSettings.fogStartDistance = 34f;
-            RenderSettings.fogEndDistance = 80f;
-            RenderSettings.fogColor = BackgroundColor;
+            RenderSettings.fogStartDistance = look.fogStart;
+            RenderSettings.fogEndDistance = look.fogEnd;
+            RenderSettings.fogColor = look.fogColor;
         }
 
-        private static void CreateMoonLight()
+        private static void CreateSunLight(RealmLook look)
         {
             var go = new GameObject("Sun Light");
-            go.transform.rotation = Quaternion.Euler(38f, -50f, 0f); // low morning sun from the front-left
+            go.transform.rotation = Quaternion.Euler(50f, -35f, 0f); // soft overcast key, slightly from the front-left
             var light = go.AddComponent<Light>();
             light.type = LightType.Directional;
-            light.color = MoonColor;
-            light.intensity = 1.25f;
+            light.color = look.sunColor;
+            light.intensity = look.sunIntensity;
             light.shadows = LightShadows.None; // blob shadows instead of shadow maps
         }
 
@@ -142,7 +136,7 @@ namespace SurvivorSouls.Editor
             return shooter;
         }
 
-        /// <summary>Procedural sound set (shots, impacts, deaths, footsteps, meadow ambience) on one audio object.</summary>
+        /// <summary>Procedural sound set (shots, impacts, deaths, snow footsteps, wind + surf ambience) on one audio object.</summary>
         private static void CreateAudio(SfxBuilder.Set sfx, AutoShooter shooter, PlayerMover mover)
         {
             var audio = new GameObject("Audio").AddComponent<GameAudio>();
@@ -163,12 +157,12 @@ namespace SurvivorSouls.Editor
             for (int i = 0; i < clips.Length; i++) array.GetArrayElementAtIndex(i).objectReferenceValue = clips[i];
         }
 
-        private static Camera CreateCamera(Transform target)
+        private static Camera CreateCamera(Transform target, RealmLook look)
         {
             var go = new GameObject("Main Camera") { tag = "MainCamera" };
             var cam = go.AddComponent<Camera>();
-            cam.clearFlags = CameraClearFlags.SolidColor;
-            cam.backgroundColor = BackgroundColor;
+            cam.clearFlags = CameraClearFlags.Skybox;
+            cam.backgroundColor = look.fogColor;
             cam.fieldOfView = 40f;
             cam.nearClipPlane = 5f;
             cam.farClipPlane = 90f;

@@ -11,6 +11,9 @@ namespace SurvivorSouls.Gameplay.World
         [SerializeField] private Transform target;
         [SerializeField, Min(0.01f)] private float grid = 4f;
         [SerializeField] private float y;
+        [Tooltip("Off = Z stays at fixedZ (things tied to the shore line: ground edge, sea, sea mist).")]
+        [SerializeField] private bool followZ = true;
+        [SerializeField] private float fixedZ;
 
         public Transform Target
         {
@@ -22,7 +25,8 @@ namespace SurvivorSouls.Gameplay.World
         {
             if (target == null) return;
             var p = target.position;
-            transform.position = new Vector3(Mathf.Round(p.x / grid) * grid, y, Mathf.Round(p.z / grid) * grid);
+            float z = followZ ? Mathf.Round(p.z / grid) * grid : fixedZ;
+            transform.position = new Vector3(Mathf.Round(p.x / grid) * grid, y, z);
         }
     }
 }

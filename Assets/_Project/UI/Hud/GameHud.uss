@@ -119,7 +119,7 @@
     -unity-font-style: bold;
     -unity-text-align: middle-center;
     color: rgb(255, 236, 190);
-    -unity-text-outline-width: 2px;
+    -unity-text-outline-width: 3px; /* reads on white snow too */
     -unity-text-outline-color: rgba(0, 0, 0, 0.9);
 }
 

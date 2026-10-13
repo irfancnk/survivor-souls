@@ -45,6 +45,9 @@ namespace SurvivorSouls.Gameplay.Combat
         private Vector3 _knock;
         private Quaternion _deathStart;
 
+        /// <summary>Northmost Z an enemy may walk to (the sea edge). Set by the spawner from the world; +inf = no limit.</summary>
+        public static float LandMaxZ = float.PositiveInfinity;
+
         public float Health => _health;
         public float MaxHealth => maxHealth;
         public bool IsAlive => _health > 0f;
@@ -128,7 +131,9 @@ namespace SurvivorSouls.Gameplay.Combat
             }
             move += Separation(pos);
             _knock = Vector3.MoveTowards(_knock, Vector3.zero, KnockbackSpeed * 6f * dt);
-            transform.position = pos + (move + _knock) * dt;
+            pos += (move + _knock) * dt;
+            pos.z = Mathf.Min(pos.z, LandMaxZ); // knockback and crowding never push them into the sea
+            transform.position = pos;
         }
 
         /// <summary>Pushes away from close neighbours so a crowd does not stack into one body.</summary>

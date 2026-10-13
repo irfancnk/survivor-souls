@@ -10,10 +10,11 @@ namespace SurvivorSouls.Editor.Procedural
         Rust, Crimson, Wood, BrightMetal,
         Stone, Coal, Pants, Fletching,
         Grass, Moss, Bark, Foliage,
+        Snow, Ice, Bleached, DryGrass,
     }
 
     /// <summary>
-    /// One small texture (4 x 5 cells) that colours every procedural character and prop, so they all share
+    /// One small texture (4 x 6 cells) that colours every procedural character and prop, so they all share
     /// one material and batch well. Each cell holds a base colour plus wear noise (rust on metal, grain on
     /// cloth). A matching specular atlas (RGB spec, A smoothness) gives metal its sheen.
     /// To retune the look, edit <see cref="Define"/> and rebuild the scene.
@@ -21,7 +22,7 @@ namespace SurvivorSouls.Editor.Procedural
     public static class PaletteAtlas
     {
         public const int Columns = 4;
-        public const int Rows = 5;
+        public const int Rows = 6;
         public const int CellPixels = 32;
         public const int Width = Columns * CellPixels;
         public const int Height = Rows * CellPixels;
@@ -67,6 +68,10 @@ namespace SurvivorSouls.Editor.Procedural
                 case Swatch.Moss: return new Cell(Hex(0x46582E), Hex(0x33402A), 0.5f, 0.12f, 0.05f, 0.15f);
                 case Swatch.Bark: return new Cell(Hex(0x3E3024), Hex(0x2A2019), 0.5f, 0.12f, 0.05f, 0.15f);
                 case Swatch.Foliage: return new Cell(Hex(0x3C5528), Hex(0x55653A), 0.5f, 0.14f, 0.06f, 0.2f);
+                case Swatch.Snow: return new Cell(Hex(0xDCE2EA), Hex(0xC4CCD8), 0.4f, 0.03f, 0.1f, 0.3f);
+                case Swatch.Ice: return new Cell(Hex(0x9EC0CC), Hex(0xC8DCE2), 0.45f, 0.04f, 0.6f, 0.8f);
+                case Swatch.Bleached: return new Cell(Hex(0xA49C8E), Hex(0x7E766A), 0.45f, 0.1f, 0.08f, 0.2f);
+                case Swatch.DryGrass: return new Cell(Hex(0x8A7A52), Hex(0x6A5E40), 0.45f, 0.12f, 0.05f, 0.15f);
                 default: return new Cell(Color.magenta, Color.magenta, 0f, 0f, 0f, 0f);
             }
         }

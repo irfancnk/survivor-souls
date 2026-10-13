@@ -34,9 +34,9 @@ namespace SurvivorSouls.Editor.Audio
                 Shots = Many("sfx_crossbow_shot", 3, CrossbowShot),
                 Impacts = Many("sfx_bolt_impact", 3, BoltImpact),
                 Deaths = Many("sfx_hollow_death", 2, HollowDeath),
-                Footsteps = Many("sfx_footstep_armour", 4, Footstep),
+                Footsteps = Many("sfx_footstep_snow", 4, Footstep),
             };
-            set.Ambience = Save("amb_meadow_wind_loop", AmbienceRate, MeadowAmbience(AmbienceRate, 24f, 9), ambience: true);
+            set.Ambience = Save("amb_shore_wind_surf_loop", AmbienceRate, ShoreAmbience(AmbienceRate, 24f, 9), ambience: true);
             return set;
         }
 
@@ -103,44 +103,66 @@ namespace SurvivorSouls.Editor.Audio
             return Normalize(b, 0.85f);
         }
 
-        /// <summary>Armoured step on grass: soft muffled thud, grass rustle, faint metal clink.</summary>
+        /// <summary>Armoured step in snow: muffled thud, a train of tiny crunch clicks (packed snow), faint metal clink.</summary>
         private static float[] Footstep(int seed)
         {
             var rng = new System.Random(seed * 401);
-            var b = new float[(int)(Rate * 0.28f)];
+            var b = new float[(int)(Rate * 0.3f)];
             float v = 1f + (float)(rng.NextDouble() - 0.5) * 0.2f;
-            Sweep(b, 0f, 0.12f, 95f * v, 60f * v, 0.7f, 30f, 1);
-            NoiseBurst(b, 0f, 0.09f, 0.45f, 120f, 600f, 34f, rng);
-            NoiseBurst(b, 0.005f, 0.16f, 0.22f, 2500f, 7000f, 22f, rng);
-            Sweep(b, 0.012f, 0.12f, 2350f * v, 2300f * v, 0.05f, 40f, 2);
+            Sweep(b, 0f, 0.12f, 90f * v, 55f * v, 0.6f, 30f, 1);
+            NoiseBurst(b, 0f, 0.08f, 0.35f, 120f, 500f, 34f, rng);
+            int crunches = 9 + rng.Next(6);
+            for (int i = 0; i < crunches; i++)
+            {
+                float t = 0.005f + (float)Math.Pow(rng.NextDouble(), 1.6) * 0.17f;
+                Click(b, t, 0.012f, 0.18f + (float)rng.NextDouble() * 0.2f, 1800f + (float)rng.NextDouble() * 2500f, rng);
+            }
+            NoiseBurst(b, 0.01f, 0.18f, 0.12f, 1500f, 4500f, 16f, rng);
+            Sweep(b, 0.012f, 0.12f, 2350f * v, 2300f * v, 0.04f, 40f, 2);
             return Normalize(b, 0.8f);
         }
 
-        /// <summary>Seamless meadow loop: soft gusting wind (filtered brown noise) and sparse bird chirps.</summary>
-        private static float[] MeadowAmbience(int rate, float seconds, int seed)
+        /// <summary>
+        /// Seamless cold shore loop: gusting wind (filtered brown noise), surf (white noise swells every ~6 s with a
+        /// rising then falling low-pass, like a wave breaking and draining) and a few distant gull calls.
+        /// </summary>
+        private static float[] ShoreAmbience(int rate, float seconds, int seed)
         {
             var rng = new System.Random(seed);
             int n = (int)(rate * seconds);
             int fade = rate * 2;
             var b = new float[n + fade];
             var lp = new Biquad();
+            var surfLp = new Biquad();
             float brown = 0f;
+            // Wave start times: about every 6 s with some jitter, covering the crossfade tail too.
+            var waves = new System.Collections.Generic.List<float>();
+            for (float w = 0.3f; w < seconds + 2f; w += 5.2f + (float)rng.NextDouble() * 1.8f) waves.Add(w);
             for (int i = 0; i < b.Length; i++)
             {
                 float t = i / (float)rate;
                 brown = Mathf.Clamp(brown + Noise(rng) * 0.06f, -1f, 1f) * 0.998f;
-                float gust = 0.55f + 0.3f * Mathf.Sin(t * 0.41f) + 0.15f * Mathf.Sin(t * 1.13f + 1.7f);
-                lp.SetLowPass(Mathf.Lerp(250f, 900f, gust), 0.7f, rate);
-                b[i] = lp.Process(brown) * gust * 0.5f;
+                float gust = 0.5f + 0.3f * Mathf.Sin(t * 0.37f) + 0.2f * Mathf.Sin(t * 1.07f + 1.7f);
+                lp.SetLowPass(Mathf.Lerp(220f, 800f, gust), 0.7f, rate);
+                float wind = lp.Process(brown) * gust * 0.45f;
+
+                float surf = 0f;
+                foreach (float w in waves)
+                {
+                    float u = t - w;
+                    if (u < 0f || u > 5f) continue;
+                    surf = Mathf.Max(surf, u < 1.4f ? Mathf.SmoothStep(0f, 1f, u / 1.4f) : Mathf.Exp(-(u - 1.4f) * 0.9f));
+                }
+                surfLp.SetLowPass(Mathf.Lerp(300f, 2200f, surf), 0.6f, rate);
+                b[i] = wind + surfLp.Process(Noise(rng)) * surf * 0.28f;
             }
-            // Birds: short FM chirp phrases at random times.
-            for (int k = 0; k < 9; k++)
+            // Gulls: two or three falling cries, far away (quiet).
+            for (int k = 0; k < 4; k++)
             {
-                float start = (float)rng.NextDouble() * (seconds - 1.5f);
-                float basePitch = 2600f + (float)rng.NextDouble() * 1800f;
-                int notes = 2 + rng.Next(4);
+                float start = (float)rng.NextDouble() * (seconds - 2f);
+                int notes = 2 + rng.Next(2);
                 for (int j = 0; j < notes; j++)
-                    Chirp(b, rate, start + j * 0.13f, 0.08f, basePitch * (1f + j * 0.05f), 0.06f + (float)rng.NextDouble() * 0.04f);
+                    Chirp(b, rate, start + j * 0.32f, 0.24f, 1500f - j * 120f, 0.035f);
             }
             // Loop: crossfade the tail into the head.
             var loop = new float[n];

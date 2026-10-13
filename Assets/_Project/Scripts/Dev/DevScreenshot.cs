@@ -4,6 +4,7 @@ using System.Globalization;
 using SurvivorSouls.Gameplay.CameraRig;
 using SurvivorSouls.Gameplay.Controls;
 using SurvivorSouls.Gameplay.Player;
+using Unity.Profiling;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
@@ -17,6 +18,9 @@ namespace SurvivorSouls.Dev
     /// Game options: <c>-ss-scene &lt;name&gt;</c> loads a scene first; <c>-ss-move x,y</c> holds the joystick;
     /// <c>-ss-closeup &lt;yawDeg&gt;</c> frames the player up close (0 = from the front).
     /// <c>-ss-near-exit</c> moves the player in front of the exit door (open world).
+    /// <c>-ss-pos x,z</c> moves the player to a world position first (e.g. the shore).
+    /// Every capture also logs render stats of the last second: <c>[DevScreenshot] Stats ...</c> (draw calls, batches,
+    /// SetPass calls, triangles, average frame ms).
     /// Used by tools/agents to verify visuals without a human. Inactive in release builds (Debug.isDebugBuild).
     /// </summary>
     public sealed class DevScreenshot : MonoBehaviour
@@ -27,6 +31,7 @@ namespace SurvivorSouls.Dev
         private string _move;
         private string _closeup;
         private bool _nearExit;
+        private string _pos;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void Bootstrap()
@@ -47,6 +52,7 @@ namespace SurvivorSouls.Dev
             shot._move = GetArg("-ss-move");
             shot._closeup = GetArg("-ss-closeup");
             shot._nearExit = Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-near-exit") >= 0;
+            shot._pos = GetArg("-ss-pos");
         }
 
         private IEnumerator Start()
@@ -58,6 +64,11 @@ namespace SurvivorSouls.Dev
                 yield return null;
             }
             if (_nearExit) MoveNearExit();
+            if (!string.IsNullOrEmpty(_pos))
+            {
+                string[] xz = _pos.Split(',');
+                Teleport(new Vector3(float.Parse(xz[0], CultureInfo.InvariantCulture), 0f, float.Parse(xz[1], CultureInfo.InvariantCulture)));
+            }
             if (!string.IsNullOrEmpty(_move))
             {
                 string[] xy = _move.Split(',');
@@ -65,7 +76,8 @@ namespace SurvivorSouls.Dev
                     float.Parse(xy[0], CultureInfo.InvariantCulture), float.Parse(xy[1], CultureInfo.InvariantCulture));
             }
 
-            yield return new WaitForSecondsRealtime(_delay);
+            yield return new WaitForSecondsRealtime(Mathf.Max(0f, _delay - 1f));
+            yield return LogStats(1f);
             if (!string.IsNullOrEmpty(_closeup)) FrameCloseup(float.Parse(_closeup, CultureInfo.InvariantCulture));
             yield return null;
             yield return new WaitForEndOfFrame();
@@ -75,14 +87,40 @@ namespace SurvivorSouls.Dev
             Application.Quit();
         }
 
+        /// <summary>Averages render counters over <paramref name="seconds"/> (development players expose them).</summary>
+        private static IEnumerator LogStats(float seconds)
+        {
+            using var draws = ProfilerRecorder.StartNew(ProfilerCategory.Render, "Draw Calls Count");
+            using var batches = ProfilerRecorder.StartNew(ProfilerCategory.Render, "Batches Count");
+            using var setPass = ProfilerRecorder.StartNew(ProfilerCategory.Render, "SetPass Calls Count");
+            using var tris = ProfilerRecorder.StartNew(ProfilerCategory.Render, "Triangles Count");
+            long d = 0, b = 0, sp = 0, t = 0;
+            int frames = 0;
+            float start = Time.realtimeSinceStartup;
+            while (Time.realtimeSinceStartup - start < seconds)
+            {
+                yield return null;
+                d += draws.LastValue; b += batches.LastValue; sp += setPass.LastValue; t += tris.LastValue;
+                frames++;
+            }
+            frames = Mathf.Max(1, frames);
+            float ms = (Time.realtimeSinceStartup - start) * 1000f / frames;
+            Debug.Log($"[DevScreenshot] Stats drawCalls={d / frames} batches={b / frames} setPass={sp / frames} tris={t / frames} frameMs={ms:F1}");
+        }
+
         private static void MoveNearExit()
         {
             var world = FindAnyObjectByType<SurvivorSouls.Gameplay.World.WorldStreamer>();
+            if (world != null) Teleport(world.ExitPosition + new Vector3(0f, 0f, -5.5f));
+        }
+
+        private static void Teleport(Vector3 position)
+        {
             var player = FindAnyObjectByType<PlayerMover>();
-            if (world == null || player == null) return;
+            if (player == null) return;
             var cc = player.GetComponent<CharacterController>();
             cc.enabled = false;
-            player.transform.position = world.ExitPosition + new Vector3(0f, 0f, -5.5f);
+            player.transform.position = position;
             cc.enabled = true;
         }
 

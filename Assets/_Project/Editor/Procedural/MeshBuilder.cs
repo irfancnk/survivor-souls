@@ -20,7 +20,14 @@ namespace SurvivorSouls.Editor.Procedural
         private readonly List<Vector3> _normals = new List<Vector3>();
         private readonly List<Vector2> _uvs = new List<Vector2>();
         private readonly List<int> _bones = new List<int>();
+        private readonly List<Color> _colors = new List<Color>();
         private readonly List<int> _triangles = new List<int>();
+
+        /// <summary>
+        /// Vertex colour for shapes added from now on. Shaders that read it: RGB = albedo multiplier,
+        /// A = snow-cap mask (SnowCapLit: 1 = may hold snow, 0 = never). Default white.
+        /// </summary>
+        public Color Tint = Color.white;
 
         public int VertexCount => _positions.Count;
 
@@ -181,6 +188,34 @@ namespace SurvivorSouls.Editor.Procedural
             TubeCap(points[count - 1], (points[count - 1] - points[count - 2]).normalized, start + (count - 1) * stride, sides, uv, bone, true);
         }
 
+        /// <summary>
+        /// Smooth height-field style surface: (nx + 1) x (nz + 1) vertices from <paramref name="position"/>(i, j).
+        /// Normals come from neighbour differences, so dunes and beach slopes shade softly. Front face points +Y
+        /// when i runs along +X and j along +Z.
+        /// </summary>
+        public void Surface(int nx, int nz, Func<int, int, Vector3> position, UvMapper uv, int bone = 0)
+        {
+            int start = _positions.Count;
+            var p = new Vector3[nx + 1, nz + 1];
+            for (int j = 0; j <= nz; j++)
+            for (int i = 0; i <= nx; i++)
+                p[i, j] = position(i, j);
+            for (int j = 0; j <= nz; j++)
+            for (int i = 0; i <= nx; i++)
+            {
+                var du = p[Mathf.Min(i + 1, nx), j] - p[Mathf.Max(i - 1, 0), j];
+                var dv = p[i, Mathf.Min(j + 1, nz)] - p[i, Mathf.Max(j - 1, 0)];
+                AddVertex(p[i, j], Vector3.Cross(dv, du).normalized, uv, bone);
+            }
+            int stride = nx + 1;
+            for (int j = 0; j < nz; j++)
+            for (int i = 0; i < nx; i++)
+            {
+                int a = start + j * stride + i;
+                _triangles.AddRange(new[] { a, a + stride, a + stride + 1, a, a + stride + 1, a + 1 });
+            }
+        }
+
         /// <summary>Copies another builder's geometry (keeps its UVs and bones).</summary>
         public void Append(MeshBuilder other, Matrix4x4 transform)
         {
@@ -191,6 +226,7 @@ namespace SurvivorSouls.Editor.Procedural
                 _normals.Add(transform.MultiplyVector(other._normals[i]).normalized);
                 _uvs.Add(other._uvs[i]);
                 _bones.Add(other._bones[i]);
+                _colors.Add(other._colors[i]);
             }
             foreach (int t in other._triangles) _triangles.Add(t + offset);
         }
@@ -212,6 +248,7 @@ namespace SurvivorSouls.Editor.Procedural
             mesh.SetVertices(_positions);
             mesh.SetNormals(_normals);
             mesh.SetUVs(0, _uvs);
+            mesh.SetColors(_colors);
             mesh.SetTriangles(_triangles, 0);
             if (bindposes != null)
             {
@@ -234,6 +271,7 @@ namespace SurvivorSouls.Editor.Procedural
             _normals.Add(normal);
             _uvs.Add(uv(position, normal));
             _bones.Add(bone);
+            _colors.Add(Tint);
         }
 
         private void Quad(int a, int b, int c, int d, bool flip)

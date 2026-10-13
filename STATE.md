@@ -100,13 +100,27 @@
   - `Enemy`: optional `animator` (random phase + 0.9-1.1 speed on spawn, frozen on death while body falls).
   - Verified: batch rebuild 0 errors, mac dev screenshots (zombies textured, running, hit by bolts).
 
+- 2026-10-13: Realm 1 terrain = snowy seaside shore (KAN-25). Replaces grass meadow for Realm 1 (hero readability). Branch `claude/kan-25-implementation-ad3f63`.
+  - Look knobs in one asset: `Art/World/Realm1_Look.asset` (`Gameplay/World/RealmLook.cs`): snow tints, snow-cap level, sea colours + waves, sky, sun, ambient, fog, snowfall, sea mist, prop density. Edit, then "Rebuild Game Scene".
+  - Terrain decision: custom flat mesh + world-space snow shader, not Unity Terrain (mobile). One snow ground quad (follows X only, north edge at the shore row) + per-tile snow meshes (beach slopes, mounds) share `M_Snow`: no seams.
+  - Shaders (`Art/Shaders`, shared `SSLighting.hlsl` = wrapped Lambert + SH + extra lights): `Snow` (world XZ, detail 6 m + macro 64 m anti-tiling, mip-safe sparkle, wet dark shingle below y 0), `SnowCapLit` (props/masonry/flagstone: snow on up faces; vertex colour A = coverage, in-shader value noise for patches), `Sea` (opaque, 3 vertex sine waves, 2 scrolling normals, shallow->deep by distance to `_ShoreZ`, fresnel, glint, foam band), `ShoreFoam` (alpha strip, wash in/out), `OvercastSky` (skybox). Forward+ (PC renderer) not supported by the extra-light loop; screenshots use `-ss-quality Mobile`.
+  - Layout (`WorldStreamer`): playable x -5..5, rows -4..1. Row 1 = shore tiles (beach edge, slope under sea, foam, collider wall). North of it = sea mesh (`Sea.asset`, 2 m grid, follows X). Cliff/boulder edge tiles on the other sides, headland tiles at the shore row ends. Exit = random inland cell at distance 3-4. Shore line Z = 13 (`WorldStreamer.ShoreLineZ`). `Enemy.LandMaxZ` keeps enemies out of the water; spawner clamps to `PlayableMin/Max`.
+  - Tiles (`Editor/World/WorldBuilder.cs`): inland Snowfield 4, Drifts 2.4, Pines 2, Ruins 1.8, Boulders 1.5, Graveyard 1, Pools 1, Bones 0.8, Camp 0.8; shore Beach 3, Stacks 1.5, Pier 1.1, Wreck 1, Ice 1; Spawn (bonfire with sword, lanterns), Exit (gate on snowy flagstones), Edge, EdgeShore. Parts per tile: Snow, Floor, Stone, Props, Decals, Foam (one mesh per material).
+  - Props (`Editor/World/ShoreKit.cs`, procedural, palette atlas now 4 x 6 with Snow/Ice/Bleached/DryGrass): boulders, cliff outcrops, sea stacks, mounds, ice plates/chunks, wind-bent pines (snow-laden/dead), stumps, shrubs, dry tufts/reeds, pebbles, driftwood, whale ribs, rowboat, shipwreck, pier (rope, crates, lantern), lantern posts, bonfire + sword, graves, weapon rack, anchor, net frame, gibbet cage, broken statue, archway, lighthouse (landmark on islet, x 11), ghost ship far out.
+  - FX: snowfall (110 max), sea mist strip, boot prints (`FX/SnowFootprints`, one particle system), lantern glows (1-particle billboards, no lights). Hero ring + direction marker now saturated amber; gold arrows have a dark rim.
+  - Audio: `amb_shore_wind_surf_loop` (wind + surf swells + far gulls) and `sfx_footstep_snow_*` (crunch) replace meadow/armour clips.
+  - Dev: DevScreenshot `-ss-pos x,z` (teleport) and render stats log line `[DevScreenshot] Stats ...`. Mac dev build (Mobile quality): 39-50 draw calls, 25-33 SetPass, 60-88k tris, 16.7 ms (vsync cap).
+  - Screenshots: before `Docs/screenshots/game-grass-*.png`, after `game-snow-*.png`.
+  - Not done: seagull flock, Chamber shapes (no Chamber system yet), pickup checks (wisps/hearts/chests are on unmerged branches KAN-21..23), 3-person real-phone readability test.
+
 ## DECISIONS
 - Design language: Archero / Archero 2 (menus, loop, chests, daily/weekly quests, gear merge, talents, energy). Look: Dark Souls, realistic, not dismal. User decision 2026-10-11.
 - Naming map: energy=Estus, gold=Souls, gems=Ember Shards, chests=Reliquaries, daily=Oaths, weekly=Pilgrimage, chapter=Realm, room=Chamber. See GAME_PLAN sec 2.
 - Art source: Meshy.ai -> FBX -> Unity URP. Paid Meshy plan for ship assets (free = CC BY, needs credit). Tri budget: hero 5-8k, enemy 1.5-3k, boss 8-12k, prop <1.5k.
 - Crossbow hold: two hands, crossbow on Spine2 + arm IK baked in Blender script. Recoil procedural in Unity (no extra clip). 2026-10-12 (KAN-11).
 - Sounds: procedural (SfxBuilder). No paid packs (Irem rule). 2026-10-12.
-- Grass: geometry blades per tile (opaque, no alpha test: cheap on mobile TBDR). 2026-10-12.
+- Grass: geometry blades per tile (opaque, no alpha test: cheap on mobile TBDR). 2026-10-12. Not used in Realm 1 since KAN-25 (GrassBuilder, Grass.shader, GrassPusher kept for later realms).
+- Realm 1 = snowy seaside shore, bright low-noise floor so the dark Knight reads (KAN-25, 2026-10-13). Terrain = custom mesh + world-space shader, not Unity Terrain.
 - Orientation: portrait only, iOS + Android. User decision 2026-10-12.
 - Render pipeline: URP. Reason: mobile perf, good look.
 - Git LFS: NOT on. git-lfs not installed. Add later before big binary assets.
@@ -132,7 +146,8 @@
 ## NEXT
 - Jira: KAN-4 = welcome screen work.
 - Test menu on real phone (safe area, touch).
-- Irem playtest KAN-11 on iPhone: grip look, recoil size, grass density, sound mix. Tune numbers (CONFIG in Blender script, GrassBuilder, GameAudio).
+- Irem playtest KAN-25 on iPhone: 3 people find the Knight < 1 s; tune `Realm1_Look.asset`. Re-test pickups (KAN-21..23) on snow after merge.
+- Irem playtest KAN-11 on iPhone: grip look, recoil size, sound mix. Tune numbers (CONFIG in Blender script, GrassBuilder, GameAudio).
 - Enemy attacks player. Zombie tris 10.4k > enemy budget 1.5-3k: remesh before big waves. Shoot anim layer (string reload) optional.
 - Get Irem feedback from iPhone playtest. Profile draw calls / FPS on device. Android test later.
 - Archer shoot: auto-aim nearest enemy when stopped (Archero rule). Arrow projectile.
