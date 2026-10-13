@@ -2,11 +2,23 @@ using UnityEngine;
 
 namespace SurvivorSouls.Gameplay.Chamber
 {
+    /// <summary>Lock state of a Realm on the Realm selection page (KAN-20).</summary>
+    public enum RealmState
+    {
+        /// <summary>The previous Realm is not completed yet.</summary>
+        Locked = 0,
+        /// <summary>Can be started; not completed yet.</summary>
+        Unlocked = 1,
+        /// <summary>Its last Chamber was cleared (KAN-47 calls <see cref="RunProgress.MarkCompleted"/>).</summary>
+        Completed = 2,
+    }
+
     /// <summary>
     /// Saved Realm progress (KAN-40), for the Realm selection page (KAN-20): last Realm played, the Chamber the last run
-    /// reached in each Realm and the best Chamber ever reached there. Written at the start of every Chamber
-    /// (<see cref="ChamberTransition"/>). PlayerPrefs, like <see cref="Core.GameSettings"/>. A run cannot be resumed
-    /// after an app kill (out of scope): only the numbers are kept.
+    /// reached in each Realm, the best Chamber ever reached there and whether the Realm is completed. Written at the start
+    /// of every Chamber (<see cref="ChamberTransition"/>). PlayerPrefs, like <see cref="Core.GameSettings"/>. A run cannot
+    /// be resumed after an app kill (out of scope): only the numbers are kept.
+    /// Lock rule: Realm 1 is always open; Realm N opens when Realm N-1 is completed. Realm ids run 1, 2, 3, ...
     /// </summary>
     public static class RunProgress
     {
@@ -14,6 +26,7 @@ namespace SurvivorSouls.Gameplay.Chamber
 
         private static string ChamberKey(int realm) => $"progress.realm{realm}.chamber";
         private static string BestKey(int realm) => $"progress.realm{realm}.best";
+        private static string CompletedKey(int realm) => $"progress.realm{realm}.completed";
 
         /// <summary>Last Realm played (1 when nothing is saved).</summary>
         public static int LastRealm => PlayerPrefs.GetInt(KeyLastRealm, 1);
@@ -23,6 +36,23 @@ namespace SurvivorSouls.Gameplay.Chamber
 
         /// <summary>Best Chamber ever reached in <paramref name="realm"/> (0 = never played).</summary>
         public static int BestChamber(int realm) => PlayerPrefs.GetInt(BestKey(realm), 0);
+
+        /// <summary>The last Chamber of <paramref name="realm"/> was cleared at least once.</summary>
+        public static bool IsCompleted(int realm) => PlayerPrefs.GetInt(CompletedKey(realm), 0) != 0;
+
+        /// <summary>Realm 1 always; any other Realm once the one before it is completed.</summary>
+        public static bool IsUnlocked(int realm) => realm <= 1 || IsCompleted(realm - 1);
+
+        /// <summary>Locked, unlocked or completed (a completed Realm is always open).</summary>
+        public static RealmState StateOf(int realm) =>
+            IsCompleted(realm) ? RealmState.Completed : IsUnlocked(realm) ? RealmState.Unlocked : RealmState.Locked;
+
+        /// <summary>End of Realm (KAN-47): marks <paramref name="realm"/> completed, which unlocks the next one.</summary>
+        public static void MarkCompleted(int realm)
+        {
+            PlayerPrefs.SetInt(CompletedKey(realm), 1);
+            PlayerPrefs.Save();
+        }
 
         /// <summary>A Chamber started: saves the Realm, the Chamber and a new best.</summary>
         public static void RecordChamberStart(int realm, int chamber)
@@ -38,6 +68,7 @@ namespace SurvivorSouls.Gameplay.Chamber
         {
             PlayerPrefs.DeleteKey(ChamberKey(realm));
             PlayerPrefs.DeleteKey(BestKey(realm));
+            PlayerPrefs.DeleteKey(CompletedKey(realm));
         }
     }
 }
