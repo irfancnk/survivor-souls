@@ -20,6 +20,9 @@ namespace SurvivorSouls.Gameplay.Combat
     /// the wall slide still runs every frame), separation uses the per-frame <see cref="EnemyCrowd"/> grid, and each spawn
     /// rolls its own speed and size so a crowd never moves in lockstep. With <see cref="animRefSpeed"/> set, the walk
     /// clip's playback rate follows the real ground speed (no foot sliding) and an "Attack" state plays at the player.
+    /// Walk / attack switching (KAN-43): enter and leave reach differ (hysteresis) and each state holds a minimum time, so
+    /// crowd jostling at the edge of reach cannot keep the animator in half-finished cross-fades; a staggered check
+    /// re-requests the wanted state when the animator rests in the other one, and the playback rate is always finite.
     /// </summary>
     public sealed class Enemy : MonoBehaviour
     {
@@ -84,6 +87,12 @@ namespace SurvivorSouls.Gameplay.Combat
         private const float MaxWalkRate = 2.2f;
         private const float AnimBlend = 0.18f;      // walk <-> attack cross-fade (s)
         private const float AttackReach = 0.15f;    // attack starts this far outside contact range
+        /// <summary>Attack ends only beyond contact range + this (m). Wider than the start reach: no dithering at one line.</summary>
+        public const float AttackRelease = 0.45f;
+        /// <summary>Minimum seconds in walk or attack before the next switch.</summary>
+        public const float MinStateHold = 0.3f;
+        /// <summary>Seconds between checks that the animator plays the wanted state (staggered per enemy).</summary>
+        public const float AnimCheckInterval = 0.25f;
 
         private Transform _target;
         private Action<Enemy> _release;
@@ -108,6 +117,9 @@ namespace SurvivorSouls.Gameplay.Combat
         private float _attackRate = 1f;
         private bool _attacking;
         private bool _hasAttack;
+        private bool _synced;        // walk rate follows ground speed; walk / attack switching from code
+        private float _sinceSwitch;  // seconds since the last walk <-> attack cross-fade
+        private float _animCheck;    // seconds to the next animator state check
         private int _walkHash;
         private int _attackHash;
 
@@ -116,6 +128,12 @@ namespace SurvivorSouls.Gameplay.Combat
 
         /// <summary>Walls, props and play-area bounds for steering. Set by the spawner from the world; null = walk straight.</summary>
         public static IWalkability Walkability;
+
+        /// <summary>
+        /// Times any enemy's animator was found resting in the wrong state and the cross-fade was requested again (KAN-43).
+        /// Debug and tests: a steady climb means cross-fades are being lost.
+        /// </summary>
+        public static int AnimatorResyncs;
 
         public float Health => _health;
         public float MaxHealth => maxHealth;
@@ -163,6 +181,8 @@ namespace SurvivorSouls.Gameplay.Combat
             _scale = bodyScale * (1f + UnityEngine.Random.Range(-scaleJitter, scaleJitter));
             _groundSpeed = MoveSpeed;
             _attacking = false;
+            _sinceSwitch = MinStateHold;
+            _animCheck = UnityEngine.Random.value * AnimCheckInterval;
             Vector3 toTarget = target != null ? target.position - position : Vector3.forward;
             toTarget.y = 0f;
             transform.SetPositionAndRotation(position, toTarget.sqrMagnitude > 0.01f ? Quaternion.LookRotation(toTarget) : Quaternion.identity);
@@ -179,10 +199,10 @@ namespace SurvivorSouls.Gameplay.Combat
             if (animator == null) return;
             _walkHash = Animator.StringToHash(walkState);
             _attackHash = Animator.StringToHash(attackState);
-            bool synced = animRefSpeed > 0f && animator.HasState(0, _walkHash);
-            _hasAttack = synced && animator.HasState(0, _attackHash);
+            _synced = animRefSpeed > 0f && animator.HasState(0, _walkHash);
+            _hasAttack = _synced && animator.HasState(0, _attackHash);
             _attackRate = UnityEngine.Random.Range(0.9f, 1.1f);
-            if (synced)
+            if (_synced)
             {
                 animator.speed = WalkRate(_groundSpeed);
                 animator.Play(_walkHash, 0, UnityEngine.Random.value);
@@ -296,18 +316,44 @@ namespace SurvivorSouls.Gameplay.Combat
         /// </summary>
         private void UpdateAnimation(Vector3 from, Vector3 to, float distToTarget, float dt)
         {
-            if (animator == null || animRefSpeed <= 0f) return;
+            if (animator == null || !_synced) return;
             if (dt <= 0f) return; // paused (timeScale 0): speed = 0 / 0 would poison _groundSpeed and freeze the walk for good
             float dx = to.x - from.x, dz = to.z - from.z;
             float speed = Mathf.Sqrt(dx * dx + dz * dz) / dt;
             _groundSpeed += (speed - _groundSpeed) * (1f - Mathf.Exp(-dt * 10f));
-            bool attack = _hasAttack && distToTarget <= contactRange + AttackReach;
-            if (attack != _attacking)
+            if (!float.IsFinite(_groundSpeed)) _groundSpeed = MoveSpeed;
+
+            _sinceSwitch += dt;
+            bool attack = _attacking
+                ? distToTarget <= contactRange + AttackRelease
+                : _hasAttack && distToTarget <= contactRange + AttackReach;
+            if (attack != _attacking && _sinceSwitch >= MinStateHold)
             {
                 _attacking = attack;
+                _sinceSwitch = 0f;
                 animator.CrossFadeInFixedTime(attack ? _attackHash : _walkHash, AnimBlend, 0, attack ? 0f : UnityEngine.Random.value * 0.2f);
             }
-            animator.speed = _attacking ? _attackRate : WalkRate(_groundSpeed);
+            float rate = _attacking ? _attackRate : WalkRate(_groundSpeed);
+            animator.speed = float.IsFinite(rate) ? rate : 1f;
+
+            _animCheck -= dt;
+            if (_animCheck > 0f) return;
+            _animCheck += AnimCheckInterval;
+            ResyncAnimator();
+        }
+
+        /// <summary>
+        /// Self-heal: <see cref="_attacking"/> is the truth. When the animator rests (no transition) in the other state, for
+        /// example a cross-fade cut short or dropped, request the wanted state again. Skipped while a switch is still blending.
+        /// </summary>
+        private void ResyncAnimator()
+        {
+            if (_sinceSwitch < AnimBlend + 0.05f || !animator.isActiveAndEnabled || animator.IsInTransition(0)) return;
+            int want = _attacking ? _attackHash : _walkHash;
+            if (animator.GetCurrentAnimatorStateInfo(0).shortNameHash == want) return;
+            animator.CrossFadeInFixedTime(want, AnimBlend, 0, _attacking ? 0f : UnityEngine.Random.value * 0.2f);
+            _sinceSwitch = 0f;
+            AnimatorResyncs++;
         }
 
         /// <summary>
