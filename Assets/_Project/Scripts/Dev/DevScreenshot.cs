@@ -36,6 +36,10 @@ namespace SurvivorSouls.Dev
     /// <c>-ss-timer &lt;seconds&gt;</c> sets the Chamber survival clock after load (KAN-39; 0 = the portal opens now).
     /// <c>-ss-portal</c> walks the Knight into the portal right after load (KAN-40): pull, white fade, next Chamber,
     /// title card. With -ss-delay ~2.2 the capture shows the "CHAMBER II" card; skills / health set before it carry over.
+    /// <c>-ss-portal-soak &lt;n&gt;</c> (KAN-47 leak check): n portal transitions in a row, each started 1 s after the last
+    /// fade-in; logs per transition the Chamber, the time from portal to play, scene objects, Unity objects and memory
+    /// (<c>[DevScreenshot] Soak ...</c>). From Chamber 1 the 10th portal of Realm 1 ends on the victory screen. The capture
+    /// waits until the soak is done.
     /// <c>-ss-run-seed &lt;n&gt;</c> starts the run with that seed and <c>-ss-chamber &lt;n&gt;</c> starts it at that Chamber
     /// (KAN-46: layout seed + difficulty of that Chamber; same run seed + Chamber = same layout).
     /// <c>-ss-boss &lt;0..1&gt;</c> (KAN-58, with <c>-ss-chamber 5</c>): once the boss has risen, sets its health to that share and
@@ -67,6 +71,7 @@ namespace SurvivorSouls.Dev
         private bool _immortal;
         private string _timer;
         private bool _portal;
+        private int _soak;
         private bool _realms;
         private int _realmDetail;
         private string _best;
@@ -108,6 +113,7 @@ namespace SurvivorSouls.Dev
             shot._immortal = Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-immortal") >= 0;
             shot._timer = GetArg("-ss-timer");
             shot._portal = Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-portal") >= 0;
+            shot._soak = int.TryParse(GetArg("-ss-portal-soak"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int sk) ? sk : 0;
             shot._realmDetail = int.TryParse(GetArg("-ss-realm"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int rd) ? rd : 0;
             shot._realms = shot._realmDetail > 0 || Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-realms") >= 0;
             shot._best = GetArg("-ss-best");
@@ -163,6 +169,7 @@ namespace SurvivorSouls.Dev
 
             if (!string.IsNullOrEmpty(_boss)) StartCoroutine(SetupBoss(float.Parse(_boss, CultureInfo.InvariantCulture)));
             if (_portal) EnterPortal();
+            if (_soak > 0) yield return PortalSoak(_soak);
             if (_realms) OpenRealms();
 
             float release = Mathf.Clamp(_release, 0f, _delay);
@@ -248,6 +255,56 @@ namespace SurvivorSouls.Dev
             var t = player.transform;
             bool started = transition.Enter(t.position + t.forward * 1.5f);
             Debug.Log($"[DevScreenshot] Portal enter started={started}");
+        }
+
+        /// <summary>-ss-portal-soak: n portal transitions in a row with timing, object counts and memory per step (KAN-47).</summary>
+        private static IEnumerator PortalSoak(int count)
+        {
+            for (int i = 1; i <= count; i++)
+            {
+                yield return new WaitForSecondsRealtime(1f);
+                var transition = SurvivorSouls.Gameplay.Chamber.ChamberTransition.Active;
+                var player = FindAnyObjectByType<PlayerHealth>();
+                if (transition == null || player == null || player.IsDead)
+                {
+                    Debug.LogWarning($"[DevScreenshot] Soak {i}: no transition or living Knight, stop");
+                    yield break;
+                }
+                int from = SurvivorSouls.Gameplay.Chamber.RunState.Chamber;
+                float start = Time.realtimeSinceStartup;
+                var t = player.transform;
+                if (!transition.Enter(t.position + t.forward * 1.5f))
+                {
+                    Debug.LogWarning($"[DevScreenshot] Soak {i}: portal refused, stop");
+                    yield break;
+                }
+                bool arriving = false, cleared = false;
+                while (Time.realtimeSinceStartup - start < 20f)
+                {
+                    if (transition != null && transition.Current == SurvivorSouls.Gameplay.Chamber.ChamberTransition.Phase.Cleared)
+                    {
+                        cleared = true;
+                        break;
+                    }
+                    var next = SurvivorSouls.Gameplay.Chamber.ChamberTransition.Active;
+                    if (next != null && next != transition)
+                    {
+                        if (next.Current == SurvivorSouls.Gameplay.Chamber.ChamberTransition.Phase.Arriving) arriving = true;
+                        else if (arriving && next.Current == SurvivorSouls.Gameplay.Chamber.ChamberTransition.Phase.Idle) break;
+                    }
+                    yield return null;
+                }
+                float took = Time.realtimeSinceStartup - start;
+                yield return null;
+                int sceneObjects = FindObjectsByType<Transform>(FindObjectsInactive.Include).Length;
+                int allObjects = Resources.FindObjectsOfTypeAll<UnityEngine.Object>().Length;
+                long total = UnityEngine.Profiling.Profiler.GetTotalAllocatedMemoryLong() >> 20;
+                long mono = UnityEngine.Profiling.Profiler.GetMonoUsedSizeLong() >> 20;
+                Debug.Log($"[DevScreenshot] Soak {i}: Chamber {from}->{SurvivorSouls.Gameplay.Chamber.RunState.Chamber}" +
+                          $"{(cleared ? " REALM CLEARED" : "")} took={took:F2}s sceneObjects={sceneObjects} unityObjects={allObjects} " +
+                          $"allocMB={total} monoMB={mono}");
+                if (cleared) yield break;
+            }
         }
 
         /// <summary>Averages render counters over <paramref name="seconds"/> (development players expose them).</summary>
