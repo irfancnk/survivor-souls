@@ -297,6 +297,7 @@ namespace SurvivorSouls.Gameplay.Combat
         private void UpdateAnimation(Vector3 from, Vector3 to, float distToTarget, float dt)
         {
             if (animator == null || animRefSpeed <= 0f) return;
+            if (dt <= 0f) return; // paused (timeScale 0): speed = 0 / 0 would poison _groundSpeed and freeze the walk for good
             float dx = to.x - from.x, dz = to.z - from.z;
             float speed = Mathf.Sqrt(dx * dx + dz * dz) / dt;
             _groundSpeed += (speed - _groundSpeed) * (1f - Mathf.Exp(-dt * 10f));
