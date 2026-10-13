@@ -14,7 +14,8 @@ namespace SurvivorSouls.Tests
 {
     /// <summary>
     /// KAN-45 (KAN-40.1) acceptance, logic side (the fade, card and sound need screenshots and a phone): the run survives
-    /// a capture/apply round trip (level, XP, total XP, skills with stacks, health; max-health skills raise the max), the
+    /// a capture/apply round trip (level, XP, total XP, skills with stacks, health; max-health skills raise the max; kills
+    /// and souls, KAN-51), the
     /// portal starts the exit once (never for a dead Knight), locks the listed behaviours and the spawner, pulls the Knight
     /// into the arch, fades to white and advances the Chamber with the run carried; the arrival holds a pause through the
     /// fade-in (taken again if the old scene clears it) and raises Arrived once; a new run resets everything; progress
@@ -40,6 +41,7 @@ namespace SurvivorSouls.Tests
             public PlayerHealth Health;
             public XpManager Xp;
             public SkillManager Skills;
+            public RunCounters Counters;
             public ChamberTransition Transition;
         }
 
@@ -91,8 +93,10 @@ namespace SurvivorSouls.Tests
             r.Skills = Track(new GameObject("Skills")).AddComponent<SkillManager>();
             r.Skills.Setup(Track(ScriptableObject.CreateInstance<SkillProgression>()), r.Stats, r.Shooter, r.Health, r.Player.transform, rngSeed: 7);
 
-            r.Transition = Track(new GameObject("Chamber")).AddComponent<ChamberTransition>();
-            r.Transition.Setup(r.Player.transform, r.Health, r.Xp, r.Skills, new Behaviour[] { r.Mover }, load: false);
+            var chamber = Track(new GameObject("Chamber"));
+            r.Counters = chamber.AddComponent<RunCounters>();
+            r.Transition = chamber.AddComponent<ChamberTransition>();
+            r.Transition.Setup(r.Player.transform, r.Health, r.Xp, r.Skills, new Behaviour[] { r.Mover }, load: false, r.Counters);
             return r;
         }
 
@@ -132,6 +136,50 @@ namespace SurvivorSouls.Tests
             Assert.AreEqual(1, b.Skills.StacksOf(power));
             Assert.AreEqual(maxA, b.Health.Max, 0.001f, "max-health skill raised the max again");
             Assert.AreEqual(hpA, b.Health.Current, 0.001f);
+        }
+
+        [Test]
+        public void CaptureApply_RoundTrip_KeepsRunCounters()
+        {
+            var a = NewRun();
+            a.Counters.Restore(57, 1340);
+            a.Counters.AddKill();
+            a.Counters.AddSouls(10);
+            var snap = ChamberTransition.Capture(a.Xp, a.Skills, a.Health, a.Counters);
+            Assert.AreEqual(58, snap.Kills);
+            Assert.AreEqual(1350, snap.Souls);
+
+            var b = NewRun();
+            Assert.AreEqual(0, b.Counters.Kills, "a fresh scene starts at 0");
+            ChamberTransition.Apply(snap, b.Xp, b.Skills, b.Health, heal: 0f, b.Counters);
+            Assert.AreEqual(58, b.Counters.Kills);
+            Assert.AreEqual(1350, b.Counters.Souls);
+        }
+
+        [Test]
+        public void Portal_CarriesCounters_ToTheNextChamber()
+        {
+            var a = NewRun();
+            a.Counters.Restore(12, 240);
+            Assert.IsTrue(a.Transition.Enter(new Vector3(0f, 0f, 6f)));
+            TickFor(a.Transition, 1.1f);
+            Assert.AreEqual(2, RunState.Chamber);
+
+            var b = NewRun(); // the reloaded Game scene
+            b.Transition.BeginChamber(RunState.TakeCarry());
+            Assert.AreEqual(12, b.Counters.Kills);
+            Assert.AreEqual(240, b.Counters.Souls);
+        }
+
+        [Test]
+        public void NewRun_StartsCountersAtZero()
+        {
+            RunState.AdvanceChamber(new RunSnapshot { Kills = 30, Souls = 500 });
+            RunState.NewRun(TestRealm); // menu PLAY / RETRY
+            var r = NewRun();
+            r.Transition.BeginChamber(RunState.TakeCarry());
+            Assert.AreEqual(0, r.Counters.Kills);
+            Assert.AreEqual(0, r.Counters.Souls);
         }
 
         [Test]
