@@ -120,6 +120,19 @@
   - Verified: batch scene rebuild 0 errors, mac dev build OK, screenshots OK, no runtime exceptions. Not deployed to iPhone this run.
   - Not done: haptic on kill (KAN-12, same `Enemy.Damaged` killed flag).
 
+- 2026-10-13: Light haptic on enemy kill (KAN-12, branch `feat/kan-12-kill-haptics`, from KAN-13 head). Scheduled-task run.
+  - `Core/Haptics`: static `Light()` (only entry point for game code) + `Warmup()`. Checks `GameSettings.Vibration`, then rate limit `MinInterval` 50 ms unscaled (leading edge: group kill in one frame = 1 tap). `PulseCount` for tests. Backend per platform in the same file (`#if`):
+    - iOS: native `Plugins/iOS/SSHaptics.mm` (`UIImpactFeedbackGenerator` light, one static generator, `prepare` after each tap keeps Taptic warm). `DllImport("__Internal")`.
+    - Android: Vibrator via `AndroidApplication.currentContext` (API 31+ `VibratorManager.getDefaultVibrator`). Effect built once: amplitude control -> `createOneShot(14 ms, 64/255)`; else API 29+ `EFFECT_TICK`; else one-shot default amplitude. `hasVibrator` false -> silent. Pulse = raw `AndroidJNI.CallVoidMethod` with cached method ID + `jvalue[]` (no managed alloc). Java exception -> one warning, then off.
+    - Editor / desktop: no-op.
+  - Android permission: `Editor/Platform/AndroidVibratePermission` (`IPostGenerateGradleAndroidProject`, `#if UNITY_ANDROID`) adds `android.permission.VIBRATE` to unityLibrary manifest. Unity only adds it itself when `Handheld.Vibrate` is used.
+  - `Combat/KillHaptics` on the `Game` object (GameSceneBuilder): `Enemy.Damaged` killed -> `Haptics.Light()`. Warmup in Awake (no JNI hitch on first kill).
+  - Main menu: turning the Vibration toggle on plays one preview tap.
+  - `DevBuildTools.BuildAndroidApk` (`-buildTarget Android ... -ss-out <file.apk>`, `-ss-dev` optional).
+  - Tests: `Tests/PlayMode/HapticsTests` (7): kill = 1 pulse, hit = 0, 5 kills same frame = 1, rate limit window, vibration off = 0, editor backend no throw, kill no GC alloc. All 20 PlayMode tests pass.
+  - Verified: scene rebuild 0 errors; Android APK build OK (`aapt2 dump permissions` shows VIBRATE); iOS Xcode build + xcodebuild device build OK (`SSHaptics.mm` compiled + linked).
+  - Not verified: real tap feel on iPhone / Android. iPhone install failed this run: phone was locked (`IXRemoteErrorDomain code 6`). No Android phone connected. Redeploy and feel test by hand.
+
 ## DECISIONS
 - Design language: Archero / Archero 2 (menus, loop, chests, daily/weekly quests, gear merge, talents, energy). Look: Dark Souls, realistic, not dismal. User decision 2026-10-11.
 - Naming map: energy=Estus, gold=Souls, gems=Ember Shards, chests=Reliquaries, daily=Oaths, weekly=Pilgrimage, chapter=Realm, room=Chamber. See GAME_PLAN sec 2.

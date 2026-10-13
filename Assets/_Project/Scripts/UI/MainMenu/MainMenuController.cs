@@ -117,7 +117,11 @@ namespace SurvivorSouls.UI.MainMenu
 
             var vibration = root.Q<Toggle>(VibrationName);
             vibration.SetValueWithoutNotify(GameSettings.Vibration);
-            vibration.RegisterValueChangedCallback(e => GameSettings.Vibration = e.newValue);
+            vibration.RegisterValueChangedCallback(e =>
+            {
+                GameSettings.Vibration = e.newValue;
+                if (e.newValue) Haptics.Light(); // preview tap: the player feels what they turned on
+            });
 
             var fps = root.Q<Toggle>(FpsName);
             fps.SetValueWithoutNotify(GameSettings.HighFrameRate);

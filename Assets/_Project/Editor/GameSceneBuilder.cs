@@ -60,6 +60,7 @@ namespace SurvivorSouls.Editor
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             SetupEnvironment();
             var game = new GameObject("Game").AddComponent<GameSceneController>();
+            game.gameObject.AddComponent<KillHaptics>();
             CreateMoonLight();
 
             var joystick = new GameObject("Input").AddComponent<FloatingJoystick>();
