@@ -25,6 +25,8 @@ namespace SurvivorSouls.UI.Hud
         private const string LevelName = "victory-level";
         private const string UnlockName = "victory-unlock";
         private const string ContinueName = "btn-victory-continue";
+        private const string HintName = "lbl-hint";
+        private const string HintGoneClass = "hud-hint--gone"; // GameHud.uss, shared with GameHudController
         private const string HiddenClass = "hud-hidden";
         private const string ShownClass = "victory--shown";
         private const string UnlockNewClass = "victory__unlock--new";
@@ -96,6 +98,7 @@ namespace SurvivorSouls.UI.Hud
                 unlock.EnableInClassList(UnlockNewClass, unlocked);
             }
             DrawCounts(0f);
+            root.Q(HintName)?.AddToClassList(HintGoneClass);
             _screen.RemoveFromClassList(HiddenClass);
             // Next frame, so the opacity transition starts from 0 instead of snapping.
             _screen.schedule.Execute(() => _screen.AddToClassList(ShownClass)).ExecuteLater(30);
