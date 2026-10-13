@@ -12,6 +12,7 @@ namespace SurvivorSouls.Editor.Procedural
     {
         private const string TexDir = "Assets/_Project/Art/Textures/Game";
         private const string MatDir = "Assets/_Project/Art/Materials/Game";
+        private const string ReloadRingShader = "SurvivorSouls/ReloadRing";
         private const string SoftDotPath = "Assets/_Project/Art/Textures/T_SoftDot.png"; // made by MainMenuSceneBuilder
 
         public Material Palette, Floor, OuterGround, Grass, Wall, RuneDecal, BlobShadow, Flame, Ember, Mist;
@@ -63,7 +64,10 @@ namespace SurvivorSouls.Editor.Procedural
             // Saturated amber, not pale gold: it must read on white snow (Realm 1) as well as on stone.
             var ring = TextureFactory.Write($"{TexDir}/T_Ring.png", 128, 128, RingPixel, TextureFactory.Kind.Color,
                 wrap: TextureWrapMode.Clamp, maxSize: 128);
-            kit.HeroRing = EditorAssetUtil.TransparentMaterial($"{MatDir}/M_HeroRing.mat", EditorAssetUtil.Unlit, ring, new Color(0.95f, 0.5f, 0.1f, 0.75f));
+            // Hero ring = reload ring (KAN-42): procedural radial fill, no texture. Style values live on the material.
+            kit.HeroRing = EditorAssetUtil.LoadOrCreateMaterial($"{MatDir}/M_ReloadRing.mat", ReloadRingShader);
+            kit.HeroRing.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+            EditorUtility.SetDirty(kit.HeroRing);
             kit.DirectionMarker = EditorAssetUtil.TransparentMaterial($"{MatDir}/M_DirectionMarker.mat", EditorAssetUtil.Unlit, ring, new Color(0.9f, 0.42f, 0.08f, 0.9f));
             kit.Gold = EditorAssetUtil.LoadOrCreateMaterial($"{MatDir}/M_Gold.mat", EditorAssetUtil.Unlit);
             kit.Gold.SetColor("_BaseColor", new Color(1f, 0.78f, 0.22f));

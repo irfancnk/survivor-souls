@@ -807,11 +807,17 @@ namespace SurvivorSouls.Editor.World
             }
         }
 
-        /// <summary>Under-foot ring, move-direction ring and the gold arrow to the exit, all children of the player.</summary>
+        /// <summary>Under-foot reload ring, move-direction ring and the gold arrow to the exit, all children of the player.</summary>
         private static void BuildPlayerAids(Transform player, PlayerMover mover, WorldStreamer world)
         {
-            var ring = Decal("Hero Ring", player, _kit.HeroRing, 1.25f);
+            // Reload ring (KAN-42): ring radius 0.7 of the 1.4 m quad = 0.49 m, just outside the feet; the rest of the quad
+            // leaves room for the fire pulse and the glow. GameSceneBuilder wires the shooter.
+            var ring = Decal("Hero Ring", player, _kit.HeroRing, 1.4f);
             ring.transform.localPosition = new Vector3(0f, 0.035f, 0f);
+            var reload = new SerializedObject(player.gameObject.AddComponent<ReloadRing>());
+            reload.FindProperty("mover").objectReferenceValue = mover;
+            reload.FindProperty("ring").objectReferenceValue = ring.GetComponent<MeshRenderer>();
+            reload.ApplyModifiedPropertiesWithoutUndo();
 
             var markerGo = Decal("Direction Marker", player, _kit.DirectionMarker, 0.6f);
             var marker = new SerializedObject(player.gameObject.AddComponent<DirectionMarker>());

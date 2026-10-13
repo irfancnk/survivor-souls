@@ -71,6 +71,7 @@ namespace SurvivorSouls.Editor
             var combat = CombatBuilder.Load();
             var (shooter, spawner) = CreateCombat(player, combat.bolt, combat.enemy, world);
             CombatBuilder.CreateFx(kit, shooter);
+            SetRef(player.GetComponent<ReloadRing>(), "shooter", shooter); // ring under the feet shows the reload
             var progression = ProgressionBuilder.Create(kit, player); // before health: death disables the SoulCollector
             var (health, death) = CreatePlayerHealth(player, joystick, shooter);
             SetRef(progression.Flow, "player", health);

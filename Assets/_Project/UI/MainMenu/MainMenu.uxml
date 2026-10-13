@@ -31,6 +31,7 @@
             <ui:Slider name="sld-sfx" label="Effects" low-value="0" high-value="1" class="ss-field" />
             <ui:Toggle name="tgl-vibration" label="Vibration" class="ss-field" />
             <ui:Toggle name="tgl-fps" label="60 FPS" class="ss-field" />
+            <ui:Toggle name="tgl-reload-ring" label="Reload Ring" class="ss-field" />
             <ui:Button name="btn-settings-close" text="BACK" class="ss-button ss-button--primary ss-button--modal" />
         </ui:VisualElement>
     </ui:VisualElement>

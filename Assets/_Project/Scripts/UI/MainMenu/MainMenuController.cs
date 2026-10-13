@@ -22,6 +22,7 @@ namespace SurvivorSouls.UI.MainMenu
         private const string SfxName = "sld-sfx";
         private const string VibrationName = "tgl-vibration";
         private const string FpsName = "tgl-fps";
+        private const string ReloadRingName = "tgl-reload-ring";
         private const string CloseName = "btn-settings-close";
         private const string HiddenClass = "ss-hidden";
 
@@ -126,6 +127,10 @@ namespace SurvivorSouls.UI.MainMenu
             var fps = root.Q<Toggle>(FpsName);
             fps.SetValueWithoutNotify(GameSettings.HighFrameRate);
             fps.RegisterValueChangedCallback(e => GameSettings.HighFrameRate = e.newValue);
+
+            var reloadRing = root.Q<Toggle>(ReloadRingName);
+            reloadRing.SetValueWithoutNotify(GameSettings.ReloadRing);
+            reloadRing.RegisterValueChangedCallback(e => GameSettings.ReloadRing = e.newValue);
         }
 
         private void ShowToast(string message)

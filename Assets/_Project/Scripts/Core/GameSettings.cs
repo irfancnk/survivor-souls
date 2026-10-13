@@ -13,6 +13,7 @@ namespace SurvivorSouls.Core
         private const string KeySfx = "settings.sfxVolume";
         private const string KeyVibration = "settings.vibration";
         private const string KeyHighFrameRate = "settings.highFrameRate";
+        private const string KeyReloadRing = "settings.reloadRing";
 
         public static event Action Changed;
 
@@ -39,6 +40,13 @@ namespace SurvivorSouls.Core
         {
             get => PlayerPrefs.GetInt(KeyHighFrameRate, 1) == 1;
             set => SetInt(KeyHighFrameRate, value ? 1 : 0);
+        }
+
+        /// <summary>Reload ring under the Knight (KAN-42). On by default; players who find it busy can turn it off.</summary>
+        public static bool ReloadRing
+        {
+            get => PlayerPrefs.GetInt(KeyReloadRing, 1) == 1;
+            set => SetInt(KeyReloadRing, value ? 1 : 0);
         }
 
         public static void Apply()
