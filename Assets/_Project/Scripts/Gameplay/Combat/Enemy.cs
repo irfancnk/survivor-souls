@@ -16,6 +16,10 @@ namespace SurvivorSouls.Gameplay.Combat
     /// Status: <see cref="ApplyBurn"/> (KAN-19 skill) deals fire damage in ticks and glows the body ember orange.
     /// Steering (KAN-29): with a <see cref="Walkability"/> set, a chaser whose way is blocked (rock, wall, pier) turns to
     /// the first free heading on a remembered side, and a step into an obstacle slides along it. No physics queries.
+    /// Horde (KAN-30): the steering probe runs in time slices (every <see cref="SteerInterval"/> s, staggered per enemy;
+    /// the wall slide still runs every frame), separation uses the per-frame <see cref="EnemyCrowd"/> grid, and each spawn
+    /// rolls its own speed and size so a crowd never moves in lockstep. With <see cref="animRefSpeed"/> set, the walk
+    /// clip's playback rate follows the real ground speed (no foot sliding) and an "Attack" state plays at the player.
     /// </summary>
     public sealed class Enemy : MonoBehaviour
     {
@@ -44,8 +48,25 @@ namespace SurvivorSouls.Gameplay.Combat
         [Tooltip("XP in the soul wisp this enemy drops on death (KAN-21). Wisp size and colour follow the value.")]
         [SerializeField, Min(0)] private int xpValue = 10;
         [SerializeField] private Renderer body;
+        [Tooltip("Body colour. Equal to the material colour: then no property block is set and the SRP Batcher keeps the body.")]
         [SerializeField] private Color baseTint = Color.white;
         [SerializeField] private Animator animator;
+
+        [Header("Horde variety (KAN-30)")]
+        [Tooltip("Root scale of this type (brutes are bigger). Height, hit radius and separation scale with it.")]
+        [SerializeField, Min(0.1f)] private float bodyScale = 1f;
+        [Tooltip("Per-spawn random spread of move speed (0.1 = +-10%).")]
+        [SerializeField, Range(0f, 0.3f)] private float speedJitter;
+        [Tooltip("Per-spawn random spread of body size (0.05 = +-5%).")]
+        [SerializeField, Range(0f, 0.2f)] private float scaleJitter;
+
+        [Header("Animation sync (KAN-30)")]
+        [Tooltip("Ground speed (m/s) of the walk clip at animator speed 1 and scale 1 (measured by the builder). " +
+                 "Animator speed = real ground speed / (this x scale), so the feet stay planted. 0 = free-running clip.")]
+        [SerializeField, Min(0f)] private float animRefSpeed;
+        [SerializeField] private string walkState = "Walk";
+        [Tooltip("Played while the player is within contact range. Skipped when the controller has no such state.")]
+        [SerializeField] private string attackState = "Attack";
 
         private const float KnockbackSpeed = 4f;
         private const float FlashTime = 0.12f;
@@ -57,6 +78,12 @@ namespace SurvivorSouls.Gameplay.Combat
         private const float ProbeDistance = 0.9f;   // look-ahead for steering
         private const float DetourStep = 35f;       // degrees per detour try
         private const int DetourTries = 4;          // up to 140 degrees off the direct heading
+        /// <summary>Seconds between steering probes of one enemy (staggered). The wall slide still runs every frame.</summary>
+        public const float SteerInterval = 0.12f;
+        private const float MinWalkRate = 0.2f;     // animator speed floor while shuffling (crowded, nearly still)
+        private const float MaxWalkRate = 2.2f;
+        private const float AnimBlend = 0.18f;      // walk <-> attack cross-fade (s)
+        private const float AttackReach = 0.15f;    // attack starts this far outside contact range
 
         private Transform _target;
         private Action<Enemy> _release;
@@ -73,6 +100,16 @@ namespace SurvivorSouls.Gameplay.Combat
         private Color _tint = Color.clear;
         private float _detourSide = 1f;
         private bool _detouring;
+        private float _steerTimer;
+        private float _steerAngle;   // current detour, degrees off the direct heading
+        private float _speedMul = 1f;
+        private float _scale = 1f;
+        private float _groundSpeed;  // smoothed real planar speed (m/s) for the walk rate
+        private float _attackRate = 1f;
+        private bool _attacking;
+        private bool _hasAttack;
+        private int _walkHash;
+        private int _attackHash;
 
         /// <summary>Northmost Z an enemy may walk to (the sea edge). Set by the spawner from the world; +inf = no limit.</summary>
         public static float LandMaxZ = float.PositiveInfinity;
@@ -83,8 +120,18 @@ namespace SurvivorSouls.Gameplay.Combat
         public float Health => _health;
         public float MaxHealth => maxHealth;
         public bool IsAlive => _health > 0f;
-        public float HitRadius => hitRadius;
-        public float Height => height;
+        /// <summary>Took damage since spawn (health bars only show for these).</summary>
+        public bool IsHurt => _health < maxHealth;
+        public float HitRadius => hitRadius * _scale;
+        public float Height => height * _scale;
+        /// <summary>This spawn's move speed (type speed x random spread).</summary>
+        public float MoveSpeed => moveSpeed * _speedMul;
+        /// <summary>This spawn's root scale (type scale x random spread).</summary>
+        public float Scale => _scale;
+        public float AnimRefSpeed => animRefSpeed;
+        /// <summary>Playing the attack state (player within reach).</summary>
+        public bool IsAttacking => _attacking;
+        public Animator Animator => animator;
         public float ContactRange => contactRange;
         public float DamagePerSecond => damagePerSecond;
         public int XpValue => xpValue;
@@ -93,9 +140,9 @@ namespace SurvivorSouls.Gameplay.Combat
         public DamageKind LastDamageKind { get; private set; }
         public bool LastHitCrit { get; private set; }
         /// <summary>Chest height: where bolts aim.</summary>
-        public Vector3 AimPoint => transform.position + Vector3.up * (height * 0.6f);
+        public Vector3 AimPoint => transform.position + Vector3.up * (Height * 0.6f);
         /// <summary>Above the head: where the health bar sits.</summary>
-        public Vector3 BarAnchor => transform.position + Vector3.up * (height + 0.3f);
+        public Vector3 BarAnchor => transform.position + Vector3.up * (Height + 0.3f);
 
         public void Spawn(Vector3 position, Transform target, Action<Enemy> release)
         {
@@ -110,19 +157,44 @@ namespace SurvivorSouls.Gameplay.Combat
             _burnPhase = UnityEngine.Random.value * Mathf.PI * 2f;
             _detourSide = UnityEngine.Random.value < 0.5f ? -1f : 1f;
             _detouring = false;
+            _steerAngle = 0f;
+            _steerTimer = UnityEngine.Random.value * SteerInterval; // staggered: probes spread over the frames
+            _speedMul = 1f + UnityEngine.Random.Range(-speedJitter, speedJitter);
+            _scale = bodyScale * (1f + UnityEngine.Random.Range(-scaleJitter, scaleJitter));
+            _groundSpeed = MoveSpeed;
+            _attacking = false;
             Vector3 toTarget = target != null ? target.position - position : Vector3.forward;
             toTarget.y = 0f;
             transform.SetPositionAndRotation(position, toTarget.sqrMagnitude > 0.01f ? Quaternion.LookRotation(toTarget) : Quaternion.identity);
+            transform.localScale = new Vector3(_scale, _scale, _scale);
             gameObject.SetActive(true);
             SetTint(baseTint);
-            if (animator != null)
-            {
-                // Random phase and a small speed spread, so a crowd does not run in lockstep.
-                animator.speed = UnityEngine.Random.Range(0.9f, 1.1f);
-                animator.Play(0, 0, UnityEngine.Random.value);
-            }
+            StartAnimation();
             Active.Add(this);
         }
+
+        /// <summary>Random phase (and, for a free-running clip, a small rate spread), so a crowd does not walk in lockstep.</summary>
+        private void StartAnimation()
+        {
+            if (animator == null) return;
+            _walkHash = Animator.StringToHash(walkState);
+            _attackHash = Animator.StringToHash(attackState);
+            bool synced = animRefSpeed > 0f && animator.HasState(0, _walkHash);
+            _hasAttack = synced && animator.HasState(0, _attackHash);
+            _attackRate = UnityEngine.Random.Range(0.9f, 1.1f);
+            if (synced)
+            {
+                animator.speed = WalkRate(_groundSpeed);
+                animator.Play(_walkHash, 0, UnityEngine.Random.value);
+                return;
+            }
+            animator.speed = UnityEngine.Random.Range(0.9f, 1.1f);
+            animator.Play(0, 0, UnityEngine.Random.value);
+        }
+
+        /// <summary>Walk clip playback rate that makes the feet cover <paramref name="groundSpeed"/> m/s.</summary>
+        public float WalkRate(float groundSpeed) =>
+            animRefSpeed > 0f ? Mathf.Clamp(groundSpeed / (animRefSpeed * _scale), MinWalkRate, MaxWalkRate) : 1f;
 
         /// <summary>
         /// Moves a living enemy to <paramref name="position"/> facing its target, keeping health and status. Used by the
@@ -194,25 +266,64 @@ namespace SurvivorSouls.Gameplay.Combat
 
             Vector3 pos = transform.position;
             Vector3 move = Vector3.zero;
+            float dist = float.PositiveInfinity;
             if (_target != null)
             {
                 Vector3 to = _target.position - pos;
                 to.y = 0f;
-                float dist = to.magnitude;
+                dist = to.magnitude;
                 if (dist > 0.01f)
                 {
                     Vector3 heading = to / dist;
-                    if (dist > stopDistance) heading = Steer(pos, heading);
+                    if (dist > stopDistance) heading = SlicedSteer(pos, heading, dt);
                     var look = Quaternion.LookRotation(heading);
                     transform.rotation = Quaternion.RotateTowards(transform.rotation, look, turnSpeed * dt);
-                    if (dist > stopDistance) move = heading * moveSpeed;
+                    if (dist > stopDistance) move = heading * MoveSpeed;
                 }
             }
-            move += Separation(pos);
+            move += EnemyCrowd.Separation(this, pos, separation * _scale, MoveSpeed * 1.5f);
             _knock = Vector3.MoveTowards(_knock, Vector3.zero, KnockbackSpeed * 6f * dt);
             Vector3 next = pos + (move + _knock) * dt;
             next.z = Mathf.Min(next.z, LandMaxZ); // knockback and crowding never push them into the sea
-            transform.position = Slide(pos, next);
+            next = Slide(pos, next);
+            transform.position = next;
+            UpdateAnimation(pos, next, dist, dt);
+        }
+
+        /// <summary>
+        /// Walk rate from the real ground speed (steering, crowd push and knockback included), smoothed so a jostle
+        /// does not flicker the legs. Within reach of the player: cross-fade to the attack state, back to the walk after.
+        /// </summary>
+        private void UpdateAnimation(Vector3 from, Vector3 to, float distToTarget, float dt)
+        {
+            if (animator == null || animRefSpeed <= 0f) return;
+            float dx = to.x - from.x, dz = to.z - from.z;
+            float speed = Mathf.Sqrt(dx * dx + dz * dz) / dt;
+            _groundSpeed += (speed - _groundSpeed) * (1f - Mathf.Exp(-dt * 10f));
+            bool attack = _hasAttack && distToTarget <= contactRange + AttackReach;
+            if (attack != _attacking)
+            {
+                _attacking = attack;
+                animator.CrossFadeInFixedTime(attack ? _attackHash : _walkHash, AnimBlend, 0, attack ? 0f : UnityEngine.Random.value * 0.2f);
+            }
+            animator.speed = _attacking ? _attackRate : WalkRate(_groundSpeed);
+        }
+
+        /// <summary>
+        /// Time-sliced <see cref="Steer"/>: the probe runs every <see cref="SteerInterval"/> s; in between, the last
+        /// detour angle is applied to the fresh direct heading (so the chase still tracks a moving player every frame).
+        /// </summary>
+        private Vector3 SlicedSteer(Vector3 pos, Vector3 heading, float dt)
+        {
+            _steerTimer -= dt;
+            if (_steerTimer <= 0f)
+            {
+                _steerTimer = Mathf.Max(_steerTimer + SteerInterval, 0f);
+                Vector3 steered = Steer(pos, heading);
+                _steerAngle = _detouring ? Vector3.SignedAngle(heading, steered, Vector3.up) : 0f;
+                return steered;
+            }
+            return _steerAngle == 0f ? heading : Quaternion.AngleAxis(_steerAngle, Vector3.up) * heading;
         }
 
         /// <summary>
@@ -271,21 +382,6 @@ namespace SurvivorSouls.Gameplay.Combat
             return from;
         }
 
-        /// <summary>Pushes away from close neighbours so a crowd does not stack into one body.</summary>
-        private Vector3 Separation(Vector3 pos)
-        {
-            Vector3 push = Vector3.zero;
-            foreach (var other in Active)
-            {
-                if (other == this) continue;
-                Vector3 d = pos - other.transform.position;
-                d.y = 0f;
-                float m = d.magnitude;
-                if (m < separation && m > 0.001f) push += d / m * ((separation - m) / separation * moveSpeed * 1.5f);
-            }
-            return push;
-        }
-
         private void UpdateDeath(float dt)
         {
             _deadTime += dt;
@@ -336,12 +432,20 @@ namespace SurvivorSouls.Gameplay.Combat
             if (c != _tint) SetTint(c);
         }
 
+        /// <summary>
+        /// Base tint = no property block (the material already has that colour), so a calm horde stays SRP-Batcher
+        /// friendly; only flashing or burning bodies carry a block.
+        /// </summary>
         private void SetTint(Color c)
         {
             _tint = c;
             if (body == null) return;
+            if (c == baseTint)
+            {
+                body.SetPropertyBlock(null);
+                return;
+            }
             _block ??= new MaterialPropertyBlock();
-            body.GetPropertyBlock(_block);
             _block.SetColor(BaseColorId, c);
             body.SetPropertyBlock(_block);
         }

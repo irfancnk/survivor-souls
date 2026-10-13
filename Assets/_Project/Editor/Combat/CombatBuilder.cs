@@ -12,7 +12,10 @@ namespace SurvivorSouls.Editor.Combat
 {
     /// <summary>
     /// Builds the combat prefabs from code: the crossbow bolt (palette mesh + short glowing trail) and the
-    /// zombie enemy (Meshy model, Art/Characters/Zombie, running clip).
+    /// zombie horde (KAN-30): one Meshy model in three types. Shambler (most of the horde: slow, one bolt), Runner (the old
+    /// sprint clip, fast and frail, rare) and Brute (big, slow, tough, drops an elite wisp). Shambler and Brute use the
+    /// baked shamble + attack clips (<see cref="ZombieAnimBuilder"/>); every type carries its clip's measured ground speed
+    /// so Enemy plays the legs at the real speed.
     /// Called by GameSceneBuilder; re-run is safe (assets are updated in place).
     /// </summary>
     public static class CombatBuilder
@@ -22,17 +25,55 @@ namespace SurvivorSouls.Editor.Combat
         private const string BoltMeshPath = ArtDir + "/Bolt_Mesh.asset";
         public const string BoltPrefabPath = PrefabDir + "/Bolt.prefab";
         public const string EnemyPrefabPath = PrefabDir + "/Enemy_Zombie.prefab";
+        public const string RunnerPrefabPath = PrefabDir + "/Enemy_ZombieRunner.prefab";
+        public const string BrutePrefabPath = PrefabDir + "/Enemy_ZombieBrute.prefab";
         private const string ZombieDir = "Assets/_Project/Art/Characters/Zombie";
         private const string ZombieModelPath = ZombieDir + "/SK_Zombie.fbx";
         private const string ZombieRunPath = ZombieDir + "/A_Zombie_Run.fbx";
         private const string ZombieTexturePath = ZombieDir + "/T_Zombie_BaseColor.jpg"; // extracted from the Meshy FBX
+        private const string ZombieShamblePath = ZombieDir + "/A_Zombie_Shamble.anim";
+        private const string ZombieAttackPath = ZombieDir + "/A_Zombie_Attack.anim";
         private const string ZombieControllerPath = ZombieDir + "/AC_Zombie.controller";
+        private const string RunnerControllerPath = ZombieDir + "/AC_ZombieRunner.controller";
         private const string ZombieMaterialPath = ZombieDir + "/M_Zombie.mat";
+        private const string RunnerMaterialPath = ZombieDir + "/M_ZombieRunner.mat";
+        private const string BruteMaterialPath = ZombieDir + "/M_ZombieBrute.mat";
         private const int ZombieTextureSize = 1024; // 2k source; ~100 px tall on screen
-        private const float ZombieSpeed = 3f; // m/s: a run, still slower than the player (5)
-        private const float ZombieContactRange = 1.4f; // centre to centre; stops at 1.1, so a zombie at the player hurts
-        private const float ZombieContactDps = 20f; // player 400 HP: 20 s alone, ~6.7 s with three
-        private const int ZombieXp = 10; // small soul wisp; the XpCurve asset is tuned around it (KAN-21)
+
+        /// <summary>
+        /// One zombie type. Pre-KAN-30 baseline (single type): 150 HP, 3 m/s sprint, 20 dps, 10 XP, max 6-10 alive.
+        /// Horde balance: three times the bodies, so the common one dies to one base bolt (100), walks at 58% of the old
+        /// speed (Knight 5 m/s can kite) and bites softer; XP per kill drops so levels come at about the old pace.
+        /// </summary>
+        private struct ZombieType
+        {
+            public string Name, Prefab, Material, Controller;
+            public Color Tint;
+            public float Health, Speed, SpeedJitter, Scale, ScaleJitter, ContactRange, StopDistance, Dps;
+            public int Xp;
+            public bool Runs; // sprint clip instead of the shamble
+        }
+
+        private static readonly ZombieType Shambler = new ZombieType
+        {
+            Name = "Enemy_Zombie", Prefab = EnemyPrefabPath, Material = ZombieMaterialPath, Controller = ZombieControllerPath,
+            Tint = Color.white, Health = 100f, Speed = 1.75f, SpeedJitter = 0.1f, Scale = 1f, ScaleJitter = 0.05f,
+            ContactRange = 1.4f, StopDistance = 1.1f, Dps = 12f, Xp = 5,
+        };
+
+        private static readonly ZombieType Runner = new ZombieType
+        {
+            Name = "Enemy_ZombieRunner", Prefab = RunnerPrefabPath, Material = RunnerMaterialPath, Controller = RunnerControllerPath,
+            Tint = new Color(1.08f, 0.84f, 0.76f), Health = 70f, Speed = 2.6f, SpeedJitter = 0.08f, Scale = 0.93f, ScaleJitter = 0.04f,
+            ContactRange = 1.35f, StopDistance = 1.05f, Dps = 10f, Xp = 6, Runs = true,
+        };
+
+        private static readonly ZombieType Brute = new ZombieType
+        {
+            Name = "Enemy_ZombieBrute", Prefab = BrutePrefabPath, Material = BruteMaterialPath, Controller = ZombieControllerPath,
+            Tint = new Color(0.7f, 0.78f, 0.66f), Health = 340f, Speed = 1.3f, SpeedJitter = 0.06f, Scale = 1.25f, ScaleJitter = 0.04f,
+            ContactRange = 1.65f, StopDistance = 1.3f, Dps = 26f, Xp = 25, // 25 = elite wisp tier
+        };
 
         public static void Build(GameArtKit kit)
         {
@@ -45,12 +86,15 @@ namespace SurvivorSouls.Editor.Combat
         public const string WavesPath = "Assets/_Project/Data/Combat/EnemyWaves_Realm1.asset";
 
         /// <summary>
-        /// Spawn pacing for Realm 1 (KAN-29). Phase 1 keeps the pre-KAN-29 baseline (6 alive, one zombie every 1.4 s);
-        /// later phases add small groups and bursts so the pressure swells. KAN-30 owns the horde numbers: edit the asset.
-        /// An existing asset is never overwritten (designer edits stay); only empty enemy slots get the zombie.
+        /// Spawn pacing for Realm 1. KAN-29 baseline: 6 / 8 / 10 alive at 0 / 45 / 120 s, groups of 1-2, bursts of 3-4.
+        /// KAN-30 horde: 18 / 24 / 30 alive (x3) plus 36 from 240 s; groups of 1-4 every 0.8-1.1 s and bursts of 5-12 every
+        /// 20-26 s so the crowd swells and drains; Runners and Brutes mixed in from 45 s.
+        /// An existing asset is never overwritten (designer edits stay); only empty enemy slots get the shambler.
         /// </summary>
         public static EnemyWaveTable LoadOrCreateWaves(Enemy zombie)
         {
+            var runner = AssetDatabase.LoadAssetAtPath<GameObject>(RunnerPrefabPath)?.GetComponent<Enemy>();
+            var brute = AssetDatabase.LoadAssetAtPath<GameObject>(BrutePrefabPath)?.GetComponent<Enemy>();
             var table = AssetDatabase.LoadAssetAtPath<EnemyWaveTable>(WavesPath);
             if (table != null)
             {
@@ -66,13 +110,20 @@ namespace SurvivorSouls.Editor.Combat
                 return table;
             }
 
-            EnemyWaveTable.EnemyEntry[] Zombies() => new[] { new EnemyWaveTable.EnemyEntry { prefab = zombie, weight = 1f } };
+            EnemyWaveTable.EnemyEntry[] Mix(float shamblers, float runners, float brutes)
+            {
+                var list = new System.Collections.Generic.List<EnemyWaveTable.EnemyEntry> { new EnemyWaveTable.EnemyEntry { prefab = zombie, weight = shamblers } };
+                if (runner != null && runners > 0f) list.Add(new EnemyWaveTable.EnemyEntry { prefab = runner, weight = runners });
+                if (brute != null && brutes > 0f) list.Add(new EnemyWaveTable.EnemyEntry { prefab = brute, weight = brutes });
+                return list.ToArray();
+            }
             table = ScriptableObject.CreateInstance<EnemyWaveTable>();
             table.Configure(firstDelay: 1f, prewarm: 12, new[]
             {
-                new EnemyWaveTable.Phase { startTime = 0f, maxAlive = 6, spawnInterval = 1.4f, groupSize = new Vector2Int(1, 1), enemies = Zombies() },
-                new EnemyWaveTable.Phase { startTime = 45f, maxAlive = 8, spawnInterval = 1.6f, groupSize = new Vector2Int(1, 2), burstInterval = 25f, burstSize = 3, enemies = Zombies() },
-                new EnemyWaveTable.Phase { startTime = 120f, maxAlive = 10, spawnInterval = 1.5f, groupSize = new Vector2Int(1, 2), burstInterval = 22f, burstSize = 4, enemies = Zombies() },
+                new EnemyWaveTable.Phase { startTime = 0f, maxAlive = 18, spawnInterval = 1.1f, groupSize = new Vector2Int(1, 2), burstInterval = 26f, burstSize = 5, enemies = Mix(1f, 0f, 0f) },
+                new EnemyWaveTable.Phase { startTime = 45f, maxAlive = 24, spawnInterval = 1f, groupSize = new Vector2Int(2, 3), burstInterval = 24f, burstSize = 7, enemies = Mix(0.82f, 0.14f, 0.04f) },
+                new EnemyWaveTable.Phase { startTime = 120f, maxAlive = 30, spawnInterval = 0.9f, groupSize = new Vector2Int(2, 3), burstInterval = 22f, burstSize = 9, enemies = Mix(0.72f, 0.18f, 0.1f) },
+                new EnemyWaveTable.Phase { startTime = 240f, maxAlive = 36, spawnInterval = 0.8f, groupSize = new Vector2Int(2, 4), burstInterval = 20f, burstSize = 12, enemies = Mix(0.66f, 0.2f, 0.14f) },
             });
             EditorAssetUtil.EnsureFolder(System.IO.Path.GetDirectoryName(WavesPath).Replace('\\', '/'));
             AssetDatabase.CreateAsset(table, WavesPath);
@@ -222,49 +273,84 @@ namespace SurvivorSouls.Editor.Combat
         }
 
         /// <summary>
-        /// Meshy zombie: rigged FBX + in-place running clip, imported by Unity (Generic rig). The FBX's embedded
-        /// material does not pick up its packed texture in URP, so the extracted base colour is bound to our own material.
+        /// Meshy zombie: rigged FBX imported by Unity (Generic rig, Mesh LODs generated on import). The FBX's embedded
+        /// material does not pick up its packed texture in URP, so the extracted base colour is bound to our own materials
+        /// (one per type, tint baked in: no per-renderer property block, SRP Batcher friendly).
         /// </summary>
         private static void BuildEnemy(GameArtKit kit)
         {
-            ConfigureModelImport(ZombieModelPath, importAnimation: false);
+            ConfigureModelImport(ZombieModelPath, importAnimation: false, meshLods: true);
             ConfigureModelImport(ZombieRunPath, importAnimation: true);
             ConfigureTextureImport(ZombieTexturePath, ZombieTextureSize);
 
+            var model = AssetDatabase.LoadAssetAtPath<GameObject>(ZombieModelPath);
             var run = AssetDatabase.LoadAllAssetsAtPath(ZombieRunPath).OfType<AnimationClip>()
                 .First(c => !c.name.StartsWith("__preview__"));
-            AssetDatabase.DeleteAsset(ZombieControllerPath);
-            var controller = AnimatorController.CreateAnimatorControllerAtPathWithClip(ZombieControllerPath, run);
-            var mat = EditorAssetUtil.SimpleLitMaterial(ZombieMaterialPath, AssetDatabase.LoadAssetAtPath<Texture2D>(ZombieTexturePath),
-                Color.white, smoothness: 0.15f);
+            var (shamble, attack) = ZombieAnimBuilder.Build(model, ZombieShamblePath, ZombieAttackPath);
+            float shambleSpeed = ZombieAnimBuilder.Measure(model, shamble).Speed;
+            var runGait = ZombieAnimBuilder.Measure(model, run);
+            Debug.Log($"[CombatBuilder] Zombie clip ground speeds: shamble {shambleSpeed:F3} m/s (planned {ZombieAnimBuilder.ShambleGroundSpeed:F3}), run {runGait}");
 
-            var root = new GameObject("Enemy_Zombie");
+            BuildController(ZombieControllerPath, shamble, attack);
+            BuildController(RunnerControllerPath, run, attack);
+            var texture = AssetDatabase.LoadAssetAtPath<Texture2D>(ZombieTexturePath);
+            foreach (var type in new[] { Shambler, Runner, Brute })
+                BuildZombie(kit, model, type, EditorAssetUtil.SimpleLitMaterial(type.Material, texture, type.Tint, smoothness: 0.15f),
+                    type.Runs ? runGait.Speed : shambleSpeed);
+        }
+
+        /// <summary>Walk (default) + Attack. Enemy cross-fades between them from code: no transitions, no parameters.</summary>
+        private static void BuildController(string path, AnimationClip walk, AnimationClip attack)
+        {
+            AssetDatabase.DeleteAsset(path);
+            var controller = AnimatorController.CreateAnimatorControllerAtPath(path);
+            var machine = controller.layers[0].stateMachine;
+            var walkState = machine.AddState("Walk");
+            walkState.motion = walk;
+            var attackState = machine.AddState("Attack");
+            attackState.motion = attack;
+            machine.defaultState = walkState;
+            EditorUtility.SetDirty(controller);
+        }
+
+        private static void BuildZombie(GameArtKit kit, GameObject modelAsset, in ZombieType type, Material mat, float clipSpeed)
+        {
+            var root = new GameObject(type.Name);
             try
             {
-                var model = (GameObject)PrefabUtility.InstantiatePrefab(AssetDatabase.LoadAssetAtPath<GameObject>(ZombieModelPath));
+                var model = (GameObject)PrefabUtility.InstantiatePrefab(modelAsset);
                 model.transform.SetParent(root.transform, false);
                 var animator = model.GetComponent<Animator>();
                 if (animator == null) animator = model.AddComponent<Animator>();
-                animator.runtimeAnimatorController = controller;
-                animator.applyRootMotion = false; // the clip runs in place; Enemy moves the root
-                animator.cullingMode = AnimatorCullingMode.CullUpdateTransforms;
+                animator.runtimeAnimatorController = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(type.Controller);
+                animator.applyRootMotion = false; // the clips run in place; Enemy moves the root
+                animator.cullingMode = AnimatorCullingMode.CullCompletely; // off screen = no animation cost at all
 
                 var body = model.GetComponentInChildren<SkinnedMeshRenderer>();
                 body.sharedMaterials = Enumerable.Repeat(mat, body.sharedMaterials.Length).ToArray();
+                body.quality = SkinQuality.Bone2;      // ~100 px tall on screen: two weights are plenty, half the skinning
+                body.skinnedMotionVectors = false;
+                body.updateWhenOffscreen = false;
                 Quiet(body);
                 ArcherModelBuilder.AddBlobShadow(root.transform, kit.BlobShadow, kit.Quad);
 
                 var enemy = root.AddComponent<Enemy>();
                 var so = new SerializedObject(enemy);
                 so.FindProperty("body").objectReferenceValue = body;
-                so.FindProperty("baseTint").colorValue = Color.white;
+                so.FindProperty("baseTint").colorValue = type.Tint; // same as the material: no property block when calm
                 so.FindProperty("animator").objectReferenceValue = animator;
-                so.FindProperty("moveSpeed").floatValue = ZombieSpeed;
-                so.FindProperty("contactRange").floatValue = ZombieContactRange;
-                so.FindProperty("damagePerSecond").floatValue = ZombieContactDps;
-                so.FindProperty("xpValue").intValue = ZombieXp;
+                so.FindProperty("maxHealth").floatValue = type.Health;
+                so.FindProperty("moveSpeed").floatValue = type.Speed;
+                so.FindProperty("stopDistance").floatValue = type.StopDistance;
+                so.FindProperty("contactRange").floatValue = type.ContactRange;
+                so.FindProperty("damagePerSecond").floatValue = type.Dps;
+                so.FindProperty("xpValue").intValue = type.Xp;
+                so.FindProperty("bodyScale").floatValue = type.Scale;
+                so.FindProperty("speedJitter").floatValue = type.SpeedJitter;
+                so.FindProperty("scaleJitter").floatValue = type.ScaleJitter;
+                so.FindProperty("animRefSpeed").floatValue = clipSpeed;
                 so.ApplyModifiedPropertiesWithoutUndo();
-                PrefabUtility.SaveAsPrefabAsset(root, EnemyPrefabPath);
+                PrefabUtility.SaveAsPrefabAsset(root, type.Prefab);
             }
             finally
             {
@@ -272,13 +358,15 @@ namespace SurvivorSouls.Editor.Combat
             }
         }
 
-        private static void ConfigureModelImport(string path, bool importAnimation)
+        private static void ConfigureModelImport(string path, bool importAnimation, bool meshLods = false)
         {
             var importer = (ModelImporter)AssetImporter.GetAtPath(path);
             if (importer == null) throw new System.InvalidOperationException($"Model missing: {path}");
             bool dirty = importer.animationType != ModelImporterAnimationType.Generic
                 || importer.importAnimation != importAnimation
-                || importer.materialImportMode != ModelImporterMaterialImportMode.None;
+                || importer.materialImportMode != ModelImporterMaterialImportMode.None
+                || importer.generateMeshLods != meshLods;
+            importer.generateMeshLods = meshLods; // 10.4k tris at full detail; the top-down camera picks a ~2-3k level
             importer.animationType = ModelImporterAnimationType.Generic;
             importer.importAnimation = importAnimation;
             importer.materialImportMode = ModelImporterMaterialImportMode.None; // material is ours, see BuildEnemy

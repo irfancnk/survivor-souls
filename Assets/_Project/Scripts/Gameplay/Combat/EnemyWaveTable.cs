@@ -40,7 +40,7 @@ namespace SurvivorSouls.Gameplay.Combat
 
         [Tooltip("Seconds from scene start to the first spawn.")]
         [SerializeField, Min(0f)] private float firstSpawnDelay = 1f;
-        [Tooltip("Enemies made per type before play starts, so the run never instantiates mid-fight.")]
+        [Tooltip("Minimum enemies made per type before play starts (see PrewarmFor), so the run never instantiates mid-fight.")]
         [SerializeField, Min(0)] private int prewarmPerType = 8;
         [SerializeField] private Phase[] phases = new Phase[0];
 
@@ -56,6 +56,32 @@ namespace SurvivorSouls.Gameplay.Combat
             for (int i = 0; i < PhaseCount; i++)
                 if (phases[i].startTime <= time && (found < 0 || phases[i].startTime >= phases[found].startTime)) found = i;
             return found;
+        }
+
+        /// <summary>
+        /// Pool size for <paramref name="prefab"/>: enough for its weighted share of the biggest phase cap (x1.5 for luck
+        /// streaks, never above the cap), at least <see cref="PrewarmPerType"/>. So a 36-strong horde never instantiates
+        /// mid-fight, while a rare type does not get 36 idle copies.
+        /// </summary>
+        public int PrewarmFor(Enemy prefab)
+        {
+            int count = 0;
+            for (int i = 0; i < PhaseCount; i++)
+            {
+                var phase = phases[i];
+                if (phase.enemies == null) continue;
+                float total = 0f, mine = 0f;
+                foreach (var e in phase.enemies)
+                {
+                    if (e.prefab == null) continue;
+                    total += e.weight;
+                    if (e.prefab == prefab) mine += e.weight;
+                }
+                if (mine <= 0f || total <= 0f) continue;
+                int share = Mathf.Min(phase.maxAlive, Mathf.CeilToInt(phase.maxAlive * mine / total * 1.5f));
+                count = Mathf.Max(count, share);
+            }
+            return Mathf.Max(count, prewarmPerType);
         }
 
         /// <summary>Weighted enemy pick from a phase; <paramref name="roll"/> in [0, 1). Null when the phase has no usable entry.</summary>

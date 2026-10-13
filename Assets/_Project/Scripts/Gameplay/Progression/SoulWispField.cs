@@ -63,6 +63,10 @@ namespace SurvivorSouls.Gameplay.Progression
         [SerializeField] private ParticleSystem motes;
         [Tooltip("Wisps alive at once. Further drops merge into the oldest wisp.")]
         [SerializeField, Min(1)] private int capacity = 128;
+        [Tooltip("Horde clutter (KAN-30): with at least this many wisps out, a drop within mergeRadius of a resting wisp " +
+                 "adds its XP to that wisp instead of making a new one (the pile grows a tier). 0 = never.")]
+        [SerializeField, Min(0)] private int mergeAbove;
+        [SerializeField, Min(0f)] private float mergeRadius = 1.6f;
         [SerializeField] private Tier[] tiers =
         {
             new Tier { minXp = 0, size = 0.42f, body = new Color(0.8f, 0.92f, 1f, 0.95f), mote = new Color(0.62f, 0.84f, 1f, 0.8f) },
@@ -186,6 +190,7 @@ namespace SurvivorSouls.Gameplay.Progression
                 MergeIntoOldest(xpValue);
                 return;
             }
+            if (mergeAbove > 0 && _count >= mergeAbove && MergeIntoNearby(position, xpValue)) return;
             float angle = Random.value * Mathf.PI * 2f;
             float outSpeed = Random.Range(popOutSpeed.x, popOutSpeed.y);
             _wisps[_count++] = new Wisp
@@ -210,6 +215,38 @@ namespace SurvivorSouls.Gameplay.Progression
 
         internal int TierAt(int index) => _wisps[index].Tier;
         internal int XpAt(int index) => _wisps[index].Xp;
+
+        /// <summary>Adds the XP to the nearest resting wisp within <see cref="mergeRadius"/> (planar). False when there is none.</summary>
+        private bool MergeIntoNearby(Vector3 position, int xpValue)
+        {
+            int best = -1;
+            float bestSq = mergeRadius * mergeRadius;
+            for (int i = 0; i < _count; i++)
+            {
+                if (_wisps[i].State != State.Rest) continue;
+                float dx = _wisps[i].Position.x - position.x, dz = _wisps[i].Position.z - position.z;
+                float sq = dx * dx + dz * dz;
+                if (sq > bestSq) continue;
+                bestSq = sq;
+                best = i;
+            }
+            if (best < 0) return false;
+            ref var w = ref _wisps[best];
+            w.Xp += xpValue;
+            w.Tier = TierOf(w.Xp);
+            MergedDrops++;
+            return true;
+        }
+
+        /// <summary>Drops folded into a nearby resting wisp (horde clutter control). For tests and stats.</summary>
+        public int MergedDrops { get; private set; }
+
+        /// <summary>Tests and builders: horde merge settings.</summary>
+        public void SetMerge(int above, float radius)
+        {
+            mergeAbove = Mathf.Max(0, above);
+            mergeRadius = Mathf.Max(0f, radius);
+        }
 
         private void MergeIntoOldest(int xpValue)
         {

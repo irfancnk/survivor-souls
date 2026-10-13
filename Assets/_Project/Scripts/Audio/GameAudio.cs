@@ -55,6 +55,8 @@ namespace SurvivorSouls.Audio
         [SerializeField, Range(0f, 1f)] private float killMarkerVolume = 0.5f;
         [Tooltip("Minimum seconds between two marker sounds: several bolts landing in one frame give one tick, not a flange.")]
         [SerializeField, Min(0f)] private float markerInterval = 0.04f;
+        [Tooltip("Minimum seconds between two enemy death groans (a horde dying to one soul burst gives a few, not a wall).")]
+        [SerializeField, Min(0f)] private float deathInterval = 0.07f;
         [SerializeField, Range(0f, 1f)] private float soulVolume = 0.4f;
         [SerializeField, Range(0f, 1f)] private float levelUpVolume = 0.8f;
         [SerializeField, Range(0f, 1f)] private float boonPickVolume = 0.75f;
@@ -76,6 +78,7 @@ namespace SurvivorSouls.Audio
         private float _stepDistance;
         private int _lastClip = -1;
         private float _lastMarker = float.NegativeInfinity;
+        private float _lastDeath = float.NegativeInfinity;
         private float _lastSoul = float.NegativeInfinity;
         private float _lastSoulChime = float.NegativeInfinity;
         private int _soulStreak;
@@ -141,7 +144,11 @@ namespace SurvivorSouls.Audio
 
         private void OnDamaged(Enemy enemy, float amount, bool killed)
         {
-            if (killed) Play(deaths, deathVolume, 0.08f);
+            if (killed && Time.unscaledTime - _lastDeath >= deathInterval)
+            {
+                _lastDeath = Time.unscaledTime;
+                Play(deaths, deathVolume, 0.08f);
+            }
             // Kill always sounds (it is the payoff); hit ticks are rate limited and only for the player's own bolts.
             if (!killed && (enemy.LastDamageKind != DamageKind.Direct || Time.unscaledTime - _lastMarker < markerInterval)) return;
             _lastMarker = Time.unscaledTime;

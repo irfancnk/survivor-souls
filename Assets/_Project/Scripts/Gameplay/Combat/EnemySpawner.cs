@@ -144,6 +144,7 @@ namespace SurvivorSouls.Gameplay.Combat
         public int Pending => _pending;
         public Rules SpawnRules => rules;
         public Camera ViewCamera => viewCamera;
+        public EnemyWaveTable Waves => waves;
 
         private void Awake() => _releaseAction = Release;
 
@@ -499,8 +500,9 @@ namespace SurvivorSouls.Gameplay.Combat
                 foreach (var entry in entries)
                 {
                     if (entry.prefab == null || _pools.ContainsKey(entry.prefab)) continue;
-                    var pool = _pools[entry.prefab] = new Stack<Enemy>(waves.PrewarmPerType);
-                    for (int k = 0; k < waves.PrewarmPerType; k++) pool.Push(Create(entry.prefab));
+                    int count = waves.PrewarmFor(entry.prefab);
+                    var pool = _pools[entry.prefab] = new Stack<Enemy>(count);
+                    for (int k = 0; k < count; k++) pool.Push(Create(entry.prefab));
                 }
             }
         }

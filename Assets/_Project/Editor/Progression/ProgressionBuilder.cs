@@ -22,6 +22,8 @@ namespace SurvivorSouls.Editor.Progression
         private const string WispTexturePath = FxDir + "/T_SoulWisp.png";
         private const string RingTexturePath = "Assets/_Project/Art/Textures/Game/T_Ring.png"; // made by GameArtKit
         public const int WispCapacity = 128;
+        private const int WispMergeAbove = 24;    // KAN-30 horde: past this many wisps out, close drops pile into one
+        private const float WispMergeRadius = 1.6f;
         private const int MoteBudget = 320;
 
         // Run pacing: first levels come quickly (zombie = 10 XP), then the formula takes over.
@@ -71,6 +73,8 @@ namespace SurvivorSouls.Editor.Progression
             so.FindProperty("bodies").objectReferenceValue = bodies;
             so.FindProperty("motes").objectReferenceValue = motes;
             so.FindProperty("capacity").intValue = WispCapacity;
+            so.FindProperty("mergeAbove").intValue = WispMergeAbove;
+            so.FindProperty("mergeRadius").floatValue = WispMergeRadius;
             so.ApplyModifiedPropertiesWithoutUndo();
 
             CreateLevelUpFx(player, result.Flow, ringMat, moteMat);

@@ -28,6 +28,9 @@ namespace SurvivorSouls.Dev
     /// <c>-ss-souls &lt;n&gt;</c> drops n soul wisps around the player after load (mostly small, some elite, one boss orb).
     /// <c>-ss-xp &lt;amount&gt;</c> grants that much XP <see cref="XpLead"/> s before the capture (level-up burst + skill cards).
     /// <c>-ss-skills id,id,...</c> grants those skills (by SkillDefinition id, repeat an id to stack) after load.
+    /// <c>-ss-horde &lt;n&gt;</c> places n enemies (wave table mix of the last phase) on a ring 4-11 m round the player after
+    /// load, from the spawner's pools (perf runs; KAN-30). <c>-ss-immortal</c> turns off contact damage on the player.
+    /// <c>-ss-hold &lt;n&gt;</c> keeps at least n enemies alive: every second, missing ones are spawned off screen (perf soak).
     /// Used by tools/agents to verify visuals without a human. Inactive in release builds (Debug.isDebugBuild).
     /// </summary>
     public sealed class DevScreenshot : MonoBehaviour
@@ -45,6 +48,9 @@ namespace SurvivorSouls.Dev
         private int _souls;
         private int _xp;
         private string _skills;
+        private int _horde;
+        private int _hold;
+        private bool _immortal;
 
         private const float XpLead = 1.5f; // realtime seconds between the XP grant and the capture (cards fully in)
 
@@ -74,6 +80,9 @@ namespace SurvivorSouls.Dev
             shot._souls = int.TryParse(GetArg("-ss-souls"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int n) ? n : 0;
             shot._skills = GetArg("-ss-skills");
             shot._xp = int.TryParse(GetArg("-ss-xp"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int x) ? x : 0;
+            shot._horde = int.TryParse(GetArg("-ss-horde"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int h) ? h : 0;
+            shot._hold = int.TryParse(GetArg("-ss-hold"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int hold) ? hold : 0;
+            shot._immortal = Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-immortal") >= 0;
         }
 
         private IEnumerator Start()
@@ -99,6 +108,10 @@ namespace SurvivorSouls.Dev
             }
 
             if (_souls > 0) DropSouls(_souls);
+            if (_immortal)
+                foreach (var c in FindObjectsByType<ContactDamageReceiver>()) c.enabled = false;
+            if (_horde > 0) PlaceHorde(_horde);
+            if (_hold > 0) StartCoroutine(HoldHorde(_hold));
             if (!string.IsNullOrEmpty(_skills)) GrantSkills(_skills);
 
             float release = Mathf.Clamp(_release, 0f, _delay);
@@ -135,18 +148,23 @@ namespace SurvivorSouls.Dev
             using var batches = ProfilerRecorder.StartNew(ProfilerCategory.Render, "Batches Count");
             using var setPass = ProfilerRecorder.StartNew(ProfilerCategory.Render, "SetPass Calls Count");
             using var tris = ProfilerRecorder.StartNew(ProfilerCategory.Render, "Triangles Count");
-            long d = 0, b = 0, sp = 0, t = 0;
-            int frames = 0;
+            using var main = ProfilerRecorder.StartNew(ProfilerCategory.Internal, "Main Thread", 1);
+            long d = 0, b = 0, sp = 0, t = 0, m = 0, mMax = 0;
+            int frames = 0, enemies = 0;
             float start = Time.realtimeSinceStartup;
             while (Time.realtimeSinceStartup - start < seconds)
             {
                 yield return null;
                 d += draws.LastValue; b += batches.LastValue; sp += setPass.LastValue; t += tris.LastValue;
+                m += main.LastValue;
+                mMax = Math.Max(mMax, main.LastValue);
+                enemies += Enemy.Active.Count;
                 frames++;
             }
             frames = Mathf.Max(1, frames);
             float ms = (Time.realtimeSinceStartup - start) * 1000f / frames;
-            Debug.Log($"[DevScreenshot] Stats drawCalls={d / frames} batches={b / frames} setPass={sp / frames} tris={t / frames} frameMs={ms:F1}");
+            Debug.Log($"[DevScreenshot] Stats drawCalls={d / frames} batches={b / frames} setPass={sp / frames} tris={t / frames} frameMs={ms:F1} " +
+                      $"mainThreadMs={m / frames * 1e-6f:F2} mainThreadMaxMs={mMax * 1e-6f:F2} enemies={enemies / frames}");
         }
 
         private static void MoveNearExit()
@@ -176,6 +194,42 @@ namespace SurvivorSouls.Dev
                 float d = 3.2f + (i % 5) * 0.9f;
                 int xp = i == 0 ? 150 : i % 7 == 3 ? 40 : 10;
                 field.Spawn(player.transform.position + new Vector3(Mathf.Cos(a) * d, 1f, Mathf.Sin(a) * d), xp);
+            }
+        }
+
+        /// <summary>Puts <paramref name="count"/> enemies round the player, types picked like the last wave phase.</summary>
+        private static void PlaceHorde(int count)
+        {
+            var spawner = FindAnyObjectByType<EnemySpawner>();
+            var player = FindAnyObjectByType<PlayerMover>();
+            var waves = spawner != null ? spawner.Waves : null;
+            if (player == null || waves == null || waves.PhaseCount == 0) return;
+            var phase = waves.GetPhase(waves.PhaseCount - 1);
+            for (int i = 0; i < count; i++)
+            {
+                float a = i * 2.39996f;
+                float r = 4f + 7f * Mathf.Sqrt((i + 0.5f) / count);
+                var prefab = EnemyWaveTable.PickEnemy(phase, UnityEngine.Random.value);
+                if (prefab != null) spawner.SpawnAt(prefab, player.transform.position + new Vector3(Mathf.Cos(a) * r, 0f, Mathf.Sin(a) * r));
+            }
+        }
+
+        /// <summary>Tops the field up to <paramref name="count"/> enemies once a second (off-screen spawn points).</summary>
+        private static IEnumerator HoldHorde(int count)
+        {
+            var spawner = FindAnyObjectByType<EnemySpawner>();
+            var waves = spawner != null ? spawner.Waves : null;
+            if (waves == null || waves.PhaseCount == 0) yield break;
+            var phase = waves.GetPhase(waves.PhaseCount - 1);
+            while (spawner != null)
+            {
+                for (int i = Enemy.Active.Count; i < count; i++)
+                {
+                    var prefab = EnemyWaveTable.PickEnemy(phase, UnityEngine.Random.value);
+                    if (prefab == null || !spawner.TryFindSpawnPoint(out var pos)) break;
+                    spawner.SpawnAt(prefab, pos);
+                }
+                yield return new WaitForSecondsRealtime(1f);
             }
         }
 

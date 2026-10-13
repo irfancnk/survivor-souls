@@ -16,29 +16,50 @@ MonoBehaviour:
   prewarmPerType: 12
   phases:
   - startTime: 0
-    maxAlive: 6
-    spawnInterval: 1.4
-    groupSize: {x: 1, y: 1}
-    burstInterval: 0
-    burstSize: 0
+    maxAlive: 18
+    spawnInterval: 1.1
+    groupSize: {x: 1, y: 2}
+    burstInterval: 26
+    burstSize: 5
     enemies:
     - prefab: {fileID: 4089396135186074829, guid: 8915a6ebe25ca4e9e95cb85bf0ff1017, type: 3}
       weight: 1
   - startTime: 45
-    maxAlive: 8
-    spawnInterval: 1.6
-    groupSize: {x: 1, y: 2}
-    burstInterval: 25
-    burstSize: 3
+    maxAlive: 24
+    spawnInterval: 1
+    groupSize: {x: 2, y: 3}
+    burstInterval: 24
+    burstSize: 7
     enemies:
     - prefab: {fileID: 4089396135186074829, guid: 8915a6ebe25ca4e9e95cb85bf0ff1017, type: 3}
-      weight: 1
+      weight: 0.82
+    - prefab: {fileID: 77487197354657862, guid: b05691b72fc1d44249bfd634c3b97071, type: 3}
+      weight: 0.14
+    - prefab: {fileID: 8306789231946715184, guid: 822c3348110e8474ba3785c66af1e9a7, type: 3}
+      weight: 0.04
   - startTime: 120
-    maxAlive: 10
-    spawnInterval: 1.5
-    groupSize: {x: 1, y: 2}
+    maxAlive: 30
+    spawnInterval: 0.9
+    groupSize: {x: 2, y: 3}
     burstInterval: 22
-    burstSize: 4
+    burstSize: 9
     enemies:
     - prefab: {fileID: 4089396135186074829, guid: 8915a6ebe25ca4e9e95cb85bf0ff1017, type: 3}
-      weight: 1
+      weight: 0.72
+    - prefab: {fileID: 77487197354657862, guid: b05691b72fc1d44249bfd634c3b97071, type: 3}
+      weight: 0.18
+    - prefab: {fileID: 8306789231946715184, guid: 822c3348110e8474ba3785c66af1e9a7, type: 3}
+      weight: 0.1
+  - startTime: 240
+    maxAlive: 36
+    spawnInterval: 0.8
+    groupSize: {x: 2, y: 4}
+    burstInterval: 20
+    burstSize: 12
+    enemies:
+    - prefab: {fileID: 4089396135186074829, guid: 8915a6ebe25ca4e9e95cb85bf0ff1017, type: 3}
+      weight: 0.66
+    - prefab: {fileID: 77487197354657862, guid: b05691b72fc1d44249bfd634c3b97071, type: 3}
+      weight: 0.2
+    - prefab: {fileID: 8306789231946715184, guid: 822c3348110e8474ba3785c66af1e9a7, type: 3}
+      weight: 0.14

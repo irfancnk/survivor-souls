@@ -6,7 +6,8 @@ using UnityEngine.UIElements;
 namespace SurvivorSouls.UI.Hud
 {
     /// <summary>
-    /// World-anchored combat UI on the HUD document: a thin health bar over every living enemy and a
+    /// World-anchored combat UI on the HUD document: a thin health bar over every wounded living enemy (KAN-30: a fresh
+    /// horde shows no bars, which keeps the screen readable and the per-frame UI work small) and a
     /// floating "-N" number per hit (health actually deducted; red on the killing blow, gold "N!" on a crit, small orange for
     /// fire ticks, pale blue for soul bursts).
     /// Elements are pooled and placed each frame from world positions (after the camera moved).
@@ -96,7 +97,7 @@ namespace SurvivorSouls.UI.Hud
         {
             _stale.Clear();
             foreach (var kv in _bars)
-                if (!kv.Key.IsAlive || !kv.Key.isActiveAndEnabled) _stale.Add(kv.Key);
+                if (!kv.Key.IsAlive || !kv.Key.IsHurt || !kv.Key.isActiveAndEnabled) _stale.Add(kv.Key);
             foreach (var e in _stale)
             {
                 var bar = _bars[e];
@@ -107,6 +108,7 @@ namespace SurvivorSouls.UI.Hud
 
             foreach (var enemy in Enemy.Active)
             {
+                if (!enemy.IsHurt) continue;
                 if (!_bars.TryGetValue(enemy, out var bar))
                 {
                     bar = _freeBars.Count > 0 ? _freeBars.Pop() : NewBar();
