@@ -5,7 +5,8 @@
     --hud-ash: rgba(206, 200, 188, 0.75);
     --hud-ring: rgba(232, 196, 120, 0.35);
     --hud-ring-fill: rgba(10, 12, 18, 0.28);
-    --hud-knob: rgba(232, 196, 120, 0.85);
+    --hud-knob: rgba(232, 196, 120, 0.55);
+    --hud-chevron: rgba(244, 214, 150, 0.95);
     --hud-panel: rgba(16, 18, 26, 0.7);
     --hud-hp-fill: rgb(116, 178, 74);
     --hud-hp-trail: rgb(236, 196, 104);
@@ -53,7 +54,7 @@
 
 .hud-hint {
     align-self: center;
-    margin-bottom: 220px;
+    margin-bottom: 480px; /* above the idle joystick (JoystickView.idleBottomMargin + ring + chevron) */
     font-size: 40px;
     color: var(--hud-ash);
     -unity-text-align: middle-center;
@@ -65,24 +66,61 @@
     opacity: 0;
 }
 
-/* Joystick: size set in code from the input radius; these are the looks. */
+/* Joystick (JoystickView, KAN-16): size, translate and opacities set in code; these are the looks.
+   Transparent on purpose: the stick sits over the world. Chevron = square with two borders, turned 45 deg. */
 .hud-joystick {
     position: absolute;
-    border-width: 4px;
+    left: 0;
+    top: 0;
+    width: 240px;
+    height: 240px;
+}
+
+.hud-joystick__ring {
+    position: absolute;
+    left: 0; right: 0; top: 0; bottom: 0;
+    border-width: 3px;
     border-color: var(--hud-ring);
     background-color: var(--hud-ring-fill);
-    align-items: center;
-    justify-content: center;
+    border-radius: 120px;
+}
+
+.hud-joystick__side {
+    position: absolute;
+    left: 0; right: 0; top: 0; bottom: 0;
+}
+
+.hud-joystick__side--right { rotate: 90deg; }
+.hud-joystick__side--down { rotate: 180deg; }
+.hud-joystick__side--left { rotate: 270deg; }
+
+.hud-joystick__chevron {
+    position: absolute;
+    left: 50%;
+    top: -20%; /* just outside the ring: the knob at full drag never hides the active chevron */
+    width: 46px;
+    height: 46px;
+    margin-left: -23px;
+    border-top-width: 8px;
+    border-left-width: 8px;
+    border-color: var(--hud-chevron);
+    border-top-left-radius: 4px;
+    rotate: 45deg;
 }
 
 .hud-joystick__knob {
     position: absolute;
-    width: 120px;
-    height: 120px;
-    border-radius: 60px;
+    left: 50%;
+    top: 50%;
+    width: 72px;
+    height: 72px;
+    margin-left: -36px;
+    margin-top: -36px;
+    border-radius: 36px;
     background-color: var(--hud-knob);
-    border-width: 3px;
-    border-color: rgba(255, 236, 190, 0.9);
+    border-width: 2px;
+    border-color: rgba(255, 236, 190, 0.7);
+    opacity: 0;
 }
 
 /* Combat (CombatHud): placed in code with translate at a world point; margins centre each element on it. */

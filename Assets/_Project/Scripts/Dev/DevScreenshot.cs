@@ -80,7 +80,7 @@ namespace SurvivorSouls.Dev
             yield return new WaitForSecondsRealtime(_delay - release);
             if (release > 0f)
             {
-                FloatingJoystick.SimulatedValue = Vector2.zero;
+                FloatingJoystick.SimulatedValue = null; // finger up: stick stops and glides back to idle
                 yield return new WaitForSecondsRealtime(release);
             }
             if (!string.IsNullOrEmpty(_closeup)) FrameCloseup(float.Parse(_closeup, CultureInfo.InvariantCulture));

@@ -243,6 +243,7 @@ namespace SurvivorSouls.Editor
             doc.visualTreeAsset = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(HudUxmlPath);
             if (doc.visualTreeAsset == null) throw new System.InvalidOperationException($"UXML missing: {HudUxmlPath}");
             SetRef(go.AddComponent<GameHudController>(), "joystick", joystick);
+            SetRef(go.AddComponent<JoystickView>(), "joystick", joystick);
             SetRef(go.AddComponent<CombatHud>(), "worldCamera", camera);
             SetRef(go.AddComponent<HitMarkerHud>(), "worldCamera", camera);
             var hp = go.AddComponent<PlayerHealthHud>();

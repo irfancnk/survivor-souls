@@ -34,7 +34,7 @@ namespace SurvivorSouls.Gameplay.Player
         private void Update()
         {
             float dt = Time.deltaTime;
-            Vector2 stick = joystick != null ? joystick.Value : Vector2.zero;
+            Vector2 stick = joystick != null ? joystick.Move : Vector2.zero;
 
             float magnitude = Mathf.Clamp01(stick.magnitude / fullSpeedAt);
             Vector3 desired = stick.sqrMagnitude > 0f

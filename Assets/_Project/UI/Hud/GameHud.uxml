@@ -3,8 +3,22 @@
     <!-- Red screen-edge flash on damage (PlayerHealthHud). Texture and opacity set in code. Never blocks touches. -->
     <ui:VisualElement name="damage-vignette" class="hud-vignette" picking-mode="Ignore" />
 
-    <!-- Joystick is positioned in code (GameHudController) at the touch point. Never blocks touches. -->
-    <ui:VisualElement name="joystick" class="hud-joystick hud-hidden" picking-mode="Ignore">
+    <!-- Floating joystick (JoystickView): size, position and opacities set in code. Idle at the bottom centre, jumps to the
+         touch point; only the chevron(s) of the drag direction stay visible. Never blocks touches. -->
+    <ui:VisualElement name="joystick" class="hud-joystick" picking-mode="Ignore">
+        <ui:VisualElement name="joystick-ring" class="hud-joystick__ring" picking-mode="Ignore" />
+        <ui:VisualElement name="joystick-side-up" class="hud-joystick__side" picking-mode="Ignore">
+            <ui:VisualElement class="hud-joystick__chevron" picking-mode="Ignore" />
+        </ui:VisualElement>
+        <ui:VisualElement name="joystick-side-right" class="hud-joystick__side hud-joystick__side--right" picking-mode="Ignore">
+            <ui:VisualElement class="hud-joystick__chevron" picking-mode="Ignore" />
+        </ui:VisualElement>
+        <ui:VisualElement name="joystick-side-down" class="hud-joystick__side hud-joystick__side--down" picking-mode="Ignore">
+            <ui:VisualElement class="hud-joystick__chevron" picking-mode="Ignore" />
+        </ui:VisualElement>
+        <ui:VisualElement name="joystick-side-left" class="hud-joystick__side hud-joystick__side--left" picking-mode="Ignore">
+            <ui:VisualElement class="hud-joystick__chevron" picking-mode="Ignore" />
+        </ui:VisualElement>
         <ui:VisualElement name="joystick-knob" class="hud-joystick__knob" picking-mode="Ignore" />
     </ui:VisualElement>
 
