@@ -1,0 +1,55 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <Style src="RealmSelect.uss" />
+    <!-- Realm selection page (KAN-20). Instanced by MainMenu.uxml, driven by RealmSelectScreen.
+         Realm cards are built in code from the RealmCatalog (one Button per Realm, classes rs-card*). -->
+    <ui:VisualElement name="rs-screen" class="rs-screen rs-screen--closed ss-hidden">
+        <ui:VisualElement name="rs-safe" class="rs-safe" picking-mode="Ignore">
+            <ui:VisualElement class="rs-header">
+                <ui:Button name="rs-back" text="BACK" class="rs-back" />
+                <ui:VisualElement class="rs-header__titles" picking-mode="Ignore">
+                    <ui:Label text="CHOOSE A REALM" class="rs-title" />
+                    <ui:Label name="rs-subtitle" text="Each Realm is a chain of Chambers. Clear the last to open the next." class="rs-subtitle" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+            <ui:ScrollView name="rs-list" mode="Vertical" horizontal-scroller-visibility="Hidden" vertical-scroller-visibility="Hidden" class="rs-list" />
+        </ui:VisualElement>
+
+        <ui:VisualElement name="rs-veil" class="rs-veil rs-veil--closed ss-hidden" />
+        <ui:VisualElement name="rs-detail" class="rs-detail rs-detail--closed ss-hidden">
+            <ui:VisualElement name="rs-detail-thumb" class="rs-detail__thumb" picking-mode="Ignore">
+                <ui:VisualElement class="rs-lock rs-detail__lock" picking-mode="Ignore">
+                    <ui:VisualElement class="rs-lock__shackle" picking-mode="Ignore" />
+                    <ui:VisualElement class="rs-lock__body" picking-mode="Ignore" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+            <ui:Label name="rs-detail-numeral" text="REALM I" class="rs-detail__numeral" />
+            <ui:Label name="rs-detail-name" text="Realm" class="rs-detail__name" />
+            <ui:Label name="rs-detail-desc" text="" class="rs-detail__desc" />
+            <ui:VisualElement class="rs-detail__rows">
+                <ui:VisualElement class="rs-row">
+                    <ui:Label text="ENEMIES" class="rs-row__key" />
+                    <ui:Label name="rs-detail-enemies" text="" class="rs-row__value" />
+                </ui:VisualElement>
+                <ui:VisualElement class="rs-row">
+                    <ui:Label text="REWARDS" class="rs-row__key" />
+                    <ui:Label name="rs-detail-rewards" text="" class="rs-row__value" />
+                </ui:VisualElement>
+                <ui:VisualElement class="rs-row">
+                    <ui:Label text="CHAMBERS" class="rs-row__key" />
+                    <ui:Label name="rs-detail-chambers" text="" class="rs-row__value" />
+                </ui:VisualElement>
+                <ui:VisualElement class="rs-row">
+                    <ui:Label text="BEST" class="rs-row__key" />
+                    <ui:Label name="rs-detail-best" text="" class="rs-row__value" />
+                </ui:VisualElement>
+                <ui:VisualElement class="rs-row">
+                    <ui:Label text="ESTUS" class="rs-row__key" />
+                    <ui:Label name="rs-detail-estus" text="" class="rs-row__value" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+            <ui:Label name="rs-detail-note" text="" class="rs-detail__note ss-hidden" />
+            <ui:Button name="rs-start" text="START" class="ss-button ss-button--primary rs-start" />
+            <ui:Button name="rs-detail-back" text="BACK" class="ss-button rs-detail__back" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

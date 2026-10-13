@@ -3,6 +3,8 @@ using System.IO;
 using System.Linq;
 using SurvivorSouls.Core;
 using SurvivorSouls.FX;
+using SurvivorSouls.Gameplay.Chamber;
+using SurvivorSouls.Gameplay.Realms;
 using SurvivorSouls.UI.MainMenu;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -32,6 +34,10 @@ namespace SurvivorSouls.Editor
         private const string TexturesDir = Root + "/Art/Textures";
         private const string SoftDotPath = TexturesDir + "/T_SoftDot.png";
         private const string FadeVPath = TexturesDir + "/T_FadeV.png"; // referenced by MainMenu.uss
+        private const string RealmsDir = Root + "/Data/Realms";
+        private const string RealmCatalogPath = RealmsDir + "/RealmCatalog.asset";
+        private const string Realm1ThumbPath = Root + "/Art/UI/Realms/T_Realm1_Thumb.png"; // crop of a Realm 1 dev screenshot
+        private const string Realm1DifficultyPath = Root + "/Data/Chamber/ChamberDifficulty_Realm1.asset";
 
         // Palette: cool dusk around a warm fire. Warm, not grim.
         private static readonly Color DuskColor = new Color(0.1f, 0.125f, 0.18f);
@@ -47,6 +53,7 @@ namespace SurvivorSouls.Editor
             CreateFadeTexture();
             AssetDatabase.ImportAsset(UssPath, ImportAssetOptions.ForceUpdate); // resolve url() to the fade texture
             var panelSettings = CreatePanelSettings();
+            var realmCatalog = CreateRealms();
 
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             SetupEnvironment();
@@ -55,7 +62,7 @@ namespace SurvivorSouls.Editor
             CreateGround(materials);
             CreateBonfire(materials);
             CreateRuins(materials);
-            CreateUi(panelSettings);
+            CreateUi(panelSettings, realmCatalog);
 
             EditorSceneManager.SaveScene(scene, ScenePath);
             SetFirstInBuild(ScenePath);
@@ -434,14 +441,86 @@ namespace SurvivorSouls.Editor
             }
         }
 
-        private static void CreateUi(PanelSettings panelSettings)
+        private static void CreateUi(PanelSettings panelSettings, RealmCatalog realmCatalog)
         {
             var go = new GameObject("Main Menu UI");
             var doc = go.AddComponent<UIDocument>();
             doc.panelSettings = panelSettings;
             doc.visualTreeAsset = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(UxmlPath);
             if (doc.visualTreeAsset == null) throw new System.InvalidOperationException($"UXML missing: {UxmlPath}");
-            go.AddComponent<MainMenuController>();
+            go.AddComponent<MainMenuController>().Setup(realmCatalog);
+        }
+
+        // ---------------------------------------------------------------- Realms (KAN-20)
+
+        /// <summary>
+        /// Realm assets and the catalog for the selection page. Each asset is made only when missing, so text and
+        /// order edits in the Inspector stay. Realm 1 is the snowy shore (playable, Chamber count from its
+        /// ChamberDifficulty); Realms 2 and 3 are "coming soon" placeholders without art (lock icon on a dark card).
+        /// </summary>
+        private static RealmCatalog CreateRealms()
+        {
+            EnsureFolder(RealmsDir);
+            var thumb = ImportRealmThumbnail(Realm1ThumbPath);
+            var difficulty = AssetDatabase.LoadAssetAtPath<ChamberDifficulty>(Realm1DifficultyPath);
+            var list = new[]
+            {
+                RealmAsset(1, "Frostbitten Shore", difficulty, true, thumb,
+                    "Where the cold tide gives back its dead.",
+                    "A drowned coast of snow, wrecks and broken ice. Survive each Chamber until the portal wakes, then step through. The last Chamber holds the Realm's Lord.",
+                    "Drowned Hollows (horde)", "Souls, XP, Ember Boons", new Color(0.62f, 0.8f, 0.94f)),
+                RealmAsset(2, "Undead Burg", null, false, null,
+                    "Ramparts of a fallen town.",
+                    "Rooftops, ramparts and burning streets, held by the hollowed garrison.",
+                    "Hollow soldiers, crossbowmen", "Souls, Iron Reliquary", new Color(0.86f, 0.45f, 0.2f)),
+                RealmAsset(3, "Blighted Marsh", null, false, null,
+                    "Poison mire under a rotting sky.",
+                    "A sunken swamp of plague and rot. Slow ground, toxic pools, things beneath the water.",
+                    "Bog crawlers, plague hollows", "Souls, Obsidian Reliquary", new Color(0.56f, 0.7f, 0.3f)),
+            };
+
+            var catalog = AssetDatabase.LoadAssetAtPath<RealmCatalog>(RealmCatalogPath);
+            if (catalog == null)
+            {
+                catalog = ScriptableObject.CreateInstance<RealmCatalog>();
+                catalog.Configure(list);
+                AssetDatabase.CreateAsset(catalog, RealmCatalogPath);
+            }
+            return catalog;
+        }
+
+        private static RealmDefinition RealmAsset(int id, string displayName, ChamberDifficulty difficulty, bool playable,
+            Texture2D thumbnail, string tagline, string description, string enemies, string rewards, Color accent)
+        {
+            string path = $"{RealmsDir}/Realm_{id}.asset";
+            var realm = AssetDatabase.LoadAssetAtPath<RealmDefinition>(path);
+            if (realm != null) return realm;
+            realm = RealmDefinition.Create(id, displayName, 10, playable, difficulty);
+            realm.Describe(tagline, description, enemies, rewards, 5, accent, thumbnail);
+            AssetDatabase.CreateAsset(realm, path);
+            return realm;
+        }
+
+        /// <summary>UI thumbnail import: no mips, small, clamp (one per Realm card).</summary>
+        private static Texture2D ImportRealmThumbnail(string path)
+        {
+            if (AssetImporter.GetAtPath(path) is TextureImporter importer)
+            {
+                bool dirty = importer.mipmapEnabled || importer.maxTextureSize != 512 || importer.wrapMode != TextureWrapMode.Clamp
+                             || importer.npotScale != TextureImporterNPOTScale.None;
+                if (dirty)
+                {
+                    importer.textureType = TextureImporterType.Default;
+                    importer.mipmapEnabled = false;
+                    importer.maxTextureSize = 512;
+                    importer.wrapMode = TextureWrapMode.Clamp;
+                    importer.npotScale = TextureImporterNPOTScale.None;
+                    importer.SaveAndReimport();
+                }
+            }
+            var texture = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+            if (texture == null) Debug.LogWarning($"[MainMenuSceneBuilder] Realm thumbnail missing: {path}");
+            return texture;
         }
 
         // ---------------------------------------------------------------- Helpers

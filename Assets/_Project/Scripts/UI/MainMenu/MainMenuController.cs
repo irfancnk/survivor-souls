@@ -1,6 +1,8 @@
 using SurvivorSouls.Core;
 using SurvivorSouls.Gameplay.Chamber;
+using SurvivorSouls.Gameplay.Realms;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UIElements;
 
 namespace SurvivorSouls.UI.MainMenu
@@ -8,6 +10,8 @@ namespace SurvivorSouls.UI.MainMenu
     /// <summary>
     /// Binds MainMenu.uxml. Element names are constants below; keep them in sync with the UXML.
     /// No game logic here: Play delegates to SceneLoader, settings delegate to GameSettings.
+    /// PLAY opens the Realm selection page (KAN-20, <see cref="RealmSelectScreen"/>); its START begins a run in that
+    /// Realm. Without a catalog PLAY starts Realm 1 at once. Back / Esc closes the top layer (sheet, page, settings).
     /// </summary>
     [RequireComponent(typeof(UIDocument))]
     public sealed class MainMenuController : MonoBehaviour
@@ -28,14 +32,24 @@ namespace SurvivorSouls.UI.MainMenu
         private const string HiddenClass = "ss-hidden";
 
         [SerializeField, Min(0.5f)] private float toastSeconds = 2f;
+        [Tooltip("Realms on the selection page (Data/Realms/RealmCatalog.asset). Null = PLAY starts Realm 1.")]
+        [SerializeField] private RealmCatalog realms;
 
         private UIDocument _document;
         private SafeAreaPadding _safeArea;
+        private SafeAreaPadding _realmSafeArea;
         private VisualElement _overlay;
         private Label _toast;
         private Button _play;
         private IVisualElementScheduledItem _toastHide;
+        private RealmSelectScreen _realmSelect;
         private bool _loading;
+
+        /// <summary>The Realm selection page (null until enabled or without a catalog).</summary>
+        public RealmSelectScreen RealmSelect => _realmSelect;
+
+        /// <summary>Wiring for tests and code-built menus (call before the object is enabled).</summary>
+        public void Setup(RealmCatalog catalog) => realms = catalog;
 
         private void Awake()
         {
@@ -65,10 +79,40 @@ namespace SurvivorSouls.UI.MainMenu
                 quit.clicked += OnQuit;
 
             BindSettings(root);
+            _realmSelect = realms != null && root.Q(RealmSelectScreen.ScreenName) != null
+                ? new RealmSelectScreen(root, realms, StartRealm)
+                : null;
             _play.Focus();
         }
 
-        private void Update() => _safeArea?.Refresh();
+        private void Update()
+        {
+            _safeArea?.Refresh();
+            _realmSafeArea?.Refresh();
+            // Esc on desktop; Android's back button arrives as Escape too.
+            if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame) Back();
+        }
+
+        /// <summary>Closes the top layer: Realm sheet, Realm page, then settings. False when nothing was open.</summary>
+        public bool Back()
+        {
+            if (_realmSelect != null && _realmSelect.Back()) return true;
+            if (_overlay != null && !_overlay.ClassListContains(HiddenClass))
+            {
+                CloseSettings();
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>Opens the Realm selection page (PLAY). Dev screenshots call it too.</summary>
+        public void OpenRealms()
+        {
+            if (_realmSelect == null) return;
+            _realmSafeArea ??= new SafeAreaPadding(_realmSelect.Page);
+            _realmSelect.Open();
+            _realmSafeArea.Refresh(force: true);
+        }
 
         private void OnApplicationPause(bool paused)
         {
@@ -78,15 +122,29 @@ namespace SurvivorSouls.UI.MainMenu
         private void OnPlay()
         {
             if (_loading) return;
+            if (_realmSelect != null)
+            {
+                OpenRealms();
+                return;
+            }
+            StartRun(1);
+        }
+
+        private void StartRealm(RealmDefinition realm) => StartRun(realm.Id);
+
+        private void StartRun(int realm)
+        {
+            if (_loading) return;
             if (!SceneLoader.IsInBuild(SceneNames.Game))
             {
+                _realmSelect?.Close();
                 ShowToast("The path ahead is not yet forged.");
                 return;
             }
 
             _loading = true;
             _play.SetEnabled(false);
-            RunState.NewRun(); // Chamber 1, nothing carried (KAN-40)
+            RunState.NewRun(realm); // Chamber 1 of the chosen Realm, nothing carried (KAN-40)
             SceneLoader.LoadAsync(SceneNames.Game);
         }
 

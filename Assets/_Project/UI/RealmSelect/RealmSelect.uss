@@ -1,0 +1,398 @@
+/* Realm selection page (KAN-20). Same palette as MainMenu.uss (its :root variables and .ss-button / .ss-hidden
+   apply here too: this tree is instanced inside MainMenu.uxml). Reference 1080x1920 portrait, match width.
+   Open / close: RealmSelectScreen toggles the *--closed classes; transitions fade and slide. */
+
+.rs-screen {
+    position: absolute;
+    left: 0; right: 0; top: 0; bottom: 0;
+    background-color: rgba(9, 11, 17, 0.97);
+    opacity: 1;
+    translate: 0 0;
+    transition-property: opacity, translate;
+    transition-duration: 0.22s;
+    transition-timing-function: ease-out-cubic;
+}
+
+.rs-screen--closed {
+    opacity: 0;
+    translate: 0 60px;
+}
+
+.rs-safe {
+    flex-grow: 1;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* ---------- Header ---------- */
+
+.rs-header {
+    width: 940px;
+    margin-top: 56px;
+    margin-bottom: 28px;
+    flex-direction: column;
+    align-items: center;
+}
+
+.unity-button.rs-back {
+    align-self: flex-start;
+    height: 96px;
+    min-width: 220px;
+    margin: 0 0 24px 0;
+    padding: 0 30px;
+    font-size: 34px;
+    letter-spacing: 8px;
+    -unity-font-style: bold;
+    color: var(--ss-ash);
+    background-color: rgba(20, 22, 30, 0.7);
+    background-image: none;
+    border-width: 2px;
+    border-color: rgba(232, 196, 120, 0.22);
+    border-radius: 4px;
+    transition-property: scale, border-color, color;
+    transition-duration: 0.12s;
+}
+
+.unity-button.rs-back:hover {
+    color: var(--ss-gold-bright);
+    border-color: var(--ss-gold);
+}
+
+.unity-button.rs-back:active {
+    scale: 0.96 0.96;
+}
+
+.rs-header__titles {
+    align-items: center;
+}
+
+.rs-title {
+    font-size: 62px;
+    letter-spacing: 14px;
+    padding-left: 14px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    color: var(--ss-gold);
+    margin: 0;
+    text-shadow: 0 4px 12px rgba(0, 0, 0, 0.85);
+}
+
+.rs-subtitle {
+    margin-top: 14px;
+    font-size: 30px;
+    white-space: normal;
+    -unity-text-align: middle-center;
+    -unity-font-style: italic;
+    color: var(--ss-ash-dim);
+}
+
+/* ---------- List + cards ---------- */
+
+.rs-list {
+    flex-grow: 1;
+    width: 100%;
+}
+
+.rs-list > .unity-scroll-view__content-viewport > .unity-scroll-view__content-container {
+    align-items: center;
+    padding-bottom: 60px;
+}
+
+.unity-button.rs-card {
+    width: 940px;
+    margin: 0 0 34px 0;
+    padding: 0;
+    flex-direction: column;
+    align-items: stretch;
+    background-color: rgba(20, 22, 30, 0.92);
+    background-image: none;
+    border-width: 2px;
+    border-color: rgba(232, 196, 120, 0.3);
+    border-left-width: 8px;
+    border-radius: 6px;
+    overflow: hidden;
+    -unity-text-align: upper-left;
+    transition-property: scale, border-color;
+    transition-duration: 0.12s;
+}
+
+.unity-button.rs-card:active {
+    scale: 0.98 0.98;
+}
+
+.unity-button.rs-card--selected {
+    border-color: var(--ss-gold-bright);
+}
+
+.rs-card__thumb {
+    height: 300px;
+    background-color: rgb(30, 34, 44);
+    -unity-background-scale-mode: scale-and-crop;
+    align-items: center;
+    justify-content: center;
+}
+
+.rs-card__badge {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    padding: 8px 18px;
+    font-size: 26px;
+    letter-spacing: 5px;
+    -unity-font-style: bold;
+    color: rgb(20, 16, 10);
+    background-color: var(--ss-gold);
+    border-radius: 4px;
+}
+
+.rs-card__body {
+    padding: 26px 34px 30px 34px;
+}
+
+.rs-card__numeral {
+    font-size: 26px;
+    letter-spacing: 8px;
+    color: var(--ss-ember);
+    -unity-font-style: bold;
+    margin: 0;
+    padding: 0;
+}
+
+.rs-card__name {
+    font-size: 54px;
+    letter-spacing: 3px;
+    color: var(--ss-gold-bright);
+    -unity-font-style: bold;
+    margin: 4px 0 0 0;
+    padding: 0;
+}
+
+.rs-card__tagline {
+    font-size: 30px;
+    color: var(--ss-ash-dim);
+    -unity-font-style: italic;
+    white-space: normal;
+    margin: 6px 0 0 0;
+    padding: 0;
+}
+
+.rs-card__footer {
+    margin-top: 22px;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.rs-card__meta {
+    font-size: 28px;
+    letter-spacing: 4px;
+    color: var(--ss-ash);
+    margin: 0;
+    padding: 0;
+}
+
+.rs-bar {
+    margin-top: 14px;
+    height: 12px;
+    border-radius: 6px;
+    background-color: rgba(206, 200, 188, 0.14);
+    overflow: hidden;
+}
+
+.rs-bar__fill {
+    height: 100%;
+    width: 0;
+    border-radius: 6px;
+    background-color: var(--ss-gold);
+}
+
+/* Locked: dim the art, show the lock, mute the texts. */
+.rs-card--locked .rs-card__thumb {
+    -unity-background-image-tint-color: rgb(70, 74, 86);
+}
+
+.rs-card--locked .rs-card__name {
+    color: var(--ss-ash-dim);
+}
+
+.rs-card--locked .rs-card__numeral {
+    color: rgba(206, 200, 188, 0.4);
+}
+
+.rs-card--locked .rs-card__badge {
+    color: var(--ss-ash);
+    background-color: rgba(60, 62, 72, 0.95);
+}
+
+.rs-card--completed .rs-card__badge {
+    color: rgb(18, 30, 18);
+    background-color: rgb(150, 205, 130);
+}
+
+.rs-card--completed .rs-bar__fill {
+    background-color: rgb(150, 205, 130);
+}
+
+/* ---------- Lock icon (drawn with boxes, no texture) ---------- */
+
+.rs-lock {
+    align-items: center;
+    display: none;
+}
+
+.rs-card--locked .rs-lock,
+.rs-detail--locked .rs-lock {
+    display: flex;
+}
+
+.rs-lock__shackle {
+    width: 64px;
+    height: 54px;
+    border-width: 11px;
+    border-bottom-width: 0;
+    border-color: var(--ss-ash);
+    border-top-left-radius: 32px;
+    border-top-right-radius: 32px;
+}
+
+.rs-lock__body {
+    width: 100px;
+    height: 76px;
+    margin-top: -2px;
+    border-radius: 10px;
+    background-color: var(--ss-ash);
+}
+
+/* ---------- Detail sheet ---------- */
+
+.rs-veil {
+    position: absolute;
+    left: 0; right: 0; top: 0; bottom: 0;
+    background-color: rgba(0, 0, 0, 0.7);
+    opacity: 1;
+    transition-property: opacity;
+    transition-duration: 0.2s;
+}
+
+.rs-veil--closed {
+    opacity: 0;
+}
+
+.rs-detail {
+    position: absolute;
+    left: 40px;
+    right: 40px;
+    bottom: 40px;
+    padding: 0 0 36px 0;
+    background-color: var(--ss-panel-solid);
+    border-width: 2px;
+    border-color: var(--ss-line);
+    border-radius: 8px;
+    overflow: hidden;
+    opacity: 1;
+    translate: 0 0;
+    transition-property: opacity, translate;
+    transition-duration: 0.24s;
+    transition-timing-function: ease-out-cubic;
+}
+
+.rs-detail--closed {
+    opacity: 0;
+    translate: 0 240px;
+}
+
+.rs-detail__thumb {
+    height: 340px;
+    background-color: rgb(30, 34, 44);
+    -unity-background-scale-mode: scale-and-crop;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 26px;
+}
+
+.rs-detail--locked .rs-detail__thumb {
+    -unity-background-image-tint-color: rgb(70, 74, 86);
+}
+
+.rs-detail__numeral {
+    font-size: 28px;
+    letter-spacing: 8px;
+    -unity-font-style: bold;
+    color: var(--ss-ember);
+    margin: 0 48px;
+    padding: 0;
+}
+
+.rs-detail__name {
+    font-size: 64px;
+    letter-spacing: 3px;
+    -unity-font-style: bold;
+    color: var(--ss-gold-bright);
+    margin: 4px 48px 0 48px;
+    padding: 0;
+}
+
+.rs-detail__desc {
+    font-size: 32px;
+    white-space: normal;
+    color: var(--ss-ash);
+    margin: 18px 48px 0 48px;
+    padding: 0;
+}
+
+.rs-detail__rows {
+    margin: 26px 48px 0 48px;
+    border-top-width: 1px;
+    border-color: var(--ss-line);
+}
+
+.rs-row {
+    flex-direction: row;
+    padding: 14px 0;
+    border-bottom-width: 1px;
+    border-color: rgba(232, 196, 120, 0.16);
+}
+
+.rs-row__key {
+    width: 230px;
+    font-size: 26px;
+    letter-spacing: 5px;
+    -unity-font-style: bold;
+    color: var(--ss-ash-dim);
+    -unity-text-align: middle-left;
+    margin: 0;
+    padding: 0;
+}
+
+.rs-row__value {
+    flex-shrink: 1;
+    flex-grow: 1;
+    font-size: 30px;
+    white-space: normal;
+    color: var(--ss-ash);
+    -unity-text-align: middle-left;
+    margin: 0;
+    padding: 0;
+}
+
+.rs-detail__note {
+    margin: 22px 48px 0 48px;
+    font-size: 30px;
+    white-space: normal;
+    -unity-text-align: middle-center;
+    color: var(--ss-gold);
+}
+
+.unity-button.rs-start {
+    margin: 30px 48px 0 48px;
+}
+
+.unity-button.rs-start:disabled {
+    opacity: 0.45;
+}
+
+.unity-button.rs-detail__back {
+    margin: 18px 48px 0 48px;
+    height: 104px;
+    font-size: 36px;
+}

@@ -1,0 +1,18 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 08d4f89229be0481faded2ad10963b8f, type: 3}
+  m_Name: RealmCatalog
+  m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Realms.RealmCatalog
+  realms:
+  - {fileID: 11400000, guid: 223a8a177bc5f40dab15cbffc0f97fd3, type: 2}
+  - {fileID: 11400000, guid: b26ff987a94e44a119fd91bf1995d24a, type: 2}
+  - {fileID: 11400000, guid: 6757cd63344674a89810a4c79c12d7d6, type: 2}

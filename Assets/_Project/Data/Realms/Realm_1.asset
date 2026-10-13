@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 04359b3d9fc9a4ba29c89e138f055bc8, type: 3}
+  m_Name: Realm_1
+  m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Realms.RealmDefinition
+  id: 1
+  displayName: Frostbitten Shore
+  tagline: Where the cold tide gives back its dead.
+  description: A drowned coast of snow, wrecks and broken ice. Survive each Chamber until the portal wakes, then step through. The last Chamber holds the Realm's Lord.
+  enemies: Drowned Hollows (horde)
+  rewards: Souls, XP, Ember Boons
+  estusCost: 5
+  difficulty: {fileID: 11400000, guid: 1eace70885f8c44f98dbbbf7557aac17, type: 2}
+  chambers: 10
+  thumbnail: {fileID: 2800000, guid: acd647e9d0ebc4757bdd5a58b8080fc4, type: 3}
+  accent: {r: 0.62, g: 0.8, b: 0.94, a: 1}
+  playable: 1

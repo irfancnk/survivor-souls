@@ -37,6 +37,9 @@ namespace SurvivorSouls.Dev
     /// title card. With -ss-delay ~2.2 the capture shows the "CHAMBER II" card; skills / health set before it carry over.
     /// <c>-ss-run-seed &lt;n&gt;</c> starts the run with that seed and <c>-ss-chamber &lt;n&gt;</c> starts it at that Chamber
     /// (KAN-46: layout seed + difficulty of that Chamber; same run seed + Chamber = same layout).
+    /// Main menu (KAN-20): <c>-ss-realms</c> opens the Realm selection page, <c>-ss-realm &lt;id&gt;</c> also opens that
+    /// Realm's detail sheet. With either, the saved progress of Realms 1-3 is wiped first (repeatable shots); then
+    /// <c>-ss-best &lt;realm&gt;:&lt;chamber&gt;</c> records a best Chamber and <c>-ss-cleared &lt;realm&gt;</c> marks a Realm completed.
     /// Used by tools/agents to verify visuals without a human. Inactive in release builds (Debug.isDebugBuild).
     /// </summary>
     public sealed class DevScreenshot : MonoBehaviour
@@ -60,6 +63,10 @@ namespace SurvivorSouls.Dev
         private bool _immortal;
         private string _timer;
         private bool _portal;
+        private bool _realms;
+        private int _realmDetail;
+        private string _best;
+        private int _cleared;
 
         private const float XpLead = 1.5f; // realtime seconds between the XP grant and the capture (cards fully in)
 
@@ -95,6 +102,10 @@ namespace SurvivorSouls.Dev
             shot._immortal = Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-immortal") >= 0;
             shot._timer = GetArg("-ss-timer");
             shot._portal = Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-portal") >= 0;
+            shot._realmDetail = int.TryParse(GetArg("-ss-realm"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int rd) ? rd : 0;
+            shot._realms = shot._realmDetail > 0 || Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-realms") >= 0;
+            shot._best = GetArg("-ss-best");
+            shot._cleared = int.TryParse(GetArg("-ss-cleared"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int cl) ? cl : 0;
 
             // Before any scene wakes: ChamberSetup reads the run in Awake (KAN-46).
             int runSeed = int.TryParse(GetArg("-ss-run-seed"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int rs) ? rs : 0;
@@ -143,6 +154,7 @@ namespace SurvivorSouls.Dev
             }
 
             if (_portal) EnterPortal();
+            if (_realms) OpenRealms();
 
             float release = Mathf.Clamp(_release, 0f, _delay);
             float xpLead = _xp > 0 ? Mathf.Min(XpLead, _delay - release) : 0f;
@@ -170,6 +182,30 @@ namespace SurvivorSouls.Dev
             if (_portal) Debug.Log($"[DevScreenshot] Chamber {SurvivorSouls.Gameplay.Chamber.RunState.Chamber} (Realm {SurvivorSouls.Gameplay.Chamber.RunState.Realm})");
             Debug.Log($"[DevScreenshot] Saved {_path}");
             Application.Quit();
+        }
+
+        /// <summary>Main menu: wipes Realm progress, applies -ss-best / -ss-cleared, opens the Realm page (and a sheet).</summary>
+        private void OpenRealms()
+        {
+            for (int realm = 1; realm <= 3; realm++) SurvivorSouls.Gameplay.Chamber.RunProgress.Clear(realm);
+            if (!string.IsNullOrEmpty(_best))
+            {
+                string[] rc = _best.Split(':');
+                SurvivorSouls.Gameplay.Chamber.RunProgress.RecordChamberStart(
+                    int.Parse(rc[0], CultureInfo.InvariantCulture), int.Parse(rc[1], CultureInfo.InvariantCulture));
+            }
+            if (_cleared > 0) SurvivorSouls.Gameplay.Chamber.RunProgress.MarkCompleted(_cleared);
+
+            var menu = FindAnyObjectByType<SurvivorSouls.UI.MainMenu.MainMenuController>();
+            if (menu == null || menu.RealmSelect == null)
+            {
+                Debug.LogWarning("[DevScreenshot] -ss-realms: no main menu with a Realm page in the scene");
+                return;
+            }
+            menu.OpenRealms();
+            if (_realmDetail > 0 && !menu.RealmSelect.OpenDetail(_realmDetail))
+                Debug.LogWarning($"[DevScreenshot] -ss-realm: no Realm {_realmDetail}");
+            Debug.Log($"[DevScreenshot] Realm page open, detail={menu.RealmSelect.Selected?.DisplayName ?? "none"} canStart={menu.RealmSelect.CanStart}");
         }
 
         /// <summary>Starts the portal exit as if the Knight walked into the arch 1.5 m ahead (KAN-40).</summary>
