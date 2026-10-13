@@ -886,3 +886,64 @@
     padding: 0;
     margin: 0;
 }
+
+/* Boss health bar (BossHud, KAN-58). Wide crimson bar under the XP bar (the timer's place: boss Chambers have none).
+   Name above in gold, title below in ash. Slides down and fades in when the boss rises (BossHud animates translate/opacity). */
+.hud-boss {
+    align-self: center;
+    width: 88%;
+    margin-top: 10px;
+    align-items: center;
+}
+
+.hud-boss__name {
+    margin: 0;
+    padding: 0;
+    font-size: 44px;
+    letter-spacing: 5px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    color: var(--hud-gold);
+    -unity-text-outline-width: 2px;
+    -unity-text-outline-color: rgba(0, 0, 0, 0.9);
+}
+
+.hud-boss__track {
+    width: 100%;
+    height: 30px;
+    margin-top: 6px;
+    background-color: rgba(8, 6, 6, 0.8);
+    border-width: 3px;
+    border-color: rgba(232, 196, 120, 0.55);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.hud-boss__trail,
+.hud-boss__fill {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 100%;
+}
+
+.hud-boss__trail {
+    background-color: rgb(236, 196, 104);
+}
+
+.hud-boss__fill {
+    background-color: rgb(168, 26, 20);
+    border-right-width: 2px;
+    border-color: rgba(255, 150, 120, 0.6);
+}
+
+.hud-boss__title {
+    margin: 4px 0 0 0;
+    padding: 0;
+    font-size: 28px;
+    letter-spacing: 2px;
+    -unity-font-style: italic;
+    -unity-text-align: middle-center;
+    color: rgb(226, 220, 208);
+    -unity-text-outline-width: 2px;
+    -unity-text-outline-color: rgba(0, 0, 0, 0.85);
+}

@@ -108,7 +108,7 @@ namespace SurvivorSouls.UI.Hud
 
             foreach (var enemy in Enemy.Active)
             {
-                if (!enemy.IsHurt) continue;
+                if (!enemy.IsHurt || enemy.IsBoss) continue; // the boss has the HUD bar (BossHud)
                 if (!_bars.TryGetValue(enemy, out var bar))
                 {
                     bar = _freeBars.Count > 0 ? _freeBars.Pop() : NewBar();
