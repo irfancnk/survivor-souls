@@ -5,6 +5,7 @@ using SurvivorSouls.Gameplay.Controls;
 using SurvivorSouls.Gameplay.Player;
 using SurvivorSouls.Gameplay.Progression;
 using SurvivorSouls.Gameplay.Skills;
+using SurvivorSouls.Gameplay.World;
 using UnityEditor;
 using UnityEngine;
 
@@ -15,12 +16,14 @@ namespace SurvivorSouls.Editor.Chamber
     /// overwritten, so designer edits stay) and the "Chamber" object with the <see cref="SurvivalTimer"/>.
     /// The portal itself lives in the exit tile prefab (<see cref="World.PortalBuilder"/>). Called by GameSceneBuilder.
     /// KAN-40: the same object carries the <see cref="ChamberTransition"/> (portal enter -> fade -> next Chamber).
+    /// KAN-46: and the <see cref="ChamberSetup"/> (difficulty asset -> world seed and spawner multipliers per Chamber).
     /// Debug menus (Play mode): "Survivor Souls/Debug/Portal Timer To 10 s" and ".../Open Portal Now".
     /// </summary>
     public static class ChamberBuilder
     {
         private const string DataDir = "Assets/_Project/Data/Chamber";
         public const string RulesPath = DataDir + "/ChamberRules_Realm1.asset";
+        public const string DifficultyPath = DataDir + "/ChamberDifficulty_Realm1.asset";
 
         public static SurvivalTimer Create(GameObject player, PlayerHealth health)
         {
@@ -58,6 +61,30 @@ namespace SurvivorSouls.Editor.Chamber
             for (int i = 0; i < locked.Count; i++) array.GetArrayElementAtIndex(i).objectReferenceValue = locked[i];
             so.ApplyModifiedPropertiesWithoutUndo();
             return transition;
+        }
+
+        /// <summary>Per-Chamber difficulty and layout seed (KAN-46) on the "Chamber" object. Runs before the world and spawner wake.</summary>
+        public static ChamberSetup CreateSetup(GameObject chamber, WorldStreamer world, EnemySpawner spawner)
+        {
+            var setup = chamber.AddComponent<ChamberSetup>();
+            var so = new SerializedObject(setup);
+            so.FindProperty("difficulty").objectReferenceValue = LoadOrCreateDifficulty();
+            so.FindProperty("world").objectReferenceValue = world;
+            so.FindProperty("spawner").objectReferenceValue = spawner;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            return setup;
+        }
+
+        private static ChamberDifficulty LoadOrCreateDifficulty()
+        {
+            var difficulty = AssetDatabase.LoadAssetAtPath<ChamberDifficulty>(DifficultyPath);
+            if (difficulty != null) return difficulty;
+            EditorAssetUtil.EnsureFolder(DataDir);
+            // Realm 1: 10 Chambers, boss every 5th; +15 % enemy health, +5 % caps (max x1.35), 4 % faster spawns (min x0.7) per Chamber.
+            difficulty = ChamberDifficulty.Create();
+            AssetDatabase.CreateAsset(difficulty, DifficultyPath);
+            AssetDatabase.SaveAssets();
+            return difficulty;
         }
 
         private static ChamberRules LoadOrCreateRules()

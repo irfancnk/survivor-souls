@@ -86,6 +86,7 @@ namespace SurvivorSouls.Editor
             SetRef(game, "timer", timer);
             // Portal -> fade -> same scene reloaded as the next Chamber, run carried over (KAN-40).
             var transition = ChamberBuilder.CreateTransition(timer.gameObject, player, health, progression.Xp, skills, spawner, joystick);
+            ChamberBuilder.CreateSetup(timer.gameObject, world, spawner); // per-Chamber difficulty + layout seed (KAN-46)
             CreateAudio(sfx, shooter, player.GetComponent<PlayerMover>(), health, progression, skills, timer, transition);
             WindTrailBuilder.Create(kit, player);
 
