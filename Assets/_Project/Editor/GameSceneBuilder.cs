@@ -85,7 +85,8 @@ namespace SurvivorSouls.Editor
             var timer = ChamberBuilder.Create(player, health); // portal opens when it ends (KAN-39)
             SetRef(game, "timer", timer);
             // Portal -> fade -> same scene reloaded as the next Chamber, run carried over (KAN-40).
-            var transition = ChamberBuilder.CreateTransition(timer.gameObject, player, health, progression.Xp, skills, spawner, joystick);
+            var counters = ChamberBuilder.CreateCounters(timer.gameObject, progression.Souls); // kills + souls this run (KAN-51)
+            var transition = ChamberBuilder.CreateTransition(timer.gameObject, player, health, progression.Xp, skills, counters, spawner, joystick);
             ChamberBuilder.CreateSetup(timer.gameObject, world, spawner); // per-Chamber difficulty + layout seed (KAN-46)
             var audio = CreateAudio(sfx, shooter, player.GetComponent<PlayerMover>(), health, progression, skills, timer, transition);
             var rarityStyles = SkillsBuilder.BuildStyles(sfx.RarityReveals); // tier names, gems, reveal sounds (KAN-37)
@@ -94,7 +95,8 @@ namespace SurvivorSouls.Editor
             var camera = CreateCamera(player.transform, realm.Look);
             SetRef(spawner, "viewCamera", camera); // off-screen test uses the live camera (aspect, zoom)
             SetRef(game, "followCamera", camera.GetComponent<TopDownFollowCamera>()); // shake when the portal opens
-            var choice = CreateHud(panelSettings, joystick, camera, health, death, progression, skills, rarityStyles, player.transform, timer, transition);
+            var choice = CreateHud(panelSettings, joystick, camera, health, death, progression, skills, rarityStyles, player.transform, timer, transition,
+                counters);
             SetRef(audio, "skillChoice", choice); // card reveal sound per tier
 
             EditorSceneManager.SaveScene(scene, ScenePath);
@@ -267,7 +269,7 @@ namespace SurvivorSouls.Editor
 
         private static SkillChoiceScreen CreateHud(PanelSettings panelSettings, FloatingJoystick joystick, Camera camera, PlayerHealth health, PlayerDeath death,
             ProgressionBuilder.Result progression, SkillManager skills, SkillRarityStyles rarityStyles, Transform player, SurvivalTimer timer,
-            ChamberTransition transition)
+            ChamberTransition transition, RunCounters counters)
         {
             var go = new GameObject("HUD");
             var doc = go.AddComponent<UIDocument>();
@@ -282,6 +284,7 @@ namespace SurvivorSouls.Editor
             SetRef(hp, "health", health);
             SetRef(hp, "death", death);
             SetRef(hp, "worldCamera", camera);
+            SetRef(hp, "counters", counters); // souls / kills / Chamber on the death screen (KAN-51)
 
             // XP bar + "LEVEL UP" pop; each level-up opens the 3-card skill pick, owned skills show under the health bar.
             var xpHud = go.AddComponent<XpHud>();

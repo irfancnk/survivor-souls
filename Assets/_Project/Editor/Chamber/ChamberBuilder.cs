@@ -42,7 +42,7 @@ namespace SurvivorSouls.Editor.Chamber
         /// soul pickup (wisps stop flying to a Knight who is leaving). Animation drivers stay on.
         /// </summary>
         public static ChamberTransition CreateTransition(GameObject chamber, GameObject player, PlayerHealth health, XpManager xp,
-            SkillManager skills, EnemySpawner spawner, FloatingJoystick joystick)
+            SkillManager skills, RunCounters counters, EnemySpawner spawner, FloatingJoystick joystick)
         {
             var transition = chamber.AddComponent<ChamberTransition>();
             var locked = new List<Object> { joystick, player.GetComponent<PlayerMover>() };
@@ -54,6 +54,7 @@ namespace SurvivorSouls.Editor.Chamber
             so.FindProperty("health").objectReferenceValue = health;
             so.FindProperty("xp").objectReferenceValue = xp;
             so.FindProperty("skills").objectReferenceValue = skills;
+            so.FindProperty("counters").objectReferenceValue = counters;
             so.FindProperty("spawner").objectReferenceValue = spawner;
             so.FindProperty("controller").objectReferenceValue = player.GetComponent<CharacterController>();
             var array = so.FindProperty("lockOnExit");
@@ -61,6 +62,16 @@ namespace SurvivorSouls.Editor.Chamber
             for (int i = 0; i < locked.Count; i++) array.GetArrayElementAtIndex(i).objectReferenceValue = locked[i];
             so.ApplyModifiedPropertiesWithoutUndo();
             return transition;
+        }
+
+        /// <summary>Kills and souls this run (KAN-51) on the "Chamber" object; carried by the transition.</summary>
+        public static RunCounters CreateCounters(GameObject chamber, SoulWispField souls)
+        {
+            var counters = chamber.AddComponent<RunCounters>();
+            var so = new SerializedObject(counters);
+            so.FindProperty("souls").objectReferenceValue = souls;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            return counters;
         }
 
         /// <summary>Per-Chamber difficulty and layout seed (KAN-46) on the "Chamber" object. Runs before the world and spawner wake.</summary>
