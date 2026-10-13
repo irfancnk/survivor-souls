@@ -32,6 +32,8 @@ namespace SurvivorSouls.Dev
     /// load, from the spawner's pools (perf runs; KAN-30). <c>-ss-immortal</c> turns off contact damage on the player.
     /// <c>-ss-hold &lt;n&gt;</c> keeps at least n enemies alive: every second, missing ones are spawned off screen (perf soak).
     /// <c>-ss-timer &lt;seconds&gt;</c> sets the Chamber survival clock after load (KAN-39; 0 = the portal opens now).
+    /// <c>-ss-portal</c> walks the Knight into the portal right after load (KAN-40): pull, white fade, next Chamber,
+    /// title card. With -ss-delay ~2.2 the capture shows the "CHAMBER II" card; skills / health set before it carry over.
     /// Used by tools/agents to verify visuals without a human. Inactive in release builds (Debug.isDebugBuild).
     /// </summary>
     public sealed class DevScreenshot : MonoBehaviour
@@ -53,6 +55,7 @@ namespace SurvivorSouls.Dev
         private int _hold;
         private bool _immortal;
         private string _timer;
+        private bool _portal;
 
         private const float XpLead = 1.5f; // realtime seconds between the XP grant and the capture (cards fully in)
 
@@ -86,6 +89,7 @@ namespace SurvivorSouls.Dev
             shot._hold = int.TryParse(GetArg("-ss-hold"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int hold) ? hold : 0;
             shot._immortal = Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-immortal") >= 0;
             shot._timer = GetArg("-ss-timer");
+            shot._portal = Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-portal") >= 0;
         }
 
         private IEnumerator Start()
@@ -123,6 +127,8 @@ namespace SurvivorSouls.Dev
                 else timer.SetRemaining(float.Parse(_timer, CultureInfo.InvariantCulture));
             }
 
+            if (_portal) EnterPortal();
+
             float release = Mathf.Clamp(_release, 0f, _delay);
             float xpLead = _xp > 0 ? Mathf.Min(XpLead, _delay - release) : 0f;
             float wait = _delay - release - xpLead;
@@ -146,8 +152,24 @@ namespace SurvivorSouls.Dev
             yield return new WaitForEndOfFrame();
             ScreenCapture.CaptureScreenshot(_path);
             yield return new WaitForSecondsRealtime(1f); // capture writes asynchronously
+            if (_portal) Debug.Log($"[DevScreenshot] Chamber {SurvivorSouls.Gameplay.Chamber.RunState.Chamber} (Realm {SurvivorSouls.Gameplay.Chamber.RunState.Realm})");
             Debug.Log($"[DevScreenshot] Saved {_path}");
             Application.Quit();
+        }
+
+        /// <summary>Starts the portal exit as if the Knight walked into the arch 1.5 m ahead (KAN-40).</summary>
+        private static void EnterPortal()
+        {
+            var transition = SurvivorSouls.Gameplay.Chamber.ChamberTransition.Active;
+            var player = FindAnyObjectByType<PlayerHealth>();
+            if (transition == null || player == null)
+            {
+                Debug.LogWarning("[DevScreenshot] -ss-portal: no ChamberTransition or player in the scene");
+                return;
+            }
+            var t = player.transform;
+            bool started = transition.Enter(t.position + t.forward * 1.5f);
+            Debug.Log($"[DevScreenshot] Portal enter started={started}");
         }
 
         /// <summary>Averages render counters over <paramref name="seconds"/> (development players expose them).</summary>
