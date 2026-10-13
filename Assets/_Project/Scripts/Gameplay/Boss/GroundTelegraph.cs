@@ -14,8 +14,8 @@ namespace SurvivorSouls.Gameplay.Boss
 
         [SerializeField] private Renderer ring;
         [SerializeField] private Renderer fill;
-        [SerializeField] private Color ringColor = new Color(0.78f, 0.06f, 0.03f, 0.9f);
-        [SerializeField] private Color fillColor = new Color(0.62f, 0.04f, 0.02f, 0.5f);
+        [SerializeField] private Color ringColor = new Color(0.62f, 0.02f, 0.01f, 1f);
+        [SerializeField] private Color fillColor = new Color(0.5f, 0.02f, 0.01f, 0.78f);
         [SerializeField] private Color flashColor = new Color(1f, 0.42f, 0.2f, 0.85f);
         [Tooltip("Seconds the hit flash takes to fade.")]
         [SerializeField, Min(0.05f)] private float flashTime = 0.3f;
