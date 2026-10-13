@@ -59,6 +59,8 @@ MonoBehaviour:
   body: {fileID: 6877109253915608089}
   baseTint: {r: 1, g: 1, b: 1, a: 1}
   animator: {fileID: 8151790377407820730}
+  knockbackScale: 1
+  isBoss: 0
   bodyScale: 1
   speedJitter: 0.1
   scaleJitter: 0.05

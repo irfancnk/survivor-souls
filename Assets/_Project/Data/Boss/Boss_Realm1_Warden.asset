@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b5a77fa1c420419baf44799f5475b67, type: 3}
+  m_Name: Boss_Realm1_Warden
+  m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Boss.BossData
+  displayName: THE DROWNED WARDEN
+  title: Keeper of the Frozen Shore
+  prefab: {fileID: 1317692799552540941, guid: ab24a5628fd604a53bde46e46d8e3f0c, type: 3}
+  maxHealth: 3200
+  introDelay: 2
+  spawnWarning: 1.2
+  spawnDistance: 8
+  slamRange: 4
+  slamReach: 1.6
+  slamRadius: 3
+  slamTelegraph: 1
+  slamRecover: 0.7
+  slamCooldown: 3.2
+  firstSlamDelay: 1.5
+  slamDamage: 0.22
+  maxHitShare: 0.35
+  rewardXp: 600
+  rewardWisps: 6
+  hordeCap: 0.45
+  hordeInterval: 1.6

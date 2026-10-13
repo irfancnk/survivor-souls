@@ -3,6 +3,7 @@ using System.Linq;
 using SurvivorSouls.Audio;
 using SurvivorSouls.Core;
 using SurvivorSouls.Editor.Audio;
+using SurvivorSouls.Editor.Boss;
 using SurvivorSouls.Editor.Chamber;
 using SurvivorSouls.Editor.Combat;
 using SurvivorSouls.Editor.Effects;
@@ -36,7 +37,7 @@ namespace SurvivorSouls.Editor
     /// Archer prefab, streamed world, camera,
     /// joystick input, HUD and combat (auto-shooting crossbow, enemy spawner, health bars, player health + death screen),
     /// XP (soul wisps, level bar, level-up flow), skills (stat sheet, 3-card pick, owned-skill row),
-    /// Chamber exit (survival timer + HUD countdown; the portal is in the exit tile prefab). Re-run after edits: menu "Survivor Souls/Rebuild Game Scene", or batchmode
+    /// Chamber exit (survival timer + HUD countdown; the portal is in the exit tile prefab), boss fight in boss Chambers (KAN-58). Re-run after edits: menu "Survivor Souls/Rebuild Game Scene", or batchmode
     /// <c>-executeMethod SurvivorSouls.Editor.GameSceneBuilder.BuildFromCommandLine</c>.
     /// Hand edits to the generated scene are overwritten on rebuild.
     /// </summary>
@@ -88,6 +89,8 @@ namespace SurvivorSouls.Editor
             var counters = ChamberBuilder.CreateCounters(timer.gameObject, progression.Souls); // kills + souls this run (KAN-51)
             var transition = ChamberBuilder.CreateTransition(timer.gameObject, player, health, progression.Xp, skills, counters, spawner, joystick);
             ChamberBuilder.CreateSetup(timer.gameObject, world, spawner); // per-Chamber difficulty + layout seed (KAN-46)
+            var boss = BossBuilder.Create(kit, health, timer, spawner, progression.Souls); // boss Chambers: fight, slam, reward (KAN-58)
+            SetRef(game, "boss", boss); // slam camera shake
             var audio = CreateAudio(sfx, shooter, player.GetComponent<PlayerMover>(), health, progression, skills, timer, transition);
             var rarityStyles = SkillsBuilder.BuildStyles(sfx.RarityReveals); // tier names, gems, reveal sounds (KAN-37)
             WindTrailBuilder.Create(kit, player);
@@ -98,6 +101,8 @@ namespace SurvivorSouls.Editor
             var choice = CreateHud(panelSettings, joystick, camera, health, death, progression, skills, rarityStyles, player.transform, timer, transition,
                 counters);
             SetRef(audio, "skillChoice", choice); // card reveal sound per tier
+            SetRef(audio, "boss", boss); // boss groans + slam thud
+            SetRef(choice.gameObject.AddComponent<BossHud>(), "fight", boss); // boss bar in the timer's place
 
             EditorSceneManager.SaveScene(scene, ScenePath);
             AddToBuild(ScenePath, index: 1);

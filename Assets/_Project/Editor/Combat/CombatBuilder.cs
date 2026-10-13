@@ -16,6 +16,8 @@ namespace SurvivorSouls.Editor.Combat
     /// sprint clip, fast and frail, rare) and Brute (big, slow, tough, drops an elite wisp). Shambler and Brute use the
     /// baked shamble + attack clips (<see cref="ZombieAnimBuilder"/>); every type carries its clip's measured ground speed
     /// so Enemy plays the legs at the real speed.
+    /// KAN-58: a fourth type, the boss body (Warden): the same model at twice the size, dark crimson, hard to push, no
+    /// small health bar and no XP of its own (BossData holds its health and reward).
     /// Called by GameSceneBuilder; re-run is safe (assets are updated in place).
     /// </summary>
     public static class CombatBuilder
@@ -27,6 +29,7 @@ namespace SurvivorSouls.Editor.Combat
         public const string EnemyPrefabPath = PrefabDir + "/Enemy_Zombie.prefab";
         public const string RunnerPrefabPath = PrefabDir + "/Enemy_ZombieRunner.prefab";
         public const string BrutePrefabPath = PrefabDir + "/Enemy_ZombieBrute.prefab";
+        public const string BossPrefabPath = PrefabDir + "/Enemy_ZombieBoss.prefab";
         private const string ZombieDir = "Assets/_Project/Art/Characters/Zombie";
         private const string ZombieModelPath = ZombieDir + "/SK_Zombie.fbx";
         private const string ZombieRunPath = ZombieDir + "/A_Zombie_Run.fbx";
@@ -38,6 +41,7 @@ namespace SurvivorSouls.Editor.Combat
         private const string ZombieMaterialPath = ZombieDir + "/M_Zombie.mat";
         private const string RunnerMaterialPath = ZombieDir + "/M_ZombieRunner.mat";
         private const string BruteMaterialPath = ZombieDir + "/M_ZombieBrute.mat";
+        private const string BossMaterialPath = ZombieDir + "/M_ZombieBoss.mat";
         private const int ZombieTextureSize = 1024; // 2k source; ~100 px tall on screen
 
         /// <summary>
@@ -52,6 +56,7 @@ namespace SurvivorSouls.Editor.Combat
             public float Health, Speed, SpeedJitter, Scale, ScaleJitter, ContactRange, StopDistance, Dps;
             public int Xp;
             public bool Runs; // sprint clip instead of the shamble
+            public bool Boss; // KAN-58: no small bar, low knockback
         }
 
         private static readonly ZombieType Shambler = new ZombieType
@@ -73,6 +78,17 @@ namespace SurvivorSouls.Editor.Combat
             Name = "Enemy_ZombieBrute", Prefab = BrutePrefabPath, Material = BruteMaterialPath, Controller = ZombieControllerPath,
             Tint = new Color(0.7f, 0.78f, 0.66f), Health = 340f, Speed = 1.3f, SpeedJitter = 0.06f, Scale = 1.25f, ScaleJitter = 0.04f,
             ContactRange = 1.65f, StopDistance = 1.3f, Dps = 26f, Xp = 25, // 25 = elite wisp tier
+        };
+
+        /// <summary>
+        /// Boss body (KAN-58). Health here is only the type base: BossFight spawns it with BossData health. XP 0: the boss
+        /// drops its reward as several gold wisps. Contact range and stop distance grow with the 2.1x body.
+        /// </summary>
+        private static readonly ZombieType Warden = new ZombieType
+        {
+            Name = "Enemy_ZombieBoss", Prefab = BossPrefabPath, Material = BossMaterialPath, Controller = ZombieControllerPath,
+            Tint = new Color(0.66f, 0.42f, 0.4f), Health = 1000f, Speed = 1.55f, SpeedJitter = 0f, Scale = 2.1f, ScaleJitter = 0f,
+            ContactRange = 2.5f, StopDistance = 2.1f, Dps = 30f, Xp = 0, Boss = true,
         };
 
         public static void Build(GameArtKit kit)
@@ -294,7 +310,7 @@ namespace SurvivorSouls.Editor.Combat
             BuildController(ZombieControllerPath, shamble, attack);
             BuildController(RunnerControllerPath, run, attack);
             var texture = AssetDatabase.LoadAssetAtPath<Texture2D>(ZombieTexturePath);
-            foreach (var type in new[] { Shambler, Runner, Brute })
+            foreach (var type in new[] { Shambler, Runner, Brute, Warden })
                 BuildZombie(kit, model, type, EditorAssetUtil.SimpleLitMaterial(type.Material, texture, type.Tint, smoothness: 0.15f),
                     type.Runs ? runGait.Speed : shambleSpeed);
         }
@@ -351,6 +367,8 @@ namespace SurvivorSouls.Editor.Combat
                 so.FindProperty("speedJitter").floatValue = type.SpeedJitter;
                 so.FindProperty("scaleJitter").floatValue = type.ScaleJitter;
                 so.FindProperty("animRefSpeed").floatValue = clipSpeed;
+                so.FindProperty("isBoss").boolValue = type.Boss;
+                so.FindProperty("knockbackScale").floatValue = type.Boss ? 0.1f : 1f;
                 so.ApplyModifiedPropertiesWithoutUndo();
                 PrefabUtility.SaveAsPrefabAsset(root, type.Prefab);
             }
