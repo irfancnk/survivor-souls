@@ -17,8 +17,8 @@ namespace SurvivorSouls.Gameplay.Chamber
     /// drawn through the arch (<see cref="Departing"/>: whoosh).</item>
     /// <item><b>Fade out</b> (<see cref="fadeOutTime"/>): screen to white. At full white the run is captured
     /// (<see cref="Capture"/>), <see cref="RunState.AdvanceChamber"/>, and the Game scene reloads.</item>
-    /// <item><b>Arrive</b>: the new scene starts full white and paused (<see cref="GamePause"/>); level, XP, health and
-    /// skills are put back (<see cref="Apply"/>), the timer is full (fresh scene), the Knight stands at the spawn bonfire
+    /// <item><b>Arrive</b>: the new scene starts full white and paused (<see cref="GamePause"/>); level, XP, health,
+    /// skills and the run counters (<see cref="RunCounters"/>) are put back (<see cref="Apply"/>), the timer is full (fresh scene), the Knight stands at the spawn bonfire
     /// facing the play area and the camera starts on him (no jump). Fade in (<see cref="fadeInTime"/>), then the pause
     /// ends; <see cref="Arrived"/> shows the "CHAMBER N" card (HUD, unscaled time) over the first seconds of play.</item>
     /// </list>
@@ -45,6 +45,7 @@ namespace SurvivorSouls.Gameplay.Chamber
         [SerializeField] private PlayerHealth health;
         [SerializeField] private XpManager xp;
         [SerializeField] private SkillManager skills;
+        [SerializeField] private RunCounters counters;
         [SerializeField] private EnemySpawner spawner;
         [Tooltip("Turned off when the Knight enters the portal: input, mover, shooter, contact damage, soul pickup.")]
         [SerializeField] private Behaviour[] lockOnExit;
@@ -82,8 +83,9 @@ namespace SurvivorSouls.Gameplay.Chamber
 
         /// <summary>Tests: wiring without the scene builder.</summary>
         public void Setup(Transform playerTransform, PlayerHealth playerHealth, XpManager xpManager, SkillManager skillManager,
-            Behaviour[] locked, bool load)
+            Behaviour[] locked, bool load, RunCounters runCounters = null)
         {
+            counters = runCounters;
             player = playerTransform;
             health = playerHealth;
             xp = xpManager;
@@ -117,7 +119,7 @@ namespace SurvivorSouls.Gameplay.Chamber
         {
             RunProgress.RecordChamberStart(RunState.Realm, RunState.Chamber);
             if (carry == null) return;
-            Apply(carry, xp, skills, health, healOnArrive);
+            Apply(carry, xp, skills, health, healOnArrive, counters);
             Current = Phase.Arriving;
             Fade = 1f;
             _time = 0f;
@@ -199,7 +201,7 @@ namespace SurvivorSouls.Gameplay.Chamber
         {
             Fade = 1f;
             SetPhase(Phase.Loading);
-            RunState.AdvanceChamber(Capture(xp, skills, health));
+            RunState.AdvanceChamber(Capture(xp, skills, health, counters));
             if (loadScene && SceneLoader.IsInBuild(SceneNames.Game)) SceneLoader.LoadAsync(SceneNames.Game);
         }
 
@@ -210,8 +212,9 @@ namespace SurvivorSouls.Gameplay.Chamber
             GamePause.Release();
         }
 
-        /// <summary>The run as it is now: level, XP, health, skills with stacks (pick order).</summary>
-        public static RunSnapshot Capture(XpManager xpManager, SkillManager skillManager, PlayerHealth playerHealth)
+        /// <summary>The run as it is now: level, XP, health, skills with stacks (pick order), kills and souls.</summary>
+        public static RunSnapshot Capture(XpManager xpManager, SkillManager skillManager, PlayerHealth playerHealth,
+            RunCounters runCounters = null)
         {
             var snap = new RunSnapshot();
             if (xpManager != null)
@@ -224,14 +227,20 @@ namespace SurvivorSouls.Gameplay.Chamber
             if (skillManager != null)
                 foreach (var o in skillManager.OwnedSkills)
                     snap.Skills.Add(new SkillStack(o.Skill, o.Stacks));
+            if (runCounters != null)
+            {
+                snap.Kills = runCounters.Kills;
+                snap.Souls = runCounters.Souls;
+            }
             return snap;
         }
 
         /// <summary>
         /// Puts <paramref name="snap"/> back. Skills first (max health skills raise the max), then XP, then health
-        /// (+ <paramref name="heal"/> x max, capped).
+        /// (+ <paramref name="heal"/> x max, capped), then the run counters.
         /// </summary>
-        public static void Apply(RunSnapshot snap, XpManager xpManager, SkillManager skillManager, PlayerHealth playerHealth, float heal)
+        public static void Apply(RunSnapshot snap, XpManager xpManager, SkillManager skillManager, PlayerHealth playerHealth, float heal,
+            RunCounters runCounters = null)
         {
             if (snap == null) return;
             if (skillManager != null)
@@ -239,6 +248,7 @@ namespace SurvivorSouls.Gameplay.Chamber
                     skillManager.Restore(s.Skill, s.Stacks);
             if (xpManager != null) xpManager.Restore(snap.Level, snap.Xp, snap.TotalXp);
             if (playerHealth != null && snap.Health > 0f) playerHealth.Restore(snap.Health + heal * playerHealth.Max);
+            if (runCounters != null) runCounters.Restore(snap.Kills, snap.Souls);
         }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]

@@ -18,7 +18,8 @@ namespace SurvivorSouls.Gameplay.Chamber
     }
 
     /// <summary>
-    /// What the Knight takes through the portal (KAN-40): level, XP, health and owned skills. Everything else (enemies,
+    /// What the Knight takes through the portal (KAN-40): level, XP, health, owned skills and the run counters (kills,
+    /// souls; KAN-51). Everything else (enemies,
     /// wisps, bolts, timer, world) is rebuilt by the scene reload. Captured and applied by <see cref="ChamberTransition"/>.
     /// </summary>
     public sealed class RunSnapshot
@@ -27,6 +28,8 @@ namespace SurvivorSouls.Gameplay.Chamber
         public int Xp;
         public int TotalXp;
         public float Health;
+        public int Kills;
+        public int Souls;
         public readonly List<SkillStack> Skills = new List<SkillStack>();
     }
 
