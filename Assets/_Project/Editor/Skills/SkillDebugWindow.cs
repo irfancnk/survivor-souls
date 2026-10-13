@@ -11,11 +11,17 @@ namespace SurvivorSouls.Editor.Skills
     /// Play-mode skill debugger (KAN-19): every <see cref="SkillDefinition"/> asset with its stacks and Grant / Max buttons,
     /// a forced level-up (opens the real 3-card pick), run reset, and the live <see cref="PlayerStats"/> sheet.
     /// Menu: Survivor Souls/Debug/Skills. Quick grant without the window: Survivor Souls/Debug/Grant Random Skill.
+    /// Offer odds (KAN-37): "Survivor Souls/Debug/Print Skill Offer Odds" (edit or Play mode) rolls 1000 offers at levels
+    /// 2, 4, 6 and 10 with the shipped table and prints the share per tier, Rare+ offers and pity swaps to the console.
     /// </summary>
     public sealed class SkillDebugWindow : EditorWindow
     {
         private SkillDefinition[] _skills = new SkillDefinition[0];
         private Vector2 _scroll;
+        private int _oddsLevel = 4;
+        private string _odds = "";
+        public const int OddsRolls = 1000;
+        private static readonly int[] OddsLevels = { 2, 4, 6, 10 };
 
         [MenuItem("Survivor Souls/Debug/Skills")]
         private static void Open() => GetWindow<SkillDebugWindow>("Skills").Show();
@@ -35,6 +41,34 @@ namespace SurvivorSouls.Editor.Skills
         [MenuItem("Survivor Souls/Debug/Grant Random Skill", true)]
         [MenuItem("Survivor Souls/Debug/Level Up Now", true)]
         private static bool InPlayMode() => Application.isPlaying;
+
+        [MenuItem("Survivor Souls/Debug/Print Skill Offer Odds")]
+        private static void PrintOdds()
+        {
+            var table = AssetDatabase.LoadAssetAtPath<SkillProgression>(SkillsBuilder.ProgressionPath);
+            if (table == null) { Debug.LogWarning($"[Skills] Missing {SkillsBuilder.ProgressionPath}"); return; }
+            var lines = OddsLevels.Select(l => SimulateFresh(table, l).ToString());
+            Debug.Log($"[Skills] Offer odds, {OddsRolls} offers per level, no skills owned:\n" + string.Join("\n", lines));
+        }
+
+        /// <summary>
+        /// Rolls <see cref="OddsRolls"/> offers at <paramref name="level"/> on a throw-away SkillManager (nothing owned, no
+        /// scene needed), so the numbers show the table itself.
+        /// </summary>
+        public static SkillManager.OfferStats SimulateFresh(SkillProgression table, int level, int seed = 37)
+        {
+            var go = new GameObject("Skill Odds (temp)") { hideFlags = HideFlags.HideAndDontSave };
+            try
+            {
+                var manager = go.AddComponent<SkillManager>();
+                manager.Setup(table, null, null, null, go.transform, seed);
+                return manager.SimulateOffers(OddsRolls, level);
+            }
+            finally
+            {
+                DestroyImmediate(go);
+            }
+        }
 
         [MenuItem("Survivor Souls/Debug/Level Up Now")]
         private static void LevelUpNow()
@@ -61,6 +95,7 @@ namespace SurvivorSouls.Editor.Skills
 
         private void OnGUI()
         {
+            DrawOdds();
             if (!Application.isPlaying)
             {
                 EditorGUILayout.HelpBox("Enter Play mode in the Game scene to grant skills.", MessageType.Info);
@@ -114,6 +149,26 @@ namespace SurvivorSouls.Editor.Skills
                 }
             }
             EditorGUILayout.EndScrollView();
+        }
+
+        /// <summary>Offer odds box: in Play mode the live run (owned skills count), else the shipped table from scratch.</summary>
+        private void DrawOdds()
+        {
+            EditorGUILayout.LabelField($"Offer odds ({OddsRolls} offers)", EditorStyles.boldLabel);
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                _oddsLevel = Mathf.Max(1, EditorGUILayout.IntField("Level", _oddsLevel));
+                if (GUILayout.Button("Roll", GUILayout.Width(60)))
+                {
+                    var live = Application.isPlaying ? FindAnyObjectByType<SkillManager>() : null;
+                    var table = AssetDatabase.LoadAssetAtPath<SkillProgression>(SkillsBuilder.ProgressionPath);
+                    var stats = live != null ? live.SimulateOffers(OddsRolls, _oddsLevel) : table != null ? SimulateFresh(table, _oddsLevel) : null;
+                    _odds = stats != null ? (live != null ? "Live run: " : "Fresh run: ") + stats : "No skill table.";
+                    Debug.Log("[Skills] " + _odds);
+                }
+            }
+            if (!string.IsNullOrEmpty(_odds)) EditorGUILayout.HelpBox(_odds, MessageType.None);
+            EditorGUILayout.Space();
         }
 
         private static SkillManager FindManager()

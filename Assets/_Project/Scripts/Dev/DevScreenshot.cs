@@ -28,6 +28,7 @@ namespace SurvivorSouls.Dev
     /// <c>-ss-souls &lt;n&gt;</c> drops n soul wisps around the player after load (mostly small, some elite, one boss orb).
     /// <c>-ss-xp &lt;amount&gt;</c> grants that much XP <see cref="XpLead"/> s before the capture (level-up burst + skill cards).
     /// <c>-ss-skills id,id,...</c> grants those skills (by SkillDefinition id, repeat an id to stack) after load.
+    /// <c>-ss-offer id,id,id</c> makes the next level-up offer those cards (KAN-37 tier look; use with -ss-xp).
     /// <c>-ss-horde &lt;n&gt;</c> places n enemies (wave table mix of the last phase) on a ring 4-11 m round the player after
     /// load, from the spawner's pools (perf runs; KAN-30). <c>-ss-immortal</c> turns off contact damage on the player.
     /// <c>-ss-hold &lt;n&gt;</c> keeps at least n enemies alive: every second, missing ones are spawned off screen (perf soak).
@@ -53,6 +54,7 @@ namespace SurvivorSouls.Dev
         private int _souls;
         private int _xp;
         private string _skills;
+        private string _offer;
         private int _horde;
         private int _hold;
         private bool _immortal;
@@ -86,6 +88,7 @@ namespace SurvivorSouls.Dev
             shot._release = float.TryParse(GetArg("-ss-release"), NumberStyles.Float, CultureInfo.InvariantCulture, out float r) ? r : 0f;
             shot._souls = int.TryParse(GetArg("-ss-souls"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int n) ? n : 0;
             shot._skills = GetArg("-ss-skills");
+            shot._offer = GetArg("-ss-offer");
             shot._xp = int.TryParse(GetArg("-ss-xp"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int x) ? x : 0;
             shot._horde = int.TryParse(GetArg("-ss-horde"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int h) ? h : 0;
             shot._hold = int.TryParse(GetArg("-ss-hold"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int hold) ? hold : 0;
@@ -131,6 +134,7 @@ namespace SurvivorSouls.Dev
             if (_horde > 0) PlaceHorde(_horde);
             if (_hold > 0) StartCoroutine(HoldHorde(_hold));
             if (!string.IsNullOrEmpty(_skills)) GrantSkills(_skills);
+            if (!string.IsNullOrEmpty(_offer)) ForceOffer(_offer);
             if (!string.IsNullOrEmpty(_timer))
             {
                 var timer = SurvivorSouls.Gameplay.Chamber.SurvivalTimer.Active;
@@ -287,6 +291,23 @@ namespace SurvivorSouls.Dev
                 var skill = all.Find(s => s.Id == id.Trim());
                 if (skill == null || !manager.Grant(skill)) Debug.LogWarning($"[DevScreenshot] -ss-skills: cannot grant '{id}'");
             }
+        }
+
+        private static void ForceOffer(string ids)
+        {
+            var manager = FindAnyObjectByType<SurvivorSouls.Gameplay.Skills.SkillManager>();
+            var table = manager != null ? manager.Progression : null;
+            if (table == null) return;
+            var all = new System.Collections.Generic.List<SurvivorSouls.Gameplay.Skills.SkillDefinition>();
+            table.CollectPool(int.MaxValue, all);
+            var offer = new System.Collections.Generic.List<SurvivorSouls.Gameplay.Skills.SkillDefinition>();
+            foreach (string id in ids.Split(','))
+            {
+                var skill = all.Find(s => s.Id == id.Trim());
+                if (skill == null) Debug.LogWarning($"[DevScreenshot] -ss-offer: no skill '{id}'");
+                else offer.Add(skill);
+            }
+            manager.ForceNextOffer(offer.ToArray());
         }
 
         private static void SetPlayerHealth(float fraction)
