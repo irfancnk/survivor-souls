@@ -251,7 +251,10 @@ namespace SurvivorSouls.Tests
             FloatingJoystick.SimulatedValue = new Vector2(0f, 1f);
             SpawnEnemy(new Vector3(3f, 0f, -3f));
             _shooter.enabled = true;
-            for (int i = 0; i < 40; i++) yield return null;
+            // Wait game time, not a frame count: batch-mode frames can be ~0.1 ms, so 40 frames barely start the run-up.
+            float t = 0f;
+            int frames = 0;
+            while ((t < 0.4f || frames < 40) && frames < 20000) { t += Time.deltaTime; frames++; yield return null; }
             Assert.That(_mover.Velocity.magnitude, Is.GreaterThan(1f));
             Assert.That(_fired, Is.Zero, "move to dodge: no shot");
             Assert.That(_shooter.Engaged, Is.False);
