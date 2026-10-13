@@ -5,7 +5,7 @@
 .rs-screen {
     position: absolute;
     left: 0; right: 0; top: 0; bottom: 0;
-    background-color: rgba(9, 11, 17, 0.97);
+    background-color: rgb(9, 11, 17); /* opaque: the menu title must not show through */
     opacity: 1;
     translate: 0 0;
     transition-property: opacity, translate;
@@ -93,7 +93,7 @@
     width: 100%;
 }
 
-.rs-list > .unity-scroll-view__content-viewport > .unity-scroll-view__content-container {
+.rs-list .unity-scroll-view__content-container {
     align-items: center;
     padding-bottom: 60px;
 }
@@ -143,6 +143,19 @@
     color: rgb(20, 16, 10);
     background-color: var(--ss-gold);
     border-radius: 4px;
+}
+
+/* Unlocked Realm without art yet: its numeral, large and faint. */
+.rs-card__glyph {
+    font-size: 170px;
+    -unity-font-style: bold;
+    color: rgba(232, 196, 120, 0.22);
+    margin: 0;
+    padding: 0;
+}
+
+.rs-card--locked .rs-card__glyph {
+    display: none;
 }
 
 .rs-card__body {
@@ -284,7 +297,7 @@
     right: 40px;
     bottom: 40px;
     padding: 0 0 36px 0;
-    background-color: var(--ss-panel-solid);
+    background-color: rgb(16, 18, 26); /* opaque: cards behind must not show through */
     border-width: 2px;
     border-color: var(--ss-line);
     border-radius: 8px;
@@ -388,7 +401,7 @@
 }
 
 .unity-button.rs-start:disabled {
-    opacity: 0.45;
+    opacity: 0.35;
 }
 
 .unity-button.rs-detail__back {

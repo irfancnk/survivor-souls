@@ -148,7 +148,8 @@ namespace SurvivorSouls.UI.MainMenu
             _enemies.text = Or(realm.Enemies, "Unknown");
             _rewards.text = Or(realm.Rewards, "Unknown");
             _chambers.text = realm.Chambers.ToString();
-            _best.text = BestText(realm);
+            int best = Mathf.Min(RunProgress.BestChamber(realm.Id), realm.Chambers);
+            _best.text = best > 0 ? $"{best} / {realm.Chambers}" : "Not yet entered";
             _estus.text = realm.EstusCost.ToString();
 
             string note = locked ? $"Clear Realm {ChamberTransitionHud.Roman(realm.Id - 1)} to unlock."
@@ -157,7 +158,11 @@ namespace SurvivorSouls.UI.MainMenu
             _note.text = note ?? "";
             _note.EnableInClassList(HiddenClass, note == null);
             _start.SetEnabled(note == null);
-            _start.text = state == RealmState.Completed ? "START AGAIN" : RunProgress.BestChamber(realm.Id) > 0 ? "START" : "ENTER";
+            _start.text = locked ? "LOCKED"
+                : !realm.Playable ? "COMING SOON"
+                : state == RealmState.Completed ? "START AGAIN"
+                : RunProgress.BestChamber(realm.Id) > 0 ? "START"
+                : "ENTER";
 
             foreach (var card in _cards) card.Root.EnableInClassList(SelectedClass, card.Realm == realm);
             _veilHide?.Pause();
@@ -251,6 +256,7 @@ namespace SurvivorSouls.UI.MainMenu
 
                 var thumb = Child(card.Root, "rs-card__thumb");
                 if (realm.Thumbnail != null) thumb.style.backgroundImage = new StyleBackground(realm.Thumbnail);
+                else Text(thumb, "rs-card__glyph", ChamberTransitionHud.Roman(realm.Id)); // no art yet: big numeral
                 var lockIcon = Child(thumb, "rs-lock");
                 Child(lockIcon, "rs-lock__shackle");
                 Child(lockIcon, "rs-lock__body");

@@ -175,6 +175,7 @@ namespace SurvivorSouls.Tests
             Assert.That(page.IsDetailOpen, Is.True);
             Assert.That(page.CanStart, Is.False);
             Assert.That(root.Q<Label>("rs-detail-note").text, Does.Contain("XCI"));
+            Assert.That(root.Q<Button>("rs-start").text, Is.EqualTo("LOCKED"));
             Press(root.Q<Button>("rs-start"));
             Assert.That(started, Is.Empty, "a locked Realm never starts");
 
@@ -188,7 +189,8 @@ namespace SurvivorSouls.Tests
             Assert.That(page.IsDetailOpen, Is.True, "tapping a card opens its sheet");
             Assert.That(page.Selected.Id, Is.EqualTo(First));
             Assert.That(page.CanStart, Is.True);
-            Assert.That(root.Q<Label>("rs-detail-best").text, Is.EqualTo("BEST 4 / 10"));
+            Assert.That(root.Q<Button>("rs-start").text, Is.EqualTo("START"), "played before");
+            Assert.That(root.Q<Label>("rs-detail-best").text, Is.EqualTo("4 / 10"));
             Assert.That(root.Q<Label>("rs-detail-chambers").text, Is.EqualTo("10"));
             Press(root.Q<Button>("rs-start"));
             Assert.That(started.Select(r => r.Id), Is.EqualTo(new[] { First }));
@@ -215,6 +217,8 @@ namespace SurvivorSouls.Tests
             Assert.That(soon.Q<Label>(className: "rs-card__badge").text, Is.EqualTo("SOON"));
             page.OpenDetail(First + 2);
             Assert.That(page.CanStart, Is.False, "no content yet");
+            Assert.That(root.Q<Button>("rs-start").text, Is.EqualTo("COMING SOON"));
+            Assert.That(soon.Q<Label>(className: "rs-card__glyph").text, Is.EqualTo("XCIII"), "no art: numeral placeholder");
         }
 
         [UnityTest]
