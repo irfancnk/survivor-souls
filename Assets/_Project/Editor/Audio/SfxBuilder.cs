@@ -19,7 +19,7 @@ namespace SurvivorSouls.Editor.Audio
 
         public sealed class Set
         {
-            public AudioClip[] Shots, Impacts, Deaths, Footsteps;
+            public AudioClip[] Shots, Impacts, Deaths, Footsteps, HitMarkers, KillMarkers, SoulChimes, LevelUps, BoonPicks;
             public AudioClip Ambience;
         }
 
@@ -35,6 +35,11 @@ namespace SurvivorSouls.Editor.Audio
                 Impacts = Many("sfx_bolt_impact", 3, BoltImpact),
                 Deaths = Many("sfx_hollow_death", 2, HollowDeath),
                 Footsteps = Many("sfx_footstep_snow", 4, Footstep),
+                HitMarkers = Many("sfx_hitmarker_tick", 2, HitMarkerTick),
+                KillMarkers = Many("sfx_killmarker", 1, KillMarker),
+                SoulChimes = Many("sfx_soul_chime", 2, SoulChime),
+                LevelUps = Many("sfx_level_up", 1, LevelUp),
+                BoonPicks = Many("sfx_boon_pick", 1, BoonPick),
             };
             set.Ambience = Save("amb_shore_wind_surf_loop", AmbienceRate, ShoreAmbience(AmbienceRate, 24f, 9), ambience: true);
             return set;
@@ -119,6 +124,93 @@ namespace SurvivorSouls.Editor.Audio
             }
             NoiseBurst(b, 0.01f, 0.18f, 0.12f, 1500f, 4500f, 16f, rng);
             Sweep(b, 0.012f, 0.12f, 2350f * v, 2300f * v, 0.04f, 40f, 2);
+            return Normalize(b, 0.8f);
+        }
+
+        /// <summary>Hit marker confirm (KAN-13): dry, bright, very short metallic tick. Sits on top of the bolt impact.</summary>
+        private static float[] HitMarkerTick(int seed)
+        {
+            var rng = new System.Random(seed * 503);
+            var b = new float[(int)(Rate * 0.07f)];
+            float v = 1f + (float)(rng.NextDouble() - 0.5) * 0.06f;
+            Click(b, 0f, 0.0025f, 0.6f, 9000f, rng);
+            Sweep(b, 0f, 0.06f, 3400f * v, 3150f * v, 0.5f, 85f, 2);        // tick ring
+            Sweep(b, 0f, 0.04f, 5100f * v, 4900f * v, 0.18f, 120f, 1);      // shimmer
+            NoiseBurst(b, 0f, 0.03f, 0.2f, 3000f, 9000f, 140f, rng);
+            return Normalize(b, 0.8f);
+        }
+
+        /// <summary>Kill marker confirm (KAN-13): deeper thunk under a lower two-note ping. Clearly heavier than the hit tick.</summary>
+        private static float[] KillMarker(int seed)
+        {
+            var rng = new System.Random(seed * 601);
+            var b = new float[(int)(Rate * 0.22f)];
+            Click(b, 0f, 0.003f, 0.55f, 7000f, rng);
+            Sweep(b, 0f, 0.14f, 210f, 120f, 0.75f, 28f, 2);                  // thunk
+            Sweep(b, 0f, 0.12f, 1850f, 1780f, 0.35f, 30f, 2);                // ping
+            Sweep(b, 0.035f, 0.15f, 2470f, 2400f, 0.25f, 26f, 1);            // second ping, a fourth up
+            NoiseBurst(b, 0f, 0.05f, 0.25f, 400f, 2400f, 60f, rng);
+            return Normalize(b, 0.85f);
+        }
+
+        /// <summary>
+        /// Soul wisp absorbed (KAN-21): soft glassy bell (two slightly detuned partials), a breath of air on top.
+        /// Quiet and short: it repeats fast during a pickup streak and its pitch climbs, so it must not get harsh.
+        /// </summary>
+        private static float[] SoulChime(int seed)
+        {
+            var rng = new System.Random(seed * 701);
+            var b = new float[(int)(Rate * 0.4f)];
+            float f = seed == 1 ? 1318.5f : 1396.9f; // E6 / F6
+            Sweep(b, 0f, 0.38f, f, f, 0.5f, 11f, 1);
+            Sweep(b, 0f, 0.3f, f * 2.005f, f * 2.0f, 0.18f, 16f, 1);         // octave shimmer, slight beat
+            Sweep(b, 0f, 0.2f, f * 2.76f, f * 2.76f, 0.07f, 24f, 1);         // bell-like inharmonic partial
+            NoiseBurst(b, 0f, 0.12f, 0.06f, 4000f, 11000f, 30f, rng);         // airy breath
+            return Normalize(b, 0.6f);
+        }
+
+        /// <summary>Level up (KAN-21): rising three-note bell arpeggio over a soft airy swell, ends on an open chord.</summary>
+        private static float[] LevelUp(int seed)
+        {
+            var rng = new System.Random(seed * 809);
+            var b = new float[(int)(Rate * 1.3f)];
+            float[] notes = { 523.25f, 659.25f, 783.99f, 1046.5f }; // C5 E5 G5 C6
+            for (int i = 0; i < notes.Length; i++)
+            {
+                float start = i * 0.085f;
+                float decay = i == notes.Length - 1 ? 3.2f : 6f;
+                Sweep(b, start, 1.3f - start, notes[i], notes[i], 0.38f, decay, 2);
+                Sweep(b, start, 0.6f, notes[i] * 2.003f, notes[i] * 2f, 0.1f, decay * 1.6f, 1);
+            }
+            // Swell: band-passed noise rising in brightness, fades out under the chord.
+            var bp = new Biquad();
+            int n = (int)(Rate * 0.9f);
+            for (int i = 0; i < n; i++)
+            {
+                float k = i / (float)n;
+                bp.SetBandPass(Mathf.Lerp(900f, 5200f, k), 1.2f, Rate);
+                float env = Mathf.Sin(k * Mathf.PI) * 0.22f;
+                b[i] += bp.Process(Noise(rng)) * env;
+            }
+            Sweep(b, 0f, 0.5f, 98f, 130.8f, 0.3f, 5f, 2);                    // low body under the rise
+            return Normalize(b, 0.85f);
+        }
+
+        /// <summary>
+        /// Skill picked (KAN-19): a low ember "whumpf" (fire catching), a bright rune strike (fifth + octave bell) and a
+        /// short crackle tail. Distinct from the level-up arpeggio that plays just before it.
+        /// </summary>
+        private static float[] BoonPick(int seed)
+        {
+            var rng = new System.Random(seed * 907);
+            var b = new float[(int)(Rate * 0.9f)];
+            NoiseBurst(b, 0f, 0.35f, 0.5f, 90f, 600f, 9f, rng);                // fire catching
+            Sweep(b, 0f, 0.3f, 110f, 73.4f, 0.45f, 10f, 2);                    // low body
+            Sweep(b, 0.03f, 0.85f, 880f, 880f, 0.3f, 5f, 2);                   // A5 strike
+            Sweep(b, 0.03f, 0.7f, 1318.5f, 1318.5f, 0.18f, 6f, 1);             // E6 fifth
+            Sweep(b, 0.03f, 0.5f, 1761f, 1760f, 0.08f, 9f, 1);                 // octave shimmer
+            for (int i = 0; i < 9; i++)                                        // ember crackle
+                Click(b, 0.12f + (float)rng.NextDouble() * 0.45f, 0.004f, 0.12f + (float)rng.NextDouble() * 0.1f, 4200f, rng);
             return Normalize(b, 0.8f);
         }
 

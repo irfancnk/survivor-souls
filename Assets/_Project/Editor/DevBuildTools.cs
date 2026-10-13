@@ -49,6 +49,27 @@ namespace SurvivorSouls.Editor
             EditorApplication.Exit(report.summary.result == BuildResult.Succeeded ? 0 : 1);
         }
 
+        /// <summary>
+        /// Android APK for sideload checks (adb install). Optional <c>-ss-dev</c> makes a development build.
+        /// <c>-buildTarget Android -executeMethod SurvivorSouls.Editor.DevBuildTools.BuildAndroidApk -ss-out &lt;file.apk&gt;</c>
+        /// </summary>
+        public static void BuildAndroidApk()
+        {
+            string outPath = GetArg("-ss-out") ?? "Builds/Android/SurvivorSouls.apk";
+            bool dev = System.Environment.GetCommandLineArgs().Contains("-ss-dev");
+            EditorUserBuildSettings.buildAppBundle = false;
+            var options = new BuildPlayerOptions
+            {
+                scenes = EditorBuildSettings.scenes.Where(s => s.enabled).Select(s => s.path).ToArray(),
+                locationPathName = outPath,
+                target = BuildTarget.Android,
+                options = dev ? BuildOptions.Development : BuildOptions.None,
+            };
+            BuildReport report = BuildPipeline.BuildPlayer(options);
+            Debug.Log($"[DevBuildTools] Android {report.summary.result} errors={report.summary.totalErrors} -> {outPath}");
+            EditorApplication.Exit(report.summary.result == BuildResult.Succeeded ? 0 : 1);
+        }
+
         private static string GetArg(string name)
         {
             string[] args = System.Environment.GetCommandLineArgs();

@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Globalization;
 using SurvivorSouls.Gameplay.CameraRig;
+using SurvivorSouls.Gameplay.Combat;
 using SurvivorSouls.Gameplay.Controls;
 using SurvivorSouls.Gameplay.Player;
 using Unity.Profiling;
@@ -21,6 +22,12 @@ namespace SurvivorSouls.Dev
     /// <c>-ss-pos x,z</c> moves the player to a world position first (e.g. the shore).
     /// Every capture also logs render stats of the last second: <c>[DevScreenshot] Stats ...</c> (draw calls, batches,
     /// SetPass calls, triangles, average frame ms).
+    /// <c>-ss-player-hp &lt;0..1&gt;</c> sets the player's health fraction after load (0 = death screen).
+    /// <c>-ss-hit-marker &lt;hit|kill&gt;</c> pops a hit (or kill) marker on the nearest enemy just before the capture.
+    /// <c>-ss-release &lt;seconds&gt;</c> lets go of the -ss-move stick that long before the capture (e.g. wind trail tail-off).
+    /// <c>-ss-souls &lt;n&gt;</c> drops n soul wisps around the player after load (mostly small, some elite, one boss orb).
+    /// <c>-ss-xp &lt;amount&gt;</c> grants that much XP <see cref="XpLead"/> s before the capture (level-up burst + skill cards).
+    /// <c>-ss-skills id,id,...</c> grants those skills (by SkillDefinition id, repeat an id to stack) after load.
     /// Used by tools/agents to verify visuals without a human. Inactive in release builds (Debug.isDebugBuild).
     /// </summary>
     public sealed class DevScreenshot : MonoBehaviour
@@ -32,6 +39,14 @@ namespace SurvivorSouls.Dev
         private string _closeup;
         private bool _nearExit;
         private string _pos;
+        private string _playerHp;
+        private string _hitMarker;
+        private float _release;
+        private int _souls;
+        private int _xp;
+        private string _skills;
+
+        private const float XpLead = 1.5f; // realtime seconds between the XP grant and the capture (cards fully in)
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void Bootstrap()
@@ -53,6 +68,12 @@ namespace SurvivorSouls.Dev
             shot._closeup = GetArg("-ss-closeup");
             shot._nearExit = Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-near-exit") >= 0;
             shot._pos = GetArg("-ss-pos");
+            shot._playerHp = GetArg("-ss-player-hp");
+            shot._hitMarker = GetArg("-ss-hit-marker");
+            shot._release = float.TryParse(GetArg("-ss-release"), NumberStyles.Float, CultureInfo.InvariantCulture, out float r) ? r : 0f;
+            shot._souls = int.TryParse(GetArg("-ss-souls"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int n) ? n : 0;
+            shot._skills = GetArg("-ss-skills");
+            shot._xp = int.TryParse(GetArg("-ss-xp"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int x) ? x : 0;
         }
 
         private IEnumerator Start()
@@ -69,6 +90,7 @@ namespace SurvivorSouls.Dev
                 string[] xz = _pos.Split(',');
                 Teleport(new Vector3(float.Parse(xz[0], CultureInfo.InvariantCulture), 0f, float.Parse(xz[1], CultureInfo.InvariantCulture)));
             }
+            if (!string.IsNullOrEmpty(_playerHp)) SetPlayerHealth(float.Parse(_playerHp, CultureInfo.InvariantCulture));
             if (!string.IsNullOrEmpty(_move))
             {
                 string[] xy = _move.Split(',');
@@ -76,9 +98,26 @@ namespace SurvivorSouls.Dev
                     float.Parse(xy[0], CultureInfo.InvariantCulture), float.Parse(xy[1], CultureInfo.InvariantCulture));
             }
 
-            yield return new WaitForSecondsRealtime(Mathf.Max(0f, _delay - 1f));
-            yield return LogStats(1f);
+            if (_souls > 0) DropSouls(_souls);
+            if (!string.IsNullOrEmpty(_skills)) GrantSkills(_skills);
+
+            float release = Mathf.Clamp(_release, 0f, _delay);
+            float xpLead = _xp > 0 ? Mathf.Min(XpLead, _delay - release) : 0f;
+            float wait = _delay - release - xpLead;
+            yield return new WaitForSecondsRealtime(Mathf.Max(0f, wait - 1f));
+            yield return LogStats(Mathf.Min(1f, wait));
+            if (_xp > 0)
+            {
+                FindAnyObjectByType<SurvivorSouls.Gameplay.Progression.XpManager>()?.AddXp(_xp);
+                yield return new WaitForSecondsRealtime(xpLead);
+            }
+            if (release > 0f)
+            {
+                FloatingJoystick.SimulatedValue = null; // finger up: stick stops and glides back to idle
+                yield return new WaitForSecondsRealtime(release);
+            }
             if (!string.IsNullOrEmpty(_closeup)) FrameCloseup(float.Parse(_closeup, CultureInfo.InvariantCulture));
+            if (!string.IsNullOrEmpty(_hitMarker)) ShowHitMarker(_hitMarker == "kill");
             yield return null;
             yield return new WaitForEndOfFrame();
             ScreenCapture.CaptureScreenshot(_path);
@@ -122,6 +161,56 @@ namespace SurvivorSouls.Dev
             cc.enabled = false;
             player.transform.position = position;
             cc.enabled = true;
+        }
+
+        private static void DropSouls(int count)
+        {
+            var field = FindAnyObjectByType<SurvivorSouls.Gameplay.Progression.SoulWispField>();
+            var player = FindAnyObjectByType<PlayerMover>();
+            if (field == null || player == null) return;
+            for (int i = 0; i < count; i++)
+            {
+                float a = i * 2.39996f; // golden angle: an even scatter
+                float d = 3.2f + (i % 5) * 0.9f;
+                int xp = i == 0 ? 150 : i % 7 == 3 ? 40 : 10;
+                field.Spawn(player.transform.position + new Vector3(Mathf.Cos(a) * d, 1f, Mathf.Sin(a) * d), xp);
+            }
+        }
+
+        private static void GrantSkills(string ids)
+        {
+            var manager = FindAnyObjectByType<SurvivorSouls.Gameplay.Skills.SkillManager>();
+            var table = manager != null ? manager.Progression : null;
+            if (table == null) return;
+            var all = new System.Collections.Generic.List<SurvivorSouls.Gameplay.Skills.SkillDefinition>();
+            table.CollectPool(int.MaxValue, all);
+            foreach (string id in ids.Split(','))
+            {
+                var skill = all.Find(s => s.Id == id.Trim());
+                if (skill == null || !manager.Grant(skill)) Debug.LogWarning($"[DevScreenshot] -ss-skills: cannot grant '{id}'");
+            }
+        }
+
+        private static void SetPlayerHealth(float fraction)
+        {
+            var health = FindAnyObjectByType<PlayerHealth>();
+            if (health != null) health.TakeDamage(health.Max * (1f - Mathf.Clamp01(fraction)));
+        }
+
+        private static void ShowHitMarker(bool kill)
+        {
+            var hud = FindAnyObjectByType<SurvivorSouls.UI.Hud.HitMarkerHud>();
+            var player = FindAnyObjectByType<PlayerMover>();
+            if (hud == null || player == null) return;
+            Enemy nearest = null;
+            float best = float.MaxValue;
+            foreach (var e in Enemy.Active)
+            {
+                float d = (e.transform.position - player.transform.position).sqrMagnitude;
+                if (d < best) { best = d; nearest = e; }
+            }
+            if (nearest != null) hud.Show(nearest, kill);
+            else Debug.LogWarning("[DevScreenshot] -ss-hit-marker: no enemy alive");
         }
 
         /// <summary>Stops the follow camera and frames the player's upper body from <paramref name="yaw"/> degrees.</summary>

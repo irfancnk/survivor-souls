@@ -1,15 +1,112 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
     <Style src="GameHud.uss" />
-    <!-- Joystick is positioned in code (GameHudController) at the touch point. Never blocks touches. -->
-    <ui:VisualElement name="joystick" class="hud-joystick hud-hidden" picking-mode="Ignore">
+    <!-- Red screen-edge flash on damage (PlayerHealthHud). Texture and opacity set in code. Never blocks touches. -->
+    <ui:VisualElement name="damage-vignette" class="hud-vignette" picking-mode="Ignore" />
+
+    <!-- Floating joystick (JoystickView): size, position and opacities set in code. Idle at the bottom centre, jumps to the
+         touch point; only the chevron(s) of the drag direction stay visible. Never blocks touches. -->
+    <ui:VisualElement name="joystick" class="hud-joystick" picking-mode="Ignore">
+        <ui:VisualElement name="joystick-ring" class="hud-joystick__ring" picking-mode="Ignore" />
+        <ui:VisualElement name="joystick-side-up" class="hud-joystick__side" picking-mode="Ignore">
+            <ui:VisualElement class="hud-joystick__chevron" picking-mode="Ignore" />
+        </ui:VisualElement>
+        <ui:VisualElement name="joystick-side-right" class="hud-joystick__side hud-joystick__side--right" picking-mode="Ignore">
+            <ui:VisualElement class="hud-joystick__chevron" picking-mode="Ignore" />
+        </ui:VisualElement>
+        <ui:VisualElement name="joystick-side-down" class="hud-joystick__side hud-joystick__side--down" picking-mode="Ignore">
+            <ui:VisualElement class="hud-joystick__chevron" picking-mode="Ignore" />
+        </ui:VisualElement>
+        <ui:VisualElement name="joystick-side-left" class="hud-joystick__side hud-joystick__side--left" picking-mode="Ignore">
+            <ui:VisualElement class="hud-joystick__chevron" picking-mode="Ignore" />
+        </ui:VisualElement>
         <ui:VisualElement name="joystick-knob" class="hud-joystick__knob" picking-mode="Ignore" />
     </ui:VisualElement>
 
     <ui:VisualElement name="safe-root" class="hud-root" picking-mode="Ignore">
+        <!-- Run XP (XpHud, KAN-21): level number + soul-blue bar, fill width set in code. -->
+        <ui:VisualElement name="xp" class="hud-xp" picking-mode="Ignore">
+            <ui:Label name="xp-level" text="LV 1" class="hud-xp__level" picking-mode="Ignore" />
+            <ui:VisualElement class="hud-xp__track" picking-mode="Ignore">
+                <ui:VisualElement name="xp-fill" class="hud-xp__fill" picking-mode="Ignore" />
+            </ui:VisualElement>
+        </ui:VisualElement>
         <ui:VisualElement class="hud-top" picking-mode="Ignore">
             <ui:Button name="btn-pause" text="II" class="hud-button" />
+            <!-- Player health (PlayerHealthHud): trail drains behind the fill. -->
+            <ui:VisualElement name="player-hp" class="hud-hp" picking-mode="Ignore">
+                <ui:VisualElement class="hud-hp__track" picking-mode="Ignore">
+                    <ui:VisualElement name="player-hp-trail" class="hud-hp__trail" picking-mode="Ignore" />
+                    <ui:VisualElement name="player-hp-fill" class="hud-hp__fill" picking-mode="Ignore" />
+                </ui:VisualElement>
+                <ui:Label name="player-hp-value" text="" class="hud-hp__value" picking-mode="Ignore" />
+            </ui:VisualElement>
         </ui:VisualElement>
+        <!-- Owned skills (SkillHud, KAN-19): icon slots added in code, pick order. -->
+        <ui:VisualElement name="skill-row" class="hud-skills" picking-mode="Ignore" />
         <ui:VisualElement class="hud-spacer" picking-mode="Ignore" />
         <ui:Label name="lbl-hint" text="Drag anywhere to move" class="hud-hint" picking-mode="Ignore" />
+    </ui:VisualElement>
+
+    <!-- Small bar over the Knight, placed in code at a world point. -->
+    <ui:VisualElement name="player-overhead" class="hud-overhead" picking-mode="Ignore">
+        <ui:VisualElement name="player-overhead-fill" class="hud-overhead__fill" picking-mode="Ignore" />
+    </ui:VisualElement>
+
+    <!-- "LEVEL UP" over the Knight (XpHud), placed in code at a world point. -->
+    <ui:Label name="levelup-pop" text="LEVEL UP" class="levelup-pop hud-hidden" picking-mode="Ignore" />
+
+    <!-- Level-up skill pick (SkillChoiceScreen, KAN-19). Game is paused while shown. hud-modal: a press here never starts
+         the joystick. Cards filled and animated in code; card count/order = SkillChoiceScreen.MaxCards. -->
+    <ui:VisualElement name="skill-choice" class="skills hud-modal hud-hidden">
+        <ui:VisualElement class="skills__band" picking-mode="Ignore">
+            <ui:Label name="skill-choice-title" text="LEVEL 2" class="skills__title" picking-mode="Ignore" />
+            <ui:Label text="CHOOSE AN EMBER BOON" class="skills__sub" picking-mode="Ignore" />
+        </ui:VisualElement>
+        <ui:VisualElement class="skills__cards" picking-mode="Ignore">
+            <ui:Button name="skill-card-0" class="skill-card">
+                <ui:Label text="COMMON" class="skill-card__rarity" picking-mode="Ignore" />
+                <ui:VisualElement class="skill-card__plate" picking-mode="Ignore">
+                    <ui:VisualElement class="skill-card__icon" picking-mode="Ignore" />
+                </ui:VisualElement>
+                <ui:Label text="SKILL" class="skill-card__name" picking-mode="Ignore" />
+                <ui:Label text="" class="skill-card__desc" picking-mode="Ignore" />
+                <ui:VisualElement class="hud-spacer" picking-mode="Ignore" />
+                <ui:VisualElement class="skill-card__pips" picking-mode="Ignore" />
+                <ui:Label text="NEW" class="skill-card__badge" picking-mode="Ignore" />
+            </ui:Button>
+            <ui:Button name="skill-card-1" class="skill-card">
+                <ui:Label text="COMMON" class="skill-card__rarity" picking-mode="Ignore" />
+                <ui:VisualElement class="skill-card__plate" picking-mode="Ignore">
+                    <ui:VisualElement class="skill-card__icon" picking-mode="Ignore" />
+                </ui:VisualElement>
+                <ui:Label text="SKILL" class="skill-card__name" picking-mode="Ignore" />
+                <ui:Label text="" class="skill-card__desc" picking-mode="Ignore" />
+                <ui:VisualElement class="hud-spacer" picking-mode="Ignore" />
+                <ui:VisualElement class="skill-card__pips" picking-mode="Ignore" />
+                <ui:Label text="NEW" class="skill-card__badge" picking-mode="Ignore" />
+            </ui:Button>
+            <ui:Button name="skill-card-2" class="skill-card">
+                <ui:Label text="COMMON" class="skill-card__rarity" picking-mode="Ignore" />
+                <ui:VisualElement class="skill-card__plate" picking-mode="Ignore">
+                    <ui:VisualElement class="skill-card__icon" picking-mode="Ignore" />
+                </ui:VisualElement>
+                <ui:Label text="SKILL" class="skill-card__name" picking-mode="Ignore" />
+                <ui:Label text="" class="skill-card__desc" picking-mode="Ignore" />
+                <ui:VisualElement class="hud-spacer" picking-mode="Ignore" />
+                <ui:VisualElement class="skill-card__pips" picking-mode="Ignore" />
+                <ui:Label text="NEW" class="skill-card__badge" picking-mode="Ignore" />
+            </ui:Button>
+        </ui:VisualElement>
+    </ui:VisualElement>
+
+    <!-- Death screen: hidden until PlayerDeath.Finished, then fades in. -->
+    <ui:VisualElement name="death-screen" class="death hud-hidden">
+        <ui:VisualElement class="death__band" picking-mode="Ignore">
+            <ui:Label text="YOU DIED" class="death__title" picking-mode="Ignore" />
+        </ui:VisualElement>
+        <ui:VisualElement class="death__buttons" picking-mode="Ignore">
+            <ui:Button name="btn-retry" text="RETRY" class="death__button death__button--primary" />
+            <ui:Button name="btn-menu" text="MENU" class="death__button" />
+        </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>

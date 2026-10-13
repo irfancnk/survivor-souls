@@ -30,6 +30,9 @@ namespace SurvivorSouls.Editor.Combat
         private const string ZombieMaterialPath = ZombieDir + "/M_Zombie.mat";
         private const int ZombieTextureSize = 1024; // 2k source; ~100 px tall on screen
         private const float ZombieSpeed = 3f; // m/s: a run, still slower than the player (5)
+        private const float ZombieContactRange = 1.4f; // centre to centre; stops at 1.1, so a zombie at the player hurts
+        private const float ZombieContactDps = 20f; // player 400 HP: 20 s alone, ~6.7 s with three
+        private const int ZombieXp = 10; // small soul wisp; the XpCurve asset is tuned around it (KAN-21)
 
         public static void Build(GameArtKit kit)
         {
@@ -220,6 +223,9 @@ namespace SurvivorSouls.Editor.Combat
                 so.FindProperty("baseTint").colorValue = Color.white;
                 so.FindProperty("animator").objectReferenceValue = animator;
                 so.FindProperty("moveSpeed").floatValue = ZombieSpeed;
+                so.FindProperty("contactRange").floatValue = ZombieContactRange;
+                so.FindProperty("damagePerSecond").floatValue = ZombieContactDps;
+                so.FindProperty("xpValue").intValue = ZombieXp;
                 so.ApplyModifiedPropertiesWithoutUndo();
                 PrefabUtility.SaveAsPrefabAsset(root, EnemyPrefabPath);
             }

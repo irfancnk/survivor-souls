@@ -4,6 +4,9 @@ using SurvivorSouls.Audio;
 using SurvivorSouls.Core;
 using SurvivorSouls.Editor.Audio;
 using SurvivorSouls.Editor.Combat;
+using SurvivorSouls.Editor.Effects;
+using SurvivorSouls.Editor.Progression;
+using SurvivorSouls.Editor.Skills;
 using SurvivorSouls.Editor.World;
 using SurvivorSouls.Editor.Characters;
 using SurvivorSouls.Editor.Procedural;
@@ -14,6 +17,7 @@ using SurvivorSouls.Gameplay.CameraRig;
 using SurvivorSouls.Gameplay.Combat;
 using SurvivorSouls.Gameplay.Controls;
 using SurvivorSouls.Gameplay.Player;
+using SurvivorSouls.Gameplay.Skills;
 using SurvivorSouls.Gameplay.World;
 using SurvivorSouls.UI.Hud;
 using UnityEditor;
@@ -28,7 +32,8 @@ namespace SurvivorSouls.Editor
     /// <summary>
     /// Builds the Game scene from code: art kit (textures, materials), Realm 1 look (snowy shore, sea, sky),
     /// Archer prefab, streamed world, camera,
-    /// joystick input, HUD and combat (auto-shooting crossbow, enemy spawner, health bars). Re-run after edits: menu "Survivor Souls/Rebuild Game Scene", or batchmode
+    /// joystick input, HUD and combat (auto-shooting crossbow, enemy spawner, health bars, player health + death screen),
+    /// XP (soul wisps, level bar, level-up flow), skills (stat sheet, 3-card pick, owned-skill row). Re-run after edits: menu "Survivor Souls/Rebuild Game Scene", or batchmode
     /// <c>-executeMethod SurvivorSouls.Editor.GameSceneBuilder.BuildFromCommandLine</c>.
     /// Hand edits to the generated scene are overwritten on rebuild.
     /// </summary>
@@ -53,21 +58,30 @@ namespace SurvivorSouls.Editor
 
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             SetupEnvironment(realm);
-            new GameObject("Game").AddComponent<GameSceneController>();
+            var game = new GameObject("Game").AddComponent<GameSceneController>();
+            game.gameObject.AddComponent<KillHaptics>();
             CreateSunLight(realm.Look);
 
             var joystick = new GameObject("Input").AddComponent<FloatingJoystick>();
             var player = (GameObject)PrefabUtility.InstantiatePrefab(archerPrefab);
             player.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity); // centre of the spawn tile
+            player.AddComponent<PlayerStats>(); // skills write here; mover, shooter, health and pickup read from it
             SetRef(player.GetComponent<PlayerMover>(), "joystick", joystick);
             var world = WorldBuilder.Build(kit, realm, player.transform, player.GetComponent<PlayerMover>());
             var combat = CombatBuilder.Load();
-            var shooter = CreateCombat(player, combat.bolt, combat.enemy, world);
+            var (shooter, spawner) = CreateCombat(player, combat.bolt, combat.enemy, world);
             CombatBuilder.CreateFx(kit, shooter);
-            CreateAudio(SfxBuilder.Build(), shooter, player.GetComponent<PlayerMover>());
+            var progression = ProgressionBuilder.Create(kit, player); // before health: death disables the SoulCollector
+            var (health, death) = CreatePlayerHealth(player, joystick, shooter);
+            SetRef(progression.Flow, "player", health);
+            var skills = SkillsBuilder.Create(kit, progression.Xp.gameObject, player, shooter, health);
+            SetRef(game, "player", health);
+            SetRef(game, "spawner", spawner);
+            CreateAudio(SfxBuilder.Build(), shooter, player.GetComponent<PlayerMover>(), health, progression, skills);
+            WindTrailBuilder.Create(kit, player);
 
             var camera = CreateCamera(player.transform, realm.Look);
-            CreateHud(panelSettings, joystick, camera);
+            CreateHud(panelSettings, joystick, camera, health, death, progression, skills, player.transform);
 
             EditorSceneManager.SaveScene(scene, ScenePath);
             AddToBuild(ScenePath, index: 1);
@@ -121,7 +135,7 @@ namespace SurvivorSouls.Editor
         /// <summary>
         /// Auto-shooter on the player (bolts leave the crossbow muzzle), upper-body recoil, enemy spawner around them.
         /// </summary>
-        private static AutoShooter CreateCombat(GameObject player, Bolt bolt, Enemy enemy, WorldStreamer world)
+        private static (AutoShooter, EnemySpawner) CreateCombat(GameObject player, Bolt bolt, Enemy enemy, WorldStreamer world)
         {
             var shooter = player.AddComponent<AutoShooter>();
             SetRef(shooter, "boltPrefab", bolt);
@@ -133,20 +147,69 @@ namespace SurvivorSouls.Editor
             SetRef(spawner, "prefab", enemy);
             SetRef(spawner, "player", player.transform);
             SetRef(spawner, "world", world);
-            return shooter;
+            return (shooter, spawner);
         }
 
-        /// <summary>Procedural sound set (shots, impacts, deaths, snow footsteps, wind + surf ambience) on one audio object.</summary>
-        private static void CreateAudio(SfxBuilder.Set sfx, AutoShooter shooter, PlayerMover mover)
+        /// <summary>
+        /// Player health pool, enemy contact damage, red hit flash on the body (renderers under "Model" only, not the
+        /// blob shadow or ground decals) and the death sequence (input, movement and attacks off; model tips over).
+        /// </summary>
+        private static (PlayerHealth, PlayerDeath) CreatePlayerHealth(GameObject player, FloatingJoystick joystick, AutoShooter shooter)
+        {
+            var health = player.AddComponent<PlayerHealth>();
+            var contact = player.AddComponent<ContactDamageReceiver>();
+            var model = player.transform.Find("Model");
+            if (model == null) throw new System.InvalidOperationException($"{player.name} has no 'Model' child");
+
+            var flash = new SerializedObject(player.AddComponent<PlayerHitFlash>());
+            SetArray(flash.FindProperty("renderers"), model.GetComponentsInChildren<Renderer>(true));
+            flash.ApplyModifiedPropertiesWithoutUndo();
+
+            var death = player.AddComponent<PlayerDeath>();
+            var so = new SerializedObject(death);
+            var disable = new List<Object> { joystick, player.GetComponent<PlayerMover>(), shooter, contact };
+            disable.AddRange(player.GetComponents<LocomotionAnimatorDriver>());
+            disable.AddRange(player.GetComponents<ProceduralLocomotion>());
+            disable.AddRange(player.GetComponents<SoulCollector>()); // wisps stop flying to a dead Knight
+            var arrow = player.GetComponent<ObjectiveArrow>();
+            if (arrow != null) disable.Add(arrow); // else its LateUpdate re-shows the arrow
+            var hide = new List<Object>();
+            if (arrow != null && new SerializedObject(arrow).FindProperty("arrow").objectReferenceValue is Transform a) hide.Add(a.gameObject);
+            SetArray(so.FindProperty("disableOnDeath"), disable);
+            SetArray(so.FindProperty("hideOnDeath"), hide);
+            so.FindProperty("model").objectReferenceValue = model;
+            so.FindProperty("animator").objectReferenceValue = model.GetComponent<Animator>();
+            so.ApplyModifiedPropertiesWithoutUndo();
+            return (health, death);
+        }
+
+        private static void SetArray(SerializedProperty array, IReadOnlyList<Object> values)
+        {
+            array.arraySize = values.Count;
+            for (int i = 0; i < values.Count; i++) array.GetArrayElementAtIndex(i).objectReferenceValue = values[i];
+        }
+
+        /// <summary>Procedural sound set (shots, impacts, marker ticks, deaths, snow footsteps, soul chimes, level-up, boon pick, wind + surf ambience) on one audio object.</summary>
+        private static void CreateAudio(SfxBuilder.Set sfx, AutoShooter shooter, PlayerMover mover, PlayerHealth health,
+            ProgressionBuilder.Result progression, SkillManager skills)
         {
             var audio = new GameObject("Audio").AddComponent<GameAudio>();
             var so = new SerializedObject(audio);
             so.FindProperty("shooter").objectReferenceValue = shooter;
             so.FindProperty("player").objectReferenceValue = mover;
+            so.FindProperty("playerHealth").objectReferenceValue = health;
+            so.FindProperty("souls").objectReferenceValue = progression.Souls;
+            so.FindProperty("levelUp").objectReferenceValue = progression.Flow;
+            so.FindProperty("skills").objectReferenceValue = skills;
+            SetClips(so.FindProperty("boonPicks"), sfx.BoonPicks);
+            SetClips(so.FindProperty("soulChimes"), sfx.SoulChimes);
+            SetClips(so.FindProperty("levelUps"), sfx.LevelUps);
             SetClips(so.FindProperty("shots"), sfx.Shots);
             SetClips(so.FindProperty("impacts"), sfx.Impacts);
             SetClips(so.FindProperty("deaths"), sfx.Deaths);
             SetClips(so.FindProperty("footsteps"), sfx.Footsteps);
+            SetClips(so.FindProperty("hitMarkers"), sfx.HitMarkers);
+            SetClips(so.FindProperty("killMarkers"), sfx.KillMarkers);
             so.FindProperty("ambience").objectReferenceValue = sfx.Ambience;
             so.ApplyModifiedPropertiesWithoutUndo();
         }
@@ -182,7 +245,8 @@ namespace SurvivorSouls.Editor
             return cam;
         }
 
-        private static void CreateHud(PanelSettings panelSettings, FloatingJoystick joystick, Camera camera)
+        private static void CreateHud(PanelSettings panelSettings, FloatingJoystick joystick, Camera camera, PlayerHealth health, PlayerDeath death,
+            ProgressionBuilder.Result progression, SkillManager skills, Transform player)
         {
             var go = new GameObject("HUD");
             var doc = go.AddComponent<UIDocument>();
@@ -190,7 +254,24 @@ namespace SurvivorSouls.Editor
             doc.visualTreeAsset = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(HudUxmlPath);
             if (doc.visualTreeAsset == null) throw new System.InvalidOperationException($"UXML missing: {HudUxmlPath}");
             SetRef(go.AddComponent<GameHudController>(), "joystick", joystick);
+            SetRef(go.AddComponent<JoystickView>(), "joystick", joystick);
             SetRef(go.AddComponent<CombatHud>(), "worldCamera", camera);
+            SetRef(go.AddComponent<HitMarkerHud>(), "worldCamera", camera);
+            var hp = go.AddComponent<PlayerHealthHud>();
+            SetRef(hp, "health", health);
+            SetRef(hp, "death", death);
+            SetRef(hp, "worldCamera", camera);
+
+            // XP bar + "LEVEL UP" pop; each level-up opens the 3-card skill pick, owned skills show under the health bar.
+            var xpHud = go.AddComponent<XpHud>();
+            SetRef(xpHud, "xp", progression.Xp);
+            SetRef(xpHud, "flow", progression.Flow);
+            SetRef(xpHud, "player", player);
+            SetRef(xpHud, "worldCamera", camera);
+            var choice = go.AddComponent<SkillChoiceScreen>();
+            SetRef(choice, "skills", skills);
+            SetRef(progression.Flow, "choice", choice);
+            SetRef(go.AddComponent<SkillHud>(), "skills", skills);
         }
 
         private static PanelSettings CreatePanelSettings()

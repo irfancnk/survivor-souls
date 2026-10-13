@@ -5,8 +5,15 @@
     --hud-ash: rgba(206, 200, 188, 0.75);
     --hud-ring: rgba(232, 196, 120, 0.35);
     --hud-ring-fill: rgba(10, 12, 18, 0.28);
-    --hud-knob: rgba(232, 196, 120, 0.85);
+    --hud-knob: rgba(232, 196, 120, 0.55);
+    --hud-chevron: rgba(244, 214, 150, 0.95);
     --hud-panel: rgba(16, 18, 26, 0.7);
+    --hud-hp-fill: rgb(116, 178, 74);
+    --hud-hp-trail: rgb(236, 196, 104);
+    --hud-hp-track: rgba(8, 8, 10, 0.72);
+    --hud-death-red: rgb(158, 24, 18);
+    --hud-soul: rgb(156, 210, 255);
+    --hud-soul-glow: rgb(226, 244, 255);
 }
 
 .hud-hidden {
@@ -21,7 +28,8 @@
 
 .hud-top {
     flex-direction: row;
-    padding: 36px 40px 0 40px;
+    align-items: center;
+    padding: 22px 40px 0 40px;
 }
 
 .hud-spacer {
@@ -48,7 +56,7 @@
 
 .hud-hint {
     align-self: center;
-    margin-bottom: 220px;
+    margin-bottom: 480px; /* above the idle joystick (JoystickView.idleBottomMargin + ring + chevron) */
     font-size: 40px;
     color: var(--hud-ash);
     -unity-text-align: middle-center;
@@ -60,24 +68,61 @@
     opacity: 0;
 }
 
-/* Joystick: size set in code from the input radius; these are the looks. */
+/* Joystick (JoystickView, KAN-16): size, translate and opacities set in code; these are the looks.
+   Transparent on purpose: the stick sits over the world. Chevron = square with two borders, turned 45 deg. */
 .hud-joystick {
     position: absolute;
-    border-width: 4px;
+    left: 0;
+    top: 0;
+    width: 240px;
+    height: 240px;
+}
+
+.hud-joystick__ring {
+    position: absolute;
+    left: 0; right: 0; top: 0; bottom: 0;
+    border-width: 3px;
     border-color: var(--hud-ring);
     background-color: var(--hud-ring-fill);
-    align-items: center;
-    justify-content: center;
+    border-radius: 120px;
+}
+
+.hud-joystick__side {
+    position: absolute;
+    left: 0; right: 0; top: 0; bottom: 0;
+}
+
+.hud-joystick__side--right { rotate: 90deg; }
+.hud-joystick__side--down { rotate: 180deg; }
+.hud-joystick__side--left { rotate: 270deg; }
+
+.hud-joystick__chevron {
+    position: absolute;
+    left: 50%;
+    top: -20%; /* just outside the ring: the knob at full drag never hides the active chevron */
+    width: 46px;
+    height: 46px;
+    margin-left: -23px;
+    border-top-width: 8px;
+    border-left-width: 8px;
+    border-color: var(--hud-chevron);
+    border-top-left-radius: 4px;
+    rotate: 45deg;
 }
 
 .hud-joystick__knob {
     position: absolute;
-    width: 120px;
-    height: 120px;
-    border-radius: 60px;
+    left: 50%;
+    top: 50%;
+    width: 72px;
+    height: 72px;
+    margin-left: -36px;
+    margin-top: -36px;
+    border-radius: 36px;
     background-color: var(--hud-knob);
-    border-width: 3px;
-    border-color: rgba(255, 236, 190, 0.9);
+    border-width: 2px;
+    border-color: rgba(255, 236, 190, 0.7);
+    opacity: 0;
 }
 
 /* Combat (CombatHud): placed in code with translate at a world point; margins centre each element on it. */
@@ -126,4 +171,485 @@
 .combat-number--kill {
     color: rgb(255, 92, 72);
     font-size: 54px;
+}
+
+/* Hit / kill marker (HitMarkerHud, KAN-13). Zero-size marker placed with translate; arms rotated in code
+   (45/135/225/315 deg) about their own point; each tick sits above its arm, past the centre gap.
+   Gap = -top - height. Dark border keeps white ticks readable on pale sand plazas. */
+.hit-marker-layer {
+    position: absolute;
+    left: 0; right: 0; top: 0; bottom: 0;
+    overflow: hidden;
+}
+
+.hit-marker {
+    position: absolute;
+    left: 0; top: 0;
+    width: 0;
+    height: 0;
+}
+
+.hit-marker__arm {
+    position: absolute;
+    left: 0; top: 0;
+    width: 0;
+    height: 0;
+}
+
+.hit-marker__tick {
+    position: absolute;
+    width: 9px;
+    height: 30px;
+    left: -4.5px;
+    top: -54px; /* gap 24 px */
+    border-radius: 3px;
+    border-width: 1.5px;
+    border-color: rgba(0, 0, 0, 0.55);
+    background-color: rgb(255, 255, 255);
+}
+
+.hit-marker--kill .hit-marker__tick {
+    width: 12px;
+    height: 42px;
+    left: -6px;
+    top: -72px; /* gap 30 px */
+    border-color: rgba(30, 0, 0, 0.6);
+    background-color: rgb(236, 44, 34);
+}
+
+/* Player health (PlayerHealthHud). Fill/trail widths set in code (percent). Green = the player; red = enemies. */
+.hud-hp {
+    flex-grow: 1;
+    max-width: 640px;
+    margin-left: 32px;
+    flex-direction: row;
+    align-items: center;
+}
+
+.hud-hp__track {
+    flex-grow: 1;
+    height: 34px;
+    background-color: var(--hud-hp-track);
+    border-width: 3px;
+    border-color: rgba(232, 196, 120, 0.45);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.hud-hp__trail,
+.hud-hp__fill {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 100%;
+}
+
+.hud-hp__trail {
+    background-color: var(--hud-hp-trail);
+}
+
+.hud-hp__fill {
+    background-color: var(--hud-hp-fill);
+    border-right-width: 2px;
+    border-color: rgba(220, 255, 190, 0.5);
+}
+
+.hud-hp__value {
+    min-width: 110px;
+    margin-left: 16px;
+    padding: 0;
+    font-size: 38px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-left;
+    color: var(--hud-gold);
+    -unity-text-outline-width: 2px;
+    -unity-text-outline-color: rgba(0, 0, 0, 0.85);
+}
+
+.hud-overhead {
+    position: absolute;
+    left: 0; top: 0;
+    width: 120px;
+    height: 12px;
+    margin-left: -60px;
+    margin-top: -6px;
+    background-color: var(--hud-hp-track);
+    border-width: 2px;
+    border-color: rgba(0, 0, 0, 0.9);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.hud-overhead__fill {
+    height: 100%;
+    width: 100%;
+    background-color: var(--hud-hp-fill);
+}
+
+/* Damage vignette: full-screen generated texture, stretched (ellipse follows the screen shape). */
+.hud-vignette {
+    position: absolute;
+    left: 0; right: 0; top: 0; bottom: 0;
+    opacity: 0;
+    -unity-background-scale-mode: stretch-to-fill;
+}
+
+/* Death screen (Souls style): dark veil, black band, big red title, two buttons. */
+.death {
+    position: absolute;
+    left: 0; right: 0; top: 0; bottom: 0;
+    justify-content: center;
+    align-items: stretch;
+    background-color: rgba(0, 0, 0, 0.45);
+    opacity: 0;
+    transition-property: opacity;
+    transition-duration: 1.2s;
+    transition-timing-function: ease-in-sine;
+}
+
+.death--shown {
+    opacity: 1;
+}
+
+.death__band {
+    padding: 70px 0;
+    background-color: rgba(0, 0, 0, 0.72);
+    align-items: center;
+}
+
+.death__title {
+    font-size: 132px;
+    letter-spacing: 12px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    color: var(--hud-death-red);
+    -unity-text-outline-width: 2px;
+    -unity-text-outline-color: rgba(30, 0, 0, 0.9);
+    padding: 0;
+    margin: 0;
+}
+
+.death__buttons {
+    flex-direction: row;
+    justify-content: center;
+    margin-top: 110px;
+}
+
+.unity-button.death__button {
+    width: 340px;
+    height: 132px;
+    margin: 0 22px;
+    padding: 0;
+    font-size: 46px;
+    letter-spacing: 10px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    color: rgb(206, 200, 188);
+    background-color: rgba(20, 22, 30, 0.85);
+    background-image: none;
+    border-width: 2px;
+    border-color: rgba(232, 196, 120, 0.3);
+    border-radius: 4px;
+}
+
+.unity-button.death__button--primary {
+    color: rgb(255, 228, 170);
+    background-color: rgba(150, 70, 28, 0.88);
+    border-color: var(--hud-gold);
+}
+
+.unity-button.death__button:active {
+    scale: 0.97 0.97;
+}
+
+/* Run XP (XpHud, KAN-21): full-width thin bar at the very top, soul blue (green = health, red = enemies). */
+.hud-xp {
+    flex-direction: row;
+    align-items: center;
+    padding: 28px 40px 0 40px;
+}
+
+.hud-xp__level {
+    min-width: 120px;
+    padding: 0;
+    margin: 0 16px 0 0;
+    font-size: 36px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-left;
+    color: var(--hud-soul-glow);
+    -unity-text-outline-width: 2px;
+    -unity-text-outline-color: rgba(0, 0, 0, 0.85);
+}
+
+.hud-xp__track {
+    flex-grow: 1;
+    height: 20px;
+    background-color: var(--hud-hp-track);
+    border-width: 2px;
+    border-color: rgba(156, 210, 255, 0.4);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.hud-xp__fill {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 0;
+    background-color: var(--hud-soul);
+    border-right-width: 2px;
+    border-color: var(--hud-soul-glow);
+}
+
+.hud-xp--flash {
+    border-color: var(--hud-soul-glow);
+    background-color: rgba(120, 170, 220, 0.6);
+}
+
+/* "LEVEL UP" over the Knight. Translate, scale and opacity set in code (unscaled time). */
+.levelup-pop {
+    position: absolute;
+    left: 0; top: 0;
+    width: 400px;
+    margin-left: -200px;
+    margin-top: -40px;
+    padding: 0;
+    font-size: 64px;
+    letter-spacing: 6px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    color: var(--hud-soul-glow);
+    -unity-text-outline-width: 3px;
+    -unity-text-outline-color: rgba(10, 30, 60, 0.95);
+}
+
+/* Level-up skill pick (SkillChoiceScreen, KAN-19): veil, header band, three rune cards. Opacity, translate and scale of the
+   screen and cards are set in code. Rarity: common = worn steel, rare = soul blue, epic = ember gold. */
+.skills {
+    position: absolute;
+    left: 0; right: 0; top: 0; bottom: 0;
+    justify-content: center;
+    padding: 0 30px 160px 30px;
+    background-color: rgba(4, 8, 14, 0.62);
+}
+
+.skills__band {
+    padding: 34px 0 30px 0;
+    margin: 0 -30px 56px -30px;
+    background-color: rgba(4, 8, 16, 0.8);
+    border-top-width: 2px;
+    border-bottom-width: 2px;
+    border-color: rgba(232, 196, 120, 0.45);
+    align-items: center;
+}
+
+.skills__title {
+    font-size: 104px;
+    letter-spacing: 10px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    color: var(--hud-soul-glow);
+    -unity-text-outline-width: 2px;
+    -unity-text-outline-color: rgba(20, 60, 110, 0.9);
+    padding: 0;
+    margin: 0;
+}
+
+.skills__sub {
+    margin-top: 12px;
+    padding: 0;
+    font-size: 36px;
+    letter-spacing: 6px;
+    -unity-text-align: middle-center;
+    color: var(--hud-gold);
+}
+
+.skills__cards {
+    flex-direction: row;
+    justify-content: center;
+    align-items: stretch;
+}
+
+.unity-button.skill-card {
+    width: 316px;
+    height: 560px;
+    margin: 0 9px;
+    padding: 22px 16px 22px 16px;
+    flex-direction: column;
+    align-items: center;
+    border-radius: 18px;
+    border-width: 4px;
+    border-color: var(--card-rim);
+    border-top-width: 10px;
+    background-color: rgba(22, 20, 24, 0.96);
+    transition-property: background-color;
+    transition-duration: 0.08s;
+}
+
+.unity-button.skill-card:hover {
+    background-color: rgba(30, 28, 32, 0.96);
+}
+
+.unity-button.skill-card:active {
+    background-color: rgba(48, 40, 30, 0.98);
+}
+
+/* Single-class rules so the rarity classes below (same specificity, later) override the defaults. */
+.skill-card { --card-rim: rgb(150, 146, 138); --card-glow: rgb(222, 216, 204); }
+.skill-card--common { --card-rim: rgb(150, 146, 138); --card-glow: rgb(222, 216, 204); }
+.skill-card--rare { --card-rim: rgb(86, 150, 236); --card-glow: rgb(170, 214, 255); }
+.skill-card--epic { --card-rim: rgb(232, 150, 52); --card-glow: rgb(255, 214, 140); }
+
+.unity-button.skill-card--rare {
+    background-color: rgba(14, 22, 36, 0.96);
+}
+
+.unity-button.skill-card--epic {
+    background-color: rgba(36, 22, 12, 0.96);
+}
+
+.skill-card__rarity {
+    font-size: 26px;
+    letter-spacing: 5px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    color: var(--card-glow);
+    margin: 0 0 14px 0;
+    padding: 0;
+}
+
+.skill-card__plate {
+    width: 196px;
+    height: 196px;
+    border-radius: 98px;
+    border-width: 4px;
+    border-color: var(--card-rim);
+    background-color: rgba(6, 6, 8, 0.85);
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.skill-card__icon {
+    width: 150px;
+    height: 150px;
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: var(--card-glow);
+}
+
+.skill-card__name {
+    font-size: 38px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    white-space: normal;
+    color: rgb(255, 236, 196);
+    -unity-text-outline-width: 1px;
+    -unity-text-outline-color: rgba(0, 0, 0, 0.9);
+    margin: 0 0 12px 0;
+    padding: 0;
+}
+
+.skill-card__desc {
+    font-size: 30px;
+    -unity-text-align: upper-center;
+    white-space: normal;
+    color: rgb(206, 200, 188);
+    margin: 0;
+    padding: 0 4px;
+}
+
+.skill-card__pips {
+    flex-direction: row;
+    justify-content: center;
+    margin-bottom: 12px;
+}
+
+.skill-pip {
+    width: 30px;
+    height: 12px;
+    margin: 0 4px;
+    border-radius: 3px;
+    background-color: rgba(255, 255, 255, 0.12);
+    border-width: 1px;
+    border-color: rgba(0, 0, 0, 0.6);
+}
+
+.skill-pip--on {
+    background-color: var(--card-rim);
+}
+
+.skill-pip--next {
+    background-color: var(--card-glow);
+    border-color: rgb(255, 255, 255);
+}
+
+.skill-card__badge {
+    position: absolute;
+    top: -26px;
+    right: 14px;
+    padding: 4px 14px;
+    border-radius: 8px;
+    font-size: 24px;
+    letter-spacing: 3px;
+    -unity-font-style: bold;
+    color: rgb(30, 18, 8);
+    background-color: var(--hud-gold);
+}
+
+/* Owned skills row (SkillHud, KAN-19): under the health bar, left aligned. */
+.hud-skills {
+    flex-direction: row;
+    flex-wrap: wrap;
+    padding: 14px 40px 0 40px;
+}
+
+.hud-skill {
+    width: 76px;
+    height: 76px;
+    margin: 0 10px 10px 0;
+    border-radius: 38px;
+    border-width: 3px;
+    border-color: var(--slot-rim);
+    background-color: rgba(8, 8, 10, 0.72);
+    align-items: center;
+    justify-content: center;
+    --slot-rim: rgb(150, 146, 138);
+    --slot-glow: rgb(222, 216, 204);
+}
+
+.hud-skill--rare { --slot-rim: rgb(86, 150, 236); --slot-glow: rgb(170, 214, 255); }
+.hud-skill--epic { --slot-rim: rgb(232, 150, 52); --slot-glow: rgb(255, 214, 140); }
+
+.hud-skill__icon {
+    width: 56px;
+    height: 56px;
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: var(--slot-glow);
+}
+
+.hud-skill__stack {
+    position: absolute;
+    right: -8px;
+    bottom: -8px;
+    font-size: 26px;
+    -unity-font-style: bold;
+    color: rgb(255, 236, 196);
+    -unity-text-outline-width: 2px;
+    -unity-text-outline-color: rgba(0, 0, 0, 0.95);
+    margin: 0;
+    padding: 0;
+}
+
+/* Crit and fire damage numbers (CombatHud, KAN-19). */
+.combat-number--crit {
+    color: rgb(255, 214, 92);
+    font-size: 60px;
+}
+
+.combat-number--burn {
+    color: rgb(255, 150, 60);
+    font-size: 36px;
+}
+
+.combat-number--burst {
+    color: rgb(190, 226, 255);
+    font-size: 42px;
 }
