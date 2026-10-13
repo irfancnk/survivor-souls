@@ -72,6 +72,16 @@ namespace SurvivorSouls.Gameplay.Chamber
 
         private void Update() => Tick(Time.deltaTime);
 
+        /// <summary>
+        /// Swaps the rules and restarts the clock. A boss Chamber (KAN-58) switches to <see cref="OpenCondition.KillBoss"/>
+        /// rules at scene start: no clock, the boss death calls <see cref="Complete"/>.
+        /// </summary>
+        public void UseRules(ChamberRules chamberRules)
+        {
+            rules = chamberRules;
+            Restart();
+        }
+
         /// <summary>Full clock again (new Chamber, retry). Warnings re-armed.</summary>
         public void Restart()
         {

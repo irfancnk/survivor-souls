@@ -23,6 +23,8 @@ namespace SurvivorSouls.Gameplay.Combat
     /// Walk / attack switching (KAN-43): enter and leave reach differ (hysteresis) and each state holds a minimum time, so
     /// crowd jostling at the edge of reach cannot keep the animator in half-finished cross-fades; a staggered check
     /// re-requests the wanted state when the animator rests in the other one, and the playback rate is always finite.
+    /// Boss (KAN-58): <see cref="isBoss"/> hides the small health bar (the HUD has a boss bar), <see cref="knockbackScale"/>
+    /// makes it hard to push, and <see cref="Halted"/> lets an attack pattern stop the chase (it plays the attack state).
     /// </summary>
     public sealed class Enemy : MonoBehaviour
     {
@@ -54,6 +56,10 @@ namespace SurvivorSouls.Gameplay.Combat
         [Tooltip("Body colour. Equal to the material colour: then no property block is set and the SRP Batcher keeps the body.")]
         [SerializeField] private Color baseTint = Color.white;
         [SerializeField] private Animator animator;
+        [Tooltip("Share of the bolt knockback this type takes (bosses: low).")]
+        [SerializeField, Range(0f, 1f)] private float knockbackScale = 1f;
+        [Tooltip("Boss (KAN-58): no small health bar over the head; the HUD boss bar shows it.")]
+        [SerializeField] private bool isBoss;
 
         [Header("Horde variety (KAN-30)")]
         [Tooltip("Root scale of this type (brutes are bigger). Height, hit radius and separation scale with it.")]
@@ -157,6 +163,12 @@ namespace SurvivorSouls.Gameplay.Combat
         public float ContactRange => contactRange;
         public float DamagePerSecond => damagePerSecond;
         public int XpValue => xpValue;
+        public bool IsBoss => isBoss;
+        /// <summary>
+        /// Stops the chase (no walking, no turning) while an attack pattern runs (KAN-58 boss slam). Crowd push and
+        /// knockback still move it. A halted enemy with an attack state plays it (wind-up). Cleared on spawn.
+        /// </summary>
+        public bool Halted { get; set; }
         public bool IsBurning => _burnLeft > 0f && IsAlive;
         public float BurnDps => IsBurning ? _burnDps : 0f;
         public DamageKind LastDamageKind { get; private set; }
@@ -190,6 +202,7 @@ namespace SurvivorSouls.Gameplay.Combat
             _scale = bodyScale * (1f + UnityEngine.Random.Range(-scaleJitter, scaleJitter));
             _groundSpeed = MoveSpeed;
             _attacking = false;
+            Halted = false;
             _sinceSwitch = MinStateHold;
             _animCheck = UnityEngine.Random.value * AnimCheckInterval;
             Vector3 toTarget = target != null ? target.position - position : Vector3.forward;
@@ -250,7 +263,7 @@ namespace SurvivorSouls.Gameplay.Combat
             if (kind == DamageKind.Direct)
             {
                 direction.y = 0f;
-                _knock = direction.normalized * KnockbackSpeed;
+                _knock = direction.normalized * (KnockbackSpeed * knockbackScale);
                 _flash = FlashTime;
             }
             bool killed = _health <= 0f;
@@ -296,7 +309,7 @@ namespace SurvivorSouls.Gameplay.Combat
             Vector3 pos = transform.position;
             Vector3 move = Vector3.zero;
             float dist = float.PositiveInfinity;
-            if (_target != null)
+            if (_target != null && !Halted)
             {
                 Vector3 to = _target.position - pos;
                 to.y = 0f;
@@ -334,8 +347,8 @@ namespace SurvivorSouls.Gameplay.Combat
 
             _sinceSwitch += dt;
             bool attack = _attacking
-                ? distToTarget <= contactRange + AttackRelease
-                : _hasAttack && distToTarget <= contactRange + AttackReach;
+                ? Halted || distToTarget <= contactRange + AttackRelease
+                : _hasAttack && (Halted || distToTarget <= contactRange + AttackReach);
             if (attack != _attacking && _sinceSwitch >= MinStateHold)
             {
                 _attacking = attack;
