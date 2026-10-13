@@ -133,6 +133,14 @@
   - Verified: scene rebuild 0 errors; Android APK build OK (`aapt2 dump permissions` shows VIBRATE); iOS Xcode build + xcodebuild device build OK (`SSHaptics.mm` compiled + linked).
   - Not verified: real tap feel on iPhone / Android. iPhone install failed this run: phone was locked (`IXRemoteErrorDomain code 6`). No Android phone connected. Redeploy and feel test by hand.
 
+- 2026-10-13: Wind trail behind the running Knight (KAN-14, branch `feat/kan-14-wind-trail`, from KAN-12 head). Scheduled-task run.
+  - `FX/WindTrail` (on player): one world-space particle system, emission module off. Script emits each particle with `EmitParams` (own spawn point + velocity from the current planar move direction), so a quick turn bends the trail. Streaks: 26/s, 0.06-0.1 m wide, 0.45-1.7 m high around the body, drift back 2.2-3.4 m/s, pale alpha 0.5. Specks: 9/s at the feet, dust or leaf tint (30 %), small lift.
+  - Intensity: 0 below 2.2 m/s (standing / shooting / slow drift), smoothstep to 1 at 5 m/s. Ramp up 7/s, down 3.5/s (~0.3 s tail-off) + live particles fade out: no hard cut. Max 3 emits per frame, debt capped (no burst after a hitch). `Tick(velocity, dt)` public for tests.
+  - `Editor/Effects/WindTrailBuilder` (called by GameSceneBuilder): child "Wind Trail" under the player, maxParticles 30, stretched billboards (lengthScale 1.6, velocityScale 0.22), drag 2.5, alpha fade in/out, size shrink. Material `Art/Materials/M_FX_Wind.mat` (URP Particles/Unlit, alpha blend, shared soft dot). No lights, no shadows, no probes, no motion vectors.
+  - Tests `Tests/PlayMode/WindTrailTests` (9): still = 0, slow drift = 0, rate grows with speed, particles drift against move dir and spawn behind, quick turn, stop tails off then 0, 30 budget + hitch, intensity curve, no GC alloc. All 29 PlayMode tests pass.
+  - DevScreenshot `-ss-release <s>`: lets go of the `-ss-move` stick that long before capture. Screenshots `Docs/screenshots/game-wind-{run,turn,stop,idle}.png`.
+  - Verified: scene rebuild 0 errors, mac dev build OK, screenshots OK. Not deployed to phone this run; frame cost on device not measured (30 particles, 1 draw call).
+
 ## DECISIONS
 - Design language: Archero / Archero 2 (menus, loop, chests, daily/weekly quests, gear merge, talents, energy). Look: Dark Souls, realistic, not dismal. User decision 2026-10-11.
 - Naming map: energy=Estus, gold=Souls, gems=Ember Shards, chests=Reliquaries, daily=Oaths, weekly=Pilgrimage, chapter=Realm, room=Chamber. See GAME_PLAN sec 2.

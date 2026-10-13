@@ -20,6 +20,7 @@ namespace SurvivorSouls.Dev
     /// <c>-ss-near-exit</c> moves the player in front of the exit door (open world).
     /// <c>-ss-player-hp &lt;0..1&gt;</c> sets the player's health fraction after load (0 = death screen).
     /// <c>-ss-hit-marker &lt;hit|kill&gt;</c> pops a hit (or kill) marker on the nearest enemy just before the capture.
+    /// <c>-ss-release &lt;seconds&gt;</c> lets go of the -ss-move stick that long before the capture (e.g. wind trail tail-off).
     /// Used by tools/agents to verify visuals without a human. Inactive in release builds (Debug.isDebugBuild).
     /// </summary>
     public sealed class DevScreenshot : MonoBehaviour
@@ -32,6 +33,7 @@ namespace SurvivorSouls.Dev
         private bool _nearExit;
         private string _playerHp;
         private string _hitMarker;
+        private float _release;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void Bootstrap()
@@ -54,6 +56,7 @@ namespace SurvivorSouls.Dev
             shot._nearExit = Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-near-exit") >= 0;
             shot._playerHp = GetArg("-ss-player-hp");
             shot._hitMarker = GetArg("-ss-hit-marker");
+            shot._release = float.TryParse(GetArg("-ss-release"), NumberStyles.Float, CultureInfo.InvariantCulture, out float r) ? r : 0f;
         }
 
         private IEnumerator Start()
@@ -73,7 +76,13 @@ namespace SurvivorSouls.Dev
                     float.Parse(xy[0], CultureInfo.InvariantCulture), float.Parse(xy[1], CultureInfo.InvariantCulture));
             }
 
-            yield return new WaitForSecondsRealtime(_delay);
+            float release = Mathf.Clamp(_release, 0f, _delay);
+            yield return new WaitForSecondsRealtime(_delay - release);
+            if (release > 0f)
+            {
+                FloatingJoystick.SimulatedValue = Vector2.zero;
+                yield return new WaitForSecondsRealtime(release);
+            }
             if (!string.IsNullOrEmpty(_closeup)) FrameCloseup(float.Parse(_closeup, CultureInfo.InvariantCulture));
             if (!string.IsNullOrEmpty(_hitMarker)) ShowHitMarker(_hitMarker == "kill");
             yield return null;

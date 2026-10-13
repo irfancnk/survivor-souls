@@ -4,6 +4,7 @@ using SurvivorSouls.Audio;
 using SurvivorSouls.Core;
 using SurvivorSouls.Editor.Audio;
 using SurvivorSouls.Editor.Combat;
+using SurvivorSouls.Editor.Effects;
 using SurvivorSouls.Editor.World;
 using SurvivorSouls.Editor.Characters;
 using SurvivorSouls.Editor.Procedural;
@@ -76,6 +77,7 @@ namespace SurvivorSouls.Editor
             SetRef(game, "spawner", spawner);
             CreateAudio(SfxBuilder.Build(), shooter, player.GetComponent<PlayerMover>(), health);
             player.AddComponent<GrassPusher>();
+            WindTrailBuilder.Create(kit, player);
 
             var camera = CreateCamera(player.transform);
             CreateHud(panelSettings, joystick, camera, health, death);
