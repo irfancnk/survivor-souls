@@ -422,7 +422,8 @@
 }
 
 /* Level-up skill pick (SkillChoiceScreen, KAN-19): veil, header band, three rune cards. Opacity, translate and scale of the
-   screen and cards are set in code. Rarity: common = worn steel, rare = soul blue, epic = ember gold. */
+   screen and cards are set in code. Tier (KAN-37): common = worn steel, rare = soul blue, epic = violet,
+   legendary = ember gold. Each tier also has its name and 1-4 gems (marks), so it reads without colour. */
 .skills {
     position: absolute;
     left: 0; right: 0; top: 0; bottom: 0;
@@ -496,14 +497,86 @@
 .skill-card { --card-rim: rgb(150, 146, 138); --card-glow: rgb(222, 216, 204); }
 .skill-card--common { --card-rim: rgb(150, 146, 138); --card-glow: rgb(222, 216, 204); }
 .skill-card--rare { --card-rim: rgb(86, 150, 236); --card-glow: rgb(170, 214, 255); }
-.skill-card--epic { --card-rim: rgb(232, 150, 52); --card-glow: rgb(255, 214, 140); }
+.skill-card--epic { --card-rim: rgb(166, 96, 236); --card-glow: rgb(222, 186, 255); }
+.skill-card--legendary { --card-rim: rgb(244, 172, 48); --card-glow: rgb(255, 224, 140); }
 
 .unity-button.skill-card--rare {
     background-color: rgba(14, 22, 36, 0.96);
 }
 
 .unity-button.skill-card--epic {
-    background-color: rgba(36, 22, 12, 0.96);
+    background-color: rgba(28, 16, 40, 0.96);
+}
+
+.unity-button.skill-card--legendary {
+    background-color: rgba(40, 24, 8, 0.96);
+    border-width: 6px;
+    border-top-width: 12px;
+    border-bottom-width: 12px;
+}
+
+/* Legendary light sweep: the clip box fills the card, the band moves across it in code (translate). */
+.skill-card__sheen {
+    position: absolute;
+    left: 0; right: 0; top: 0; bottom: 0;
+    overflow: hidden;
+    border-radius: 12px;
+    display: none;
+}
+
+.skill-card--legendary .skill-card__sheen {
+    display: flex;
+}
+
+.skill-card__shine {
+    position: absolute;
+    top: -120px;
+    bottom: -120px;
+    left: 0;
+    width: 70px;
+    rotate: 18deg;
+    background-color: rgba(255, 236, 180, 0.16);
+    border-left-width: 6px;
+    border-right-width: 6px;
+    border-color: rgba(255, 236, 180, 0.08);
+}
+
+.skill-card__marks {
+    flex-direction: row;
+    justify-content: center;
+    height: 20px;
+    margin: -6px 0 12px 0;
+}
+
+.skill-mark {
+    width: 13px;
+    height: 13px;
+    margin: 3px 6px;
+    rotate: 45deg;
+    background-color: var(--card-rim);
+    border-width: 1px;
+    border-color: var(--card-glow);
+}
+
+/* Ring + sparks out of the icon plate when a burst tier lands. Scale / opacity / translate set in code. */
+.skill-card__burst {
+    position: absolute;
+    left: -4px; right: -4px; top: -4px; bottom: -4px;
+    border-radius: 102px;
+    border-width: 8px;
+    border-color: var(--card-glow);
+    opacity: 0;
+}
+
+.skill-spark {
+    position: absolute;
+    left: 89px;
+    top: 89px;
+    width: 18px;
+    height: 18px;
+    border-radius: 9px;
+    background-color: var(--card-glow);
+    opacity: 0;
 }
 
 .skill-card__rarity {
@@ -615,8 +688,10 @@
     --slot-glow: rgb(222, 216, 204);
 }
 
-.hud-skill--rare { --slot-rim: rgb(86, 150, 236); --slot-glow: rgb(170, 214, 255); }
-.hud-skill--epic { --slot-rim: rgb(232, 150, 52); --slot-glow: rgb(255, 214, 140); }
+/* Tier shape (KAN-37), a second cue next to colour: circle, rounded square, square, square with a heavy rim. */
+.hud-skill--rare { --slot-rim: rgb(86, 150, 236); --slot-glow: rgb(170, 214, 255); border-radius: 24px; }
+.hud-skill--epic { --slot-rim: rgb(166, 96, 236); --slot-glow: rgb(222, 186, 255); border-radius: 12px; }
+.hud-skill--legendary { --slot-rim: rgb(244, 172, 48); --slot-glow: rgb(255, 224, 140); border-radius: 6px; border-width: 5px; }
 
 .hud-skill__icon {
     width: 56px;

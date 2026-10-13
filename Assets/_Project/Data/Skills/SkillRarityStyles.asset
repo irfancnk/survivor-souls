@@ -1,0 +1,39 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a540116962c174c18ac6b490fd673fea, type: 3}
+  m_Name: SkillRarityStyles
+  m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Skills.SkillRarityStyles
+  styles:
+  - label: COMMON
+    marks: 1
+    reveal: {fileID: 8300000, guid: 3340c88aa95184ebea1392839ad2c121, type: 3}
+    revealVolume: 0.32
+    shine: 0
+    burst: 0
+  - label: RARE
+    marks: 2
+    reveal: {fileID: 8300000, guid: c8f5aefe05da94abdbc21bcbf55f1909, type: 3}
+    revealVolume: 0.45
+    shine: 0
+    burst: 0
+  - label: EPIC
+    marks: 3
+    reveal: {fileID: 8300000, guid: bc1c44d1544e841cf8690aba6b30e905, type: 3}
+    revealVolume: 0.6
+    shine: 0
+    burst: 0
+  - label: LEGENDARY
+    marks: 4
+    reveal: {fileID: 8300000, guid: 8a02b2289c92046ebbf0c41af4a0fe9d, type: 3}
+    revealVolume: 0.8
+    shine: 1
+    burst: 1

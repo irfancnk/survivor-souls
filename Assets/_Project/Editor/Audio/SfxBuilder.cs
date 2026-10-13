@@ -21,6 +21,8 @@ namespace SurvivorSouls.Editor.Audio
         {
             public AudioClip[] Shots, Impacts, Deaths, Footsteps, HitMarkers, KillMarkers, SoulChimes, LevelUps, BoonPicks, PortalOpens, PortalEnters, ChamberArrives;
             public AudioClip Ambience, PortalHum;
+            /// <summary>Skill card reveal per tier (KAN-37), index = SkillRarity: Common, Rare, Epic, Legendary.</summary>
+            public AudioClip[] RarityReveals;
         }
 
         [MenuItem("Survivor Souls/Rebuild Sounds")]
@@ -43,6 +45,13 @@ namespace SurvivorSouls.Editor.Audio
                 PortalOpens = Many("sfx_portal_open", 1, PortalOpen),
                 PortalEnters = Many("sfx_portal_enter", 1, PortalEnter),
                 ChamberArrives = Many("sfx_chamber_arrive", 1, ChamberArrive),
+            };
+            set.RarityReveals = new[]
+            {
+                Save("sfx_reveal_common_01", Rate, RevealCommon(), ambience: false),
+                Save("sfx_reveal_rare_01", Rate, RevealRare(), ambience: false),
+                Save("sfx_reveal_epic_01", Rate, RevealEpic(), ambience: false),
+                Save("sfx_reveal_legendary_01", Rate, RevealLegendary(), ambience: false),
             };
             set.Ambience = Save("amb_shore_wind_surf_loop", AmbienceRate, ShoreAmbience(AmbienceRate, 24f, 9), ambience: true);
             set.PortalHum = Save("amb_portal_hum_loop", AmbienceRate, PortalHum(AmbienceRate, 4f, 13), ambience: true);
@@ -216,6 +225,63 @@ namespace SurvivorSouls.Editor.Audio
             for (int i = 0; i < 9; i++)                                        // ember crackle
                 Click(b, 0.12f + (float)rng.NextDouble() * 0.45f, 0.004f, 0.12f + (float)rng.NextDouble() * 0.1f, 4200f, rng);
             return Normalize(b, 0.8f);
+        }
+
+        // Skill card reveals (KAN-37): one short sound per tier, each a step bigger. Common is a soft card slap + one dull
+        // tone; Rare adds a second bell note; Epic an arpeggio with shimmer; Legendary a low boom, a full bright chord and
+        // a sparkle tail. Peaks rise with the tier too (the style asset scales the volume again).
+
+        /// <summary>Common: paper-card slap and one soft wooden tone (G4).</summary>
+        private static float[] RevealCommon()
+        {
+            var rng = new System.Random(1301);
+            var b = new float[(int)(Rate * 0.32f)];
+            NoiseBurst(b, 0f, 0.05f, 0.5f, 600f, 2400f, 60f, rng);            // card slap
+            Sweep(b, 0.004f, 0.28f, 392f, 390f, 0.35f, 16f, 1);                // G4 tone, fast decay
+            return Normalize(b, 0.5f);
+        }
+
+        /// <summary>Rare: slap, then two clean bell notes (E5, B5) a beat apart.</summary>
+        private static float[] RevealRare()
+        {
+            var rng = new System.Random(1303);
+            var b = new float[(int)(Rate * 0.6f)];
+            NoiseBurst(b, 0f, 0.05f, 0.4f, 700f, 2800f, 55f, rng);
+            Sweep(b, 0.005f, 0.5f, 659.3f, 659.3f, 0.32f, 7f, 2);              // E5
+            Sweep(b, 0.075f, 0.5f, 987.8f, 987.8f, 0.26f, 7f, 1);              // B5
+            return Normalize(b, 0.62f);
+        }
+
+        /// <summary>Epic: soft whoosh, three-note rising arpeggio (D5 F#5 A5 + D6) and a noise shimmer.</summary>
+        private static float[] RevealEpic()
+        {
+            var rng = new System.Random(1307);
+            var b = new float[(int)(Rate * 0.95f)];
+            NoiseBurst(b, 0f, 0.18f, 0.28f, 900f, 4200f, 14f, rng);            // whoosh in
+            Sweep(b, 0.02f, 0.7f, 587.3f, 587.3f, 0.26f, 5f, 2);               // D5
+            Sweep(b, 0.08f, 0.7f, 740f, 740f, 0.24f, 5f, 2);                   // F#5
+            Sweep(b, 0.14f, 0.7f, 880f, 880f, 0.24f, 5f, 2);                   // A5
+            Sweep(b, 0.2f, 0.7f, 1174.7f, 1174.7f, 0.14f, 6f, 1);              // D6
+            NoiseBurst(b, 0.18f, 0.6f, 0.08f, 5000f, 9000f, 6f, rng);           // shimmer
+            return Normalize(b, 0.72f);
+        }
+
+        /// <summary>Legendary: low boom, bright major chord swell (A4 C#5 E5 A5), rising sweep and a sparkle tail.</summary>
+        private static float[] RevealLegendary()
+        {
+            var rng = new System.Random(1319);
+            var b = new float[(int)(Rate * 1.5f)];
+            Sweep(b, 0f, 0.6f, 110f, 55f, 0.6f, 6f, 2);                        // boom
+            NoiseBurst(b, 0f, 0.3f, 0.45f, 60f, 400f, 12f, rng);               // body
+            Sweep(b, 0.02f, 0.35f, 400f, 1600f, 0.12f, 6f, 1);                 // rising sweep
+            Sweep(b, 0.05f, 1.3f, 440f, 440f, 0.22f, 3f, 2);                   // A4
+            Sweep(b, 0.05f, 1.3f, 554.4f, 554.4f, 0.2f, 3f, 2);                // C#5
+            Sweep(b, 0.05f, 1.3f, 659.3f, 659.3f, 0.2f, 3f, 2);                // E5
+            Sweep(b, 0.1f, 1.2f, 880f, 880f, 0.16f, 3.5f, 1);                  // A5
+            for (int i = 0; i < 16; i++)                                       // sparkle tail
+                Sweep(b, 0.15f + (float)rng.NextDouble() * 0.9f, 0.12f, 2600f + (float)rng.NextDouble() * 2400f,
+                    3000f + (float)rng.NextDouble() * 2400f, 0.05f, 30f, 1);
+            return Normalize(b, 0.88f);
         }
 
         /// <summary>

@@ -16,11 +16,14 @@ namespace SurvivorSouls.Editor.Skills
     /// prefabs (burn embers, life steal motes, soul burst ring + sparks) and the scene <see cref="SkillManager"/>.
     /// Skill and table assets are created only when missing: designer edits are never overwritten (missing icon / effect
     /// links are filled in). Icons and effect prefabs are rebuilt every run. Called by GameSceneBuilder.
+    /// Tiers (KAN-37): Common = plain stat boosts, Rare = crit / pierce / ricochet, Epic = life steal / multishot,
+    /// Legendary = burning bolts / soul burst. <see cref="BuildStyles"/> makes the per-tier style asset (labels, gems, sounds).
     /// </summary>
     public static class SkillsBuilder
     {
         public const string DataDir = "Assets/_Project/Data/Skills";
         public const string ProgressionPath = DataDir + "/SkillProgression_Run.asset";
+        public const string StylesPath = DataDir + "/SkillRarityStyles.asset";
         private const string IconDir = "Assets/_Project/Art/Skills/Icons";
         private const string FxDir = "Assets/_Project/Art/Skills";
         private const string PrefabDir = "Assets/_Project/Prefabs/Skills";
@@ -62,13 +65,13 @@ namespace SurvivorSouls.Editor.Skills
             new Spec { Id = "ricochet", File = "Ricochet", Name = "Ricochet", Text = "Bolts bounce to +1 nearby enemy",
                 Rarity = SkillRarity.Rare, Max = 3, Mods = new[] { Add(StatId.Ricochet, 1f) }, Glyph = SkillIconPainter.Ricochet },
             new Spec { Id = "ember_bolts", File = "EmberBolts", Name = "Ember Bolts", Text = "Hits set foes ablaze: +25 fire damage/s for 3 s",
-                Rarity = SkillRarity.Rare, Max = 3, Mods = new[] { Add(StatId.BurnDps, 25f) }, Glyph = SkillIconPainter.Burn, Effect = Fx.Burn },
+                Rarity = SkillRarity.Legendary, Max = 3, Mods = new[] { Add(StatId.BurnDps, 25f) }, Glyph = SkillIconPainter.Burn, Effect = Fx.Burn },
             new Spec { Id = "blood_covenant", File = "BloodCovenant", Name = "Blood Covenant", Text = "Heal 5% of bolt damage dealt",
-                Rarity = SkillRarity.Rare, Max = 3, Mods = new[] { Add(StatId.LifeSteal, 0.05f) }, Glyph = SkillIconPainter.LifeSteal, Effect = Fx.LifeSteal },
+                Rarity = SkillRarity.Epic, Max = 3, Mods = new[] { Add(StatId.LifeSteal, 0.05f) }, Glyph = SkillIconPainter.LifeSteal, Effect = Fx.LifeSteal },
             new Spec { Id = "multishot", File = "Multishot", Name = "Multishot", Text = "+1 bolt per volley, -15% bolt damage",
                 Rarity = SkillRarity.Epic, Max = 2, Mods = new[] { Add(StatId.Multishot, 1f), Pct(StatId.Damage, -0.15f) }, Glyph = SkillIconPainter.Multishot },
             new Spec { Id = "soul_burst", File = "SoulBurst", Name = "Soul Burst", Text = "Kills burst for 50% bolt damage around them",
-                Rarity = SkillRarity.Epic, Max = 3, Mods = new[] { Add(StatId.KillBurst, 0.5f) }, Glyph = SkillIconPainter.KillBurst, Effect = Fx.KillBurst },
+                Rarity = SkillRarity.Legendary, Max = 3, Mods = new[] { Add(StatId.KillBurst, 0.5f) }, Glyph = SkillIconPainter.KillBurst, Effect = Fx.KillBurst },
         };
 
         /// <summary>Builds the assets and adds the SkillManager (plus PlayerStats on the player when missing).</summary>
@@ -88,7 +91,40 @@ namespace SurvivorSouls.Editor.Skills
         }
 
         [MenuItem("Survivor Souls/Rebuild Skill Assets")]
-        private static void BuildAssetsMenu() => BuildAssets(GameArtKit.Build());
+        private static void BuildAssetsMenu()
+        {
+            BuildAssets(GameArtKit.Build());
+            BuildStyles(Audio.SfxBuilder.Build().RarityReveals);
+        }
+
+        /// <summary>
+        /// Per-tier style asset (KAN-37). Created with the built-in table when missing; an existing asset keeps its labels,
+        /// gems, volumes and flags, only empty reveal sound slots are filled with <paramref name="reveals"/>.
+        /// </summary>
+        public static SkillRarityStyles BuildStyles(AudioClip[] reveals)
+        {
+            EditorAssetUtil.EnsureFolder(DataDir);
+            var styles = AssetDatabase.LoadAssetAtPath<SkillRarityStyles>(StylesPath);
+            if (styles == null)
+            {
+                styles = ScriptableObject.CreateInstance<SkillRarityStyles>();
+                styles.SetReveals(reveals);
+                AssetDatabase.CreateAsset(styles, StylesPath);
+            }
+            else
+            {
+                var so = new SerializedObject(styles);
+                var list = so.FindProperty("styles");
+                for (int i = 0; i < list.arraySize && reveals != null && i < reveals.Length; i++)
+                {
+                    var clip = list.GetArrayElementAtIndex(i).FindPropertyRelative("reveal");
+                    if (clip.objectReferenceValue == null) clip.objectReferenceValue = reveals[i];
+                }
+                so.ApplyModifiedPropertiesWithoutUndo();
+            }
+            AssetDatabase.SaveAssets();
+            return styles;
+        }
 
         public static SkillProgression BuildAssets(GameArtKit kit)
         {
@@ -132,7 +168,9 @@ namespace SurvivorSouls.Editor.Skills
 
         /// <summary>
         /// Run pacing (XP curve: levels 2-4 come every few kills). Stat skills first, behaviour skills from level 4, epic
-        /// game-changers from level 6. Level 4 always offers Ember Bolts, level 6 Multishot (first taste of a build).
+        /// game-changers from level 6. Level 4 always offers Ember Bolts (the first Legendary), level 6 Multishot.
+        /// Tier odds (KAN-37) grow with the level: 70/27/3/0 at L2, 55/30/12/3 at L4, 45/32/16/7 at L6, 38/32/20/10 from L10.
+        /// Pity: at least one Rare+ card in every 3 offers.
         /// </summary>
         private static SkillProgression BuildProgression(Dictionary<string, SkillDefinition> s)
         {
@@ -144,18 +182,23 @@ namespace SurvivorSouls.Editor.Skills
                 {
                     new SkillProgression.Tier
                     {
-                        fromLevel = 2, common = 75f, rare = 25f, epic = 0f,
+                        fromLevel = 2, common = 70f, rare = 27f, epic = 3f, legendary = 0f,
                         unlocks = new[] { s["sharpened_bolts"], s["quick_draw"], s["fleet_foot"], s["vigor"], s["soul_siphon"], s["keen_eye"], s["piercing_bolts"] },
                     },
                     new SkillProgression.Tier
                     {
-                        fromLevel = 4, common = 60f, rare = 32f, epic = 8f,
+                        fromLevel = 4, common = 55f, rare = 30f, epic = 12f, legendary = 3f,
                         unlocks = new[] { s["ricochet"], s["ember_bolts"], s["blood_covenant"] },
                     },
                     new SkillProgression.Tier
                     {
-                        fromLevel = 6, common = 48f, rare = 34f, epic = 18f,
+                        fromLevel = 6, common = 45f, rare = 32f, epic = 16f, legendary = 7f,
                         unlocks = new[] { s["multishot"], s["soul_burst"] },
+                    },
+                    new SkillProgression.Tier
+                    {
+                        fromLevel = 10, common = 38f, rare = 32f, epic = 20f, legendary = 10f,
+                        unlocks = new SkillDefinition[0],
                     },
                 },
                 new[]

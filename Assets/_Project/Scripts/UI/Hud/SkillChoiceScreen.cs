@@ -15,6 +15,9 @@ namespace SurvivorSouls.UI.Hud
     /// after another; taps count only after <see cref="armDelay"/> (a thumb still on the stick must not pick by accident).
     /// A pick grants the skill at once, pulses the card, fades the rest and hands control back. Keys 1-3 pick on desktop.
     /// Unscaled time. Nothing to offer (every skill maxed): closes at once. Looks: skills* / skill-card* in GameHud.uss.
+    /// Tier (KAN-37): colour class per <see cref="SkillRarity"/>, tier name + 1-4 gems from <see cref="SkillRarityStyles"/>
+    /// (readable without colour), <see cref="CardRevealed"/> when a card lands (GameAudio plays the tier sound), and for
+    /// shine / burst tiers (Legendary) a light band sweeping the card and a ring + sparks out of the icon on landing.
     /// </summary>
     [RequireComponent(typeof(UIDocument))]
     public sealed class SkillChoiceScreen : LevelUpChoice
@@ -26,11 +29,18 @@ namespace SurvivorSouls.UI.Hud
         private const string PipClass = "skill-pip";
         private const string PipOnClass = "skill-pip--on";
         private const string PipNextClass = "skill-pip--next";
-        private static readonly string[] RarityClasses = { "skill-card--common", "skill-card--rare", "skill-card--epic" };
-        private static readonly string[] RarityNames = { "COMMON", "RARE", "EPIC" };
+        private const string MarkClass = "skill-mark";
+        private const string SparkClass = "skill-spark";
+        private static readonly string[] RarityClasses = { "skill-card--common", "skill-card--rare", "skill-card--epic", "skill-card--legendary" };
         public const int MaxCards = 3;
+        private const int MaxMarks = 4;
+        private const int Sparks = 8;
+        /// <summary>Card animation progress (0..1) at which it counts as landed: reveal sound + burst.</summary>
+        private const float RevealAt = 0.6f;
 
         [SerializeField] private SkillManager skills;
+        [Tooltip("Tier names, gems, reveal sounds, shine / burst (KAN-37). Null = built-in defaults.")]
+        [SerializeField] private SkillRarityStyles styles;
         [SerializeField, Range(1, MaxCards)] private int choices = MaxCards;
         [Tooltip("Unscaled seconds after opening before a tap can pick.")]
         [SerializeField, Min(0f)] private float armDelay = 0.4f;
@@ -39,16 +49,25 @@ namespace SurvivorSouls.UI.Hud
         [SerializeField, Min(0f)] private float cardStagger = 0.08f;
         [SerializeField, Min(0.01f)] private float pickOut = 0.38f;
         [SerializeField] private float cardRise = 140f; // panel px
+        [Tooltip("Unscaled seconds for one shine sweep across a Legendary card (plus a short rest).")]
+        [SerializeField, Min(0.1f)] private float shinePeriod = 1.7f;
+        [SerializeField, Min(0.05f)] private float burstTime = 0.55f;
 
         private sealed class Card
         {
             public Button Root;
             public Label Rarity, Name, Desc, Badge;
-            public VisualElement Icon, Pips;
+            public VisualElement Icon, Pips, Marks, Shine, Burst;
+            public readonly VisualElement[] SparkDots = new VisualElement[Sparks];
+            public SkillRarityStyles.Style Style;
+            public bool Revealed;
+            public float RevealAge;
         }
 
         /// <summary>The player picked a skill (already granted).</summary>
         public event Action<SkillDefinition> Picked;
+        /// <summary>A card landed on screen (once per card per offer): card index, its skill. GameAudio plays the tier sound.</summary>
+        public event Action<int, SkillDefinition> CardRevealed;
 
         private readonly List<SkillDefinition> _options = new List<SkillDefinition>(MaxCards);
         private readonly Card[] _cards = new Card[MaxCards];
@@ -62,12 +81,19 @@ namespace SurvivorSouls.UI.Hud
         public bool IsShowing => _age >= 0f;
         public bool IsArmed => _age >= armDelay && _picked < 0;
         public IReadOnlyList<SkillDefinition> Options => _options;
+        public SkillRarityStyles Styles => styles;
+
+        /// <summary>Tier name, gems, sound and flags for <paramref name="rarity"/> (asset entry or built-in default).</summary>
+        public SkillRarityStyles.Style StyleOf(SkillRarity rarity) => styles != null ? styles.Of(rarity) : DefaultStyles[(int)rarity];
+
+        private static readonly SkillRarityStyles.Style[] DefaultStyles = SkillRarityStyles.Defaults();
 
         /// <summary>Wiring for code-built objects and tests.</summary>
-        public void Setup(SkillManager manager, float armSeconds = 0.4f)
+        public void Setup(SkillManager manager, float armSeconds = 0.4f, SkillRarityStyles rarityStyles = null)
         {
             skills = manager;
             armDelay = Mathf.Max(0f, armSeconds);
+            styles = rarityStyles;
         }
 
         private void OnEnable()
@@ -90,7 +116,32 @@ namespace SurvivorSouls.UI.Hud
                     Badge = button.Q<Label>(className: "skill-card__badge"),
                     Icon = button.Q(className: "skill-card__icon"),
                     Pips = button.Q(className: "skill-card__pips"),
+                    Marks = button.Q(className: "skill-card__marks"),
+                    Shine = button.Q(className: "skill-card__shine"),
+                    Burst = button.Q(className: "skill-card__burst"),
                 };
+                BuildDecor(_cards[i]);
+            }
+        }
+
+        /// <summary>Tier gems and burst sparks: made once per card, shown / moved in Fill and Animate.</summary>
+        private static void BuildDecor(Card card)
+        {
+            if (card.Marks != null)
+                while (card.Marks.childCount < MaxMarks)
+                {
+                    var mark = new VisualElement { pickingMode = PickingMode.Ignore };
+                    mark.AddToClassList(MarkClass);
+                    card.Marks.Add(mark);
+                }
+            var plate = card.Burst?.parent;
+            if (plate == null) return;
+            for (int k = 0; k < Sparks; k++)
+            {
+                var spark = new VisualElement { pickingMode = PickingMode.Ignore };
+                spark.AddToClassList(SparkClass);
+                plate.Insert(plate.IndexOf(card.Burst) + 1, spark); // behind the icon
+                card.SparkDots[k] = spark;
             }
         }
 
@@ -170,7 +221,16 @@ namespace SurvivorSouls.UI.Hud
             if (skill == null) return;
             int r = (int)skill.Rarity;
             for (int i = 0; i < RarityClasses.Length; i++) card.Root.EnableInClassList(RarityClasses[i], i == r);
-            if (card.Rarity != null) card.Rarity.text = RarityNames[r];
+            card.Style = StyleOf(skill.Rarity);
+            card.Revealed = false;
+            card.RevealAge = 0f;
+            if (card.Rarity != null) card.Rarity.text = card.Style.label;
+            if (card.Marks != null)
+                for (int i = 0; i < card.Marks.childCount; i++)
+                    card.Marks[i].style.display = i < card.Style.marks ? DisplayStyle.Flex : DisplayStyle.None;
+            if (card.Burst != null) card.Burst.style.opacity = 0f;
+            foreach (var spark in card.SparkDots)
+                if (spark != null) spark.style.opacity = 0f;
             if (card.Name != null) card.Name.text = skill.DisplayName.ToUpperInvariant();
             if (card.Desc != null) card.Desc.text = skill.Description;
             if (card.Icon != null) card.Icon.style.backgroundImage = skill.Icon != null ? new StyleBackground(skill.Icon) : StyleKeyword.None;
@@ -220,6 +280,49 @@ namespace SurvivorSouls.UI.Hud
                 card.Root.style.opacity = opacity;
                 card.Root.style.translate = new Translate(0f, (1f - rise) * cardRise);
                 card.Root.style.scale = new Scale(new Vector3(scale, scale, 1f));
+                AnimateTier(card, i, t);
+            }
+        }
+
+        /// <summary>Reveal event once the card has landed, Legendary shine sweep and the ring + sparks burst.</summary>
+        private void AnimateTier(Card card, int index, float t)
+        {
+            if (!card.Revealed && t >= RevealAt)
+            {
+                card.Revealed = true;
+                card.RevealAge = 0f;
+                CardRevealed?.Invoke(index, _options[index]);
+            }
+            var style = card.Style;
+            if (style == null) return;
+            if (card.Revealed) card.RevealAge = _age - (veilIn * 0.5f + index * cardStagger + cardIn * RevealAt);
+
+            if (style.shine && card.Shine != null)
+            {
+                // Sweep left -> right over 60 % of the period, rest for the remainder; starts as the card lands.
+                float phase = Mathf.Repeat(Mathf.Max(0f, _age - index * cardStagger) / shinePeriod, 1f) / 0.6f;
+                float x = phase < 1f ? Mathf.Lerp(-140f, 420f, phase * phase * (3f - 2f * phase)) : -200f;
+                card.Shine.style.translate = new Translate(x, 0f);
+            }
+
+            if (!style.burst || card.Burst == null) return;
+            float b = card.Revealed ? Mathf.Clamp01(card.RevealAge / burstTime) : 0f;
+            bool live = card.Revealed && b < 1f;
+            float ease = 1f - (1f - b) * (1f - b);
+            card.Burst.style.opacity = live ? 0.9f * (1f - b) : 0f;
+            float ring = 1f + 0.85f * ease;
+            card.Burst.style.scale = new Scale(new Vector3(ring, ring, 1f));
+            for (int k = 0; k < Sparks; k++)
+            {
+                var spark = card.SparkDots[k];
+                if (spark == null) continue;
+                spark.style.opacity = live ? 1f - b : 0f;
+                if (!live) continue;
+                float angle = (k + 0.5f) * (Mathf.PI * 2f / Sparks);
+                float dist = 70f + 150f * ease;
+                spark.style.translate = new Translate(Mathf.Cos(angle) * dist, -Mathf.Sin(angle) * dist);
+                float size = 1f - 0.6f * b;
+                spark.style.scale = new Scale(new Vector3(size, size, 1f));
             }
         }
 

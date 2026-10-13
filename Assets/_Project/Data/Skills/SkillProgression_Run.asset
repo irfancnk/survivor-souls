@@ -22,26 +22,36 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 20442184d1a844541909ed8ac32a9a4e, type: 2}
     - {fileID: 11400000, guid: 3ccec5f5805d14bef958c4ec6101fdb3, type: 2}
     - {fileID: 11400000, guid: 199cb3a4d93234cb88829c148da1d8e4, type: 2}
-    common: 75
-    rare: 25
-    epic: 0
+    common: 70
+    rare: 27
+    epic: 3
+    legendary: 0
   - fromLevel: 4
     unlocks:
     - {fileID: 11400000, guid: 236b0bafbde4e46a8a438ba9b3f4f2cb, type: 2}
     - {fileID: 11400000, guid: 5240cd9c91fd24b3f9a8777f1ad43835, type: 2}
     - {fileID: 11400000, guid: 272fcb888b88d4fa2bd771a01cadce8f, type: 2}
-    common: 60
-    rare: 32
-    epic: 8
+    common: 55
+    rare: 30
+    epic: 12
+    legendary: 3
   - fromLevel: 6
     unlocks:
     - {fileID: 11400000, guid: 5f5d24c2799bd49a98022b32c4ed4fea, type: 2}
     - {fileID: 11400000, guid: f22d698f6e5d04d73b1c58cab2fdcae6, type: 2}
-    common: 48
-    rare: 34
-    epic: 18
+    common: 45
+    rare: 32
+    epic: 16
+    legendary: 7
+  - fromLevel: 10
+    unlocks: []
+    common: 38
+    rare: 32
+    epic: 20
+    legendary: 10
   guarantees:
   - level: 4
     skill: {fileID: 11400000, guid: 5240cd9c91fd24b3f9a8777f1ad43835, type: 2}
   - level: 6
     skill: {fileID: 11400000, guid: 5f5d24c2799bd49a98022b32c4ed4fea, type: 2}
+  pityOffers: 3

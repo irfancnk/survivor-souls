@@ -87,13 +87,15 @@ namespace SurvivorSouls.Editor
             // Portal -> fade -> same scene reloaded as the next Chamber, run carried over (KAN-40).
             var transition = ChamberBuilder.CreateTransition(timer.gameObject, player, health, progression.Xp, skills, spawner, joystick);
             ChamberBuilder.CreateSetup(timer.gameObject, world, spawner); // per-Chamber difficulty + layout seed (KAN-46)
-            CreateAudio(sfx, shooter, player.GetComponent<PlayerMover>(), health, progression, skills, timer, transition);
+            var audio = CreateAudio(sfx, shooter, player.GetComponent<PlayerMover>(), health, progression, skills, timer, transition);
+            var rarityStyles = SkillsBuilder.BuildStyles(sfx.RarityReveals); // tier names, gems, reveal sounds (KAN-37)
             WindTrailBuilder.Create(kit, player);
 
             var camera = CreateCamera(player.transform, realm.Look);
             SetRef(spawner, "viewCamera", camera); // off-screen test uses the live camera (aspect, zoom)
             SetRef(game, "followCamera", camera.GetComponent<TopDownFollowCamera>()); // shake when the portal opens
-            CreateHud(panelSettings, joystick, camera, health, death, progression, skills, player.transform, timer, transition);
+            var choice = CreateHud(panelSettings, joystick, camera, health, death, progression, skills, rarityStyles, player.transform, timer, transition);
+            SetRef(audio, "skillChoice", choice); // card reveal sound per tier
 
             EditorSceneManager.SaveScene(scene, ScenePath);
             AddToBuild(ScenePath, index: 1);
@@ -202,7 +204,7 @@ namespace SurvivorSouls.Editor
         }
 
         /// <summary>Procedural sound set (shots, impacts, marker ticks, deaths, snow footsteps, soul chimes, level-up, boon pick, portal horn, wind + surf ambience) on one audio object.</summary>
-        private static void CreateAudio(SfxBuilder.Set sfx, AutoShooter shooter, PlayerMover mover, PlayerHealth health,
+        private static GameAudio CreateAudio(SfxBuilder.Set sfx, AutoShooter shooter, PlayerMover mover, PlayerHealth health,
             ProgressionBuilder.Result progression, SkillManager skills, SurvivalTimer timer, ChamberTransition transition)
         {
             var audio = new GameObject("Audio").AddComponent<GameAudio>();
@@ -229,6 +231,7 @@ namespace SurvivorSouls.Editor
             SetClips(so.FindProperty("killMarkers"), sfx.KillMarkers);
             so.FindProperty("ambience").objectReferenceValue = sfx.Ambience;
             so.ApplyModifiedPropertiesWithoutUndo();
+            return audio;
         }
 
         private static void SetClips(SerializedProperty array, AudioClip[] clips)
@@ -262,8 +265,9 @@ namespace SurvivorSouls.Editor
             return cam;
         }
 
-        private static void CreateHud(PanelSettings panelSettings, FloatingJoystick joystick, Camera camera, PlayerHealth health, PlayerDeath death,
-            ProgressionBuilder.Result progression, SkillManager skills, Transform player, SurvivalTimer timer, ChamberTransition transition)
+        private static SkillChoiceScreen CreateHud(PanelSettings panelSettings, FloatingJoystick joystick, Camera camera, PlayerHealth health, PlayerDeath death,
+            ProgressionBuilder.Result progression, SkillManager skills, SkillRarityStyles rarityStyles, Transform player, SurvivalTimer timer,
+            ChamberTransition transition)
         {
             var go = new GameObject("HUD");
             var doc = go.AddComponent<UIDocument>();
@@ -287,10 +291,12 @@ namespace SurvivorSouls.Editor
             SetRef(xpHud, "worldCamera", camera);
             var choice = go.AddComponent<SkillChoiceScreen>();
             SetRef(choice, "skills", skills);
+            SetRef(choice, "styles", rarityStyles);
             SetRef(progression.Flow, "choice", choice);
             SetRef(go.AddComponent<SkillHud>(), "skills", skills);
             SetRef(go.AddComponent<TimerHud>(), "timer", timer); // countdown under the XP bar + toasts (KAN-39)
             SetRef(go.AddComponent<ChamberTransitionHud>(), "transition", transition); // white fade + "CHAMBER II" card (KAN-40)
+            return choice;
         }
 
         private static PanelSettings CreatePanelSettings()

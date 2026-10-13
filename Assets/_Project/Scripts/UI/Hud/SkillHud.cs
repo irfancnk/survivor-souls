@@ -6,7 +6,7 @@ using UnityEngine.UIElements;
 namespace SurvivorSouls.UI.Hud
 {
     /// <summary>
-    /// Owned skills row under the health bar (KAN-19): one small rune icon per skill in pick order, rarity-coloured rim,
+    /// Owned skills row under the health bar (KAN-19): one small rune icon per skill in pick order, rarity-coloured and -shaped rim (KAN-37),
     /// "xN" when stacked. Rebuilt only when <see cref="SkillManager.Changed"/> fires (slots are pooled); the slot that just
     /// gained a stack pops once (unscaled time: the pick happens during the level-up pause).
     /// Looks: hud-skill* in GameHud.uss.
@@ -18,7 +18,7 @@ namespace SurvivorSouls.UI.Hud
         private const string SlotClass = "hud-skill";
         private const string IconClass = "hud-skill__icon";
         private const string StackClass = "hud-skill__stack";
-        private static readonly string[] RarityClasses = { "hud-skill--common", "hud-skill--rare", "hud-skill--epic" };
+        private static readonly string[] RarityClasses = { "hud-skill--common", "hud-skill--rare", "hud-skill--epic", "hud-skill--legendary" };
 
         [SerializeField] private SkillManager skills;
         [SerializeField, Min(0.05f)] private float popTime = 0.45f;

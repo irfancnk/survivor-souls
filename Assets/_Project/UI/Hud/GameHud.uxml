@@ -62,7 +62,8 @@
     <ui:Label name="levelup-pop" text="LEVEL UP" class="levelup-pop hud-hidden" picking-mode="Ignore" />
 
     <!-- Level-up skill pick (SkillChoiceScreen, KAN-19). Game is paused while shown. hud-modal: a press here never starts
-         the joystick. Cards filled and animated in code; card count/order = SkillChoiceScreen.MaxCards. -->
+         the joystick. Cards filled and animated in code; card count/order = SkillChoiceScreen.MaxCards.
+         Tier (KAN-37): sheen/shine = Legendary light sweep, marks = tier gems, burst = ring + sparks when the card lands. -->
     <ui:VisualElement name="skill-choice" class="skills hud-modal hud-hidden">
         <ui:VisualElement class="skills__band" picking-mode="Ignore">
             <ui:Label name="skill-choice-title" text="LEVEL 2" class="skills__title" picking-mode="Ignore" />
@@ -70,8 +71,13 @@
         </ui:VisualElement>
         <ui:VisualElement class="skills__cards" picking-mode="Ignore">
             <ui:Button name="skill-card-0" class="skill-card">
+                <ui:VisualElement class="skill-card__sheen" picking-mode="Ignore">
+                    <ui:VisualElement class="skill-card__shine" picking-mode="Ignore" />
+                </ui:VisualElement>
                 <ui:Label text="COMMON" class="skill-card__rarity" picking-mode="Ignore" />
+                <ui:VisualElement class="skill-card__marks" picking-mode="Ignore" />
                 <ui:VisualElement class="skill-card__plate" picking-mode="Ignore">
+                    <ui:VisualElement class="skill-card__burst" picking-mode="Ignore" />
                     <ui:VisualElement class="skill-card__icon" picking-mode="Ignore" />
                 </ui:VisualElement>
                 <ui:Label text="SKILL" class="skill-card__name" picking-mode="Ignore" />
@@ -81,8 +87,13 @@
                 <ui:Label text="NEW" class="skill-card__badge" picking-mode="Ignore" />
             </ui:Button>
             <ui:Button name="skill-card-1" class="skill-card">
+                <ui:VisualElement class="skill-card__sheen" picking-mode="Ignore">
+                    <ui:VisualElement class="skill-card__shine" picking-mode="Ignore" />
+                </ui:VisualElement>
                 <ui:Label text="COMMON" class="skill-card__rarity" picking-mode="Ignore" />
+                <ui:VisualElement class="skill-card__marks" picking-mode="Ignore" />
                 <ui:VisualElement class="skill-card__plate" picking-mode="Ignore">
+                    <ui:VisualElement class="skill-card__burst" picking-mode="Ignore" />
                     <ui:VisualElement class="skill-card__icon" picking-mode="Ignore" />
                 </ui:VisualElement>
                 <ui:Label text="SKILL" class="skill-card__name" picking-mode="Ignore" />
@@ -92,8 +103,13 @@
                 <ui:Label text="NEW" class="skill-card__badge" picking-mode="Ignore" />
             </ui:Button>
             <ui:Button name="skill-card-2" class="skill-card">
+                <ui:VisualElement class="skill-card__sheen" picking-mode="Ignore">
+                    <ui:VisualElement class="skill-card__shine" picking-mode="Ignore" />
+                </ui:VisualElement>
                 <ui:Label text="COMMON" class="skill-card__rarity" picking-mode="Ignore" />
+                <ui:VisualElement class="skill-card__marks" picking-mode="Ignore" />
                 <ui:VisualElement class="skill-card__plate" picking-mode="Ignore">
+                    <ui:VisualElement class="skill-card__burst" picking-mode="Ignore" />
                     <ui:VisualElement class="skill-card__icon" picking-mode="Ignore" />
                 </ui:VisualElement>
                 <ui:Label text="SKILL" class="skill-card__name" picking-mode="Ignore" />
