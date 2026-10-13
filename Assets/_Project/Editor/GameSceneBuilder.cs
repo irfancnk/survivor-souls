@@ -84,13 +84,15 @@ namespace SurvivorSouls.Editor
             SetRef(game, "spawner", spawner);
             var timer = ChamberBuilder.Create(player, health); // portal opens when it ends (KAN-39)
             SetRef(game, "timer", timer);
-            CreateAudio(sfx, shooter, player.GetComponent<PlayerMover>(), health, progression, skills, timer);
+            // Portal -> fade -> same scene reloaded as the next Chamber, run carried over (KAN-40).
+            var transition = ChamberBuilder.CreateTransition(timer.gameObject, player, health, progression.Xp, skills, spawner, joystick);
+            CreateAudio(sfx, shooter, player.GetComponent<PlayerMover>(), health, progression, skills, timer, transition);
             WindTrailBuilder.Create(kit, player);
 
             var camera = CreateCamera(player.transform, realm.Look);
             SetRef(spawner, "viewCamera", camera); // off-screen test uses the live camera (aspect, zoom)
             SetRef(game, "followCamera", camera.GetComponent<TopDownFollowCamera>()); // shake when the portal opens
-            CreateHud(panelSettings, joystick, camera, health, death, progression, skills, player.transform, timer);
+            CreateHud(panelSettings, joystick, camera, health, death, progression, skills, player.transform, timer, transition);
 
             EditorSceneManager.SaveScene(scene, ScenePath);
             AddToBuild(ScenePath, index: 1);
@@ -200,7 +202,7 @@ namespace SurvivorSouls.Editor
 
         /// <summary>Procedural sound set (shots, impacts, marker ticks, deaths, snow footsteps, soul chimes, level-up, boon pick, portal horn, wind + surf ambience) on one audio object.</summary>
         private static void CreateAudio(SfxBuilder.Set sfx, AutoShooter shooter, PlayerMover mover, PlayerHealth health,
-            ProgressionBuilder.Result progression, SkillManager skills, SurvivalTimer timer)
+            ProgressionBuilder.Result progression, SkillManager skills, SurvivalTimer timer, ChamberTransition transition)
         {
             var audio = new GameObject("Audio").AddComponent<GameAudio>();
             var so = new SerializedObject(audio);
@@ -211,8 +213,11 @@ namespace SurvivorSouls.Editor
             so.FindProperty("levelUp").objectReferenceValue = progression.Flow;
             so.FindProperty("skills").objectReferenceValue = skills;
             so.FindProperty("timer").objectReferenceValue = timer;
+            so.FindProperty("transition").objectReferenceValue = transition;
             SetClips(so.FindProperty("boonPicks"), sfx.BoonPicks);
             SetClips(so.FindProperty("portalOpens"), sfx.PortalOpens);
+            SetClips(so.FindProperty("portalEnters"), sfx.PortalEnters);
+            SetClips(so.FindProperty("chamberArrives"), sfx.ChamberArrives);
             SetClips(so.FindProperty("soulChimes"), sfx.SoulChimes);
             SetClips(so.FindProperty("levelUps"), sfx.LevelUps);
             SetClips(so.FindProperty("shots"), sfx.Shots);
@@ -257,7 +262,7 @@ namespace SurvivorSouls.Editor
         }
 
         private static void CreateHud(PanelSettings panelSettings, FloatingJoystick joystick, Camera camera, PlayerHealth health, PlayerDeath death,
-            ProgressionBuilder.Result progression, SkillManager skills, Transform player, SurvivalTimer timer)
+            ProgressionBuilder.Result progression, SkillManager skills, Transform player, SurvivalTimer timer, ChamberTransition transition)
         {
             var go = new GameObject("HUD");
             var doc = go.AddComponent<UIDocument>();
@@ -284,6 +289,7 @@ namespace SurvivorSouls.Editor
             SetRef(progression.Flow, "choice", choice);
             SetRef(go.AddComponent<SkillHud>(), "skills", skills);
             SetRef(go.AddComponent<TimerHud>(), "timer", timer); // countdown under the XP bar + toasts (KAN-39)
+            SetRef(go.AddComponent<ChamberTransitionHud>(), "transition", transition); // white fade + "CHAMBER II" card (KAN-40)
         }
 
         private static PanelSettings CreatePanelSettings()

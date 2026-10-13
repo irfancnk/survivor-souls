@@ -1,4 +1,5 @@
 using SurvivorSouls.Core;
+using SurvivorSouls.Gameplay.Chamber;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -85,6 +86,7 @@ namespace SurvivorSouls.UI.MainMenu
 
             _loading = true;
             _play.SetEnabled(false);
+            RunState.NewRun(); // Chamber 1, nothing carried (KAN-40)
             SceneLoader.LoadAsync(SceneNames.Game);
         }
 

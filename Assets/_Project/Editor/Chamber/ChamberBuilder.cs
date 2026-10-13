@@ -1,5 +1,10 @@
+using System.Collections.Generic;
 using SurvivorSouls.Gameplay.Chamber;
+using SurvivorSouls.Gameplay.Combat;
+using SurvivorSouls.Gameplay.Controls;
 using SurvivorSouls.Gameplay.Player;
+using SurvivorSouls.Gameplay.Progression;
+using SurvivorSouls.Gameplay.Skills;
 using UnityEditor;
 using UnityEngine;
 
@@ -9,6 +14,7 @@ namespace SurvivorSouls.Editor.Chamber
     /// Chamber exit rules of the Game scene (KAN-39): the rules asset (survival time, warnings, open sequence; never
     /// overwritten, so designer edits stay) and the "Chamber" object with the <see cref="SurvivalTimer"/>.
     /// The portal itself lives in the exit tile prefab (<see cref="World.PortalBuilder"/>). Called by GameSceneBuilder.
+    /// KAN-40: the same object carries the <see cref="ChamberTransition"/> (portal enter -> fade -> next Chamber).
     /// Debug menus (Play mode): "Survivor Souls/Debug/Portal Timer To 10 s" and ".../Open Portal Now".
     /// </summary>
     public static class ChamberBuilder
@@ -26,6 +32,32 @@ namespace SurvivorSouls.Editor.Chamber
             so.FindProperty("health").objectReferenceValue = health;
             so.ApplyModifiedPropertiesWithoutUndo();
             return timer;
+        }
+
+        /// <summary>
+        /// Portal exit on the "Chamber" object (KAN-40). Locked on entry: stick, mover, shooter, contact damage and the
+        /// soul pickup (wisps stop flying to a Knight who is leaving). Animation drivers stay on.
+        /// </summary>
+        public static ChamberTransition CreateTransition(GameObject chamber, GameObject player, PlayerHealth health, XpManager xp,
+            SkillManager skills, EnemySpawner spawner, FloatingJoystick joystick)
+        {
+            var transition = chamber.AddComponent<ChamberTransition>();
+            var locked = new List<Object> { joystick, player.GetComponent<PlayerMover>() };
+            locked.AddRange(player.GetComponents<AutoShooter>());
+            locked.AddRange(player.GetComponents<ContactDamageReceiver>());
+            locked.AddRange(player.GetComponents<SoulCollector>());
+            var so = new SerializedObject(transition);
+            so.FindProperty("player").objectReferenceValue = player.transform;
+            so.FindProperty("health").objectReferenceValue = health;
+            so.FindProperty("xp").objectReferenceValue = xp;
+            so.FindProperty("skills").objectReferenceValue = skills;
+            so.FindProperty("spawner").objectReferenceValue = spawner;
+            so.FindProperty("controller").objectReferenceValue = player.GetComponent<CharacterController>();
+            var array = so.FindProperty("lockOnExit");
+            array.arraySize = locked.Count;
+            for (int i = 0; i < locked.Count; i++) array.GetArrayElementAtIndex(i).objectReferenceValue = locked[i];
+            so.ApplyModifiedPropertiesWithoutUndo();
+            return transition;
         }
 
         private static ChamberRules LoadOrCreateRules()

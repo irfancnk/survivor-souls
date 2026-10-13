@@ -1,4 +1,5 @@
 using SurvivorSouls.Core;
+using SurvivorSouls.Gameplay.Chamber;
 using SurvivorSouls.Gameplay.Player;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -188,7 +189,12 @@ namespace SurvivorSouls.UI.Hud
             _deathScreen.schedule.Execute(() => _deathScreen.AddToClassList(DeathShownClass)).ExecuteLater(30);
         }
 
-        private void Retry() => Load(SceneNames.Game);
+        private void Retry()
+        {
+            if (_leaving) return;
+            RunState.NewRun(RunState.Realm); // a retry is a new run: Chamber 1, nothing carried (KAN-40)
+            Load(SceneNames.Game);
+        }
         private void ToMenu() => Load(SceneNames.MainMenu);
 
         private void Load(string scene)

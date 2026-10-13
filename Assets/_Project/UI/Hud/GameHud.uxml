@@ -115,4 +115,12 @@
             <ui:Button name="btn-menu" text="MENU" class="death__button" />
         </ui:VisualElement>
     </ui:VisualElement>
+    <!-- Portal transition (ChamberTransitionHud, KAN-40): "CHAMBER N" title card, then the full-screen white fade on top
+         of everything. Opacity and position set in code. Never block touches (input is locked during the fade). -->
+    <ui:VisualElement name="chamber-card" class="chamber-card hud-hidden" picking-mode="Ignore">
+        <ui:Label name="chamber-card-title" text="CHAMBER II" class="chamber-card__title" picking-mode="Ignore" />
+        <ui:VisualElement class="chamber-card__rule" picking-mode="Ignore" />
+        <ui:Label name="chamber-card-sub" text="REALM I" class="chamber-card__sub" picking-mode="Ignore" />
+    </ui:VisualElement>
+    <ui:VisualElement name="transition-fade" class="transition-fade hud-hidden" picking-mode="Ignore" />
 </ui:UXML>

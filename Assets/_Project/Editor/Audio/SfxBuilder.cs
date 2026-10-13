@@ -19,7 +19,7 @@ namespace SurvivorSouls.Editor.Audio
 
         public sealed class Set
         {
-            public AudioClip[] Shots, Impacts, Deaths, Footsteps, HitMarkers, KillMarkers, SoulChimes, LevelUps, BoonPicks, PortalOpens;
+            public AudioClip[] Shots, Impacts, Deaths, Footsteps, HitMarkers, KillMarkers, SoulChimes, LevelUps, BoonPicks, PortalOpens, PortalEnters, ChamberArrives;
             public AudioClip Ambience, PortalHum;
         }
 
@@ -41,6 +41,8 @@ namespace SurvivorSouls.Editor.Audio
                 LevelUps = Many("sfx_level_up", 1, LevelUp),
                 BoonPicks = Many("sfx_boon_pick", 1, BoonPick),
                 PortalOpens = Many("sfx_portal_open", 1, PortalOpen),
+                PortalEnters = Many("sfx_portal_enter", 1, PortalEnter),
+                ChamberArrives = Many("sfx_chamber_arrive", 1, ChamberArrive),
             };
             set.Ambience = Save("amb_shore_wind_surf_loop", AmbienceRate, ShoreAmbience(AmbienceRate, 24f, 9), ambience: true);
             set.PortalHum = Save("amb_portal_hum_loop", AmbienceRate, PortalHum(AmbienceRate, 4f, 13), ambience: true);
@@ -260,6 +262,50 @@ namespace SurvivorSouls.Editor.Audio
             NoiseBurst(b, 1.28f, 0.6f, 0.35f, 2500f, 9000f, 7f, rng);
             Sweep(b, 1.28f, 0.6f, 70f, 45f, 0.5f, 6f, 1);                      // low thump of the burst
             return Normalize(b, 0.88f);
+        }
+
+        /// <summary>
+        /// Knight steps into the portal (KAN-40, ~1.1 s): airy rush sweeping up into the white (band-passed noise with a
+        /// swirling centre), a low swell under it and a soft high shimmer at the peak, then a quick fall to silence.
+        /// </summary>
+        private static float[] PortalEnter(int seed)
+        {
+            var rng = new System.Random(seed * 2003);
+            float len = 1.15f;
+            var b = new float[(int)(Rate * len)];
+            var bp = new Biquad();
+            for (int i = 0; i < b.Length; i++)
+            {
+                float t = i / (float)Rate, k = t / len;
+                float env = Mathf.SmoothStep(0f, 1f, k / 0.65f) * (1f - Mathf.SmoothStep(0.7f, 1f, k));
+                float swirl = Mathf.Sin(t * Mathf.PI * 2f * 7f) * 0.18f;
+                bp.SetBandPass(Mathf.Lerp(300f, 5200f, k * k) * (1f + swirl), 1.2f, Rate);
+                b[i] += bp.Process(Noise(rng)) * env * 0.9f;
+            }
+            Sweep(b, 0f, 0.95f, 55f, 110f, 0.45f, 1.2f, 2);                      // low swell rising with the rush
+            float[] shimmer = { 1318.5f, 1760f, 2637f };
+            for (int n = 0; n < shimmer.Length; n++)
+                Sweep(b, 0.62f + n * 0.04f, 0.5f, shimmer[n], shimmer[n] * 1.01f, 0.07f, 5f, 1);
+            return Normalize(b, 0.8f);
+        }
+
+        /// <summary>
+        /// New Chamber begins (KAN-40, under the title card): one deep bell toll (inharmonic bell partials on G2, long
+        /// decay) with a faint breath of wind in front.
+        /// </summary>
+        private static float[] ChamberArrive(int seed)
+        {
+            var rng = new System.Random(seed * 3001);
+            float len = 3f;
+            var b = new float[(int)(Rate * len)];
+            NoiseBurst(b, 0f, 0.6f, 0.08f, 400f, 2400f, 4f, rng);
+            float f = 98f;
+            float[] ratio = { 0.5f, 1f, 1.19f, 1.56f, 2f, 2.74f, 3.76f };
+            float[] amp = { 0.35f, 0.5f, 0.3f, 0.22f, 0.25f, 0.12f, 0.06f };
+            float[] decay = { 0.9f, 1.3f, 1.8f, 2.2f, 2.6f, 3.6f, 5f };
+            for (int n = 0; n < ratio.Length; n++)
+                Sweep(b, 0.08f, len - 0.1f, f * ratio[n], f * ratio[n] * 0.998f, amp[n], decay[n], 1);
+            return Normalize(b, 0.8f);
         }
 
         /// <summary>

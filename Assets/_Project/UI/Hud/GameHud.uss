@@ -717,3 +717,56 @@
     color: var(--hud-soul-glow);
     -unity-text-outline-color: rgba(10, 30, 60, 0.95);
 }
+
+/* Portal transition (ChamberTransitionHud, KAN-40). White-blue fade over everything; title card in the upper third. */
+.transition-fade {
+    position: absolute;
+    left: 0; right: 0; top: 0; bottom: 0;
+    background-color: rgb(236, 244, 255);
+    opacity: 0;
+}
+
+.chamber-card {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 520px;
+    padding: 40px 0 44px 0;
+    align-items: center;
+    background-color: rgba(8, 12, 22, 0.62);
+    border-top-width: 2px;
+    border-bottom-width: 2px;
+    border-color: rgba(156, 210, 255, 0.55);
+    opacity: 0;
+}
+
+.chamber-card__title {
+    font-size: 104px;
+    letter-spacing: 14px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    color: var(--hud-gold);
+    -unity-text-outline-width: 3px;
+    -unity-text-outline-color: rgba(20, 10, 0, 0.9);
+    padding: 0;
+    margin: 0;
+}
+
+.chamber-card__rule {
+    width: 420px;
+    height: 3px;
+    margin: 14px 0 12px 0;
+    background-color: var(--hud-soul);
+}
+
+.chamber-card__sub {
+    font-size: 40px;
+    letter-spacing: 12px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    color: var(--hud-soul-glow);
+    -unity-text-outline-width: 2px;
+    -unity-text-outline-color: rgba(10, 30, 60, 0.95);
+    padding: 0;
+    margin: 0;
+}
