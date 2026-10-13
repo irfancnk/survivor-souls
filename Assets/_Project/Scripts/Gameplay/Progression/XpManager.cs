@@ -54,6 +54,19 @@ namespace SurvivorSouls.Gameplay.Progression
             OnXpChanged?.Invoke(Xp, XpToNext, Level);
         }
 
+        /// <summary>
+        /// Puts back a carried state (next Chamber, KAN-40): level, XP into it (clamped below the next threshold) and the
+        /// run total. No <see cref="OnLevelUp"/> (those levels were picked already); one <see cref="OnXpChanged"/>.
+        /// </summary>
+        public void Restore(int level, int xp, int totalXp)
+        {
+            Level = Mathf.Max(1, level);
+            XpToNext = curve != null ? curve.XpToNext(Level) : 1;
+            Xp = Mathf.Clamp(xp, 0, Mathf.Max(0, XpToNext - 1));
+            TotalXp = Mathf.Max(0, totalXp);
+            OnXpChanged?.Invoke(Xp, XpToNext, Level);
+        }
+
         /// <summary>Adds XP. Returns the number of levels gained by this call.</summary>
         public int AddXp(int amount)
         {

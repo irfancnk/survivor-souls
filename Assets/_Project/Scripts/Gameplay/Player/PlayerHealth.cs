@@ -86,6 +86,17 @@ namespace SurvivorSouls.Gameplay.Player
             return deducted;
         }
 
+        /// <summary>
+        /// Sets health to a carried value (next Chamber, KAN-40), clamped to 1..max: a living Knight stays alive.
+        /// No damage or hurt events. No effect once dead.
+        /// </summary>
+        public void Restore(float current)
+        {
+            if (_dead) return;
+            _current = Mathf.Clamp(current, 1f, _max);
+            OnHealthChanged?.Invoke(_current, _max);
+        }
+
         /// <summary>Adds up to <paramref name="amount"/> (capped at max). Returns the health actually added. No effect once dead.</summary>
         public float Heal(float amount)
         {

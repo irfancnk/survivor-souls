@@ -99,6 +99,31 @@ namespace SurvivorSouls.Gameplay.Skills
             return true;
         }
 
+        /// <summary>
+        /// Puts back skills carried into the next Chamber (KAN-40): each one at its stack count (capped at max), modifiers
+        /// and effects applied as if granted. No <see cref="Granted"/> (no pick sound or HUD pop); one <see cref="Changed"/>.
+        /// </summary>
+        public void Restore(SkillDefinition skill, int stacks)
+        {
+            if (skill == null || stacks <= 0) return;
+            var o = Find(skill);
+            if (o == null)
+            {
+                o = new Owned { Skill = skill };
+                _owned.Add(o);
+            }
+            o.Stacks = Mathf.Min(Mathf.Max(o.Stacks, stacks), skill.MaxStack);
+            if (stats != null) stats.SetSource(skill, skill.Modifiers, o.Stacks);
+            if (o.Effect == null && skill.EffectPrefab != null)
+            {
+                o.Effect = Instantiate(skill.EffectPrefab, effectRoot != null ? effectRoot : transform, false);
+                o.Effect.name = skill.EffectPrefab.name;
+                o.Effect.Bind(Context());
+            }
+            if (o.Effect != null) o.Effect.SetStacks(o.Stacks);
+            Changed?.Invoke();
+        }
+
         /// <summary>Removes every skill, its modifiers and its effect (start of a run).</summary>
         public void ResetRun()
         {
