@@ -38,6 +38,8 @@ namespace SurvivorSouls.Dev
     /// title card. With -ss-delay ~2.2 the capture shows the "CHAMBER II" card; skills / health set before it carry over.
     /// <c>-ss-run-seed &lt;n&gt;</c> starts the run with that seed and <c>-ss-chamber &lt;n&gt;</c> starts it at that Chamber
     /// (KAN-46: layout seed + difficulty of that Chamber; same run seed + Chamber = same layout).
+    /// <c>-ss-boss &lt;0..1&gt;</c> (KAN-58, with <c>-ss-chamber 5</c>): once the boss has risen, sets its health to that share and
+    /// stands the Knight 2.6 m in front of it, so the slam winds up about 1.5 s later (add -ss-immortal to survive it).
     /// Main menu (KAN-20): <c>-ss-realms</c> opens the Realm selection page, <c>-ss-realm &lt;id&gt;</c> also opens that
     /// Realm's detail sheet. With either, the saved progress of Realms 1-3 is wiped first (repeatable shots); then
     /// <c>-ss-best &lt;realm&gt;:&lt;chamber&gt;</c> records a best Chamber and <c>-ss-cleared &lt;realm&gt;</c> marks a Realm completed.
@@ -69,6 +71,7 @@ namespace SurvivorSouls.Dev
         private int _realmDetail;
         private string _best;
         private int _cleared;
+        private string _boss;
 
         private const float XpLead = 1.5f; // realtime seconds between the XP grant and the capture (cards fully in)
 
@@ -108,6 +111,7 @@ namespace SurvivorSouls.Dev
             shot._realmDetail = int.TryParse(GetArg("-ss-realm"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int rd) ? rd : 0;
             shot._realms = shot._realmDetail > 0 || Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-realms") >= 0;
             shot._best = GetArg("-ss-best");
+            shot._boss = GetArg("-ss-boss");
             shot._cleared = int.TryParse(GetArg("-ss-cleared"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int cl) ? cl : 0;
 
             // Before any scene wakes: ChamberSetup reads the run in Awake (KAN-46).
@@ -157,6 +161,7 @@ namespace SurvivorSouls.Dev
                 else timer.SetRemaining(float.Parse(_timer, CultureInfo.InvariantCulture));
             }
 
+            if (!string.IsNullOrEmpty(_boss)) StartCoroutine(SetupBoss(float.Parse(_boss, CultureInfo.InvariantCulture)));
             if (_portal) EnterPortal();
             if (_realms) OpenRealms();
 
@@ -210,6 +215,24 @@ namespace SurvivorSouls.Dev
             if (_realmDetail > 0 && !menu.RealmSelect.OpenDetail(_realmDetail))
                 Debug.LogWarning($"[DevScreenshot] -ss-realm: no Realm {_realmDetail}");
             Debug.Log($"[DevScreenshot] Realm page open, detail={menu.RealmSelect.Selected?.DisplayName ?? "none"} canStart={menu.RealmSelect.CanStart}");
+        }
+
+        /// <summary>Waits for the boss to rise, sets its health share and puts the Knight in slam range in front of it.</summary>
+        private static IEnumerator SetupBoss(float health)
+        {
+            var fight = SurvivorSouls.Gameplay.Boss.BossFight.Active;
+            if (fight == null || fight.Current == SurvivorSouls.Gameplay.Boss.BossFight.Stage.Inactive)
+            {
+                Debug.LogWarning("[DevScreenshot] -ss-boss: no boss fight in this Chamber (use -ss-chamber 5)");
+                yield break;
+            }
+            while (fight.Boss == null || !fight.Boss.isActiveAndEnabled) yield return null;
+            var boss = fight.Boss;
+            float target = Mathf.Clamp01(health) * boss.MaxHealth;
+            if (boss.Health > target && target > 0f) boss.TakeDamage(boss.Health - target, Vector3.zero, DamageKind.Burst);
+            var b = boss.transform;
+            Teleport(b.position + b.forward * 2.6f);
+            Debug.Log($"[DevScreenshot] Boss {fight.Data.DisplayName} hp={boss.Health:F0}/{boss.MaxHealth:F0} at {b.position}");
         }
 
         /// <summary>Starts the portal exit as if the Knight walked into the arch 1.5 m ahead (KAN-40).</summary>
