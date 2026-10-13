@@ -324,7 +324,9 @@ namespace SurvivorSouls.Editor.Combat
                 if (animator == null) animator = model.AddComponent<Animator>();
                 animator.runtimeAnimatorController = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(type.Controller);
                 animator.applyRootMotion = false; // the clips run in place; Enemy moves the root
-                animator.cullingMode = AnimatorCullingMode.CullCompletely; // off screen = no animation cost at all
+                // Off screen the state machine keeps running (walk / attack cross-fades are never lost, KAN-43); bone
+                // transforms and skinning are still skipped, which is the expensive part.
+                animator.cullingMode = AnimatorCullingMode.CullUpdateTransforms;
 
                 var body = model.GetComponentInChildren<SkinnedMeshRenderer>();
                 body.sharedMaterials = Enumerable.Repeat(mat, body.sharedMaterials.Length).ToArray();
