@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace SurvivorSouls.Gameplay.Chamber
 {
-    /// <summary>One owned skill and its stack count, as carried into the next Chamber.</summary>
+    /// <summary>One owned skill and its level (KAN-50; field name kept from KAN-40), as carried into the next Chamber.</summary>
     public struct SkillStack
     {
         public SkillDefinition Skill;

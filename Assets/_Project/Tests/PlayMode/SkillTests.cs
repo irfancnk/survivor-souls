@@ -154,7 +154,7 @@ namespace SurvivorSouls.Tests
             for (int i = 1; i <= 3; i++)
             {
                 Assert.That(_manager.Grant(sharp), Is.True);
-                Assert.That(_manager.StacksOf(sharp), Is.EqualTo(i));
+                Assert.That(_manager.GetLevel(sharp), Is.EqualTo(i));
                 Assert.That(_shooter.CurrentDamage, Is.EqualTo(100f * (1f + 0.2f * i)).Within(1e-3f));
             }
             Assert.That(_manager.Grant(sharp), Is.False, "4th stack over max 3");
@@ -435,7 +435,7 @@ namespace SurvivorSouls.Tests
             Assert.That(_stats.Flat(StatId.BurnDps), Is.Zero);
             Assert.That(_shooter.CurrentDamage, Is.EqualTo(100f));
             Assert.That(effect == null, Is.True, "effect destroyed");
-            Assert.That(_manager.StacksOf(ember), Is.Zero);
+            Assert.That(_manager.GetLevel(ember), Is.Zero);
         }
 
         // ------------------------------------------------------------ Level-up flow + card screen
@@ -473,7 +473,7 @@ namespace SurvivorSouls.Tests
             screen.Tick(0.45f);
             var picked = screen.Options[1];
             Assert.That(screen.Choose(1), Is.True);
-            Assert.That(_manager.StacksOf(picked), Is.EqualTo(1), "applied at once, game still paused");
+            Assert.That(_manager.GetLevel(picked), Is.EqualTo(1), "applied at once, game still paused");
             Assert.That(screen.Choose(2), Is.False, "one pick per level");
             Assert.That(GamePause.IsPaused, Is.True);
 

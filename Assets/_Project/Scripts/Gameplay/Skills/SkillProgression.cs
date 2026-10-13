@@ -87,6 +87,19 @@ namespace SurvivorSouls.Gameplay.Skills
             return null;
         }
 
+        /// <summary>Any skill in the table (tier unlocks or guarantees) with this id; null when none.</summary>
+        public SkillDefinition FindSkill(string skillId)
+        {
+            if (string.IsNullOrEmpty(skillId)) return null;
+            foreach (var t in tiers)
+                if (t?.unlocks != null)
+                    foreach (var s in t.unlocks)
+                        if (s != null && s.Id == skillId) return s;
+            foreach (var g in guarantees)
+                if (g?.skill != null && g.skill.Id == skillId) return g.skill;
+            return null;
+        }
+
         /// <summary>Code-side setup (asset builder, tests).</summary>
         public void Configure(Tier[] tierTable, Guarantee[] guaranteeTable = null, int pity = 3)
         {

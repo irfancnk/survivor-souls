@@ -80,7 +80,7 @@ namespace SurvivorSouls.UI.Hud
                 int r = (int)o.Skill.Rarity;
                 for (int k = 0; k < RarityClasses.Length; k++) slot.Root.EnableInClassList(RarityClasses[k], k == r);
                 slot.Icon.style.backgroundImage = o.Skill.Icon != null ? new StyleBackground(o.Skill.Icon) : StyleKeyword.None;
-                slot.Stack.text = o.Stacks > 1 ? "x" + o.Stacks : "";
+                slot.Stack.text = o.Level > 1 ? "x" + o.Level : "";
                 if (o.Skill == _popSkill) _popSlot = i;
             }
             _popSkill = null;

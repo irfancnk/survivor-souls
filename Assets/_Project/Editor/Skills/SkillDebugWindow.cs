@@ -35,7 +35,7 @@ namespace SurvivorSouls.Editor.Skills
             if (open.Length == 0) { Debug.Log("[Skills] Every skill is maxed."); return; }
             var pick = open[UnityEngine.Random.Range(0, open.Length)];
             manager.Grant(pick);
-            Debug.Log($"[Skills] Granted {pick.Id} -> {manager.StacksOf(pick)}/{pick.MaxStack}");
+            Debug.Log($"[Skills] Granted {pick.Id} -> {manager.GetLevel(pick)}/{pick.MaxLevel}");
         }
 
         [MenuItem("Survivor Souls/Debug/Grant Random Skill", true)]
@@ -121,12 +121,12 @@ namespace SurvivorSouls.Editor.Skills
             foreach (var skill in _skills)
             {
                 if (skill == null) continue;
-                int stacks = manager.StacksOf(skill);
+                int level = manager.GetLevel(skill);
                 using (new EditorGUILayout.HorizontalScope())
                 {
                     GUILayout.Label(skill.Icon, GUILayout.Width(22), GUILayout.Height(22));
                     EditorGUILayout.LabelField($"{skill.DisplayName}  ({skill.Rarity})", GUILayout.MinWidth(160));
-                    EditorGUILayout.LabelField($"{stacks}/{skill.MaxStack}", GUILayout.Width(40));
+                    EditorGUILayout.LabelField($"{level}/{skill.MaxLevel}", GUILayout.Width(40));
                     using (new EditorGUI.DisabledScope(!manager.CanTake(skill)))
                     {
                         if (GUILayout.Button("+1", GUILayout.Width(36))) manager.Grant(skill);

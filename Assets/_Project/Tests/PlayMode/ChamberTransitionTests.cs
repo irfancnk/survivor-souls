@@ -132,8 +132,8 @@ namespace SurvivorSouls.Tests
             Assert.AreEqual(a.Xp.Xp, b.Xp.Xp);
             Assert.AreEqual(a.Xp.TotalXp, b.Xp.TotalXp);
             Assert.AreEqual(0, levelUps, "restored levels were picked already: no new skill pick");
-            Assert.AreEqual(2, b.Skills.StacksOf(vigor));
-            Assert.AreEqual(1, b.Skills.StacksOf(power));
+            Assert.AreEqual(2, b.Skills.GetLevel(vigor));
+            Assert.AreEqual(1, b.Skills.GetLevel(power));
             Assert.AreEqual(maxA, b.Health.Max, 0.001f, "max-health skill raised the max again");
             Assert.AreEqual(hpA, b.Health.Current, 0.001f);
         }

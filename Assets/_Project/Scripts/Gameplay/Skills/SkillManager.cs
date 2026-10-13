@@ -7,8 +7,10 @@ using UnityEngine;
 namespace SurvivorSouls.Gameplay.Skills
 {
     /// <summary>
-    /// The run's skills (KAN-19): owned skills and stacks, in pick order. <see cref="Grant"/> adds a stack, writes the
-    /// skill's modifiers to <see cref="PlayerStats"/> and spawns its effect on the first stack. <see cref="Roll"/> offers
+    /// The run's skills (KAN-19): owned skills and their levels (KAN-50), in pick order. The one place that changes a
+    /// level: <see cref="Grant(SkillDefinition)"/> (level-up pick, new or +1), <see cref="Upgrade(SkillDefinition, int)"/>
+    /// (chest, owned only, +N capped), <see cref="Restore"/> (Chamber carry). Each writes the skill's effect at the new
+    /// level from its data to <see cref="PlayerStats"/> and spawns its effect at level 1. <see cref="Roll"/> offers
     /// distinct skills for a level: pool and rarity odds from <see cref="SkillProgression"/>, maxed skills left out, the
     /// level's guaranteed skill first, and the pity rule (KAN-37): after <see cref="SkillProgression.PityOffers"/> - 1 offers
     /// in a row without a Rare or better card, the next offer swaps its last Common card for a Rare+ one.
@@ -19,7 +21,8 @@ namespace SurvivorSouls.Gameplay.Skills
         public sealed class Owned
         {
             public SkillDefinition Skill;
-            public int Stacks;
+            /// <summary>1..<see cref="SkillDefinition.MaxLevel"/>.</summary>
+            public int Level;
             public SkillEffect Effect;
         }
 
@@ -48,8 +51,13 @@ namespace SurvivorSouls.Gameplay.Skills
         [Tooltip("0 = random every run. Fixed seeds make rolls repeatable (tests, bug repro).")]
         [SerializeField] private int seed;
 
-        /// <summary>A skill gained a stack: skill, new stack count.</summary>
+        /// <summary>Level-up pick applied (<see cref="Grant(SkillDefinition)"/> only): skill, new level.</summary>
         public event Action<SkillDefinition, int> Granted;
+        /// <summary>
+        /// Any level change from a pick or an upgrade (KAN-50): skill, old level (0 = new), new level. Not raised by
+        /// <see cref="Restore"/> or <see cref="ResetRun"/>. HUD glow (KAN-50.5) and telemetry hook here.
+        /// </summary>
+        public event Action<SkillDefinition, int, int> SkillChanged;
         /// <summary>Owned list changed (grant or reset). HUD rebuilds its row.</summary>
         public event Action Changed;
 
@@ -94,61 +102,109 @@ namespace SurvivorSouls.Gameplay.Skills
             _rng = seed != 0 ? new System.Random(seed) : new System.Random(Environment.TickCount);
         }
 
-        public int StacksOf(SkillDefinition skill)
+        /// <summary>Owned level of <paramref name="skill"/> (0 = not owned).</summary>
+        public int GetLevel(SkillDefinition skill)
         {
             var o = Find(skill);
-            return o != null ? o.Stacks : 0;
+            return o != null ? o.Level : 0;
         }
 
-        public bool CanTake(SkillDefinition skill) => skill != null && StacksOf(skill) < skill.MaxStack;
+        /// <summary>Owned level of the skill with this id (0 = not owned or unknown).</summary>
+        public int GetLevel(string skillId) => GetLevel(FindSkill(skillId));
 
-        /// <summary>Adds one stack of <paramref name="skill"/> and applies it at once. False when maxed.</summary>
+        /// <summary>
+        /// The skill with this id: owned skills first, then every skill in the progression table. Null when unknown.
+        /// For debug commands, saves and chests that name a skill by id.
+        /// </summary>
+        public SkillDefinition FindSkill(string skillId)
+        {
+            if (string.IsNullOrEmpty(skillId)) return null;
+            foreach (var o in _owned)
+                if (o.Skill.Id == skillId) return o.Skill;
+            return progression != null ? progression.FindSkill(skillId) : null;
+        }
+
+        /// <summary>Can go one level higher: new (level 0) or owned below max. Level-up offers use this.</summary>
+        public bool CanTake(SkillDefinition skill) => skill != null && GetLevel(skill) < skill.MaxLevel;
+
+        /// <summary>Owned and below max: a chest (KAN-50.4) can raise it. Never true for a skill not owned yet.</summary>
+        public bool CanUpgrade(SkillDefinition skill) => skill != null && GetLevel(skill) > 0 && GetLevel(skill) < skill.MaxLevel;
+
+        /// <summary>
+        /// Level-up pick: a new skill at level 1 or an owned one 1 level up, applied at once. Raises <see cref="Granted"/>
+        /// (pick sound, HUD pop) and <see cref="SkillChanged"/>. False when maxed.
+        /// </summary>
         public bool Grant(SkillDefinition skill)
         {
             if (!CanTake(skill)) return false;
-            var o = Find(skill);
-            if (o == null)
-            {
-                o = new Owned { Skill = skill };
-                _owned.Add(o);
-            }
-            o.Stacks++;
-            if (stats != null) stats.SetSource(skill, skill.Modifiers, o.Stacks);
-            if (o.Effect == null && skill.EffectPrefab != null)
-            {
-                o.Effect = Instantiate(skill.EffectPrefab, effectRoot != null ? effectRoot : transform, false);
-                o.Effect.name = skill.EffectPrefab.name;
-                o.Effect.Bind(Context());
-            }
-            if (o.Effect != null) o.Effect.SetStacks(o.Stacks);
-            Granted?.Invoke(skill, o.Stacks);
+            var o = Raise(skill, 1);
+            Granted?.Invoke(skill, o.Level);
             Changed?.Invoke();
             return true;
         }
 
+        /// <summary>Same as <see cref="Grant(SkillDefinition)"/> by id. False when unknown or maxed.</summary>
+        public bool Grant(string skillId) => Grant(FindSkill(skillId));
+
         /// <summary>
-        /// Puts back skills carried into the next Chamber (KAN-40): each one at its stack count (capped at max), modifiers
-        /// and effects applied as if granted. No <see cref="Granted"/> (no pick sound or HUD pop); one <see cref="Changed"/>.
+        /// Chest / reward upgrade (KAN-50): raises an OWNED skill by <paramref name="levels"/>, capped at its max. Raises
+        /// <see cref="SkillChanged"/> (not <see cref="Granted"/>: the upgrade screen has its own feedback). False when the
+        /// skill is not owned, already maxed or <paramref name="levels"/> is below 1.
         /// </summary>
-        public void Restore(SkillDefinition skill, int stacks)
+        public bool Upgrade(SkillDefinition skill, int levels = 1)
         {
-            if (skill == null || stacks <= 0) return;
-            var o = Find(skill);
-            if (o == null)
+            if (levels < 1 || !CanUpgrade(skill)) return false;
+            Raise(skill, levels);
+            Changed?.Invoke();
+            return true;
+        }
+
+        /// <summary>Same as <see cref="Upgrade(SkillDefinition, int)"/> by id.</summary>
+        public bool Upgrade(string skillId, int levels = 1) => Upgrade(FindSkill(skillId), levels);
+
+        /// <summary>
+        /// Puts back skills carried into the next Chamber (KAN-40): each one at its level (capped at max), modifiers
+        /// and effects applied as if granted. No <see cref="Granted"/> / <see cref="SkillChanged"/> (no pick sound, HUD pop
+        /// or upgrade telemetry); one <see cref="Changed"/>.
+        /// </summary>
+        public void Restore(SkillDefinition skill, int level)
+        {
+            if (skill == null || level <= 0) return;
+            var o = Find(skill) ?? Add(skill);
+            o.Level = Mathf.Min(Mathf.Max(o.Level, level), skill.MaxLevel);
+            Apply(o);
+            Changed?.Invoke();
+        }
+
+        /// <summary>Adds <paramref name="levels"/> (capped), applies the new level and raises <see cref="SkillChanged"/>.</summary>
+        private Owned Raise(SkillDefinition skill, int levels)
+        {
+            var o = Find(skill) ?? Add(skill);
+            int old = o.Level;
+            o.Level = Mathf.Min(old + levels, skill.MaxLevel);
+            Apply(o);
+            SkillChanged?.Invoke(skill, old, o.Level);
+            return o;
+        }
+
+        private Owned Add(SkillDefinition skill)
+        {
+            var o = new Owned { Skill = skill };
+            _owned.Add(o);
+            return o;
+        }
+
+        /// <summary>Stats from the level table, effect spawned at level 1 and told the level.</summary>
+        private void Apply(Owned o)
+        {
+            o.Skill.ApplyLevel(stats, o.Level);
+            if (o.Effect == null && o.Skill.EffectPrefab != null)
             {
-                o = new Owned { Skill = skill };
-                _owned.Add(o);
-            }
-            o.Stacks = Mathf.Min(Mathf.Max(o.Stacks, stacks), skill.MaxStack);
-            if (stats != null) stats.SetSource(skill, skill.Modifiers, o.Stacks);
-            if (o.Effect == null && skill.EffectPrefab != null)
-            {
-                o.Effect = Instantiate(skill.EffectPrefab, effectRoot != null ? effectRoot : transform, false);
-                o.Effect.name = skill.EffectPrefab.name;
+                o.Effect = Instantiate(o.Skill.EffectPrefab, effectRoot != null ? effectRoot : transform, false);
+                o.Effect.name = o.Skill.EffectPrefab.name;
                 o.Effect.Bind(Context());
             }
-            if (o.Effect != null) o.Effect.SetStacks(o.Stacks);
-            Changed?.Invoke();
+            if (o.Effect != null) o.Effect.SetStacks(o.Level);
         }
 
         /// <summary>Removes every skill, its modifiers and its effect (start of a run).</summary>

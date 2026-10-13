@@ -11,7 +11,8 @@ namespace SurvivorSouls.UI.Hud
     /// <summary>
     /// Level-up skill pick (KAN-19), the <see cref="LevelUpChoice"/> that <see cref="LevelUpFlow"/> opens while the game is
     /// paused: "LEVEL N" header and up to 3 rune cards ("Ember Boons") rolled by <see cref="SkillManager.Roll"/>. Each card:
-    /// rarity, icon, name, one-stack text, stack pips (owned + the one this pick adds) and a NEW badge. Cards rise in one
+    /// rarity, icon, name, text of the level this pick gives, level pips (owned + the one this pick adds) and a badge:
+    /// NEW, or "LV N → N+1" for an owned skill (KAN-50). Cards rise in one
     /// after another; taps count only after <see cref="armDelay"/> (a thumb still on the stick must not pick by accident).
     /// A pick grants the skill at once, pulses the card, fades the rest and hands control back. Keys 1-3 pick on desktop.
     /// Unscaled time. Nothing to offer (every skill maxed): closes at once. Looks: skills* / skill-card* in GameHud.uss.
@@ -29,6 +30,7 @@ namespace SurvivorSouls.UI.Hud
         private const string PipClass = "skill-pip";
         private const string PipOnClass = "skill-pip--on";
         private const string PipNextClass = "skill-pip--next";
+        private const string BadgeUpClass = "skill-card__badge--up";
         private const string MarkClass = "skill-mark";
         private const string SparkClass = "skill-spark";
         private static readonly string[] RarityClasses = { "skill-card--common", "skill-card--rare", "skill-card--epic", "skill-card--legendary" };
@@ -232,12 +234,16 @@ namespace SurvivorSouls.UI.Hud
             foreach (var spark in card.SparkDots)
                 if (spark != null) spark.style.opacity = 0f;
             if (card.Name != null) card.Name.text = skill.DisplayName.ToUpperInvariant();
-            if (card.Desc != null) card.Desc.text = skill.Description;
+            int owned = skills.GetLevel(skill);
+            if (card.Desc != null) card.Desc.text = skill.DescriptionAt(owned + 1);
             if (card.Icon != null) card.Icon.style.backgroundImage = skill.Icon != null ? new StyleBackground(skill.Icon) : StyleKeyword.None;
-            int owned = skills.StacksOf(skill);
-            if (card.Badge != null) card.Badge.EnableInClassList(HiddenClass, owned > 0);
+            if (card.Badge != null)
+            {
+                card.Badge.text = BadgeText(owned);
+                card.Badge.EnableInClassList(BadgeUpClass, owned > 0);
+            }
             if (card.Pips == null) return;
-            while (card.Pips.childCount < skill.MaxStack)
+            while (card.Pips.childCount < skill.MaxLevel)
             {
                 var pip = new VisualElement { pickingMode = PickingMode.Ignore };
                 pip.AddToClassList(PipClass);
@@ -246,11 +252,14 @@ namespace SurvivorSouls.UI.Hud
             for (int i = 0; i < card.Pips.childCount; i++)
             {
                 var pip = card.Pips[i];
-                pip.style.display = i < skill.MaxStack ? DisplayStyle.Flex : DisplayStyle.None;
+                pip.style.display = i < skill.MaxLevel ? DisplayStyle.Flex : DisplayStyle.None;
                 pip.EnableInClassList(PipOnClass, i < owned);
                 pip.EnableInClassList(PipNextClass, i == owned);
             }
         }
+
+        /// <summary>Card corner badge (KAN-50): "NEW" for a skill not owned, "LV N → N+1" for an upgrade.</summary>
+        public static string BadgeText(int ownedLevel) => ownedLevel > 0 ? $"LV {ownedLevel} \u2192 {ownedLevel + 1}" : "NEW";
 
         private void Animate()
         {

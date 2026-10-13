@@ -270,7 +270,7 @@ namespace SurvivorSouls.Gameplay.Chamber
             if (playerHealth != null) snap.Health = playerHealth.Current;
             if (skillManager != null)
                 foreach (var o in skillManager.OwnedSkills)
-                    snap.Skills.Add(new SkillStack(o.Skill, o.Stacks));
+                    snap.Skills.Add(new SkillStack(o.Skill, o.Level));
             if (runCounters != null)
             {
                 snap.Kills = runCounters.Kills;
