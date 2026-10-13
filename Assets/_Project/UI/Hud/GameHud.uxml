@@ -126,6 +126,23 @@
         <ui:VisualElement class="death__band" picking-mode="Ignore">
             <ui:Label text="YOU DIED" class="death__title" picking-mode="Ignore" />
         </ui:VisualElement>
+        <!-- Run counters (KAN-51): filled by PlayerHealthHud when the screen opens. -->
+        <ui:VisualElement class="death__stats" picking-mode="Ignore">
+            <ui:VisualElement class="death__stat" picking-mode="Ignore">
+                <ui:Label name="death-souls" text="0" class="death__stat-value" picking-mode="Ignore" />
+                <ui:Label text="SOULS" class="death__stat-label" picking-mode="Ignore" />
+            </ui:VisualElement>
+            <ui:VisualElement class="death__stat-rule" picking-mode="Ignore" />
+            <ui:VisualElement class="death__stat" picking-mode="Ignore">
+                <ui:Label name="death-kills" text="0" class="death__stat-value" picking-mode="Ignore" />
+                <ui:Label text="KILLS" class="death__stat-label" picking-mode="Ignore" />
+            </ui:VisualElement>
+            <ui:VisualElement class="death__stat-rule" picking-mode="Ignore" />
+            <ui:VisualElement class="death__stat" picking-mode="Ignore">
+                <ui:Label name="death-chamber" text="I" class="death__stat-value" picking-mode="Ignore" />
+                <ui:Label text="CHAMBER" class="death__stat-label" picking-mode="Ignore" />
+            </ui:VisualElement>
+        </ui:VisualElement>
         <ui:VisualElement class="death__buttons" picking-mode="Ignore">
             <ui:Button name="btn-retry" text="RETRY" class="death__button death__button--primary" />
             <ui:Button name="btn-menu" text="MENU" class="death__button" />

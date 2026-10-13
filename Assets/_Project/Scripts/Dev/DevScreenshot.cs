@@ -23,6 +23,7 @@ namespace SurvivorSouls.Dev
     /// Every capture also logs render stats of the last second: <c>[DevScreenshot] Stats ...</c> (draw calls, batches,
     /// SetPass calls, triangles, average frame ms).
     /// <c>-ss-player-hp &lt;0..1&gt;</c> sets the player's health fraction after load (0 = death screen).
+    /// <c>-ss-counters &lt;kills,souls&gt;</c> sets the run counters after load (KAN-51: numbers on the death screen).
     /// <c>-ss-hit-marker &lt;hit|kill&gt;</c> pops a hit (or kill) marker on the nearest enemy just before the capture.
     /// <c>-ss-release &lt;seconds&gt;</c> lets go of the -ss-move stick that long before the capture (e.g. wind trail tail-off).
     /// <c>-ss-souls &lt;n&gt;</c> drops n soul wisps around the player after load (mostly small, some elite, one boss orb).
@@ -52,6 +53,7 @@ namespace SurvivorSouls.Dev
         private bool _nearExit;
         private string _pos;
         private string _playerHp;
+        private string _counters;
         private string _hitMarker;
         private float _release;
         private int _souls;
@@ -91,6 +93,7 @@ namespace SurvivorSouls.Dev
             shot._nearExit = Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-near-exit") >= 0;
             shot._pos = GetArg("-ss-pos");
             shot._playerHp = GetArg("-ss-player-hp");
+            shot._counters = GetArg("-ss-counters");
             shot._hitMarker = GetArg("-ss-hit-marker");
             shot._release = float.TryParse(GetArg("-ss-release"), NumberStyles.Float, CultureInfo.InvariantCulture, out float r) ? r : 0f;
             shot._souls = int.TryParse(GetArg("-ss-souls"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int n) ? n : 0;
@@ -131,6 +134,7 @@ namespace SurvivorSouls.Dev
                 string[] xz = _pos.Split(',');
                 Teleport(new Vector3(float.Parse(xz[0], CultureInfo.InvariantCulture), 0f, float.Parse(xz[1], CultureInfo.InvariantCulture)));
             }
+            if (!string.IsNullOrEmpty(_counters)) SetCounters(_counters);
             if (!string.IsNullOrEmpty(_playerHp)) SetPlayerHealth(float.Parse(_playerHp, CultureInfo.InvariantCulture));
             if (!string.IsNullOrEmpty(_move))
             {
@@ -344,6 +348,15 @@ namespace SurvivorSouls.Dev
                 else offer.Add(skill);
             }
             manager.ForceNextOffer(offer.ToArray());
+        }
+
+        /// <summary>-ss-counters kills,souls: run counters as if carried from earlier Chambers (death screen shots, KAN-51).</summary>
+        private static void SetCounters(string arg)
+        {
+            var counters = FindAnyObjectByType<SurvivorSouls.Gameplay.Chamber.RunCounters>();
+            string[] ks = arg.Split(',');
+            if (counters == null || ks.Length < 2) return;
+            counters.Restore(int.Parse(ks[0], CultureInfo.InvariantCulture), int.Parse(ks[1], CultureInfo.InvariantCulture));
         }
 
         private static void SetPlayerHealth(float fraction)

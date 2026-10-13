@@ -1,3 +1,4 @@
+using System.Globalization;
 using SurvivorSouls.Core;
 using SurvivorSouls.Gameplay.Chamber;
 using SurvivorSouls.Gameplay.Player;
@@ -9,7 +10,8 @@ namespace SurvivorSouls.UI.Hud
     /// <summary>
     /// Player health on the HUD document: top bar (fill eases to the value, a pale trail drains behind it after a
     /// short delay), a small bar over the Knight, a red screen-edge vignette on every hurt pulse (plus a slow
-    /// heartbeat at low health), and the "YOU DIED" screen with Retry / Menu once <see cref="PlayerDeath.Finished"/>.
+    /// heartbeat at low health), and the "YOU DIED" screen with the run counters (souls, kills, Chamber; KAN-51) and
+    /// Retry / Menu once <see cref="PlayerDeath.Finished"/>.
     /// Nothing here blocks touches except the death screen buttons. Element names are constants below; keep them in
     /// sync with GameHud.uxml. Looks live in GameHud.uss (hud-hp*, hud-overhead*, hud-vignette, death*).
     /// </summary>
@@ -27,6 +29,9 @@ namespace SurvivorSouls.UI.Hud
         private const string RetryName = "btn-retry";
         private const string MenuName = "btn-menu";
         private const string HintName = "lbl-hint";
+        private const string SoulsName = "death-souls";
+        private const string KillsName = "death-kills";
+        private const string ChamberName = "death-chamber";
         private const string HintGoneClass = "hud-hint--gone"; // GameHud.uss, shared with GameHudController
         private const string HiddenClass = "hud-hidden";
         private const string DeathShownClass = "death--shown";
@@ -34,6 +39,7 @@ namespace SurvivorSouls.UI.Hud
         [SerializeField] private PlayerHealth health;
         [SerializeField] private PlayerDeath death;
         [SerializeField] private Camera worldCamera;
+        [SerializeField] private RunCounters counters;
 
         [Header("Bar")]
         [Tooltip("How fast the fill eases to the real value (1/s, exponential).")]
@@ -183,11 +189,24 @@ namespace SurvivorSouls.UI.Hud
 
         private void ShowDeathScreen()
         {
-            _document.rootVisualElement.Q(HintName)?.AddToClassList(HintGoneClass);
+            var root = _document.rootVisualElement;
+            SetText(root, SoulsName, FormatCount(counters != null ? counters.Souls : 0));
+            SetText(root, KillsName, FormatCount(counters != null ? counters.Kills : 0));
+            SetText(root, ChamberName, ChamberTransitionHud.Roman(RunState.Chamber));
+            root.Q(HintName)?.AddToClassList(HintGoneClass);
             _deathScreen.RemoveFromClassList(HiddenClass);
             // Next frame, so the opacity transition starts from 0 instead of snapping.
             _deathScreen.schedule.Execute(() => _deathScreen.AddToClassList(DeathShownClass)).ExecuteLater(30);
         }
+
+        private static void SetText(VisualElement root, string name, string text)
+        {
+            var label = root.Q<Label>(name);
+            if (label != null) label.text = text;
+        }
+
+        /// <summary>Death / victory screen number: digits with thousands separators ("12,480"), never negative.</summary>
+        public static string FormatCount(int n) => Mathf.Max(0, n).ToString("N0", CultureInfo.InvariantCulture);
 
         private void Retry()
         {
