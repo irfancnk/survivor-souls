@@ -6,6 +6,7 @@
 ## DONE
 - 2026-10-11: Unity project made. Editor 6000.6.5f1 (only editor on machine). Template URP blank 17.2.1.
 - Player settings: product "Survivor Souls", company "irfancnk", bundle id `com.irfancnk.survivorsouls` (iOS + Android). Android IL2CPP + ARM64. Orientation Portrait only (changed 2026-10-12, no autorotate). Active build target Android.
+- 2026-10-13: Unity splash screen off: `m_ShowUnitySplashScreen: 0` in `ProjectSettings/ProjectSettings.asset` (Player Settings > Splash Image > Show Splash Screen). Not yet checked on a device build. If Editor re-ticks it, untick again.
 - Git init. Unity .gitignore. .gitattributes (YAML merge rules).
 - Repo made + pushed: https://github.com/irfancnk/survivor-souls (public, branch main).
 - 2026-10-11: Main menu scene made. `Assets/_Project/Scenes/MainMenu.unity`. First in build list. SampleScene second.
