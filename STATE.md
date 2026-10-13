@@ -192,3 +192,21 @@
 - Install git-lfs, track binaries.
 - P0 prototype: Game scene, joystick, move=dodge / stop=attack, 4 enemies, boon pick 1-of-3, 1 boss.
 - Meshy import editor script (scale, Humanoid, ASTC, mask map, URP mat). Needs git-lfs first.
+
+- 2026-10-13: XP system: soul wisps drop from enemies, XP bar, level-up flow (KAN-21, branch `feat/kan-21-xp-wisps`, from KAN-16 head). Scheduled-task run.
+  - Data: `Progression/XpCurve` ScriptableObject (explicit table first, then `base * growth^(level-1)` rounded). Asset `Data/Progression/XpCurve_Run.asset`: table 30, 50, 70, then base 50, growth 1.22, round 5. Builder never overwrites an existing asset (designer edits kept). `Enemy.xpValue` (zombie 10, set by `CombatBuilder`).
+  - `Progression/XpManager` ("Progression" object): Level, Xp, XpToNext, TotalXp. `AddXp` carries remainder; one big gain = one `OnLevelUp(level)` per level, in order. Run-only: fresh in Awake (retry reloads scene) + `ResetRun()`.
+  - `Progression/SoulWispField` ("Souls" object): no GameObject per wisp. Struct array (capacity 128, swap-remove), drawn as billboards of ONE particle system via `SetParticles` (alpha blend, `T_SoulWisp`: white core, shell, darker rim) + ONE additive mote system (trail motes, absorb flash). 2 draw calls for any count, no lights, no allocs. States Pop (jump up, gravity, land at 0.45 m) -> Rest (bob + pulse) -> Drift (after 10 s, to player, max 8 m/s) / Magnet (inside pickup radius: lift, ease-in accel 40 m/s^2 to the chest, absorb at 0.35 m, 1.5 s timeout). Full pool: drop merges into the oldest wisp (XP never lost). Tiers by XP: small < 25 pale blue 0.42 m, elite < 100 cyan 0.62 m, boss gold 0.95 m. Pickup haptic via `Haptics.Light` with own 0.12 s limit. Event `Collected(point, xp)`.
+  - `Player/SoulCollector` on player: `PickupRadius` = base 2.6 m x `RadiusMultiplier` (hook for KAN-19 skills). In PlayerDeath disable list (dead Knight collects nothing).
+  - `Progression/LevelUpFlow`: queues level-ups; per level: `GamePause.Acquire`, `Started` (FX, sound, pop text), 0.55 s unscaled, then `LevelUpChoice.Present(level, onDone)`; pause held across queued levels, released after the last pick. Double callback ignored. Queue dropped on player death.
+  - `LevelUpChoice` = abstract MonoBehaviour. KAN-19 skill cards subclass it and get set on `LevelUpFlow.choice`. Placeholder now: `UI/Hud/LevelUpBanner` ("LEVEL N / YOUR SOUL GROWS STRONGER" band in upper third, 1.4 s, no input).
+  - `Core/GamePause`: hold count, time scale 0 while held, restores previous scale. `Clear()` on `SceneLoader.LoadAsync` and `GameSceneController.OnDestroy`.
+  - FX: `FX/LevelUpFx` on player (ground ring from `T_Ring`, chest flash, rising sparks; unscaled-time particle systems).
+  - HUD: `UI/Hud/XpHud`: top row "LV N" + soul-blue bar (above the HP row), eased fill on unscaled time, wraps on level-up, glow flash; "LEVEL UP" pop over the Knight. Styles `hud-xp*`, `levelup*` in GameHud.uss. All picking ignore.
+  - Sound: `SfxBuilder` adds `sfx_soul_chime_01..02` (glass bell) + `sfx_level_up_01` (C-E-G-C arpeggio + swell). `GameAudio`: chime pitch +1 semitone per pickup in a streak (0.6 s window, cap 9), 35 ms chime limit; level-up plays during pause.
+  - Builder: `Editor/Progression/ProgressionBuilder` (called by GameSceneBuilder).
+  - DevScreenshot: `-ss-souls <n>` (drops n wisps around player: 1 boss, some elite), `-ss-xp <amount>` (grant 0.9 s before capture).
+  - Tests `Tests/PlayMode/XpTests` (14): curve, below/exact threshold, multi-level order + carry, reset, kill drops wisp + tiers, magnet collect, no collect outside radius w/o drift, drift after limit, dead player, full pool merge (no XP lost), haptic rate limit, 60 wisps no GC alloc, level-up flow pause/order/resume. All 54 PlayMode tests pass.
+  - Screenshots `Docs/screenshots/game-souls-rest.png`, `game-souls-magnet.png`, `game-levelup.png`.
+  - Verified: scene rebuild 0 errors, mac dev build OK, screenshots OK (no exceptions), iOS Xcode export + xcodebuild device build OK. iPhone install failed: phone locked (`IXRemoteErrorDomain code 6`). Not verified on device: 50+ wisp frame time, haptic feel.
+  - Not done: KAN-19 skill cards (placeholder banner instead), elite/boss enemies (tiers ready, no such enemies yet).

@@ -12,6 +12,8 @@
     --hud-hp-trail: rgb(236, 196, 104);
     --hud-hp-track: rgba(8, 8, 10, 0.72);
     --hud-death-red: rgb(158, 24, 18);
+    --hud-soul: rgb(156, 210, 255);
+    --hud-soul-glow: rgb(226, 244, 255);
 }
 
 .hud-hidden {
@@ -27,7 +29,7 @@
 .hud-top {
     flex-direction: row;
     align-items: center;
-    padding: 36px 40px 0 40px;
+    padding: 22px 40px 0 40px;
 }
 
 .hud-spacer {
@@ -357,4 +359,104 @@
 
 .unity-button.death__button:active {
     scale: 0.97 0.97;
+}
+
+/* Run XP (XpHud, KAN-21): full-width thin bar at the very top, soul blue (green = health, red = enemies). */
+.hud-xp {
+    flex-direction: row;
+    align-items: center;
+    padding: 28px 40px 0 40px;
+}
+
+.hud-xp__level {
+    min-width: 120px;
+    padding: 0;
+    margin: 0 16px 0 0;
+    font-size: 36px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-left;
+    color: var(--hud-soul-glow);
+    -unity-text-outline-width: 2px;
+    -unity-text-outline-color: rgba(0, 0, 0, 0.85);
+}
+
+.hud-xp__track {
+    flex-grow: 1;
+    height: 20px;
+    background-color: var(--hud-hp-track);
+    border-width: 2px;
+    border-color: rgba(156, 210, 255, 0.4);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.hud-xp__fill {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 0;
+    background-color: var(--hud-soul);
+    border-right-width: 2px;
+    border-color: var(--hud-soul-glow);
+}
+
+.hud-xp--flash {
+    border-color: var(--hud-soul-glow);
+    background-color: rgba(120, 170, 220, 0.6);
+}
+
+/* "LEVEL UP" over the Knight. Translate, scale and opacity set in code (unscaled time). */
+.levelup-pop {
+    position: absolute;
+    left: 0; top: 0;
+    width: 400px;
+    margin-left: -200px;
+    margin-top: -40px;
+    padding: 0;
+    font-size: 64px;
+    letter-spacing: 6px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    color: var(--hud-soul-glow);
+    -unity-text-outline-width: 3px;
+    -unity-text-outline-color: rgba(10, 30, 60, 0.95);
+}
+
+/* Level-up screen (LevelUpBanner placeholder): soft veil, dark band, soul-blue title. Opacity set in code.
+   Band in the upper third: the Knight (screen centre), its burst ring and the "LEVEL UP" pop stay visible below. */
+.levelup {
+    position: absolute;
+    left: 0; right: 0; top: 0; bottom: 0;
+    justify-content: flex-start;
+    padding-top: 400px;
+    background-color: rgba(4, 10, 20, 0.35);
+}
+
+.levelup__band {
+    padding: 56px 0;
+    background-color: rgba(4, 8, 16, 0.75);
+    border-top-width: 2px;
+    border-bottom-width: 2px;
+    border-color: rgba(156, 210, 255, 0.45);
+    align-items: center;
+}
+
+.levelup__title {
+    font-size: 116px;
+    letter-spacing: 10px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    color: var(--hud-soul-glow);
+    -unity-text-outline-width: 2px;
+    -unity-text-outline-color: rgba(20, 60, 110, 0.9);
+    padding: 0;
+    margin: 0;
+}
+
+.levelup__sub {
+    margin-top: 18px;
+    padding: 0;
+    font-size: 36px;
+    letter-spacing: 6px;
+    -unity-text-align: middle-center;
+    color: var(--hud-ash);
 }

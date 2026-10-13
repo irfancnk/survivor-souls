@@ -13,6 +13,7 @@ namespace SurvivorSouls.Core
 
         public static AsyncOperation LoadAsync(string sceneName)
         {
+            GamePause.Clear(); // a pause (level-up screen) must not freeze the next scene
             return SceneManager.LoadSceneAsync(sceneName, LoadSceneMode.Single);
         }
     }

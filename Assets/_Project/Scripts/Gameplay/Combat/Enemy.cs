@@ -31,6 +31,8 @@ namespace SurvivorSouls.Gameplay.Combat
         [SerializeField, Min(0f)] private float contactRange = 1.4f;
         [Tooltip("Damage per second dealt to the player while within contactRange (ContactDamageReceiver).")]
         [SerializeField, Min(0f)] private float damagePerSecond = 20f;
+        [Tooltip("XP in the soul wisp this enemy drops on death (KAN-21). Wisp size and colour follow the value.")]
+        [SerializeField, Min(0)] private int xpValue = 10;
         [SerializeField] private Renderer body;
         [SerializeField] private Color baseTint = Color.white;
         [SerializeField] private Animator animator;
@@ -56,6 +58,7 @@ namespace SurvivorSouls.Gameplay.Combat
         public float Height => height;
         public float ContactRange => contactRange;
         public float DamagePerSecond => damagePerSecond;
+        public int XpValue => xpValue;
         /// <summary>Chest height: where bolts aim.</summary>
         public Vector3 AimPoint => transform.position + Vector3.up * (height * 0.6f);
         /// <summary>Above the head: where the health bar sits.</summary>

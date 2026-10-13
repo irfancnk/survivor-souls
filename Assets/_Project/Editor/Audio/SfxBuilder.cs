@@ -19,7 +19,7 @@ namespace SurvivorSouls.Editor.Audio
 
         public sealed class Set
         {
-            public AudioClip[] Shots, Impacts, Deaths, Footsteps, HitMarkers, KillMarkers;
+            public AudioClip[] Shots, Impacts, Deaths, Footsteps, HitMarkers, KillMarkers, SoulChimes, LevelUps;
             public AudioClip Ambience;
         }
 
@@ -37,6 +37,8 @@ namespace SurvivorSouls.Editor.Audio
                 Footsteps = Many("sfx_footstep_armour", 4, Footstep),
                 HitMarkers = Many("sfx_hitmarker_tick", 2, HitMarkerTick),
                 KillMarkers = Many("sfx_killmarker", 1, KillMarker),
+                SoulChimes = Many("sfx_soul_chime", 2, SoulChime),
+                LevelUps = Many("sfx_level_up", 1, LevelUp),
             };
             set.Ambience = Save("amb_meadow_wind_loop", AmbienceRate, MeadowAmbience(AmbienceRate, 24f, 9), ambience: true);
             return set;
@@ -141,6 +143,49 @@ namespace SurvivorSouls.Editor.Audio
             Sweep(b, 0f, 0.12f, 1850f, 1780f, 0.35f, 30f, 2);                // ping
             Sweep(b, 0.035f, 0.15f, 2470f, 2400f, 0.25f, 26f, 1);            // second ping, a fourth up
             NoiseBurst(b, 0f, 0.05f, 0.25f, 400f, 2400f, 60f, rng);
+            return Normalize(b, 0.85f);
+        }
+
+        /// <summary>
+        /// Soul wisp absorbed (KAN-21): soft glassy bell (two slightly detuned partials), a breath of air on top.
+        /// Quiet and short: it repeats fast during a pickup streak and its pitch climbs, so it must not get harsh.
+        /// </summary>
+        private static float[] SoulChime(int seed)
+        {
+            var rng = new System.Random(seed * 701);
+            var b = new float[(int)(Rate * 0.4f)];
+            float f = seed == 1 ? 1318.5f : 1396.9f; // E6 / F6
+            Sweep(b, 0f, 0.38f, f, f, 0.5f, 11f, 1);
+            Sweep(b, 0f, 0.3f, f * 2.005f, f * 2.0f, 0.18f, 16f, 1);         // octave shimmer, slight beat
+            Sweep(b, 0f, 0.2f, f * 2.76f, f * 2.76f, 0.07f, 24f, 1);         // bell-like inharmonic partial
+            NoiseBurst(b, 0f, 0.12f, 0.06f, 4000f, 11000f, 30f, rng);         // airy breath
+            return Normalize(b, 0.6f);
+        }
+
+        /// <summary>Level up (KAN-21): rising three-note bell arpeggio over a soft airy swell, ends on an open chord.</summary>
+        private static float[] LevelUp(int seed)
+        {
+            var rng = new System.Random(seed * 809);
+            var b = new float[(int)(Rate * 1.3f)];
+            float[] notes = { 523.25f, 659.25f, 783.99f, 1046.5f }; // C5 E5 G5 C6
+            for (int i = 0; i < notes.Length; i++)
+            {
+                float start = i * 0.085f;
+                float decay = i == notes.Length - 1 ? 3.2f : 6f;
+                Sweep(b, start, 1.3f - start, notes[i], notes[i], 0.38f, decay, 2);
+                Sweep(b, start, 0.6f, notes[i] * 2.003f, notes[i] * 2f, 0.1f, decay * 1.6f, 1);
+            }
+            // Swell: band-passed noise rising in brightness, fades out under the chord.
+            var bp = new Biquad();
+            int n = (int)(Rate * 0.9f);
+            for (int i = 0; i < n; i++)
+            {
+                float k = i / (float)n;
+                bp.SetBandPass(Mathf.Lerp(900f, 5200f, k), 1.2f, Rate);
+                float env = Mathf.Sin(k * Mathf.PI) * 0.22f;
+                b[i] += bp.Process(Noise(rng)) * env;
+            }
+            Sweep(b, 0f, 0.5f, 98f, 130.8f, 0.3f, 5f, 2);                    // low body under the rise
             return Normalize(b, 0.85f);
         }
 

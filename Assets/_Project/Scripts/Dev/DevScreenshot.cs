@@ -21,6 +21,8 @@ namespace SurvivorSouls.Dev
     /// <c>-ss-player-hp &lt;0..1&gt;</c> sets the player's health fraction after load (0 = death screen).
     /// <c>-ss-hit-marker &lt;hit|kill&gt;</c> pops a hit (or kill) marker on the nearest enemy just before the capture.
     /// <c>-ss-release &lt;seconds&gt;</c> lets go of the -ss-move stick that long before the capture (e.g. wind trail tail-off).
+    /// <c>-ss-souls &lt;n&gt;</c> drops n soul wisps around the player after load (mostly small, some elite, one boss orb).
+    /// <c>-ss-xp &lt;amount&gt;</c> grants that much XP <see cref="XpLead"/> s before the capture (level-up burst + screen).
     /// Used by tools/agents to verify visuals without a human. Inactive in release builds (Debug.isDebugBuild).
     /// </summary>
     public sealed class DevScreenshot : MonoBehaviour
@@ -34,6 +36,10 @@ namespace SurvivorSouls.Dev
         private string _playerHp;
         private string _hitMarker;
         private float _release;
+        private int _souls;
+        private int _xp;
+
+        private const float XpLead = 0.9f; // realtime seconds between the XP grant and the capture
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void Bootstrap()
@@ -57,6 +63,8 @@ namespace SurvivorSouls.Dev
             shot._playerHp = GetArg("-ss-player-hp");
             shot._hitMarker = GetArg("-ss-hit-marker");
             shot._release = float.TryParse(GetArg("-ss-release"), NumberStyles.Float, CultureInfo.InvariantCulture, out float r) ? r : 0f;
+            shot._souls = int.TryParse(GetArg("-ss-souls"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int n) ? n : 0;
+            shot._xp = int.TryParse(GetArg("-ss-xp"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int x) ? x : 0;
         }
 
         private IEnumerator Start()
@@ -76,8 +84,16 @@ namespace SurvivorSouls.Dev
                     float.Parse(xy[0], CultureInfo.InvariantCulture), float.Parse(xy[1], CultureInfo.InvariantCulture));
             }
 
+            if (_souls > 0) DropSouls(_souls);
+
             float release = Mathf.Clamp(_release, 0f, _delay);
-            yield return new WaitForSecondsRealtime(_delay - release);
+            float xpLead = _xp > 0 ? Mathf.Min(XpLead, _delay - release) : 0f;
+            yield return new WaitForSecondsRealtime(_delay - release - xpLead);
+            if (_xp > 0)
+            {
+                FindAnyObjectByType<SurvivorSouls.Gameplay.Progression.XpManager>()?.AddXp(_xp);
+                yield return new WaitForSecondsRealtime(xpLead);
+            }
             if (release > 0f)
             {
                 FloatingJoystick.SimulatedValue = null; // finger up: stick stops and glides back to idle
@@ -102,6 +118,20 @@ namespace SurvivorSouls.Dev
             cc.enabled = false;
             player.transform.position = world.ExitPosition + new Vector3(0f, 0f, -5.5f);
             cc.enabled = true;
+        }
+
+        private static void DropSouls(int count)
+        {
+            var field = FindAnyObjectByType<SurvivorSouls.Gameplay.Progression.SoulWispField>();
+            var player = FindAnyObjectByType<PlayerMover>();
+            if (field == null || player == null) return;
+            for (int i = 0; i < count; i++)
+            {
+                float a = i * 2.39996f; // golden angle: an even scatter
+                float d = 3.2f + (i % 5) * 0.9f;
+                int xp = i == 0 ? 150 : i % 7 == 3 ? 40 : 10;
+                field.Spawn(player.transform.position + new Vector3(Mathf.Cos(a) * d, 1f, Mathf.Sin(a) * d), xp);
+            }
         }
 
         private static void SetPlayerHealth(float fraction)
