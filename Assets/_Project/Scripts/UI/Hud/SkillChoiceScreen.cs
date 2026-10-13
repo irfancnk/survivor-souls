@@ -50,7 +50,7 @@ namespace SurvivorSouls.UI.Hud
         [SerializeField, Min(0.01f)] private float pickOut = 0.38f;
         [SerializeField] private float cardRise = 140f; // panel px
         [Tooltip("Unscaled seconds for one shine sweep across a Legendary card (plus a short rest).")]
-        [SerializeField, Min(0.1f)] private float shinePeriod = 1.7f;
+        [SerializeField, Min(0.1f)] private float shinePeriod = 2f;
         [SerializeField, Min(0.05f)] private float burstTime = 0.55f;
 
         private sealed class Card
@@ -299,9 +299,9 @@ namespace SurvivorSouls.UI.Hud
 
             if (style.shine && card.Shine != null)
             {
-                // Sweep left -> right over 60 % of the period, rest for the remainder; starts as the card lands.
-                float phase = Mathf.Repeat(Mathf.Max(0f, _age - index * cardStagger) / shinePeriod, 1f) / 0.6f;
-                float x = phase < 1f ? Mathf.Lerp(-140f, 420f, phase * phase * (3f - 2f * phase)) : -200f;
+                // Sweep left -> right over 75 % of the period, rest for the remainder; first sweep starts as the card lands.
+                float phase = card.Revealed ? Mathf.Repeat(card.RevealAge / shinePeriod, 1f) / 0.75f : 2f;
+                float x = phase < 1f ? Mathf.Lerp(-160f, 420f, phase * phase * (3f - 2f * phase)) : -220f;
                 card.Shine.style.translate = new Translate(x, 0f);
             }
 

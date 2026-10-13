@@ -533,12 +533,12 @@
     top: -120px;
     bottom: -120px;
     left: 0;
-    width: 70px;
+    width: 84px;
     rotate: 18deg;
-    background-color: rgba(255, 236, 180, 0.16);
-    border-left-width: 6px;
-    border-right-width: 6px;
-    border-color: rgba(255, 236, 180, 0.08);
+    background-color: rgba(255, 236, 180, 0.22);
+    border-left-width: 10px;
+    border-right-width: 10px;
+    border-color: rgba(255, 236, 180, 0.1);
 }
 
 .skill-card__marks {
