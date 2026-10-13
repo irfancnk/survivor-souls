@@ -22,8 +22,19 @@ namespace SurvivorSouls.Gameplay.Skills
             [Min(0f)] public float common = 70f;
             [Min(0f)] public float rare = 25f;
             [Min(0f)] public float epic = 5f;
+            [Tooltip("0 by default: a tier offers Legendary skills only when this is set.")]
+            [Min(0f)] public float legendary;
 
-            public float WeightOf(SkillRarity r) => r == SkillRarity.Common ? common : r == SkillRarity.Rare ? rare : epic;
+            public float WeightOf(SkillRarity r)
+            {
+                switch (r)
+                {
+                    case SkillRarity.Common: return common;
+                    case SkillRarity.Rare: return rare;
+                    case SkillRarity.Epic: return epic;
+                    default: return legendary;
+                }
+            }
         }
 
         [Serializable]
@@ -35,8 +46,11 @@ namespace SurvivorSouls.Gameplay.Skills
 
         [SerializeField] private Tier[] tiers = new Tier[0];
         [SerializeField] private Guarantee[] guarantees = new Guarantee[0];
+        [Tooltip("Pity (KAN-37): at least one Rare or better card in every N offers in a row. 0 = off.")]
+        [SerializeField, Min(0)] private int pityOffers = 3;
 
         public IReadOnlyList<Tier> Tiers => tiers;
+        public int PityOffers => pityOffers;
 
         /// <summary>The tier whose odds apply at <paramref name="level"/>: highest fromLevel at or below it, else the lowest tier.</summary>
         public Tier ActiveTier(int level)
@@ -74,10 +88,11 @@ namespace SurvivorSouls.Gameplay.Skills
         }
 
         /// <summary>Code-side setup (asset builder, tests).</summary>
-        public void Configure(Tier[] tierTable, Guarantee[] guaranteeTable = null)
+        public void Configure(Tier[] tierTable, Guarantee[] guaranteeTable = null, int pity = 3)
         {
             tiers = tierTable ?? new Tier[0];
             guarantees = guaranteeTable ?? new Guarantee[0];
+            pityOffers = Mathf.Max(0, pity);
         }
     }
 }

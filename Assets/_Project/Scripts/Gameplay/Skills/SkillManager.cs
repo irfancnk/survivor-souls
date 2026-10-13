@@ -10,7 +10,9 @@ namespace SurvivorSouls.Gameplay.Skills
     /// The run's skills (KAN-19): owned skills and stacks, in pick order. <see cref="Grant"/> adds a stack, writes the
     /// skill's modifiers to <see cref="PlayerStats"/> and spawns its effect on the first stack. <see cref="Roll"/> offers
     /// distinct skills for a level: pool and rarity odds from <see cref="SkillProgression"/>, maxed skills left out, the
-    /// level's guaranteed skill first. Run-only: fresh in Awake (a new run reloads the scene) and on <see cref="ResetRun"/>.
+    /// level's guaranteed skill first, and the pity rule (KAN-37): after <see cref="SkillProgression.PityOffers"/> - 1 offers
+    /// in a row without a Rare or better card, the next offer swaps its last Common card for a Rare+ one.
+    /// Run-only: fresh in Awake (a new run reloads the scene) and on <see cref="ResetRun"/>.
     /// </summary>
     public sealed class SkillManager : MonoBehaviour
     {
@@ -20,6 +22,22 @@ namespace SurvivorSouls.Gameplay.Skills
             public int Stacks;
             public SkillEffect Effect;
         }
+
+        /// <summary>Result of <see cref="SimulateOffers"/> (debug view of the odds table, KAN-37).</summary>
+        public sealed class OfferStats
+        {
+            public int Level, Offers, Cards, OffersWithRarePlus, LongestDryRun, PityRescues;
+            public readonly int[] CardsByRarity = new int[RarityCount];
+
+            public float Share(SkillRarity r) => Cards > 0 ? CardsByRarity[(int)r] / (float)Cards : 0f;
+
+            public override string ToString() =>
+                $"L{Level}: {Offers} offers, {Cards} cards | Common {Share(SkillRarity.Common):P1}, Rare {Share(SkillRarity.Rare):P1}, " +
+                $"Epic {Share(SkillRarity.Epic):P1}, Legendary {Share(SkillRarity.Legendary):P1} | offers with Rare+ " +
+                $"{(Offers > 0 ? OffersWithRarePlus / (float)Offers : 0f):P1}, longest run without Rare+ {LongestDryRun}, pity swaps {PityRescues}";
+        }
+
+        public const int RarityCount = 4;
 
         [SerializeField] private SkillProgression progression;
         [SerializeField] private PlayerStats stats;
@@ -39,12 +57,21 @@ namespace SurvivorSouls.Gameplay.Skills
         private readonly List<SkillDefinition> _pool = new List<SkillDefinition>(32);
         private readonly List<SkillDefinition> _candidates = new List<SkillDefinition>(32);
         private readonly List<float> _weights = new List<float>(32);
+        private readonly List<SkillDefinition> _forced = new List<SkillDefinition>(4);
         private SkillContext _context;
         private System.Random _rng;
+        private int _dryOffers;
+        private bool _lastRollPity;
 
         public IReadOnlyList<Owned> OwnedSkills => _owned;
         public SkillProgression Progression => progression;
         public PlayerStats Stats => stats;
+        /// <summary>Offers in a row without a Rare or better card (pity counter, KAN-37).</summary>
+        public int OffersWithoutRarePlus => _dryOffers;
+        /// <summary>True when the last <see cref="Roll"/> swapped a card because of the pity rule.</summary>
+        public bool LastRollUsedPity => _lastRollPity;
+
+        public static bool IsRarePlus(SkillRarity r) => r >= SkillRarity.Rare;
 
         private void Awake()
         {
@@ -134,7 +161,21 @@ namespace SurvivorSouls.Gameplay.Skills
             }
             bool had = _owned.Count > 0;
             _owned.Clear();
+            _dryOffers = 0;
+            _forced.Clear();
             if (had) Changed?.Invoke();
+        }
+
+        /// <summary>
+        /// Dev / debug (DevScreenshot -ss-offer, debug window): the next <see cref="Roll"/> offers these skills (the ones
+        /// that can still be taken, in this order) instead of a random roll. One use. Does not touch the pity counter.
+        /// </summary>
+        public void ForceNextOffer(params SkillDefinition[] offer)
+        {
+            _forced.Clear();
+            if (offer == null) return;
+            foreach (var s in offer)
+                if (s != null && !_forced.Contains(s)) _forced.Add(s);
         }
 
         /// <summary>
@@ -145,6 +186,14 @@ namespace SurvivorSouls.Gameplay.Skills
         public int Roll(int count, int level, List<SkillDefinition> results)
         {
             results.Clear();
+            _lastRollPity = false;
+            if (_forced.Count > 0)
+            {
+                foreach (var s in _forced)
+                    if (results.Count < count && CanTake(s)) results.Add(s);
+                _forced.Clear();
+                if (results.Count > 0) return results.Count;
+            }
             if (progression == null || count <= 0) return 0;
             _pool.Clear();
             _candidates.Clear();
@@ -190,7 +239,80 @@ namespace SurvivorSouls.Gameplay.Skills
                 _candidates.RemoveAt(last);
                 _weights.RemoveAt(last);
             }
+
+            ApplyPity(results, guaranteed);
             return results.Count;
+        }
+
+        /// <summary>
+        /// Pity: when this offer would make <see cref="SkillProgression.PityOffers"/> offers in a row with no Rare+ card,
+        /// the last Common card (never the guaranteed one) becomes a Rare+ card picked by weight from what is left.
+        /// Only Rare+ skills with a weight above 0 count: a tier that never offers a rarity is not forced to.
+        /// </summary>
+        private void ApplyPity(List<SkillDefinition> results, SkillDefinition guaranteed)
+        {
+            if (results.Count == 0) return;
+            bool hasRarePlus = false;
+            foreach (var s in results)
+                if (IsRarePlus(s.Rarity)) { hasRarePlus = true; break; }
+            int pity = progression.PityOffers;
+            if (!hasRarePlus && pity > 0 && _dryOffers >= pity - 1)
+            {
+                int slot = -1;
+                for (int i = results.Count - 1; i >= 0; i--)
+                    if (results[i] != guaranteed) { slot = i; break; }
+                float total = 0f;
+                for (int i = 0; i < _candidates.Count; i++)
+                    if (IsRarePlus(_candidates[i].Rarity) && _weights[i] > 0f) total += _weights[i];
+                if (slot >= 0 && total > 0f)
+                {
+                    float r = (float)_rng.NextDouble() * total;
+                    int pick = -1;
+                    for (int i = 0; i < _candidates.Count; i++)
+                    {
+                        if (!IsRarePlus(_candidates[i].Rarity) || _weights[i] <= 0f) continue;
+                        pick = i;
+                        r -= _weights[i];
+                        if (r < 0f) break;
+                    }
+                    results[slot] = _candidates[pick];
+                    hasRarePlus = true;
+                    _lastRollPity = true;
+                }
+            }
+            _dryOffers = hasRarePlus ? 0 : _dryOffers + 1;
+        }
+
+        /// <summary>
+        /// Debug view of the odds table (KAN-37): rolls <paramref name="offers"/> offers of <paramref name="count"/> cards at
+        /// <paramref name="level"/> with the current owned skills and pity rule, then puts the pity counter back. Uses the
+        /// run's random stream (so call it from debug tools, not from gameplay).
+        /// </summary>
+        public OfferStats SimulateOffers(int offers, int level, int count = 3)
+        {
+            var stats = new OfferStats { Level = level };
+            int savedDry = _dryOffers;
+            _forced.Clear();
+            _dryOffers = 0;
+            var offer = new List<SkillDefinition>(count);
+            int dry = 0;
+            for (int n = 0; n < offers; n++)
+            {
+                if (Roll(count, level, offer) == 0) break;
+                stats.Offers++;
+                bool rarePlus = false;
+                foreach (var s in offer)
+                {
+                    stats.Cards++;
+                    stats.CardsByRarity[(int)s.Rarity]++;
+                    rarePlus |= IsRarePlus(s.Rarity);
+                }
+                if (_lastRollPity) stats.PityRescues++;
+                if (rarePlus) { stats.OffersWithRarePlus++; dry = 0; }
+                else stats.LongestDryRun = Mathf.Max(stats.LongestDryRun, ++dry);
+            }
+            _dryOffers = savedDry;
+            return stats;
         }
 
         private Owned Find(SkillDefinition skill)

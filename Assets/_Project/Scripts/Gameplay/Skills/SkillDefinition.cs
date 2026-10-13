@@ -2,8 +2,12 @@ using UnityEngine;
 
 namespace SurvivorSouls.Gameplay.Skills
 {
-    /// <summary>Card frame colour and roll odds bucket (odds per level live in <see cref="SkillProgression"/>).</summary>
-    public enum SkillRarity { Common, Rare, Epic }
+    /// <summary>
+    /// Tier of a skill (KAN-37): card frame colour, tier marks and reveal sound (<see cref="SkillRarityStyles"/>) and the
+    /// roll odds bucket (odds per level live in <see cref="SkillProgression"/>). Stored as numbers: new tiers go at the END.
+    /// A chest upgrade (KAN-23) never changes the tier, only the stack.
+    /// </summary>
+    public enum SkillRarity { Common, Rare, Epic, Legendary }
 
     /// <summary>
     /// One skill ("Ember Boon" in game, KAN-19). Data only: a new stat skill is a new asset with stat modifiers; a
