@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using SurvivorSouls.Gameplay.World;
 using UnityEngine;
 
 namespace SurvivorSouls.Gameplay.Combat
@@ -13,6 +14,8 @@ namespace SurvivorSouls.Gameplay.Combat
     /// Optional <see cref="animator"/> plays an in-place locomotion clip; it freezes when the enemy dies.
     /// Living enemies are listed in <see cref="Active"/> (targeting, health bars). Pooled by <see cref="EnemySpawner"/>.
     /// Status: <see cref="ApplyBurn"/> (KAN-19 skill) deals fire damage in ticks and glows the body ember orange.
+    /// Steering (KAN-29): with a <see cref="Walkability"/> set, a chaser whose way is blocked (rock, wall, pier) turns to
+    /// the first free heading on a remembered side, and a step into an obstacle slides along it. No physics queries.
     /// </summary>
     public sealed class Enemy : MonoBehaviour
     {
@@ -50,6 +53,10 @@ namespace SurvivorSouls.Gameplay.Combat
         private const float SinkTime = 0.7f;
         private const float BurnTickInterval = 0.5f;
         private static readonly Color BurnTint = new Color(1.9f, 0.85f, 0.35f);
+        private const float BodyRadius = 0.35f;     // ground footprint for wall tests
+        private const float ProbeDistance = 0.9f;   // look-ahead for steering
+        private const float DetourStep = 35f;       // degrees per detour try
+        private const int DetourTries = 4;          // up to 140 degrees off the direct heading
 
         private Transform _target;
         private Action<Enemy> _release;
@@ -64,9 +71,14 @@ namespace SurvivorSouls.Gameplay.Combat
         private float _burnTick;
         private float _burnPhase; // per enemy, so a burning crowd does not pulse in sync
         private Color _tint = Color.clear;
+        private float _detourSide = 1f;
+        private bool _detouring;
 
         /// <summary>Northmost Z an enemy may walk to (the sea edge). Set by the spawner from the world; +inf = no limit.</summary>
         public static float LandMaxZ = float.PositiveInfinity;
+
+        /// <summary>Walls, props and play-area bounds for steering. Set by the spawner from the world; null = walk straight.</summary>
+        public static IWalkability Walkability;
 
         public float Health => _health;
         public float MaxHealth => maxHealth;
@@ -96,6 +108,8 @@ namespace SurvivorSouls.Gameplay.Combat
             _burnDps = 0f;
             _burnLeft = 0f;
             _burnPhase = UnityEngine.Random.value * Mathf.PI * 2f;
+            _detourSide = UnityEngine.Random.value < 0.5f ? -1f : 1f;
+            _detouring = false;
             Vector3 toTarget = target != null ? target.position - position : Vector3.forward;
             toTarget.y = 0f;
             transform.SetPositionAndRotation(position, toTarget.sqrMagnitude > 0.01f ? Quaternion.LookRotation(toTarget) : Quaternion.identity);
@@ -108,6 +122,19 @@ namespace SurvivorSouls.Gameplay.Combat
                 animator.Play(0, 0, UnityEngine.Random.value);
             }
             Active.Add(this);
+        }
+
+        /// <summary>
+        /// Moves a living enemy to <paramref name="position"/> facing its target, keeping health and status. Used by the
+        /// spawner to bring back enemies the player outran, while they are out of view.
+        /// </summary>
+        public void Relocate(Vector3 position)
+        {
+            if (!IsAlive) return;
+            _knock = Vector3.zero;
+            Vector3 toTarget = _target != null ? _target.position - position : transform.forward;
+            toTarget.y = 0f;
+            transform.SetPositionAndRotation(position, toTarget.sqrMagnitude > 0.01f ? Quaternion.LookRotation(toTarget) : transform.rotation);
         }
 
         /// <summary>
@@ -174,16 +201,74 @@ namespace SurvivorSouls.Gameplay.Combat
                 float dist = to.magnitude;
                 if (dist > 0.01f)
                 {
-                    var look = Quaternion.LookRotation(to / dist);
+                    Vector3 heading = to / dist;
+                    if (dist > stopDistance) heading = Steer(pos, heading);
+                    var look = Quaternion.LookRotation(heading);
                     transform.rotation = Quaternion.RotateTowards(transform.rotation, look, turnSpeed * dt);
-                    if (dist > stopDistance) move = to / dist * moveSpeed;
+                    if (dist > stopDistance) move = heading * moveSpeed;
                 }
             }
             move += Separation(pos);
             _knock = Vector3.MoveTowards(_knock, Vector3.zero, KnockbackSpeed * 6f * dt);
-            pos += (move + _knock) * dt;
-            pos.z = Mathf.Min(pos.z, LandMaxZ); // knockback and crowding never push them into the sea
-            transform.position = pos;
+            Vector3 next = pos + (move + _knock) * dt;
+            next.z = Mathf.Min(next.z, LandMaxZ); // knockback and crowding never push them into the sea
+            transform.position = Slide(pos, next);
+        }
+
+        /// <summary>
+        /// Direct heading when the way ahead is free. Blocked: a fresh detour takes the smallest free turn on either side;
+        /// while the detour lasts it keeps that side (else the target angle drifting makes it dither left-right at a wall).
+        /// </summary>
+        private Vector3 Steer(Vector3 pos, Vector3 heading)
+        {
+            var walk = Walkability;
+            if (walk == null || !walk.IsBlocked(pos + heading * ProbeDistance, BodyRadius))
+            {
+                _detouring = false;
+                return heading;
+            }
+            if (!_detouring)
+            {
+                for (int i = 1; i <= DetourTries; i++)
+                for (int s = 0; s < 2; s++)
+                {
+                    float side = s == 0 ? _detourSide : -_detourSide;
+                    if (!TryTurn(walk, pos, heading, side * DetourStep * i, out var d)) continue;
+                    _detourSide = side;
+                    _detouring = true;
+                    return d;
+                }
+                return heading;
+            }
+            for (int s = 0; s < 2; s++)
+            {
+                float side = s == 0 ? _detourSide : -_detourSide; // other side only when this one is closed off
+                for (int i = 1; i <= DetourTries; i++)
+                {
+                    if (!TryTurn(walk, pos, heading, side * DetourStep * i, out var d)) continue;
+                    _detourSide = side;
+                    return d;
+                }
+            }
+            return heading;
+        }
+
+        private static bool TryTurn(IWalkability walk, Vector3 pos, Vector3 heading, float degrees, out Vector3 dir)
+        {
+            dir = Quaternion.Euler(0f, degrees, 0f) * heading;
+            return !walk.IsBlocked(pos + dir * ProbeDistance, BodyRadius);
+        }
+
+        /// <summary>Step into an obstacle: keep the free axis (wall slide). Already inside one (spawned or shoved in): let it out.</summary>
+        private static Vector3 Slide(Vector3 from, Vector3 to)
+        {
+            var walk = Walkability;
+            if (walk == null || !walk.IsBlocked(to, BodyRadius) || walk.IsBlocked(from, BodyRadius)) return to;
+            var alongX = new Vector3(to.x, to.y, from.z);
+            if (!walk.IsBlocked(alongX, BodyRadius)) return alongX;
+            var alongZ = new Vector3(from.x, to.y, to.z);
+            if (!walk.IsBlocked(alongZ, BodyRadius)) return alongZ;
+            return from;
         }
 
         /// <summary>Pushes away from close neighbours so a crowd does not stack into one body.</summary>

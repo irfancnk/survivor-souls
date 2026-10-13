@@ -13,9 +13,24 @@ namespace SurvivorSouls.Gameplay.World
     /// other three sides; "edge shore" tiles (headlands) close the shore row ends. Invisible walls at the bounds.
     /// Tiles are prefabs made by the editor WorldBuilder; this class only places and pools them (no runtime
     /// mesh generation, so it stays cheap on phones).
+    /// Walkability (<see cref="IsBlocked"/>) is answered from the tile layout itself: every cell's prefab and rotation
+    /// are a pure function of the seed, and each prefab's box colliders are cached once, so loaded and not-yet-loaded
+    /// tiles answer the same way with no physics query and no allocation.
     /// </summary>
-    public sealed class WorldStreamer : MonoBehaviour
+    public sealed class WorldStreamer : MonoBehaviour, IWalkability
     {
+        /// <summary>Obstacle footprint in tile-local space (a box collider seen from above).</summary>
+        private struct Block
+        {
+            public Vector2 Centre;   // x, z
+            public Vector2 Half;     // half extents along the box's own x, z
+            public float Cos, Sin;   // box yaw
+        }
+
+        // Only boxes that reach into this height band block walking (skips high arches, decals).
+        private const float BlockMinY = 0.05f;
+        private const float BlockMaxY = 2f;
+
         [Serializable]
         public struct Variant
         {
@@ -50,6 +65,7 @@ namespace SurvivorSouls.Gameplay.World
         private readonly Dictionary<GameObject, Stack<GameObject>> _pools = new Dictionary<GameObject, Stack<GameObject>>();
         private readonly Dictionary<GameObject, GameObject> _prefabOf = new Dictionary<GameObject, GameObject>();
         private readonly List<Vector2Int> _release = new List<Vector2Int>();
+        private readonly Dictionary<GameObject, Block[]> _blocks = new Dictionary<GameObject, Block[]>();
         private int _seed;
         private float _totalWeight, _shoreWeight;
         private Vector2Int _lastCell = new Vector2Int(int.MinValue, int.MinValue);
@@ -108,8 +124,22 @@ namespace SurvivorSouls.Gameplay.World
 
         private GameObject Spawn(Vector2Int cell)
         {
-            GameObject prefab;
-            int turns = 0;
+            ResolveTile(cell, out var prefab, out int turns);
+            var go = Take(prefab);
+            go.transform.SetPositionAndRotation(CellCentre(cell), Quaternion.Euler(0f, turns * 90f, 0f));
+            go.SetActive(true);
+            return go;
+        }
+
+        /// <summary>Which prefab sits in <paramref name="cell"/> and how many quarter turns it has. Pure function of the seed.</summary>
+        private void ResolveTile(Vector2Int cell, out GameObject prefab, out int turns)
+        {
+            turns = 0;
+            if (!HasTile(cell))
+            {
+                prefab = null; // open sea or beyond the cliffs
+                return;
+            }
             bool inside = Mathf.Abs(cell.x) <= halfTiles && cell.y >= -southRows;
             if (cell.y == shoreRow) prefab = inside ? PickVariant(cell, shoreVariants, _shoreWeight).prefab : edgeShoreTile;
             else if (!inside)
@@ -125,11 +155,69 @@ namespace SurvivorSouls.Gameplay.World
                 prefab = v.prefab;
                 if (v.rotate) turns = Hash(cell, 3) % 4;
             }
+        }
 
-            var go = Take(prefab);
-            go.transform.SetPositionAndRotation(CellCentre(cell), Quaternion.Euler(0f, turns * 90f, 0f));
-            go.SetActive(true);
-            return go;
+        /// <inheritdoc />
+        public bool IsBlocked(Vector3 position, float radius)
+        {
+            Vector2 min = PlayableMin, max = PlayableMax;
+            if (position.x - radius < min.x || position.x + radius > max.x ||
+                position.z - radius < min.y || position.z + radius > max.y) return true;
+
+            // The circle can overlap up to four cells near a tile edge.
+            var lo = CellOf(position - new Vector3(radius, 0f, radius));
+            var hi = CellOf(position + new Vector3(radius, 0f, radius));
+            for (int z = lo.y; z <= hi.y; z++)
+            for (int x = lo.x; x <= hi.x; x++)
+            {
+                var cell = new Vector2Int(x, z);
+                ResolveTile(cell, out var prefab, out int turns);
+                if (prefab == null) continue;
+                var blocks = BlocksOf(prefab);
+                if (blocks.Length == 0) continue;
+
+                // World -> tile local: undo the tile's quarter turns (Unity yaw is clockwise seen from above).
+                Vector3 d = position - CellCentre(cell);
+                float a = turns * 90f * Mathf.Deg2Rad;
+                float c = Mathf.Cos(a), s = Mathf.Sin(a);
+                var local = new Vector2(c * d.x - s * d.z, s * d.x + c * d.z);
+                foreach (var b in blocks)
+                {
+                    Vector2 r = local - b.Centre;
+                    float bx = b.Cos * r.x - b.Sin * r.y;
+                    float bz = b.Sin * r.x + b.Cos * r.y;
+                    if (Mathf.Abs(bx) <= b.Half.x + radius && Mathf.Abs(bz) <= b.Half.y + radius) return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>Box colliders of a tile prefab, flattened to tile-local ground rectangles. Read once per prefab.</summary>
+        private Block[] BlocksOf(GameObject prefab)
+        {
+            if (_blocks.TryGetValue(prefab, out var cached)) return cached;
+            var list = new List<Block>();
+            var root = prefab.transform.worldToLocalMatrix;
+            foreach (var box in prefab.GetComponentsInChildren<BoxCollider>(true))
+            {
+                if (box.isTrigger) continue;
+                Matrix4x4 m = root * box.transform.localToWorldMatrix;
+                Vector3 centre = m.MultiplyPoint3x4(box.center);
+                var scale = new Vector3(m.GetColumn(0).magnitude, m.GetColumn(1).magnitude, m.GetColumn(2).magnitude);
+                Vector3 half = Vector3.Scale(box.size, scale) * 0.5f;
+                if (centre.y + half.y < BlockMinY || centre.y - half.y > BlockMaxY) continue;
+                float yaw = m.rotation.eulerAngles.y * Mathf.Deg2Rad;
+                list.Add(new Block
+                {
+                    Centre = new Vector2(centre.x, centre.z),
+                    Half = new Vector2(half.x, half.z),
+                    Cos = Mathf.Cos(yaw),
+                    Sin = Mathf.Sin(yaw),
+                });
+            }
+            var blocks = list.ToArray();
+            _blocks[prefab] = blocks;
+            return blocks;
         }
 
         private Variant PickVariant(Vector2Int cell, Variant[] list, float total)

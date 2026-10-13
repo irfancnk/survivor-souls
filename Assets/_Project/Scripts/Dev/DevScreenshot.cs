@@ -106,6 +106,8 @@ namespace SurvivorSouls.Dev
             float wait = _delay - release - xpLead;
             yield return new WaitForSecondsRealtime(Mathf.Max(0f, wait - 1f));
             yield return LogStats(Mathf.Min(1f, wait));
+            var spawner = FindAnyObjectByType<SurvivorSouls.Gameplay.Combat.EnemySpawner>();
+            if (spawner != null) Debug.Log($"[DevScreenshot] Spawner t={spawner.RunTime:F0}s inUse={spawner.InUse} {spawner.Stats}");
             if (_xp > 0)
             {
                 FindAnyObjectByType<SurvivorSouls.Gameplay.Progression.XpManager>()?.AddXp(_xp);

@@ -42,6 +42,43 @@ namespace SurvivorSouls.Editor.Combat
             BuildEnemy(kit);
         }
 
+        public const string WavesPath = "Assets/_Project/Data/Combat/EnemyWaves_Realm1.asset";
+
+        /// <summary>
+        /// Spawn pacing for Realm 1 (KAN-29). Phase 1 keeps the pre-KAN-29 baseline (6 alive, one zombie every 1.4 s);
+        /// later phases add small groups and bursts so the pressure swells. KAN-30 owns the horde numbers: edit the asset.
+        /// An existing asset is never overwritten (designer edits stay); only empty enemy slots get the zombie.
+        /// </summary>
+        public static EnemyWaveTable LoadOrCreateWaves(Enemy zombie)
+        {
+            var table = AssetDatabase.LoadAssetAtPath<EnemyWaveTable>(WavesPath);
+            if (table != null)
+            {
+                bool dirty = false;
+                for (int i = 0; i < table.PhaseCount; i++)
+                {
+                    var entries = table.GetPhase(i).enemies;
+                    if (entries == null) continue;
+                    for (int k = 0; k < entries.Length; k++)
+                        if (entries[k].prefab == null) { entries[k].prefab = zombie; dirty = true; }
+                }
+                if (dirty) EditorUtility.SetDirty(table);
+                return table;
+            }
+
+            EnemyWaveTable.EnemyEntry[] Zombies() => new[] { new EnemyWaveTable.EnemyEntry { prefab = zombie, weight = 1f } };
+            table = ScriptableObject.CreateInstance<EnemyWaveTable>();
+            table.Configure(firstDelay: 1f, prewarm: 12, new[]
+            {
+                new EnemyWaveTable.Phase { startTime = 0f, maxAlive = 6, spawnInterval = 1.4f, groupSize = new Vector2Int(1, 1), enemies = Zombies() },
+                new EnemyWaveTable.Phase { startTime = 45f, maxAlive = 8, spawnInterval = 1.6f, groupSize = new Vector2Int(1, 2), burstInterval = 25f, burstSize = 3, enemies = Zombies() },
+                new EnemyWaveTable.Phase { startTime = 120f, maxAlive = 10, spawnInterval = 1.5f, groupSize = new Vector2Int(1, 2), burstInterval = 22f, burstSize = 4, enemies = Zombies() },
+            });
+            EditorAssetUtil.EnsureFolder(System.IO.Path.GetDirectoryName(WavesPath).Replace('\\', '/'));
+            AssetDatabase.CreateAsset(table, WavesPath);
+            return table;
+        }
+
         /// <summary>Loads the saved prefabs fresh (objects returned at save time can go stale after later imports).</summary>
         public static (Bolt bolt, Enemy enemy) Load() =>
             (AssetDatabase.LoadAssetAtPath<GameObject>(BoltPrefabPath).GetComponent<Bolt>(),

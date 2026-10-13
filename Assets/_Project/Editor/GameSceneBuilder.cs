@@ -81,6 +81,7 @@ namespace SurvivorSouls.Editor
             WindTrailBuilder.Create(kit, player);
 
             var camera = CreateCamera(player.transform, realm.Look);
+            SetRef(spawner, "viewCamera", camera); // off-screen test uses the live camera (aspect, zoom)
             CreateHud(panelSettings, joystick, camera, health, death, progression, skills, player.transform);
 
             EditorSceneManager.SaveScene(scene, ScenePath);
@@ -133,7 +134,7 @@ namespace SurvivorSouls.Editor
         }
 
         /// <summary>
-        /// Auto-shooter on the player (bolts leave the crossbow muzzle), upper-body recoil, enemy spawner around them.
+        /// Auto-shooter on the player (bolts leave the crossbow muzzle), upper-body recoil, off-screen enemy spawner (wave table asset).
         /// </summary>
         private static (AutoShooter, EnemySpawner) CreateCombat(GameObject player, Bolt bolt, Enemy enemy, WorldStreamer world)
         {
@@ -144,7 +145,7 @@ namespace SurvivorSouls.Editor
             SetRef(player.AddComponent<CrossbowRecoil>(), "rig", player.GetComponentInChildren<HumanoidRig>());
 
             var spawner = new GameObject("Enemies").AddComponent<EnemySpawner>();
-            SetRef(spawner, "prefab", enemy);
+            SetRef(spawner, "waves", CombatBuilder.LoadOrCreateWaves(enemy));
             SetRef(spawner, "player", player.transform);
             SetRef(spawner, "world", world);
             return (shooter, spawner);

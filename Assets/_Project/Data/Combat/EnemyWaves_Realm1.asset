@@ -1,0 +1,44 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e8f01ad2670b344d289b6dc4beed8eba, type: 3}
+  m_Name: EnemyWaves_Realm1
+  m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Combat.EnemyWaveTable
+  firstSpawnDelay: 1
+  prewarmPerType: 12
+  phases:
+  - startTime: 0
+    maxAlive: 6
+    spawnInterval: 1.4
+    groupSize: {x: 1, y: 1}
+    burstInterval: 0
+    burstSize: 0
+    enemies:
+    - prefab: {fileID: 4089396135186074829, guid: 8915a6ebe25ca4e9e95cb85bf0ff1017, type: 3}
+      weight: 1
+  - startTime: 45
+    maxAlive: 8
+    spawnInterval: 1.6
+    groupSize: {x: 1, y: 2}
+    burstInterval: 25
+    burstSize: 3
+    enemies:
+    - prefab: {fileID: 4089396135186074829, guid: 8915a6ebe25ca4e9e95cb85bf0ff1017, type: 3}
+      weight: 1
+  - startTime: 120
+    maxAlive: 10
+    spawnInterval: 1.5
+    groupSize: {x: 1, y: 2}
+    burstInterval: 22
+    burstSize: 4
+    enemies:
+    - prefab: {fileID: 4089396135186074829, guid: 8915a6ebe25ca4e9e95cb85bf0ff1017, type: 3}
+      weight: 1

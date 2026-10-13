@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using SurvivorSouls.Editor.Procedural;
 using SurvivorSouls.FX;
+using SurvivorSouls.Gameplay.Combat;
 using SurvivorSouls.Gameplay.Player;
 using SurvivorSouls.Gameplay.World;
 using UnityEditor;
@@ -43,6 +44,7 @@ namespace SurvivorSouls.Editor.World
             public readonly List<(Vector3 centre, Vector3 size, float yaw)> Blocks = new List<(Vector3, Vector3, float)>();
             public readonly List<(Vector3 pos, float scale, float intensity, float range)> Fires = new List<(Vector3, float, float, float)>();
             public readonly List<(Vector3 pos, float size)> Glows = new List<(Vector3, float)>();
+            public readonly List<(Vector3 pos, float yaw)> Gates = new List<(Vector3, float)>(); // enemy entry points (KAN-29)
             public Vector3? Beacon;
             public System.Random Rng;
             public float Density = 1f;
@@ -519,6 +521,7 @@ namespace SurvivorSouls.Editor.World
             var start = new Vector3(px, 0f, edge(px) - 1.6f);
             d.Glows.Add((ShoreKit.Pier(d.Props, start, 9f, d.Rng), 1f));
             Block(d, start + new Vector3(0f, 0f, 1f), new Vector3(2.2f, 1.2f, 2f)); // the pier is not walkable: stop at its foot
+            d.Gates.Add((start + new Vector3(0f, 0f, -1.8f), 180f)); // the drowned come off the pier and walk inland
             ShoreKit.Rowboat(d.Props, new Vector3(px + 2.4f, ShoreKit.SeaLevel + 0.1f, edge(px + 2.4f) + 3.5f), 10f, d.Rng);
             foreach (float s in new[] { -1f, 1f })
             {
@@ -540,6 +543,7 @@ namespace SurvivorSouls.Editor.World
             ShoreKit.Shipwreck(d.Props, hull, PropKit.Range(d.Rng, 15f, 35f), d.Rng);
             Decal(d, hull, new Vector2(4.5f, 7f), 25f);
             Block(d, hull + new Vector3(0f, 0f, -0.5f), new Vector3(3.6f, 2f, 3.4f), 25f);
+            d.Gates.Add((hull + new Vector3(wx < 0f ? 3.2f : -3.2f, 0f, -2.6f), 180f)); // crew climbing out of the wreck
             ShoreKit.Driftwood(d.Props, new Vector3(wx - 3.6f, 0f, edge(wx - 3.6f) - 1.4f), 100f, 2.2f, d.Rng);
             ShoreRocks(d, edge, 2, 0.3f, 0.6f);
             Tufts(d, 2, 1f);
@@ -595,6 +599,13 @@ namespace SurvivorSouls.Editor.World
                 foreach (var (pos, scale, intensity, range) in d.Fires) PropKit.Fire(root.transform, pos, _kit, scale, intensity, range);
                 foreach (var (pos, size) in d.Glows) Glow(root.transform, pos, size, new Color(1f, 0.72f, 0.38f, 0.75f));
                 if (d.Beacon.HasValue) AddBeacon(root.transform, d.Beacon.Value);
+                foreach (var (pos, yaw) in d.Gates)
+                {
+                    var gate = new GameObject("SpawnGate");
+                    gate.transform.SetParent(root.transform, false);
+                    gate.transform.SetLocalPositionAndRotation(pos, Quaternion.Euler(0f, yaw, 0f));
+                    gate.AddComponent<SpawnGate>();
+                }
 
                 if (d.Blocks.Count > 0)
                 {
