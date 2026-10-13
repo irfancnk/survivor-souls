@@ -1,5 +1,8 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
     <Style src="GameHud.uss" />
+    <!-- Red screen-edge flash on damage (PlayerHealthHud). Texture and opacity set in code. Never blocks touches. -->
+    <ui:VisualElement name="damage-vignette" class="hud-vignette" picking-mode="Ignore" />
+
     <!-- Joystick is positioned in code (GameHudController) at the touch point. Never blocks touches. -->
     <ui:VisualElement name="joystick" class="hud-joystick hud-hidden" picking-mode="Ignore">
         <ui:VisualElement name="joystick-knob" class="hud-joystick__knob" picking-mode="Ignore" />
@@ -8,8 +11,32 @@
     <ui:VisualElement name="safe-root" class="hud-root" picking-mode="Ignore">
         <ui:VisualElement class="hud-top" picking-mode="Ignore">
             <ui:Button name="btn-pause" text="II" class="hud-button" />
+            <!-- Player health (PlayerHealthHud): trail drains behind the fill. -->
+            <ui:VisualElement name="player-hp" class="hud-hp" picking-mode="Ignore">
+                <ui:VisualElement class="hud-hp__track" picking-mode="Ignore">
+                    <ui:VisualElement name="player-hp-trail" class="hud-hp__trail" picking-mode="Ignore" />
+                    <ui:VisualElement name="player-hp-fill" class="hud-hp__fill" picking-mode="Ignore" />
+                </ui:VisualElement>
+                <ui:Label name="player-hp-value" text="" class="hud-hp__value" picking-mode="Ignore" />
+            </ui:VisualElement>
         </ui:VisualElement>
         <ui:VisualElement class="hud-spacer" picking-mode="Ignore" />
         <ui:Label name="lbl-hint" text="Drag anywhere to move" class="hud-hint" picking-mode="Ignore" />
+    </ui:VisualElement>
+
+    <!-- Small bar over the Knight, placed in code at a world point. -->
+    <ui:VisualElement name="player-overhead" class="hud-overhead" picking-mode="Ignore">
+        <ui:VisualElement name="player-overhead-fill" class="hud-overhead__fill" picking-mode="Ignore" />
+    </ui:VisualElement>
+
+    <!-- Death screen: hidden until PlayerDeath.Finished, then fades in. -->
+    <ui:VisualElement name="death-screen" class="death hud-hidden">
+        <ui:VisualElement class="death__band" picking-mode="Ignore">
+            <ui:Label text="YOU DIED" class="death__title" picking-mode="Ignore" />
+        </ui:VisualElement>
+        <ui:VisualElement class="death__buttons" picking-mode="Ignore">
+            <ui:Button name="btn-retry" text="RETRY" class="death__button death__button--primary" />
+            <ui:Button name="btn-menu" text="MENU" class="death__button" />
+        </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>

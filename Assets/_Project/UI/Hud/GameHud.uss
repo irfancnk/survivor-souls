@@ -7,6 +7,10 @@
     --hud-ring-fill: rgba(10, 12, 18, 0.28);
     --hud-knob: rgba(232, 196, 120, 0.85);
     --hud-panel: rgba(16, 18, 26, 0.7);
+    --hud-hp-fill: rgb(116, 178, 74);
+    --hud-hp-trail: rgb(236, 196, 104);
+    --hud-hp-track: rgba(8, 8, 10, 0.72);
+    --hud-death-red: rgb(158, 24, 18);
 }
 
 .hud-hidden {
@@ -21,6 +25,7 @@
 
 .hud-top {
     flex-direction: row;
+    align-items: center;
     padding: 36px 40px 0 40px;
 }
 
@@ -126,4 +131,148 @@
 .combat-number--kill {
     color: rgb(255, 92, 72);
     font-size: 54px;
+}
+
+/* Player health (PlayerHealthHud). Fill/trail widths set in code (percent). Green = the player; red = enemies. */
+.hud-hp {
+    flex-grow: 1;
+    max-width: 640px;
+    margin-left: 32px;
+    flex-direction: row;
+    align-items: center;
+}
+
+.hud-hp__track {
+    flex-grow: 1;
+    height: 34px;
+    background-color: var(--hud-hp-track);
+    border-width: 3px;
+    border-color: rgba(232, 196, 120, 0.45);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.hud-hp__trail,
+.hud-hp__fill {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 100%;
+}
+
+.hud-hp__trail {
+    background-color: var(--hud-hp-trail);
+}
+
+.hud-hp__fill {
+    background-color: var(--hud-hp-fill);
+    border-right-width: 2px;
+    border-color: rgba(220, 255, 190, 0.5);
+}
+
+.hud-hp__value {
+    min-width: 110px;
+    margin-left: 16px;
+    padding: 0;
+    font-size: 38px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-left;
+    color: var(--hud-gold);
+    -unity-text-outline-width: 2px;
+    -unity-text-outline-color: rgba(0, 0, 0, 0.85);
+}
+
+.hud-overhead {
+    position: absolute;
+    left: 0; top: 0;
+    width: 120px;
+    height: 12px;
+    margin-left: -60px;
+    margin-top: -6px;
+    background-color: var(--hud-hp-track);
+    border-width: 2px;
+    border-color: rgba(0, 0, 0, 0.9);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.hud-overhead__fill {
+    height: 100%;
+    width: 100%;
+    background-color: var(--hud-hp-fill);
+}
+
+/* Damage vignette: full-screen generated texture, stretched (ellipse follows the screen shape). */
+.hud-vignette {
+    position: absolute;
+    left: 0; right: 0; top: 0; bottom: 0;
+    opacity: 0;
+    -unity-background-scale-mode: stretch-to-fill;
+}
+
+/* Death screen (Souls style): dark veil, black band, big red title, two buttons. */
+.death {
+    position: absolute;
+    left: 0; right: 0; top: 0; bottom: 0;
+    justify-content: center;
+    align-items: stretch;
+    background-color: rgba(0, 0, 0, 0.45);
+    opacity: 0;
+    transition-property: opacity;
+    transition-duration: 1.2s;
+    transition-timing-function: ease-in-sine;
+}
+
+.death--shown {
+    opacity: 1;
+}
+
+.death__band {
+    padding: 70px 0;
+    background-color: rgba(0, 0, 0, 0.72);
+    align-items: center;
+}
+
+.death__title {
+    font-size: 132px;
+    letter-spacing: 12px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    color: var(--hud-death-red);
+    -unity-text-outline-width: 2px;
+    -unity-text-outline-color: rgba(30, 0, 0, 0.9);
+    padding: 0;
+    margin: 0;
+}
+
+.death__buttons {
+    flex-direction: row;
+    justify-content: center;
+    margin-top: 110px;
+}
+
+.unity-button.death__button {
+    width: 340px;
+    height: 132px;
+    margin: 0 22px;
+    padding: 0;
+    font-size: 46px;
+    letter-spacing: 10px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    color: rgb(206, 200, 188);
+    background-color: rgba(20, 22, 30, 0.85);
+    background-image: none;
+    border-width: 2px;
+    border-color: rgba(232, 196, 120, 0.3);
+    border-radius: 4px;
+}
+
+.unity-button.death__button--primary {
+    color: rgb(255, 228, 170);
+    background-color: rgba(150, 70, 28, 0.88);
+    border-color: var(--hud-gold);
+}
+
+.unity-button.death__button:active {
+    scale: 0.97 0.97;
 }

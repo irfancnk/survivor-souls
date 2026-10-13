@@ -100,6 +100,16 @@
   - `Enemy`: optional `animator` (random phase + 0.9-1.1 speed on spawn, frozen on death while body falls).
   - Verified: batch rebuild 0 errors, mac dev screenshots (zombies textured, running, hit by bolts).
 
+- 2026-10-13: Player health + enemy contact damage (KAN-18, branch `feat/kan-18-player-health`).
+  - `Player/PlayerHealth`: max 400, `TakeDamage`/`Heal` clamp + return applied amount. Events `OnHealthChanged`, `OnDamaged`, `OnHurt` (throttled 0.45 s, for feedback), `OnDeath` (once, at exactly 0).
+  - `Combat/ContactDamageReceiver` (on player, exec order 50): sums `Enemy.DamagePerSecond` of every enemy within `Enemy.ContactRange` (planar sqr distance over `Enemy.Active`), applies once per frame. No physics, no allocs. Zombie: range 1.4 m, 20 dps (`CombatBuilder` consts).
+  - Feedback: `Player/PlayerHitFlash` (red `_BaseColor` MPB on Model renderers, cleared after), `UI/Hud/PlayerHealthHud` (top bar with eased fill + delayed trail, number, overhead bar, procedural red edge vignette + low-HP heartbeat, `picking-mode` ignore), `GameAudio` hurt + death (pitched-down impact/death clips).
+  - Death: `Player/PlayerDeath` disables joystick, mover, shooter, contact damage, locomotion, objective arrow; hit clip + model tips back about the feet; then "YOU DIED" screen with RETRY (reload Game) / MENU. `GameSceneController` stops the spawner on death.
+  - Tests: `Tests/PlayMode/PlayerHealthTests` (asmdef `SurvivorSouls.Tests.PlayMode`): 1 enemy = its dps, 3 = 3x, out of range = 0, death once at 0, heal clamp, no GC alloc. Run: `Unity -batchmode -projectPath . -runTests -testPlatform PlayMode -testResults <xml>`. 6/6 pass.
+  - DevScreenshot `-ss-player-hp <0..1>`. Screenshots `Docs/screenshots/game-hp-*.png`, `game-you-died.png`.
+  - Verified: scene rebuild 0 errors, mac dev build, screenshots (low HP + death screen).
+  - Not done: haptic on hit (KAN-12 owns haptics), real death clip (placeholder tip-over).
+
 ## DECISIONS
 - Design language: Archero / Archero 2 (menus, loop, chests, daily/weekly quests, gear merge, talents, energy). Look: Dark Souls, realistic, not dismal. User decision 2026-10-11.
 - Naming map: energy=Estus, gold=Souls, gems=Ember Shards, chests=Reliquaries, daily=Oaths, weekly=Pilgrimage, chapter=Realm, room=Chamber. See GAME_PLAN sec 2.
@@ -133,7 +143,7 @@
 - Jira: KAN-4 = welcome screen work.
 - Test menu on real phone (safe area, touch).
 - Irem playtest KAN-11 on iPhone: grip look, recoil size, grass density, sound mix. Tune numbers (CONFIG in Blender script, GrassBuilder, GameAudio).
-- Enemy attacks player. Zombie tris 10.4k > enemy budget 1.5-3k: remesh before big waves. Shoot anim layer (string reload) optional.
+- Enemy attack anim (swipe) on contact; contact damage done (KAN-18). Zombie tris 10.4k > enemy budget 1.5-3k: remesh before big waves. Shoot anim layer (string reload) optional.
 - Get Irem feedback from iPhone playtest. Profile draw calls / FPS on device. Android test later.
 - Archer shoot: auto-aim nearest enemy when stopped (Archero rule). Arrow projectile.
 - Reach exit door -> level complete / next level. First enemies + waves in open world. Minimap? (ask Irem).

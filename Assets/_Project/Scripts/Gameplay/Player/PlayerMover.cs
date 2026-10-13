@@ -28,6 +28,9 @@ namespace SurvivorSouls.Gameplay.Player
 
         private void Awake() => _controller = GetComponent<CharacterController>();
 
+        // Disabled (e.g. on death): report standing still, so footsteps, markers and aim stop at once.
+        private void OnDisable() => _velocity = Vector3.zero;
+
         private void Update()
         {
             float dt = Time.deltaTime;

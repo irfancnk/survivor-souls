@@ -27,6 +27,10 @@ namespace SurvivorSouls.Gameplay.Combat
         [SerializeField, Min(0.05f)] private float hitRadius = 0.45f;
         [SerializeField, Min(0.5f)] private float height = 1.8f;
         [SerializeField, Min(0f)] private float separation = 0.9f;
+        [Tooltip("Centre-to-centre distance (m) at which this enemy hurts the player. Keep above stopDistance.")]
+        [SerializeField, Min(0f)] private float contactRange = 1.4f;
+        [Tooltip("Damage per second dealt to the player while within contactRange (ContactDamageReceiver).")]
+        [SerializeField, Min(0f)] private float damagePerSecond = 20f;
         [SerializeField] private Renderer body;
         [SerializeField] private Color baseTint = Color.white;
         [SerializeField] private Animator animator;
@@ -50,6 +54,8 @@ namespace SurvivorSouls.Gameplay.Combat
         public bool IsAlive => _health > 0f;
         public float HitRadius => hitRadius;
         public float Height => height;
+        public float ContactRange => contactRange;
+        public float DamagePerSecond => damagePerSecond;
         /// <summary>Chest height: where bolts aim.</summary>
         public Vector3 AimPoint => transform.position + Vector3.up * (height * 0.6f);
         /// <summary>Above the head: where the health bar sits.</summary>

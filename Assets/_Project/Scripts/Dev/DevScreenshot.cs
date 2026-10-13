@@ -17,6 +17,7 @@ namespace SurvivorSouls.Dev
     /// Game options: <c>-ss-scene &lt;name&gt;</c> loads a scene first; <c>-ss-move x,y</c> holds the joystick;
     /// <c>-ss-closeup &lt;yawDeg&gt;</c> frames the player up close (0 = from the front).
     /// <c>-ss-near-exit</c> moves the player in front of the exit door (open world).
+    /// <c>-ss-player-hp &lt;0..1&gt;</c> sets the player's health fraction after load (0 = death screen).
     /// Used by tools/agents to verify visuals without a human. Inactive in release builds (Debug.isDebugBuild).
     /// </summary>
     public sealed class DevScreenshot : MonoBehaviour
@@ -27,6 +28,7 @@ namespace SurvivorSouls.Dev
         private string _move;
         private string _closeup;
         private bool _nearExit;
+        private string _playerHp;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void Bootstrap()
@@ -47,6 +49,7 @@ namespace SurvivorSouls.Dev
             shot._move = GetArg("-ss-move");
             shot._closeup = GetArg("-ss-closeup");
             shot._nearExit = Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-near-exit") >= 0;
+            shot._playerHp = GetArg("-ss-player-hp");
         }
 
         private IEnumerator Start()
@@ -58,6 +61,7 @@ namespace SurvivorSouls.Dev
                 yield return null;
             }
             if (_nearExit) MoveNearExit();
+            if (!string.IsNullOrEmpty(_playerHp)) SetPlayerHealth(float.Parse(_playerHp, CultureInfo.InvariantCulture));
             if (!string.IsNullOrEmpty(_move))
             {
                 string[] xy = _move.Split(',');
@@ -84,6 +88,12 @@ namespace SurvivorSouls.Dev
             cc.enabled = false;
             player.transform.position = world.ExitPosition + new Vector3(0f, 0f, -5.5f);
             cc.enabled = true;
+        }
+
+        private static void SetPlayerHealth(float fraction)
+        {
+            var health = FindAnyObjectByType<PlayerHealth>();
+            if (health != null) health.TakeDamage(health.Max * (1f - Mathf.Clamp01(fraction)));
         }
 
         /// <summary>Stops the follow camera and frames the player's upper body from <paramref name="yaw"/> degrees.</summary>
