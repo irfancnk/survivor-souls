@@ -22,6 +22,11 @@ namespace SurvivorSouls.Gameplay.Chamber
     /// facing the play area and the camera starts on him (no jump). Fade in (<see cref="fadeInTime"/>), then the pause
     /// ends; <see cref="Arrived"/> shows the "CHAMBER N" card (HUD, unscaled time) over the first seconds of play.</item>
     /// </list>
+    /// <b>End of Realm</b> (KAN-47): in the last Chamber of the Realm (<see cref="ChamberPlan.IsLast"/>) the portal does not
+    /// load a next Chamber. At full white the run is captured into <see cref="ClearedRun"/>, the Realm is marked completed
+    /// in the save (<see cref="RunProgress.MarkCompleted"/>, which unlocks the next one), the game pauses, and
+    /// <see cref="RealmCleared"/> fires (victory screen, sound). The white then fades back over <see cref="clearedFadeTime"/>
+    /// so the world shows dimmed under the victory screen. The pause holds until the scene is left.
     /// Every Chamber start is saved (<see cref="RunProgress"/>). All timing is unscaled with a clamped step, so an app pause
     /// in the middle neither skips nor breaks the sequence. Runs first among Start calls: the run is back in place before
     /// any HUD reads it.
@@ -36,6 +41,8 @@ namespace SurvivorSouls.Gameplay.Chamber
             FadingOut = 2,
             Loading = 3,
             Arriving = 4,
+            /// <summary>The Realm is cleared (KAN-47): paused under the victory screen until the scene is left.</summary>
+            Cleared = 5,
         }
 
         private const float MaxStep = 0.05f; // unscaled step cap: a resume after an app pause does not skip the sequence
@@ -58,6 +65,8 @@ namespace SurvivorSouls.Gameplay.Chamber
         [SerializeField, Min(0f)] private float pullDepth = 0.9f;
         [SerializeField, Min(0.05f)] private float fadeOutTime = 0.4f;
         [SerializeField, Min(0.05f)] private float fadeInTime = 0.45f;
+        [Tooltip("End of Realm: white fades back to the world under the victory screen.")]
+        [SerializeField, Min(0.05f)] private float clearedFadeTime = 0.9f;
 
         [Header("Rules")]
         [Tooltip("Share of max health healed when a new Chamber starts (0 = keep the health as it was).")]
@@ -75,11 +84,15 @@ namespace SurvivorSouls.Gameplay.Chamber
         public event Action Departing;
         /// <summary>A new Chamber started after a portal (Chamber number). Raised when the fade-in begins.</summary>
         public event Action<int> Arrived;
+        /// <summary>The last Chamber of the Realm was left through the portal (KAN-47): the run as it ended. Once, at full white.</summary>
+        public event Action<RunSnapshot> RealmCleared;
 
         public Phase Current { get; private set; } = Phase.Idle;
         /// <summary>White overlay 0..1 (HUD draws it).</summary>
         public float Fade { get; private set; }
         public float HealOnArrive => healOnArrive;
+        /// <summary>The run as it ended when the Realm was cleared (null before).</summary>
+        public RunSnapshot ClearedRun { get; private set; }
 
         /// <summary>Tests: wiring without the scene builder.</summary>
         public void Setup(Transform playerTransform, PlayerHealth playerHealth, XpManager xpManager, SkillManager skillManager,
@@ -188,6 +201,11 @@ namespace SurvivorSouls.Gameplay.Chamber
                         SetPhase(Phase.Idle);
                     }
                     break;
+                case Phase.Cleared:
+                    if (_pauseHeld && !GamePause.IsPaused) GamePause.Acquire();
+                    _time += dt;
+                    Fade = 1f - Mathf.Clamp01(_time / clearedFadeTime);
+                    break;
             }
         }
 
@@ -200,9 +218,35 @@ namespace SurvivorSouls.Gameplay.Chamber
         private void Leave()
         {
             Fade = 1f;
+            if (IsRealmEnd(ChamberSetup.Current))
+            {
+                ClearRealm();
+                return;
+            }
             SetPhase(Phase.Loading);
             RunState.AdvanceChamber(Capture(xp, skills, health, counters));
             if (loadScene && SceneLoader.IsInBuild(SceneNames.Game)) SceneLoader.LoadAsync(SceneNames.Game);
+        }
+
+        /// <summary>
+        /// Whether leaving the Chamber of <paramref name="plan"/> ends the Realm: it is the last Chamber and it is the
+        /// Chamber this run is in (a stale plan from another scene never ends a run).
+        /// </summary>
+        public static bool IsRealmEnd(ChamberPlan plan) =>
+            plan.IsLast && plan.Realm == RunState.Realm && plan.Chamber == RunState.Chamber;
+
+        private void ClearRealm()
+        {
+            ClearedRun = Capture(xp, skills, health, counters);
+            RunProgress.MarkCompleted(RunState.Realm);
+            RunState.EndRealm();
+            SetPhase(Phase.Cleared);
+            if (!_pauseHeld)
+            {
+                _pauseHeld = true;
+                GamePause.Acquire(); // enemies, wisps and timers stop under the victory screen
+            }
+            RealmCleared?.Invoke(ClearedRun);
         }
 
         private void ReleasePause()

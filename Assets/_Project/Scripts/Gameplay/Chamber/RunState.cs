@@ -54,6 +54,11 @@ namespace SurvivorSouls.Gameplay.Chamber
         public static int RunSeed { get; private set; } = 1;
         /// <summary>A snapshot is waiting for the next Game scene.</summary>
         public static bool HasCarry => _carry != null;
+        /// <summary>
+        /// The run ended with the Realm cleared (KAN-47): the main menu opens on the Realm page, where the new unlock shows.
+        /// Read once by the menu (<see cref="TakeOpenRealms"/>).
+        /// </summary>
+        public static bool OpenRealmsOnMenu { get; private set; }
 
         /// <summary>Start of a run: Chamber 1 of <paramref name="realm"/>, nothing carried. <paramref name="seed"/> 0 = random.</summary>
         public static void NewRun(int realm = 1, int seed = 0)
@@ -84,6 +89,21 @@ namespace SurvivorSouls.Gameplay.Chamber
             _carry = carry;
         }
 
+        /// <summary>The Realm was cleared (KAN-47): nothing is carried any more and the menu opens on the Realm page.</summary>
+        public static void EndRealm()
+        {
+            _carry = null;
+            OpenRealmsOnMenu = true;
+        }
+
+        /// <summary>The menu asks once whether to open the Realm page (true once after <see cref="EndRealm"/>).</summary>
+        public static bool TakeOpenRealms()
+        {
+            bool open = OpenRealmsOnMenu;
+            OpenRealmsOnMenu = false;
+            return open;
+        }
+
         /// <summary>Hands the carried snapshot to the new scene once (null when the scene starts fresh).</summary>
         public static RunSnapshot TakeCarry()
         {
@@ -93,6 +113,10 @@ namespace SurvivorSouls.Gameplay.Chamber
         }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        private static void ResetStatics() => NewRun();
+        private static void ResetStatics()
+        {
+            NewRun();
+            OpenRealmsOnMenu = false;
+        }
     }
 }
