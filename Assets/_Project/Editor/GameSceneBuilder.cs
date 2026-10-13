@@ -20,6 +20,7 @@ using SurvivorSouls.Gameplay.Chamber;
 using SurvivorSouls.Gameplay.Combat;
 using SurvivorSouls.Gameplay.Controls;
 using SurvivorSouls.Gameplay.Player;
+using SurvivorSouls.Gameplay.Realms;
 using SurvivorSouls.Gameplay.Skills;
 using SurvivorSouls.Gameplay.World;
 using SurvivorSouls.UI.Hud;
@@ -48,6 +49,7 @@ namespace SurvivorSouls.Editor
         private const string HudUxmlPath = Root + "/UI/Hud/GameHud.uxml";
         private const string HudPanelSettingsPath = Root + "/UI/Hud/GameHudPanelSettings.asset";
         private const string ThemePath = Root + "/UI/Theme/SurvivorSoulsTheme.tss";
+        private const string RealmCatalogPath = Root + "/Data/Realms/RealmCatalog.asset"; // made by MainMenuSceneBuilder (KAN-55)
 
         [MenuItem("Survivor Souls/Rebuild Game Scene")]
         public static void Build()
@@ -304,6 +306,9 @@ namespace SurvivorSouls.Editor
             SetRef(go.AddComponent<SkillHud>(), "skills", skills);
             SetRef(go.AddComponent<TimerHud>(), "timer", timer); // countdown under the XP bar + toasts (KAN-39)
             SetRef(go.AddComponent<ChamberTransitionHud>(), "transition", transition); // white fade + "CHAMBER II" card (KAN-40)
+            var victory = go.AddComponent<RealmVictoryHud>(); // "REALM CLEARED" after the last Chamber's portal (KAN-47)
+            SetRef(victory, "transition", transition);
+            SetRef(victory, "realms", AssetDatabase.LoadAssetAtPath<RealmCatalog>(RealmCatalogPath));
             return choice;
         }
 

@@ -947,3 +947,92 @@
     -unity-text-outline-width: 2px;
     -unity-text-outline-color: rgba(0, 0, 0, 0.85);
 }
+
+/* End of Realm victory screen (RealmVictoryHud, KAN-47). Same frame as the death screen, gold instead of red: dark veil
+   over the paused world, gold-ruled band with "REALM CLEARED" + Realm name, counters, unlock line, CONTINUE. */
+.victory {
+    position: absolute;
+    left: 0; right: 0; top: 0; bottom: 0;
+    justify-content: center;
+    align-items: stretch;
+    background-color: rgba(4, 6, 12, 0.62);
+    opacity: 0;
+    transition-property: opacity;
+    transition-duration: 0.9s;
+    transition-timing-function: ease-out-sine;
+}
+
+.victory--shown {
+    opacity: 1;
+}
+
+.victory__band {
+    padding: 64px 0 56px 0;
+    align-items: center;
+    background-color: rgba(0, 0, 0, 0.74);
+    border-top-width: 3px;
+    border-color: var(--hud-gold);
+}
+
+.victory__title {
+    font-size: 116px;
+    letter-spacing: 10px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    color: var(--hud-gold);
+    -unity-text-outline-width: 2px;
+    -unity-text-outline-color: rgba(30, 16, 0, 0.95);
+    padding: 0;
+    margin: 0;
+}
+
+.victory__rule {
+    width: 520px;
+    height: 3px;
+    margin: 18px 0 16px 0;
+    background-color: rgba(232, 196, 120, 0.6);
+}
+
+.victory__realm {
+    font-size: 40px;
+    letter-spacing: 10px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    color: rgb(236, 228, 210);
+    padding: 0;
+    margin: 0;
+}
+
+.victory__stats {
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    padding: 30px 0 34px 0;
+    background-color: rgba(0, 0, 0, 0.6);
+    border-top-width: 1px;
+    border-bottom-width: 3px;
+    border-color: rgba(232, 196, 120, 0.35);
+}
+
+.victory__unlock {
+    margin-top: 44px;
+    padding: 18px 40px;
+    align-self: center;
+    font-size: 38px;
+    letter-spacing: 6px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    color: rgb(206, 198, 182);
+    background-color: rgba(0, 0, 0, 0.55);
+    border-radius: 6px;
+}
+
+.victory__unlock--new {
+    color: var(--hud-soul-glow);
+    border-width: 2px;
+    border-color: rgba(156, 210, 255, 0.55);
+}
+
+.unity-button.victory__button {
+    width: 460px;
+}

@@ -165,4 +165,33 @@
         <ui:Label name="chamber-card-sub" text="REALM I" class="chamber-card__sub" picking-mode="Ignore" />
     </ui:VisualElement>
     <ui:VisualElement name="transition-fade" class="transition-fade hud-hidden" picking-mode="Ignore" />
+    <!-- End of Realm victory screen (RealmVictoryHud, KAN-47): over the white fade, opens after the last Chamber's portal.
+         Texts and counters set in code. -->
+    <ui:VisualElement name="victory-screen" class="victory hud-hidden">
+        <ui:VisualElement class="victory__band" picking-mode="Ignore">
+            <ui:Label text="REALM CLEARED" class="victory__title" picking-mode="Ignore" />
+            <ui:VisualElement class="victory__rule" picking-mode="Ignore" />
+            <ui:Label name="victory-realm" text="REALM I" class="victory__realm" picking-mode="Ignore" />
+        </ui:VisualElement>
+        <ui:VisualElement class="victory__stats" picking-mode="Ignore">
+            <ui:VisualElement class="death__stat" picking-mode="Ignore">
+                <ui:Label name="victory-souls" text="0" class="death__stat-value" picking-mode="Ignore" />
+                <ui:Label text="SOULS" class="death__stat-label" picking-mode="Ignore" />
+            </ui:VisualElement>
+            <ui:VisualElement class="death__stat-rule" picking-mode="Ignore" />
+            <ui:VisualElement class="death__stat" picking-mode="Ignore">
+                <ui:Label name="victory-kills" text="0" class="death__stat-value" picking-mode="Ignore" />
+                <ui:Label text="KILLS" class="death__stat-label" picking-mode="Ignore" />
+            </ui:VisualElement>
+            <ui:VisualElement class="death__stat-rule" picking-mode="Ignore" />
+            <ui:VisualElement class="death__stat" picking-mode="Ignore">
+                <ui:Label name="victory-level" text="1" class="death__stat-value" picking-mode="Ignore" />
+                <ui:Label text="LEVEL" class="death__stat-label" picking-mode="Ignore" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:Label name="victory-unlock" text="REALM II UNLOCKED" class="victory__unlock" picking-mode="Ignore" />
+        <ui:VisualElement class="death__buttons" picking-mode="Ignore">
+            <ui:Button name="btn-victory-continue" text="CONTINUE" class="death__button death__button--primary victory__button" />
+        </ui:VisualElement>
+    </ui:VisualElement>
 </ui:UXML>

@@ -85,6 +85,12 @@ namespace SurvivorSouls.UI.MainMenu
             _play.Focus();
         }
 
+        private void Start()
+        {
+            // Back from a cleared Realm (KAN-47): open on the Realm page, where the new unlock shows.
+            if (RunState.TakeOpenRealms()) OpenRealms();
+        }
+
         private void Update()
         {
             _safeArea?.Refresh();
