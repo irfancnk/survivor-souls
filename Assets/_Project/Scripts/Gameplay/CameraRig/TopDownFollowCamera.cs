@@ -6,6 +6,7 @@ namespace SurvivorSouls.Gameplay.CameraRig
     /// Archero-style camera: fixed pitch, yaw 0, follows the target along Z.
     /// Distance is computed from the screen aspect so <see cref="viewWidth"/> metres of arena always fit
     /// the screen width (tall and short phones show the same width; taller phones see more depth).
+    /// <see cref="Shake"/> adds a short decaying wobble on top (unscaled time, so it settles during a pause too).
     /// </summary>
     [RequireComponent(typeof(Camera))]
     public sealed class TopDownFollowCamera : MonoBehaviour
@@ -25,6 +26,7 @@ namespace SurvivorSouls.Gameplay.CameraRig
 
         private Camera _camera;
         private Vector3 _look;
+        private float _shakeAmplitude, _shakeTime, _shakeLength;
 
         public Transform Target
         {
@@ -45,7 +47,31 @@ namespace SurvivorSouls.Gameplay.CameraRig
         {
             if (target == null) return;
             _look = Vector3.Lerp(_look, DesiredLook(), 1f - Mathf.Exp(-followSharpness * Time.deltaTime));
+            if (_shakeTime > 0f) _shakeTime = Mathf.Max(0f, _shakeTime - Time.unscaledDeltaTime);
             Place();
+        }
+
+        /// <summary>Small camera shake: <paramref name="amplitude"/> metres, fading out over <paramref name="duration"/> s.
+        /// A stronger shake replaces a weaker running one.</summary>
+        public void Shake(float amplitude, float duration)
+        {
+            float current = _shakeLength > 0f ? _shakeAmplitude * _shakeTime / _shakeLength : 0f;
+            if (amplitude < current || duration <= 0f) return;
+            _shakeAmplitude = amplitude;
+            _shakeLength = _shakeTime = duration;
+        }
+
+        /// <summary>Current shake offset (metres). Zero when calm.</summary>
+        public Vector3 ShakeOffset
+        {
+            get
+            {
+                if (_shakeTime <= 0f || _shakeLength <= 0f) return Vector3.zero;
+                float k = _shakeTime / _shakeLength;
+                float t = Time.unscaledTime * 27f;
+                return new Vector3(Mathf.PerlinNoise(t, 0.3f) - 0.5f, (Mathf.PerlinNoise(0.7f, t) - 0.5f) * 0.5f, Mathf.PerlinNoise(t, 5.1f) - 0.5f)
+                       * (2f * _shakeAmplitude * k * k);
+            }
         }
 
         private Vector3 DesiredLook()
@@ -63,7 +89,7 @@ namespace SurvivorSouls.Gameplay.CameraRig
             float distance = viewWidth * 0.5f / Mathf.Tan(halfH);
 
             var rotation = Quaternion.Euler(pitch, 0f, 0f);
-            transform.SetPositionAndRotation(_look - rotation * Vector3.forward * distance, rotation);
+            transform.SetPositionAndRotation(_look - rotation * Vector3.forward * distance + ShakeOffset, rotation);
         }
     }
 }

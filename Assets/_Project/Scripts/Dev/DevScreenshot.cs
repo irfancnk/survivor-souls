@@ -31,6 +31,7 @@ namespace SurvivorSouls.Dev
     /// <c>-ss-horde &lt;n&gt;</c> places n enemies (wave table mix of the last phase) on a ring 4-11 m round the player after
     /// load, from the spawner's pools (perf runs; KAN-30). <c>-ss-immortal</c> turns off contact damage on the player.
     /// <c>-ss-hold &lt;n&gt;</c> keeps at least n enemies alive: every second, missing ones are spawned off screen (perf soak).
+    /// <c>-ss-timer &lt;seconds&gt;</c> sets the Chamber survival clock after load (KAN-39; 0 = the portal opens now).
     /// Used by tools/agents to verify visuals without a human. Inactive in release builds (Debug.isDebugBuild).
     /// </summary>
     public sealed class DevScreenshot : MonoBehaviour
@@ -51,6 +52,7 @@ namespace SurvivorSouls.Dev
         private int _horde;
         private int _hold;
         private bool _immortal;
+        private string _timer;
 
         private const float XpLead = 1.5f; // realtime seconds between the XP grant and the capture (cards fully in)
 
@@ -83,6 +85,7 @@ namespace SurvivorSouls.Dev
             shot._horde = int.TryParse(GetArg("-ss-horde"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int h) ? h : 0;
             shot._hold = int.TryParse(GetArg("-ss-hold"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int hold) ? hold : 0;
             shot._immortal = Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-immortal") >= 0;
+            shot._timer = GetArg("-ss-timer");
         }
 
         private IEnumerator Start()
@@ -113,6 +116,12 @@ namespace SurvivorSouls.Dev
             if (_horde > 0) PlaceHorde(_horde);
             if (_hold > 0) StartCoroutine(HoldHorde(_hold));
             if (!string.IsNullOrEmpty(_skills)) GrantSkills(_skills);
+            if (!string.IsNullOrEmpty(_timer))
+            {
+                var timer = SurvivorSouls.Gameplay.Chamber.SurvivalTimer.Active;
+                if (timer == null) Debug.LogWarning("[DevScreenshot] -ss-timer: no survival timer in the scene");
+                else timer.SetRemaining(float.Parse(_timer, CultureInfo.InvariantCulture));
+            }
 
             float release = Mathf.Clamp(_release, 0f, _delay);
             float xpLead = _xp > 0 ? Mathf.Min(XpLead, _delay - release) : 0f;
