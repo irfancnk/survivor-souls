@@ -18,7 +18,7 @@ namespace SurvivorSouls.Dev
     /// to save one frame and quit. -ss-quality picks a quality level by name (e.g. Mobile) to preview mobile visuals on desktop.
     /// Game options: <c>-ss-scene &lt;name&gt;</c> loads a scene first; <c>-ss-move x,y</c> holds the joystick;
     /// <c>-ss-closeup &lt;yawDeg&gt;</c> frames the player up close (0 = from the front).
-    /// <c>-ss-near-exit</c> moves the player in front of the exit door (open world).
+    /// <c>-ss-near-exit</c> moves the player in front of the exit door (open world) or the arena portal (boss Chamber, KAN-59).
     /// <c>-ss-pos x,z</c> moves the player to a world position first (e.g. the shore).
     /// Every capture also logs render stats of the last second: <c>[DevScreenshot] Stats ...</c> (draw calls, batches,
     /// SetPass calls, triangles, average frame ms).
@@ -48,6 +48,7 @@ namespace SurvivorSouls.Dev
     /// (KAN-46: layout seed + difficulty of that Chamber; same run seed + Chamber = same layout).
     /// <c>-ss-boss &lt;0..1&gt;</c> (KAN-58, with <c>-ss-chamber 5</c>): once the boss has risen, sets its health to that share and
     /// stands the Knight 2.6 m in front of it, so the slam winds up about 1.5 s later (add -ss-immortal to survive it).
+    /// 0 kills it and moves the Knight in front of the arena portal, which then opens (KAN-59).
     /// Main menu (KAN-20): <c>-ss-realms</c> opens the Realm selection page, <c>-ss-realm &lt;id&gt;</c> also opens that
     /// Realm's detail sheet. With either, the saved progress of Realms 1-3 is wiped first (repeatable shots); then
     /// <c>-ss-best &lt;realm&gt;:&lt;chamber&gt;</c> records a best Chamber and <c>-ss-cleared &lt;realm&gt;</c> marks a Realm completed.
@@ -253,7 +254,14 @@ namespace SurvivorSouls.Dev
             while (fight.Boss == null || !fight.Boss.isActiveAndEnabled) yield return null;
             var boss = fight.Boss;
             float target = Mathf.Clamp01(health) * boss.MaxHealth;
-            if (boss.Health > target && target > 0f) boss.TakeDamage(boss.Health - target, Vector3.zero, DamageKind.Burst);
+            if (target <= 0f) // kill: reward drops, the portal opens; the Knight waits in front of the exit (KAN-59 arena)
+            {
+                boss.TakeDamage(boss.Health + 1f, Vector3.zero, DamageKind.Burst);
+                MoveNearExit();
+                Debug.Log($"[DevScreenshot] Boss {fight.Data.DisplayName} killed, stage={fight.Current}");
+                yield break;
+            }
+            if (boss.Health > target) boss.TakeDamage(boss.Health - target, Vector3.zero, DamageKind.Burst);
             var b = boss.transform;
             Teleport(b.position + b.forward * 2.6f);
             Debug.Log($"[DevScreenshot] Boss {fight.Data.DisplayName} hp={boss.Health:F0}/{boss.MaxHealth:F0} at {b.position}");
@@ -352,8 +360,10 @@ namespace SurvivorSouls.Dev
 
         private static void MoveNearExit()
         {
+            var arena = SurvivorSouls.Gameplay.World.BossArena.Active; // boss Chamber: the arena portal (KAN-59)
             var world = FindAnyObjectByType<SurvivorSouls.Gameplay.World.WorldStreamer>();
-            if (world != null) Teleport(world.ExitPosition + new Vector3(0f, 0f, -5.5f));
+            if (arena != null) Teleport(arena.ExitPosition + new Vector3(0f, 0f, -5.5f));
+            else if (world != null) Teleport(world.ExitPosition + new Vector3(0f, 0f, -5.5f));
         }
 
         private static void Teleport(Vector3 position)
