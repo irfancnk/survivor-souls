@@ -116,9 +116,12 @@ namespace SurvivorSouls.Tests
             new object[] { "BloodCovenant", 2, new[] { "LifeSteal+=0.07" } },
             new object[] { "BloodCovenant", 3, new[] { "LifeSteal+=0.09" } },
             new object[] { "BloodCovenant", 4, new[] { "LifeSteal+=0.12", "MaxHealth+=60" } },
-            new object[] { "Multishot", 1, new[] { "Multishot+=1", "Damage%=-0.15" } },
-            new object[] { "Multishot", 2, new[] { "Multishot+=2", "Damage%=-0.25" } },
-            new object[] { "Multishot", 3, new[] { "Multishot+=2", "Damage%=-0.1" } },
+            new object[] { "Multishot", 1, new[] { "Multishot+=2" } }, // Spread Shot (KAN-83)
+            new object[] { "Multishot", 2, new[] { "Multishot+=4", "SpreadDamage+=0.15" } },
+            new object[] { "Multishot", 3, new[] { "Multishot+=6", "SpreadDamage+=0.3" } },
+            new object[] { "DoubleShot", 1, new[] { "DoubleShot+=1" } },
+            new object[] { "DoubleShot", 2, new[] { "DoubleShot+=2" } },
+            new object[] { "DoubleShot", 3, new[] { "DoubleShot+=3", "ChainDamage%=-0.1" } },
             new object[] { "SoulBurst", 1, new[] { "KillBurst+=0.5" } },
             new object[] { "SoulBurst", 2, new[] { "KillBurst+=0.7" } },
             new object[] { "SoulBurst", 3, new[] { "KillBurst+=0.9", "BurstRadius+=0.6" } },
@@ -162,7 +165,7 @@ namespace SurvivorSouls.Tests
         {
             var rows = Sheet.Cast<object[]>().Select(r => ((string)r[0], (int)r[1])).ToList();
             var skills = Shipped().ToList();
-            Assert.That(skills.Count, Is.EqualTo(13)); // 12 KAN-19 skills + Reliquary Hunter (KAN-72)
+            Assert.That(skills.Count, Is.EqualTo(14)); // 12 KAN-19 skills + Reliquary Hunter (KAN-72) + Double Shot (KAN-83)
             foreach (var s in skills)
             {
                 string file = s.name.Substring("Skill_".Length);
@@ -179,7 +182,8 @@ namespace SurvivorSouls.Tests
             foreach (var s in Shipped())
             {
                 Assert.That(s.HasLevelTable, Is.True, s.Id + " has a level table");
-                var (min, max) = s.Id == "reliquary_hunter" ? (5, 5) : s.Rarity switch // utility Epic: KAN-50 asks for 5 levels
+                // Utility Epic: KAN-50 asks for 5 levels. Spread Shot (Rare): KAN-83 asks for 3 (3 / 5 / 7 bolts).
+                var (min, max) = s.Id == "reliquary_hunter" ? (5, 5) : s.Id == "multishot" ? (3, 3) : s.Rarity switch
                 {
                     SkillRarity.Common => (5, 6),
                     SkillRarity.Rare => (4, 5),

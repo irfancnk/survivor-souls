@@ -311,7 +311,8 @@ namespace SurvivorSouls.Tests
             Assert.That(s.CritFactor, Is.EqualTo(1.5f).Within(1e-4f), "50 % x (2 - 1)");
             Assert.That(s.HitsPerVolley, Is.EqualTo(4f), "2 bolts x (1 + 1 pierce)");
             Assert.That(s.SingleTargetDps, Is.EqualTo(120f * 1.5f * 1.5f + 25f).Within(1e-3f));
-            Assert.That(s.CrowdDps, Is.EqualTo((120f * 1.5f * 1.5f + 25f) * 4f).Within(1e-2f));
+            // Crowd: the angled Spread Shot bolt counts at its 50 % base share (KAN-83): (1 + 0.5) bolts x (1 + 1 pierce).
+            Assert.That(s.CrowdDps, Is.EqualTo((120f * 1.5f * 1.5f + 25f) * 1.5f * 2f).Within(1e-2f));
             Assert.That(s.MaxHealth, Is.EqualTo(480f));
             Assert.That(s.Skills, Is.EqualTo(4f));
         }

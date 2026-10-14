@@ -496,7 +496,7 @@ namespace SurvivorSouls.Tests
 
         /// <summary>
         /// Time to kill the shipped Warden in its first boss Chamber with a typical 10-pick build. Model: bolt damage x fire
-        /// rate x crit, extra multishot bolts hit half the time on the big body, burn adds its dps, and the Knight shoots 55 %
+        /// rate x crit, Spread Shot side bolts (at their damage share) hit half the time on the big body, burn adds its dps, and the Knight shoots 55 %
         /// of the fight (it stops to shoot; boss attacks make it move). Target (KAN-22): 60-90 s. The base Knight (no picks)
         /// must still be able to win (under 4 minutes of standing time).
         /// </summary>
@@ -540,8 +540,9 @@ namespace SurvivorSouls.Tests
             float crit = Mathf.Clamp01(PlayerStats.Eval(stats, StatId.CritChance, 0f));
             float critMul = Mathf.Max(1f, PlayerStats.Eval(stats, StatId.CritDamage, 2f));
             int extra = stats.ModifyInt(StatId.Multishot, 0);
+            float side = Mathf.Clamp01(PlayerStats.Eval(stats, StatId.SpreadDamage, 0.5f)); // AutoShooter spread base (KAN-83)
             float burn = PlayerStats.Eval(stats, StatId.BurnDps, 0f);
-            return damage * rate * (1f + crit * (critMul - 1f)) * (1f + 0.5f * extra) + burn;
+            return damage * rate * (1f + crit * (critMul - 1f)) * (1f + 0.5f * extra * side) + burn;
         }
 
         // ------------------------------------------------------------ Real scene

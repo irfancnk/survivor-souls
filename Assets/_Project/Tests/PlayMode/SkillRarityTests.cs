@@ -267,7 +267,8 @@ namespace SurvivorSouls.Tests
             Assert.That(Load("KeenEye").Rarity, Is.EqualTo(SkillRarity.Rare));
             Assert.That(Load("PiercingBolts").Rarity, Is.EqualTo(SkillRarity.Rare));
             Assert.That(Load("BloodCovenant").Rarity, Is.EqualTo(SkillRarity.Epic));
-            Assert.That(Load("Multishot").Rarity, Is.EqualTo(SkillRarity.Epic));
+            Assert.That(Load("Multishot").Rarity, Is.EqualTo(SkillRarity.Rare), "Spread Shot (KAN-83)");
+            Assert.That(Load("DoubleShot").Rarity, Is.EqualTo(SkillRarity.Epic));
             Assert.That(Load("EmberBolts").Rarity, Is.EqualTo(SkillRarity.Legendary));
             Assert.That(Load("SoulBurst").Rarity, Is.EqualTo(SkillRarity.Legendary));
 
