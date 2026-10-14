@@ -31,6 +31,7 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 236b0bafbde4e46a8a438ba9b3f4f2cb, type: 2}
     - {fileID: 11400000, guid: 5240cd9c91fd24b3f9a8777f1ad43835, type: 2}
     - {fileID: 11400000, guid: 272fcb888b88d4fa2bd771a01cadce8f, type: 2}
+    - {fileID: 11400000, guid: d2cc63eeccaea43d79166f9293666d39, type: 2}
     common: 55
     rare: 30
     epic: 12

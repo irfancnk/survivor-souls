@@ -5,6 +5,7 @@ using SurvivorSouls.Core;
 using SurvivorSouls.Editor.Audio;
 using SurvivorSouls.Editor.Boss;
 using SurvivorSouls.Editor.Chamber;
+using SurvivorSouls.Editor.Chests;
 using SurvivorSouls.Editor.Combat;
 using SurvivorSouls.Editor.Effects;
 using SurvivorSouls.Editor.Progression;
@@ -83,6 +84,7 @@ namespace SurvivorSouls.Editor
             var (health, death) = CreatePlayerHealth(player, joystick, shooter);
             SetRef(progression.Flow, "player", health);
             var skills = SkillsBuilder.Create(kit, progression.Xp.gameObject, player, shooter, health);
+            ChestBuilder.Create(kit, player.GetComponent<PlayerStats>()); // Reliquary Hunter chest drops (KAN-72)
             SetRef(game, "player", health);
             SetRef(game, "spawner", spawner);
             var timer = ChamberBuilder.Create(player, health); // portal opens when it ends (KAN-39)

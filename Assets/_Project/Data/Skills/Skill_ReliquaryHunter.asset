@@ -1,0 +1,83 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1fe610960d6a34b01a28534f0f33effb, type: 3}
+  m_Name: Skill_ReliquaryHunter
+  m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Skills.SkillDefinition
+  id: reliquary_hunter
+  displayName: Reliquary Hunter
+  description: 'Kills drop chests: 1%, elites 8%'
+  icon: {fileID: 2800000, guid: adad2630fed5f4803a2bca0f3754f03b, type: 3}
+  rarity: 2
+  maxStack: 5
+  weight: 1
+  modifiers:
+  - stat: 15
+    kind: 0
+    value: 0.01
+  - stat: 16
+    kind: 0
+    value: 0.08
+  levels:
+  - description: 'Kills drop chests: 1%, elites 8%'
+    modifiers:
+    - stat: 15
+      kind: 0
+      value: 0.01
+    - stat: 16
+      kind: 0
+      value: 0.08
+  - description: 'Kills drop chests: 1.5%, elites 10%'
+    modifiers:
+    - stat: 15
+      kind: 0
+      value: 0.015
+    - stat: 16
+      kind: 0
+      value: 0.1
+  - description: Chests 2%, elites 12%, 3 choices
+    modifiers:
+    - stat: 15
+      kind: 0
+      value: 0.02
+    - stat: 16
+      kind: 0
+      value: 0.12
+    - stat: 17
+      kind: 0
+      value: 1
+  - description: Chests 2.5%, elites 14%, 3 choices
+    modifiers:
+    - stat: 15
+      kind: 0
+      value: 0.025
+    - stat: 16
+      kind: 0
+      value: 0.14
+    - stat: 17
+      kind: 0
+      value: 1
+  - description: Chests 3%, elites 16%, 5th is rare
+    modifiers:
+    - stat: 15
+      kind: 0
+      value: 0.03
+    - stat: 16
+      kind: 0
+      value: 0.16
+    - stat: 17
+      kind: 0
+      value: 1
+    - stat: 18
+      kind: 0
+      value: 5
+  effectPrefab: {fileID: 0}
+  requiresUpgradableSkill: 1

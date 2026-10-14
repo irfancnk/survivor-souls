@@ -17,7 +17,8 @@ namespace SurvivorSouls.Editor.Skills
     /// Skill and table assets are created only when missing: designer edits are never overwritten (missing icon / effect
     /// links are filled in). Icons and effect prefabs are rebuilt every run. Called by GameSceneBuilder.
     /// Tiers (KAN-37): Common = plain stat boosts, Rare = crit / pierce / ricochet, Epic = life steal / multishot,
-    /// Legendary = burning bolts / soul burst. <see cref="BuildStyles"/> makes the per-tier style asset (labels, gems, sounds).
+    /// Legendary = burning bolts / soul burst. Reliquary Hunter (KAN-72, Epic) drops upgrade chests through stats only.
+    /// <see cref="BuildStyles"/> makes the per-tier style asset (labels, gems, sounds).
     /// </summary>
     public static class SkillsBuilder
     {
@@ -40,6 +41,8 @@ namespace SurvivorSouls.Editor.Skills
             public SkillLevelData[] Levels;
             public Func<Vector2, float> Glyph;
             public Fx Effect;
+            /// <summary>Offer gate (KAN-72): only offered as new while another owned skill can still level up.</summary>
+            public bool NeedsUpgradable;
 
             public string Text => Levels[0].description;
             public StatModifier[] Mods => Levels[0].modifiers;
@@ -162,7 +165,25 @@ namespace SurvivorSouls.Editor.Skills
                     L("Kills burst: 90% damage in 3.2 m", Add(StatId.KillBurst, 0.9f), Add(StatId.BurstRadius, 0.6f)),
                     L("Kills burst: 120% damage in 3.6 m", Add(StatId.KillBurst, 1.2f), Add(StatId.BurstRadius, 1f)),
                 } },
+            // KAN-72 (KAN-50 part 2): chest drops. Pure data: ChestDropper reads these stats, no effect prefab. Epic with
+            // 5 levels (KAN-50 asks for 5; a utility skill, so outside the 3-4 Epic rule). L3 adds a third upgrade card,
+            // L5 makes every 5th chest Rare (2 levels). Pity 90 s, cap 2, lifetime 40 s: Data/Chests/ChestDropConfig.
+            new Spec { Id = "reliquary_hunter", File = "ReliquaryHunter", Name = "Reliquary Hunter", Rarity = SkillRarity.Epic,
+                Glyph = SkillIconPainter.Chest, NeedsUpgradable = true, Levels = new[]
+                {
+                    L("Kills drop chests: 1%, elites 8%", Add(StatId.ChestChance, 0.01f), Add(StatId.ChestEliteChance, 0.08f)),
+                    L("Kills drop chests: 1.5%, elites 10%", Add(StatId.ChestChance, 0.015f), Add(StatId.ChestEliteChance, 0.1f)),
+                    L("Chests 2%, elites 12%, 3 choices", Add(StatId.ChestChance, 0.02f), Add(StatId.ChestEliteChance, 0.12f),
+                        Add(StatId.ChestChoices, 1f)),
+                    L("Chests 2.5%, elites 14%, 3 choices", Add(StatId.ChestChance, 0.025f), Add(StatId.ChestEliteChance, 0.14f),
+                        Add(StatId.ChestChoices, 1f)),
+                    L("Chests 3%, elites 16%, 5th is rare", Add(StatId.ChestChance, 0.03f), Add(StatId.ChestEliteChance, 0.16f),
+                        Add(StatId.ChestChoices, 1f), Add(StatId.RareChestEvery, 5f)),
+                } },
         };
+
+        /// <summary>Skills added after the progression asset was first made: id -> tier fromLevel they join (once).</summary>
+        private static readonly (string id, int fromLevel)[] LateUnlocks = { ("reliquary_hunter", 4) };
 
         /// <summary>Builds the assets and adds the SkillManager (plus PlayerStats on the player when missing).</summary>
         public static SkillManager Create(GameArtKit kit, GameObject host, GameObject player, AutoShooter shooter, PlayerHealth health)
@@ -243,6 +264,7 @@ namespace SurvivorSouls.Editor.Skills
                 skill = ScriptableObject.CreateInstance<SkillDefinition>();
                 skill.Configure(spec.Id, spec.Name, spec.Text, spec.Rarity, spec.Max, spec.Mods);
                 skill.SetLevels(spec.Levels);
+                skill.SetRequiresUpgradableSkill(spec.NeedsUpgradable);
                 skill.SetPresentation(icon, effect, spec.Weight);
                 AssetDatabase.CreateAsset(skill, path);
                 return skill;
@@ -279,7 +301,11 @@ namespace SurvivorSouls.Editor.Skills
         private static SkillProgression BuildProgression(Dictionary<string, SkillDefinition> s)
         {
             var table = AssetDatabase.LoadAssetAtPath<SkillProgression>(ProgressionPath);
-            if (table != null) return table;
+            if (table != null)
+            {
+                AddLateUnlocks(table, s);
+                return table;
+            }
             table = ScriptableObject.CreateInstance<SkillProgression>();
             table.Configure(
                 new[]
@@ -292,7 +318,7 @@ namespace SurvivorSouls.Editor.Skills
                     new SkillProgression.Tier
                     {
                         fromLevel = 4, common = 55f, rare = 30f, epic = 12f, legendary = 3f,
-                        unlocks = new[] { s["ricochet"], s["ember_bolts"], s["blood_covenant"] },
+                        unlocks = new[] { s["ricochet"], s["ember_bolts"], s["blood_covenant"], s["reliquary_hunter"] },
                     },
                     new SkillProgression.Tier
                     {
@@ -312,6 +338,27 @@ namespace SurvivorSouls.Editor.Skills
                 });
             AssetDatabase.CreateAsset(table, ProgressionPath);
             return table;
+        }
+
+        /// <summary>
+        /// Puts a skill added after the table was made (<see cref="LateUnlocks"/>) into the tier of its level, once: only
+        /// when the table does not list it anywhere yet. To take it out of runs, set its weight to 0 (removing it from
+        /// the table brings it back on the next build).
+        /// </summary>
+        private static void AddLateUnlocks(SkillProgression table, Dictionary<string, SkillDefinition> s)
+        {
+            foreach (var (id, fromLevel) in LateUnlocks)
+            {
+                if (!s.TryGetValue(id, out var skill) || table.FindSkill(id) != null) continue;
+                SkillProgression.Tier tier = null;
+                foreach (var t in table.Tiers)
+                    if (t != null && t.fromLevel == fromLevel) tier = t;
+                if (tier == null) continue;
+                var list = new List<SkillDefinition>(tier.unlocks ?? new SkillDefinition[0]) { skill };
+                tier.unlocks = list.ToArray();
+                EditorUtility.SetDirty(table);
+                Debug.Log($"[SkillsBuilder] Added {id} to the level {fromLevel} tier of {ProgressionPath}");
+            }
         }
 
         // ------------------------------------------------------------ Effect prefabs

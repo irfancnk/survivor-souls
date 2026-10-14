@@ -28,6 +28,7 @@ namespace SurvivorSouls.Dev
     /// <c>-ss-release &lt;seconds&gt;</c> lets go of the -ss-move stick that long before the capture (e.g. wind trail tail-off).
     /// <c>-ss-souls &lt;n&gt;</c> drops n soul wisps around the player after load (mostly small, some elite, one boss orb).
     /// <c>-ss-xp &lt;amount&gt;</c> grants that much XP <see cref="XpLead"/> s before the capture (level-up burst + skill cards).
+    /// <c>-ss-chests &lt;n&gt;</c> drops n Reliquary chests (KAN-72) ahead of the player after load: Light, then Rare, ...
     /// <c>-ss-skills id,id,...</c> grants those skills (by SkillDefinition id, repeat an id to stack) after load.
     /// <c>-ss-offer id,id,id</c> makes the next level-up offer those cards (KAN-37 tier look; use with -ss-xp).
     /// <c>-ss-horde &lt;n&gt;</c> places n enemies (wave table mix of the last phase) on a ring 4-11 m round the player after
@@ -65,6 +66,7 @@ namespace SurvivorSouls.Dev
         private int _souls;
         private int _xp;
         private string _skills;
+        private int _chests;
         private string _offer;
         private int _horde;
         private int _hold;
@@ -106,6 +108,7 @@ namespace SurvivorSouls.Dev
             shot._release = float.TryParse(GetArg("-ss-release"), NumberStyles.Float, CultureInfo.InvariantCulture, out float r) ? r : 0f;
             shot._souls = int.TryParse(GetArg("-ss-souls"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int n) ? n : 0;
             shot._skills = GetArg("-ss-skills");
+            shot._chests = int.TryParse(GetArg("-ss-chests"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int ch) ? ch : 0;
             shot._offer = GetArg("-ss-offer");
             shot._xp = int.TryParse(GetArg("-ss-xp"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int x) ? x : 0;
             shot._horde = int.TryParse(GetArg("-ss-horde"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int h) ? h : 0;
@@ -159,6 +162,7 @@ namespace SurvivorSouls.Dev
             if (_horde > 0) PlaceHorde(_horde);
             if (_hold > 0) StartCoroutine(HoldHorde(_hold));
             if (!string.IsNullOrEmpty(_skills)) GrantSkills(_skills);
+            if (_chests > 0) DropChests(_chests);
             if (!string.IsNullOrEmpty(_offer)) ForceOffer(_offer);
             if (!string.IsNullOrEmpty(_timer))
             {
@@ -406,6 +410,25 @@ namespace SurvivorSouls.Dev
             foreach (string id in ids.Split(','))
             {
                 if (!manager.Grant(id.Trim())) Debug.LogWarning($"[DevScreenshot] -ss-skills: cannot grant '{id}'");
+            }
+        }
+
+        /// <summary>-ss-chests n: chests on the ground ahead of the Knight, alternating Light / Rare (cap permitting).</summary>
+        private static void DropChests(int count)
+        {
+            var dropper = FindAnyObjectByType<SurvivorSouls.Gameplay.Chests.ChestDropper>();
+            var player = FindAnyObjectByType<PlayerHealth>();
+            if (dropper == null || player == null) return;
+            var p = player.transform;
+            for (int i = 0; i < count; i++)
+            {
+                float side = (i % 2 == 0 ? -1f : 1f) * (1.3f + 0.6f * (i / 2));
+                var at = p.position + p.forward * (2.4f + 0.8f * (i / 2)) + p.right * side;
+                var tier = i % 2 == 0 ? SurvivorSouls.Gameplay.Chests.ChestTier.Light : SurvivorSouls.Gameplay.Chests.ChestTier.Rare;
+                var chest = dropper.DropNow(at, tier);
+                Debug.Log(chest != null
+                    ? $"[DevScreenshot] Chest {tier} at {chest.transform.position} choices={chest.Choices} upgrades={chest.Upgrades}"
+                    : "[DevScreenshot] -ss-chests: ground full");
             }
         }
 

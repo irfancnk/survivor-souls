@@ -152,6 +152,27 @@ namespace SurvivorSouls.Editor.Skills
 
         // ------------------------------------------------------------ SDF primitives
 
+        /// <summary>Reliquary chest: box body, domed lid split by a gap, keyhole cut out, two light rays above.</summary>
+        public static float Chest(Vector2 p)
+        {
+            float body = RoundBox(p, new Vector2(0f, -0.3f), new Vector2(0.72f, 0.3f), 0.06f);
+            float lid = Mathf.Max(RoundBox(p, new Vector2(0f, 0.1f), new Vector2(0.72f, 0.24f), 0.22f), -(p.y - 0.08f));
+            float gap = Mathf.Abs(p.y - 0.04f) - 0.035f;
+            float keyhole = Mathf.Min((p - new Vector2(0f, -0.14f)).magnitude - 0.1f,
+                RoundBox(p, new Vector2(0f, -0.28f), new Vector2(0.045f, 0.12f), 0f));
+            float chest = Mathf.Max(Mathf.Min(body, lid), Mathf.Max(-gap, -keyhole));
+            float r1 = Segment(p, new Vector2(-0.3f, 0.5f), new Vector2(-0.42f, 0.82f), 0.05f);
+            float r2 = Segment(p, new Vector2(0f, 0.55f), new Vector2(0f, 0.9f), 0.05f);
+            float r3 = Segment(p, new Vector2(0.3f, 0.5f), new Vector2(0.42f, 0.82f), 0.05f);
+            return Min(chest, r1, r2, r3);
+        }
+
+        private static float RoundBox(Vector2 p, Vector2 centre, Vector2 half, float radius)
+        {
+            Vector2 q = new Vector2(Mathf.Abs(p.x - centre.x), Mathf.Abs(p.y - centre.y)) - half + Vector2.one * radius;
+            return new Vector2(Mathf.Max(q.x, 0f), Mathf.Max(q.y, 0f)).magnitude + Mathf.Min(Mathf.Max(q.x, q.y), 0f) - radius;
+        }
+
         private static float Chevron(Vector2 p, float x) =>
             Mathf.Min(Segment(p, new Vector2(x - 0.24f, 0.5f), new Vector2(x + 0.22f, 0f), 0.11f),
                 Segment(p, new Vector2(x + 0.22f, 0f), new Vector2(x - 0.24f, -0.5f), 0.11f));
