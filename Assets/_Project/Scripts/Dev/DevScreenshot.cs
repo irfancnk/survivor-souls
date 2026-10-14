@@ -49,6 +49,8 @@ namespace SurvivorSouls.Dev
     /// <c>-ss-boss &lt;0..1&gt;</c> (KAN-58, with <c>-ss-chamber 5</c>): once the boss has risen, sets its health to that share and
     /// stands the Knight 2.6 m in front of it, so the slam winds up about 1.5 s later (add -ss-immortal to survive it).
     /// 0 kills it and moves the Knight in front of the arena portal, which then opens (KAN-59).
+    /// <c>-ss-hearts &lt;n&gt;</c> (KAN-60, boss Chamber): drops n healing hearts ahead of the Knight right after load (cap
+    /// permitting); each shows its ground glow for 1 s, then floats.
     /// Main menu (KAN-20): <c>-ss-realms</c> opens the Realm selection page, <c>-ss-realm &lt;id&gt;</c> also opens that
     /// Realm's detail sheet. With either, the saved progress of Realms 1-3 is wiped first (repeatable shots); then
     /// <c>-ss-best &lt;realm&gt;:&lt;chamber&gt;</c> records a best Chamber and <c>-ss-cleared &lt;realm&gt;</c> marks a Realm completed.
@@ -85,6 +87,7 @@ namespace SurvivorSouls.Dev
         private string _best;
         private int _cleared;
         private string _boss;
+        private int _hearts;
 
         private const float XpLead = 1.5f; // realtime seconds between the XP grant and the capture (cards fully in)
 
@@ -129,6 +132,7 @@ namespace SurvivorSouls.Dev
             shot._realms = shot._realmDetail > 0 || Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-realms") >= 0;
             shot._best = GetArg("-ss-best");
             shot._boss = GetArg("-ss-boss");
+            shot._hearts = int.TryParse(GetArg("-ss-hearts"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int hs) ? hs : 0;
             shot._cleared = int.TryParse(GetArg("-ss-cleared"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int cl) ? cl : 0;
 
             // Before any scene wakes: ChamberSetup reads the run in Awake (KAN-46).
@@ -181,6 +185,7 @@ namespace SurvivorSouls.Dev
             }
 
             if (!string.IsNullOrEmpty(_boss)) StartCoroutine(SetupBoss(float.Parse(_boss, CultureInfo.InvariantCulture)));
+            if (_hearts > 0) DropHearts(_hearts);
             if (_portal) EnterPortal();
             if (_soak > 0) yield return PortalSoak(_soak);
             if (_realms) OpenRealms();
@@ -444,6 +449,25 @@ namespace SurvivorSouls.Dev
             foreach (string id in ids.Split(','))
             {
                 if (!manager.Upgrade(id.Trim())) Debug.LogWarning($"[DevScreenshot] -ss-upgrade: cannot upgrade '{id}'");
+            }
+        }
+
+        /// <summary>-ss-hearts n: healing hearts ahead of the Knight, left and right (KAN-60, cap permitting).</summary>
+        private static void DropHearts(int count)
+        {
+            var hearts = FindAnyObjectByType<SurvivorSouls.Gameplay.Boss.BossHearts>();
+            var player = FindAnyObjectByType<PlayerHealth>();
+            if (hearts == null || player == null)
+            {
+                Debug.LogWarning("[DevScreenshot] -ss-hearts: no BossHearts or player in the scene");
+                return;
+            }
+            var p = player.transform;
+            for (int i = 0; i < count; i++)
+            {
+                float side = (i % 2 == 0 ? -1f : 1f) * (1.6f + 0.8f * (i / 2));
+                var heart = hearts.DropNow(p.position + p.forward * (3f + 1.2f * (i / 2)) + p.right * side);
+                Debug.Log(heart != null ? $"[DevScreenshot] Heart at {heart.transform.position}" : "[DevScreenshot] -ss-hearts: cap reached");
             }
         }
 
