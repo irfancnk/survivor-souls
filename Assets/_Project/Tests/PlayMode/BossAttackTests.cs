@@ -20,7 +20,7 @@ namespace SurvivorSouls.Tests
     /// <summary>
     /// KAN-61 (KAN-22.4) acceptance, logic side: phase 2 starts once at the phase share (faster walk, a heart drops),
     /// shortens wind-ups and cooldowns but never under 0.6 s; the fan warns at least 0.6 s with one lane per bolt, then
-    /// fires the volley down the lanes; one volley hits once and never above the max-hit share; pillars stop bolts; the
+    /// fires the volley down the lanes; one volley hits once and never above the max-hit share; pillars stop bolts and end their lanes; the
     /// charge is phase 2 only, warns at least 0.6 s, dashes down its lane, hits once (capped), can be dodged and stops at
     /// a wall; in phase 2 fan and charge take turns; the kill clears bolts and warnings; no GC allocation per frame. The
     /// built Game scene wires the lanes and bolts on the boss. Look and feel: screenshots and a phone.
@@ -307,6 +307,7 @@ namespace SurvivorSouls.Tests
             StartFight(data, knightDistance: 9f);
             RunUntil(BossFight.Attack.WindUp);
             Assert.That(_fight.CurrentMove, Is.EqualTo(BossFight.Move.Fan));
+            Assert.That(_lines.LaneLength(0), Is.InRange(3.5f, 3.9f), "the lane ends at the pillar: cover reads before the volley");
             Run(data.FanTelegraph + 2f);
             Assert.That(_blocked, Is.EqualTo(1), "the bolt hit the pillar");
             Assert.That(_boltHits, Is.Empty, "cover works");

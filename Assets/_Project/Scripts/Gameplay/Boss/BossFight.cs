@@ -68,6 +68,8 @@ namespace SurvivorSouls.Gameplay.Boss
         private const float ChargeBodyRadius = 1.1f; // ground the boss body needs along the dash
         private const float ChargeProbeStep = 0.5f;
         private const float MinChargeLength = 2f;
+        private const float BoltClearRadius = 0.15f; // = the bolt's block test
+        private const float BoltProbeStep = 0.25f;
 
         [SerializeField] private BossData data;
         [Tooltip("Rules for boss Chambers: OpenCondition KillBoss (no clock).")]
@@ -351,6 +353,8 @@ namespace SurvivorSouls.Gameplay.Boss
             _attackDir = FaceKnight();
             _attackOrigin = new Vector3(from.x, player.transform.position.y, from.z);
             lines.ShowFan(_attackOrigin, _attackDir, data.FanBolts, data.FanSpread, data.FanDistance, data.FanLaneWidth);
+            for (int i = 0; i < lines.LaneCount; i++) // each lane ends where its bolt will: the ring wall or a pillar (cover reads)
+                lines.SetLaneLength(i, FreeRun(_attackOrigin, lines.LaneDirection(i), data.FanDistance, BoltClearRadius, BoltProbeStep));
             BeginWindUp(Move.Fan, data.FanTelegraph);
             _lastRanged = Move.Fan;
             FanWarned?.Invoke(_attackOrigin, _attackDir);
@@ -387,18 +391,25 @@ namespace SurvivorSouls.Gameplay.Boss
         }
 
         /// <summary>Free run from <paramref name="from"/> along <paramref name="dir"/>, up to <paramref name="max"/> m.</summary>
-        public static float ChargeLength(Vector3 from, Vector3 dir, float max)
+        public static float ChargeLength(Vector3 from, Vector3 dir, float max) =>
+            FreeRun(from, dir, max, ChargeBodyRadius, ChargeProbeStep);
+
+        /// <summary>
+        /// Free ground from <paramref name="from"/> along <paramref name="dir"/> for a body of <paramref name="radius"/>, probed in
+        /// <paramref name="step"/> m steps, up to <paramref name="max"/> m (<see cref="Enemy.Walkability"/>, the sea edge).
+        /// </summary>
+        public static float FreeRun(Vector3 from, Vector3 dir, float max, float radius, float step)
         {
             var walk = Enemy.Walkability;
             float length = 0f;
-            while (length + ChargeProbeStep <= max)
+            while (length + step <= max)
             {
-                Vector3 p = from + dir * (length + ChargeProbeStep);
-                if (!float.IsInfinity(Enemy.LandMaxZ) && p.z > Enemy.LandMaxZ - ChargeBodyRadius) break;
-                if (walk != null && walk.IsBlocked(p, ChargeBodyRadius)) break;
-                length += ChargeProbeStep;
+                Vector3 p = from + dir * (length + step);
+                if (!float.IsInfinity(Enemy.LandMaxZ) && p.z > Enemy.LandMaxZ - radius) break;
+                if (walk != null && walk.IsBlocked(p, radius)) break;
+                length += step;
             }
-            return length;
+            return Mathf.Max(length, Mathf.Min(max, step)); // never a zero lane: the bolt still leaves the boss
         }
 
         private void BeginDash()

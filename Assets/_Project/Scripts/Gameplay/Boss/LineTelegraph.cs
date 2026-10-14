@@ -28,6 +28,7 @@ namespace SurvivorSouls.Gameplay.Boss
         [SerializeField, Min(0f)] private float lift = 0.06f;
 
         private readonly Vector3[] _dirs = new Vector3[MaxLanes];
+        private readonly float[] _lengths = new float[MaxLanes];
         private MaterialPropertyBlock _mpb;
         private Vector3 _origin;
         private float _length = 1f, _width = 1f;
@@ -39,6 +40,7 @@ namespace SurvivorSouls.Gameplay.Boss
         public float Progress { get; private set; }
         /// <summary>Lanes in the current warning.</summary>
         public int LaneCount { get; private set; }
+        /// <summary>Longest lane of the current warning.</summary>
         public float Length => _length;
         public float Width => _width;
         public Vector3 Origin => _origin;
@@ -47,6 +49,18 @@ namespace SurvivorSouls.Gameplay.Boss
 
         /// <summary>Ground direction of lane <paramref name="i"/> (unit, y 0).</summary>
         public Vector3 LaneDirection(int i) => _dirs[Mathf.Clamp(i, 0, MaxLanes - 1)];
+
+        /// <summary>Length of lane <paramref name="i"/> (m).</summary>
+        public float LaneLength(int i) => _lengths[Mathf.Clamp(i, 0, MaxLanes - 1)];
+
+        /// <summary>Shortens lane <paramref name="i"/> to <paramref name="length"/> m (where a wall or pillar stops the attack).</summary>
+        public void SetLaneLength(int i, float length)
+        {
+            if (i < 0 || i >= LaneCount) return;
+            _lengths[i] = Mathf.Clamp(length, 0.05f, _length);
+            Place(edges[i], _dirs[i], _lengths[i]);
+            if (_flash < 0f) Place(fills[i], _dirs[i], Mathf.Max(0.05f, Eased() * _lengths[i]));
+        }
 
         /// <summary>Tests and tools: wiring without the builder.</summary>
         public void Setup(Renderer[] laneEdges, Renderer[] laneFills)
@@ -80,6 +94,7 @@ namespace SurvivorSouls.Gameplay.Boss
             {
                 float angle = count > 1 ? -spreadDegrees * 0.5f + spreadDegrees * i / (count - 1) : 0f;
                 _dirs[i] = Quaternion.Euler(0f, angle, 0f) * direction;
+                _lengths[i] = _length;
             }
             int capacity = Capacity;
             for (int i = 0; i < capacity; i++)
@@ -97,7 +112,7 @@ namespace SurvivorSouls.Gameplay.Boss
         {
             if (!IsShowing || _flash >= 0f) return;
             Progress = Mathf.Clamp01(progress);
-            float eased = 1f - (1f - Progress) * (1f - Progress);
+            float eased = Eased();
             float pulse = 0.75f + 0.25f * Mathf.Sin(Time.time * Mathf.Lerp(8f, 26f, Progress));
             var e = edgeColor;
             e.a *= pulse;
@@ -105,7 +120,7 @@ namespace SurvivorSouls.Gameplay.Boss
             f.a *= Mathf.Lerp(0.55f, 1f, Progress);
             for (int i = 0; i < LaneCount; i++)
             {
-                Place(fills[i], _dirs[i], Mathf.Max(0.05f, eased * _length));
+                Place(fills[i], _dirs[i], Mathf.Max(0.05f, eased * _lengths[i]));
                 Paint(edges[i], e);
                 Paint(fills[i], f);
             }
@@ -117,7 +132,7 @@ namespace SurvivorSouls.Gameplay.Boss
             if (!IsShowing) return;
             Progress = 1f;
             _flash = 0f;
-            for (int i = 0; i < LaneCount; i++) Place(fills[i], _dirs[i], _length);
+            for (int i = 0; i < LaneCount; i++) Place(fills[i], _dirs[i], _lengths[i]);
         }
 
         /// <summary>Hides at once (attack cancelled, boss died).</summary>
@@ -150,6 +165,8 @@ namespace SurvivorSouls.Gameplay.Boss
             }
             if (k >= 1f) Hide();
         }
+
+        private float Eased() => 1f - (1f - Progress) * (1f - Progress);
 
         /// <summary>Lays a lane quad from the origin along <paramref name="dir"/> for <paramref name="length"/> m.</summary>
         private void Place(Renderer r, Vector3 dir, float length)
