@@ -185,6 +185,19 @@ namespace SurvivorSouls.Gameplay.Combat
             Begin();
         }
 
+        /// <summary>
+        /// Uses <paramref name="walkability"/> instead of the streamed world (boss arena, KAN-59). Call before
+        /// <c>Start</c>; a started spawner switches at once.
+        /// </summary>
+        public void UseWalkability(IWalkability walkability)
+        {
+            _walk = walkability;
+            if (_started) Enemy.Walkability = walkability;
+        }
+
+        /// <summary>Ground shape spawns and enemy steering test against.</summary>
+        public IWalkability Walkability => _walk ?? world;
+
         private void Begin()
         {
             if (_started) return;

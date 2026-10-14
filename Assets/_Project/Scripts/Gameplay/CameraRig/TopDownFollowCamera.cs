@@ -7,6 +7,8 @@ namespace SurvivorSouls.Gameplay.CameraRig
     /// Distance is computed from the screen aspect so <see cref="viewWidth"/> metres of arena always fit
     /// the screen width (tall and short phones show the same width; taller phones see more depth).
     /// <see cref="Shake"/> adds a short decaying wobble on top (unscaled time, so it settles during a pause too).
+    /// <see cref="SetBounds"/> (boss arena, KAN-59) keeps the look point inside a circle with a soft edge: it follows freely
+    /// in the middle, slows down in the last <c>softBand</c> metres and never passes the limit.
     /// </summary>
     [RequireComponent(typeof(Camera))]
     public sealed class TopDownFollowCamera : MonoBehaviour
@@ -26,6 +28,9 @@ namespace SurvivorSouls.Gameplay.CameraRig
 
         private Camera _camera;
         private Vector3 _look;
+        private bool _bounded;
+        private Vector3 _boundsCentre;
+        private float _boundsRadius, _boundsSoftBand;
         private float _shakeAmplitude, _shakeTime, _shakeLength;
 
         public Transform Target
@@ -49,6 +54,41 @@ namespace SurvivorSouls.Gameplay.CameraRig
             _look = Vector3.Lerp(_look, DesiredLook(), 1f - Mathf.Exp(-followSharpness * Time.deltaTime));
             if (_shakeTime > 0f) _shakeTime = Mathf.Max(0f, _shakeTime - Time.unscaledDeltaTime);
             Place();
+        }
+
+        /// <summary>Whether the look point is held inside a circle (<see cref="SetBounds"/>).</summary>
+        public bool Bounded => _bounded;
+
+        /// <summary>
+        /// Holds the look point inside a circle of <paramref name="radius"/> m around <paramref name="centre"/> (XZ), with a
+        /// soft edge <paramref name="softBand"/> m wide. Jumps the camera to the new look point (call it before the first frame).
+        /// </summary>
+        public void SetBounds(Vector3 centre, float radius, float softBand)
+        {
+            _bounded = true;
+            _boundsCentre = centre;
+            _boundsRadius = Mathf.Max(0.01f, radius);
+            _boundsSoftBand = Mathf.Clamp(softBand, 0.01f, _boundsRadius);
+            if (target != null && _camera != null)
+            {
+                _look = DesiredLook();
+                Place();
+            }
+        }
+
+        public void ClearBounds() => _bounded = false;
+
+        /// <summary>
+        /// Soft circular clamp of an offset from the centre: unchanged up to <c>radius - band</c>, then eased so it reaches
+        /// <paramref name="radius"/> only far outside. Continuous and monotonic (no jump, no turn-back). Public for tests.
+        /// </summary>
+        public static Vector2 SoftClamp(Vector2 offset, float radius, float band)
+        {
+            float d = offset.magnitude;
+            float inner = radius - band;
+            if (d <= inner || d <= 0f) return offset;
+            float eased = inner + band * (1f - Mathf.Exp(-(d - inner) / band));
+            return offset * (eased / d);
         }
 
         /// <summary>Small camera shake: <paramref name="amplitude"/> metres, fading out over <paramref name="duration"/> s.
@@ -79,6 +119,12 @@ namespace SurvivorSouls.Gameplay.CameraRig
             Vector3 p = target.position;
             float x = Mathf.Lerp(arenaCentreX, p.x, followX);
             float z = Mathf.Clamp(p.z + lookAhead, lookZRange.x, lookZRange.y);
+            if (_bounded)
+            {
+                var o = SoftClamp(new Vector2(x - _boundsCentre.x, z - _boundsCentre.z), _boundsRadius, _boundsSoftBand);
+                x = _boundsCentre.x + o.x;
+                z = _boundsCentre.z + o.y;
+            }
             return new Vector3(x, 0f, z);
         }
 

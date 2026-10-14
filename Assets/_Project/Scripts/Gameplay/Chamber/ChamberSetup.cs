@@ -10,7 +10,8 @@ namespace SurvivorSouls.Gameplay.Chamber
     /// run seed), asks the <see cref="ChamberDifficulty"/> asset for the <see cref="ChamberPlan"/>, gives the world its
     /// layout seed and the spawner its multipliers. <see cref="Current"/> holds the plan for the rest of the scene:
     /// KAN-22 / KAN-23 read <see cref="ChamberPlan.Type"/>, KAN-47 reads <see cref="ChamberPlan.IsLast"/>. Until boss
-    /// content exists a Boss or MiniBoss Chamber plays as a normal one. On the "Chamber" object (ChamberBuilder).
+    /// content exists a MiniBoss Chamber plays as a normal one. A Boss Chamber enters the round <see cref="BossArena"/>
+    /// (KAN-59) instead of the streamed shore; every other Chamber keeps the arena hidden. On the "Chamber" object (ChamberBuilder).
     /// </summary>
     [DefaultExecutionOrder(-300)]
     public sealed class ChamberSetup : MonoBehaviour
@@ -18,6 +19,8 @@ namespace SurvivorSouls.Gameplay.Chamber
         [SerializeField] private ChamberDifficulty difficulty;
         [SerializeField] private WorldStreamer world;
         [SerializeField] private EnemySpawner spawner;
+        [Tooltip("Boss Chambers play here (KAN-59). Optional.")]
+        [SerializeField] private BossArena arena;
 
         /// <summary>Plan of the Chamber being played. Chamber 1, no scaling, before any Chamber was set up.</summary>
         public static ChamberPlan Current { get; private set; } = ChamberPlan.Plain(1, RunState.FirstChamber, 1);
@@ -28,12 +31,15 @@ namespace SurvivorSouls.Gameplay.Chamber
         public ChamberDifficulty Difficulty => difficulty;
 
         /// <summary>Tests: wiring without the scene builder.</summary>
-        public void Setup(ChamberDifficulty rules, WorldStreamer worldStreamer, EnemySpawner enemySpawner)
+        public void Setup(ChamberDifficulty rules, WorldStreamer worldStreamer, EnemySpawner enemySpawner, BossArena bossArena = null)
         {
             difficulty = rules;
             world = worldStreamer;
             spawner = enemySpawner;
+            arena = bossArena;
         }
+
+        public BossArena Arena => arena;
 
         private void Awake() => Apply(RunState.Realm, RunState.Chamber, RunState.RunSeed);
 
@@ -45,6 +51,11 @@ namespace SurvivorSouls.Gameplay.Chamber
                 : ChamberPlan.Plain(realm, chamber, ChamberDifficulty.MixSeed(runSeed, realm, chamber));
             if (world != null) world.UseSeed(plan.LayoutSeed);
             if (spawner != null) spawner.SetDifficulty(plan.CapMultiplier, plan.IntervalMultiplier, plan.HealthMultiplier);
+            if (arena != null)
+            {
+                if (plan.Type == ChamberType.Boss) arena.Enter();
+                else arena.Leave();
+            }
             Current = plan;
             if (Debug.isDebugBuild) Debug.Log($"[ChamberSetup] {plan}");
             Planned?.Invoke(plan);
