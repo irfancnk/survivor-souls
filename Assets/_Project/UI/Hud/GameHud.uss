@@ -504,6 +504,36 @@
     color: var(--hud-gold);
 }
 
+/* Chest upgrade screen (KAN-73): same cards, warm gold band and title ("RELIQUARY"); Rare chest = soul blue band. */
+.skills--chest {
+    background-color: rgba(14, 9, 3, 0.6);
+}
+
+.skills--chest .skills__band {
+    background-color: rgba(26, 16, 4, 0.86);
+    border-color: rgba(255, 196, 80, 0.85);
+}
+
+.skills--chest .skills__title {
+    font-size: 92px;
+    color: rgb(255, 214, 120);
+    -unity-text-outline-color: rgba(96, 52, 6, 0.95);
+}
+
+.skills--chest .skills__sub {
+    color: rgb(250, 238, 210);
+}
+
+.skills--chest-rare .skills__band {
+    background-color: rgba(6, 14, 30, 0.88);
+    border-color: rgba(120, 180, 255, 0.9);
+}
+
+.skills--chest-rare .skills__title {
+    color: rgb(170, 210, 255);
+    -unity-text-outline-color: rgba(14, 40, 90, 0.95);
+}
+
 .skills__cards {
     flex-direction: row;
     justify-content: center;

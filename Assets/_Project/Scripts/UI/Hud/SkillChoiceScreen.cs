@@ -19,12 +19,20 @@ namespace SurvivorSouls.UI.Hud
     /// Tier (KAN-37): colour class per <see cref="SkillRarity"/>, tier name + 1-4 gems from <see cref="SkillRarityStyles"/>
     /// (readable without colour), <see cref="CardRevealed"/> when a card lands (GameAudio plays the tier sound), and for
     /// shine / burst tiers (Legendary) a light band sweeping the card and a ring + sparks out of the icon on landing.
+    /// Chest upgrade mode (KAN-73, <see cref="PresentUpgrade"/>): same cards, gold "RELIQUARY" band (class skills--chest,
+    /// Rare chest: skills--chest-rare), owned skills from <see cref="SkillManager.RollUpgrades"/> only, badge
+    /// "LV N → N+k" and the text of level N+k (k = the chest's levels, capped at max), a pick calls
+    /// <see cref="SkillManager.Upgrade(SkillDefinition, int)"/> and raises <see cref="Upgraded"/>.
     /// </summary>
     [RequireComponent(typeof(UIDocument))]
     public sealed class SkillChoiceScreen : LevelUpChoice
     {
         private const string ScreenName = "skill-choice";
         private const string TitleName = "skill-choice-title";
+        private const string SubName = "skill-choice-sub";
+        private const string ChestClass = "skills--chest";
+        private const string RareChestClass = "skills--chest-rare";
+        public const string BoonSubtitle = "CHOOSE AN EMBER BOON";
         private const string CardPrefix = "skill-card-";
         private const string HiddenClass = "hud-hidden";
         private const string PipClass = "skill-pip";
@@ -66,21 +74,29 @@ namespace SurvivorSouls.UI.Hud
             public float RevealAge;
         }
 
-        /// <summary>The player picked a skill (already granted).</summary>
+        /// <summary>The player picked a skill (already granted or upgraded).</summary>
         public event Action<SkillDefinition> Picked;
+        /// <summary>Chest upgrade picked (already applied): skill, old level, new level. Sound, burst, telemetry.</summary>
+        public event Action<SkillDefinition, int, int> Upgraded;
         /// <summary>A card landed on screen (once per card per offer): card index, its skill. GameAudio plays the tier sound.</summary>
         public event Action<int, SkillDefinition> CardRevealed;
 
         private readonly List<SkillDefinition> _options = new List<SkillDefinition>(MaxCards);
         private readonly Card[] _cards = new Card[MaxCards];
         private VisualElement _screen;
-        private Label _title;
+        private Label _title, _sub;
+        private bool _upgradeMode;
+        private int _levels = 1;
         private Action _onDone;
         private float _age = -1f;
         private float _pickAge;
         private int _picked = -1;
 
         public bool IsShowing => _age >= 0f;
+        /// <summary>Open as a chest upgrade screen (KAN-73), not a level-up pick.</summary>
+        public bool IsUpgrade => IsShowing && _upgradeMode;
+        public string Title => _title?.text;
+        public string Subtitle => _sub?.text;
         public bool IsArmed => _age >= armDelay && _picked < 0;
         public IReadOnlyList<SkillDefinition> Options => _options;
         public SkillRarityStyles Styles => styles;
@@ -103,6 +119,7 @@ namespace SurvivorSouls.UI.Hud
             var root = GetComponent<UIDocument>().rootVisualElement;
             _screen = root?.Q(ScreenName);
             _title = root?.Q<Label>(TitleName);
+            _sub = root?.Q<Label>(SubName);
             for (int i = 0; i < MaxCards; i++)
             {
                 var button = root?.Q<Button>(CardPrefix + i);
@@ -152,15 +169,44 @@ namespace SurvivorSouls.UI.Hud
             _onDone = onDone;
             _picked = -1;
             _pickAge = 0f;
+            _upgradeMode = false;
+            _levels = 1;
             if (skills == null || skills.Roll(choices, level, _options) == 0)
             {
                 Close(); // nothing left to offer: the level still counts, the run goes on
                 return;
             }
+            Open($"LEVEL {level}", BoonSubtitle, false, false);
+        }
+
+        /// <summary>
+        /// Chest upgrade choice (KAN-73): up to <see cref="UpgradeOffer.Choices"/> owned skills that can level up. False
+        /// (screen stays closed, <paramref name="onDone"/> not called) when none can.
+        /// </summary>
+        public override bool PresentUpgrade(UpgradeOffer offer, Action onDone)
+        {
+            if (skills == null || skills.RollUpgrades(Mathf.Min(offer.Choices, MaxCards), _options) == 0) return false;
+            _onDone = onDone;
+            _picked = -1;
+            _pickAge = 0f;
+            _upgradeMode = true;
+            _levels = Mathf.Max(1, offer.Levels);
+            Open(offer.Rare ? "RARE RELIQUARY" : "RELIQUARY", UpgradeSubtitle(_levels), true, offer.Rare);
+            return true;
+        }
+
+        /// <summary>Chest screen subtitle: "UPGRADE A SKILL", or "UPGRADE A SKILL +N LEVELS" for a Rare chest.</summary>
+        public static string UpgradeSubtitle(int levels) => levels > 1 ? $"UPGRADE A SKILL +{levels} LEVELS" : "UPGRADE A SKILL";
+
+        private void Open(string title, string subtitle, bool chest, bool rare)
+        {
             _age = 0f;
-            if (_title != null) _title.text = $"LEVEL {level}";
+            if (_title != null) _title.text = title;
+            if (_sub != null) _sub.text = subtitle;
             for (int i = 0; i < MaxCards; i++) Fill(_cards[i], i < _options.Count ? _options[i] : null);
             if (_screen == null) return;
+            _screen.EnableInClassList(ChestClass, chest);
+            _screen.EnableInClassList(RareChestClass, chest && rare);
             _screen.style.opacity = 0f;
             _screen.RemoveFromClassList(HiddenClass);
             Animate();
@@ -171,10 +217,12 @@ namespace SurvivorSouls.UI.Hud
         {
             if (!IsArmed || index < 0 || index >= _options.Count) return false;
             var skill = _options[index];
-            if (!skills.Grant(skill)) return false;
+            int old = skills.GetLevel(skill);
+            if (_upgradeMode ? !skills.Upgrade(skill, _levels) : !skills.Grant(skill)) return false;
             _picked = index;
             _pickAge = 0f;
             Picked?.Invoke(skill);
+            if (_upgradeMode) Upgraded?.Invoke(skill, old, skills.GetLevel(skill));
             return true;
         }
 
@@ -235,11 +283,12 @@ namespace SurvivorSouls.UI.Hud
                 if (spark != null) spark.style.opacity = 0f;
             if (card.Name != null) card.Name.text = skill.DisplayName.ToUpperInvariant();
             int owned = skills.GetLevel(skill);
-            if (card.Desc != null) card.Desc.text = skill.DescriptionAt(owned + 1);
+            int gain = _upgradeMode ? Mathf.Max(1, Mathf.Min(_levels, skill.MaxLevel - owned)) : 1;
+            if (card.Desc != null) card.Desc.text = skill.DescriptionAt(owned + gain);
             if (card.Icon != null) card.Icon.style.backgroundImage = skill.Icon != null ? new StyleBackground(skill.Icon) : StyleKeyword.None;
             if (card.Badge != null)
             {
-                card.Badge.text = BadgeText(owned);
+                card.Badge.text = BadgeText(owned, gain);
                 card.Badge.EnableInClassList(BadgeUpClass, owned > 0);
             }
             if (card.Pips == null) return;
@@ -254,12 +303,16 @@ namespace SurvivorSouls.UI.Hud
                 var pip = card.Pips[i];
                 pip.style.display = i < skill.MaxLevel ? DisplayStyle.Flex : DisplayStyle.None;
                 pip.EnableInClassList(PipOnClass, i < owned);
-                pip.EnableInClassList(PipNextClass, i == owned);
+                pip.EnableInClassList(PipNextClass, i >= owned && i < owned + gain);
             }
         }
 
         /// <summary>Card corner badge (KAN-50): "NEW" for a skill not owned, "LV N → N+1" for an upgrade.</summary>
-        public static string BadgeText(int ownedLevel) => ownedLevel > 0 ? $"LV {ownedLevel} \u2192 {ownedLevel + 1}" : "NEW";
+        public static string BadgeText(int ownedLevel) => BadgeText(ownedLevel, 1);
+
+        /// <summary>Badge for a pick that adds <paramref name="gain"/> levels: "LV N → N+gain" (chest), "NEW" when not owned.</summary>
+        public static string BadgeText(int ownedLevel, int gain) =>
+            ownedLevel > 0 ? $"LV {ownedLevel} \u2192 {ownedLevel + Mathf.Max(1, gain)}" : "NEW";
 
         private void Animate()
         {

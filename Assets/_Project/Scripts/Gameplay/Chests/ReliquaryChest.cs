@@ -8,7 +8,9 @@ namespace SurvivorSouls.Gameplay.Chests
     /// wooden chest that pops up when it lands, a gold light beam (crossed quads, alpha blend so it reads on snow) and a
     /// ground glow; in the last <see cref="ChestDropConfig.WarningTime"/> seconds the beam and glow blink faster and
     /// faster, then the chest shrinks away. Colour through one MaterialPropertyBlock, no allocation per frame.
-    /// Opening it (walk in, upgrade screen) is KAN-73.
+    /// Opening (KAN-73, <see cref="BeginOpen"/> / <see cref="TickOpen"/>): the lid swings back on its hinge, the body
+    /// jumps, the beam flares bright and wide, then everything fades; the dropper then hands the contents to the upgrade
+    /// screen and pools the chest.
     /// </summary>
     public sealed class ReliquaryChest : MonoBehaviour
     {
@@ -17,15 +19,20 @@ namespace SurvivorSouls.Gameplay.Chests
         private const float VanishTime = 0.25f;
 
         [SerializeField] private Transform body;
+        [Tooltip("Lid, a child of the body with its pivot on the back hinge (opens around +X).")]
+        [SerializeField] private Transform lid;
         [SerializeField] private Renderer beam;
         [SerializeField] private Renderer glow;
         [SerializeField] private Color lightColor = new Color(1f, 0.7f, 0.12f, 1f);
         [SerializeField] private Color rareColor = new Color(0.4f, 0.66f, 1f, 1f);
         [Tooltip("Body scale of a Rare chest (a Light chest is 1).")]
         [SerializeField, Min(0.5f)] private float rareScale = 1.25f;
+        [Tooltip("Lid angle (deg) when fully open.")]
+        [SerializeField] private float openAngle = 110f;
 
         private MaterialPropertyBlock _mpb;
         private float _phase;
+        private Vector3 _beamScale = Vector3.one;
 
         public ChestTier Tier { get; private set; }
         /// <summary>Cards on the upgrade screen (KAN-73).</summary>
@@ -39,15 +46,22 @@ namespace SurvivorSouls.Gameplay.Chests
         /// <summary>In the warning window (blinking).</summary>
         public bool IsWarning => IsOnGround && TimeLeft <= WarningTime;
         public bool IsOnGround { get; private set; }
+        /// <summary>Picked up, lid opening (not on the ground any more: no expiry, does not count against the cap).</summary>
+        public bool IsOpening { get; private set; }
+        /// <summary>Seconds since <see cref="BeginOpen"/>.</summary>
+        public float OpenAge { get; private set; }
+        /// <summary>Lid angle now (deg, 0 = closed). Tests read it.</summary>
+        public float LidAngle { get; private set; }
         /// <summary>Beam / glow brightness 0..1 this frame (tests read the pulse).</summary>
         public float Brightness { get; private set; }
 
         /// <summary>Tests and tools: wiring without the builder.</summary>
-        public void Setup(Transform bodyTransform, Renderer beamRenderer, Renderer glowRenderer)
+        public void Setup(Transform bodyTransform, Renderer beamRenderer, Renderer glowRenderer, Transform lidTransform = null)
         {
             body = bodyTransform;
             beam = beamRenderer;
             glow = glowRenderer;
+            lid = lidTransform;
         }
 
         /// <summary>Puts the chest on the ground at <paramref name="position"/> with its contents and timer.</summary>
@@ -63,6 +77,10 @@ namespace SurvivorSouls.Gameplay.Chests
             Age = 0f;
             _phase = 0f;
             IsOnGround = true;
+            IsOpening = false;
+            OpenAge = 0f;
+            SetLid(0f);
+            if (beam != null) beam.transform.localScale = _beamScale;
             gameObject.SetActive(true);
             Tick(0f);
         }
@@ -71,7 +89,61 @@ namespace SurvivorSouls.Gameplay.Chests
         public void Despawn()
         {
             IsOnGround = false;
+            IsOpening = false;
             gameObject.SetActive(false);
+        }
+
+        /// <summary>Walked into (KAN-73): off the ground, the open animation starts. False when not on the ground.</summary>
+        public bool BeginOpen()
+        {
+            if (!IsOnGround) return false;
+            IsOnGround = false;
+            IsOpening = true;
+            OpenAge = 0f;
+            if (beam != null) _beamScale = beam.transform.localScale;
+            return true;
+        }
+
+        /// <summary>
+        /// Advances the open animation by <paramref name="dt"/> over <paramref name="openTime"/> seconds: lid swings open in
+        /// the first 60 %, body jumps, beam flares and widens, then the chest fades out. True when it is done.
+        /// </summary>
+        public bool TickOpen(float dt, float openTime)
+        {
+            if (!IsOpening) return false;
+            OpenAge += dt;
+            float k = Mathf.Clamp01(OpenAge / Mathf.Max(0.01f, openTime));
+            SetLid(openAngle * Overshoot(Mathf.Clamp01(k / 0.6f)));
+            float jump = Mathf.Sin(Mathf.Min(1f, k / 0.5f) * Mathf.PI) * 0.12f;
+            float fade = k < 0.7f ? 1f : 1f - (k - 0.7f) / 0.3f;
+            if (body != null)
+            {
+                body.localPosition = new Vector3(0f, jump, 0f);
+                float s = (Tier == ChestTier.Rare ? rareScale : 1f) * Mathf.Lerp(1f, 0.6f, 1f - fade);
+                body.localScale = Vector3.one * s;
+            }
+            if (beam != null)
+            {
+                float wide = 1f + 0.8f * Mathf.Sin(Mathf.Min(1f, k / 0.7f) * Mathf.PI * 0.5f);
+                beam.transform.localScale = new Vector3(_beamScale.x * wide, _beamScale.y * (1f + 0.3f * k), _beamScale.z * wide);
+            }
+            var c = Tier == ChestTier.Rare ? rareColor : lightColor;
+            Brightness = fade;
+            c.a = fade;
+            Paint(beam, c);
+            Paint(glow, c);
+            if (k < 1f) return false;
+            if (body != null) body.localPosition = Vector3.zero;
+            if (beam != null) beam.transform.localScale = _beamScale;
+            SetLid(0f);
+            IsOpening = false;
+            return true;
+        }
+
+        private void SetLid(float angle)
+        {
+            LidAngle = angle;
+            if (lid != null) lid.localRotation = Quaternion.Euler(angle, 0f, 0f);
         }
 
         /// <summary>

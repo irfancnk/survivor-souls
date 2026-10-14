@@ -76,7 +76,7 @@
     <ui:VisualElement name="skill-choice" class="skills hud-modal hud-hidden">
         <ui:VisualElement class="skills__band" picking-mode="Ignore">
             <ui:Label name="skill-choice-title" text="LEVEL 2" class="skills__title" picking-mode="Ignore" />
-            <ui:Label text="CHOOSE AN EMBER BOON" class="skills__sub" picking-mode="Ignore" />
+            <ui:Label name="skill-choice-sub" text="CHOOSE AN EMBER BOON" class="skills__sub" picking-mode="Ignore" />
         </ui:VisualElement>
         <ui:VisualElement class="skills__cards" picking-mode="Ignore">
             <ui:Button name="skill-card-0" class="skill-card">

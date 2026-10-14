@@ -33,6 +33,18 @@ namespace SurvivorSouls.Gameplay.Chests
         [SerializeField, Min(1)] private int rareUpgrades = 2;
         [Tooltip("Chest lands up to this far (m) from the dead enemy, on free ground.")]
         [SerializeField, Min(0f)] private float scatter = 0.8f;
+        [Tooltip("The Knight opens a chest by walking within this distance (m, ground plane) of it. No hold time (KAN-73).")]
+        [SerializeField, Min(0.1f)] private float pickupRadius = 1.1f;
+        [Tooltip("A chest that just landed cannot be opened for this long (s): the land pop plays first.")]
+        [SerializeField, Min(0f)] private float pickupDelay = 0.3f;
+        [Tooltip("Seconds of the open animation before the upgrade screen (light chest: 0.4 s).")]
+        [SerializeField, Min(0.05f)] private float openTime = 0.4f;
+        [Tooltip("Fallback reward when no owned skill can level up (or the queue is full): share of max health healed.")]
+        [SerializeField, Range(0f, 1f)] private float fallbackHeal = 0.25f;
+        [Tooltip("Fallback reward: XP in soul wisps that pop out of the chest (0 = none).")]
+        [SerializeField, Min(0)] private int fallbackXp = 30;
+        [Tooltip("Fallback reward: number of soul wisps the XP is split into.")]
+        [SerializeField, Min(1)] private int fallbackWisps = 3;
 
         public int EliteMinXp => eliteMinXp;
         public bool BossIsElite => bossIsElite;
@@ -43,6 +55,12 @@ namespace SurvivorSouls.Gameplay.Chests
         public int BaseChoices => baseChoices;
         public int RareUpgrades => rareUpgrades;
         public float Scatter => scatter;
+        public float PickupRadius => pickupRadius;
+        public float PickupDelay => pickupDelay;
+        public float OpenTime => openTime;
+        public float FallbackHeal => fallbackHeal;
+        public int FallbackXp => fallbackXp;
+        public int FallbackWisps => fallbackWisps;
 
         /// <summary>Elite kill: boss (when <see cref="BossIsElite"/>) or an enemy worth at least <see cref="EliteMinXp"/> XP.</summary>
         public bool IsElite(Enemy enemy) => enemy != null && ((bossIsElite && enemy.IsBoss) || enemy.XpValue >= eliteMinXp);
@@ -60,6 +78,17 @@ namespace SurvivorSouls.Gameplay.Chests
             c.rareUpgrades = Mathf.Max(1, rareLevels);
             c.eliteMinXp = Mathf.Max(1, eliteXp);
             return c;
+        }
+
+        /// <summary>Tests: pickup and open rules (the asset keeps its Inspector values).</summary>
+        public void SetOpening(float radius, float delay, float open, float heal = 0.25f, int xp = 30, int wisps = 3)
+        {
+            pickupRadius = Mathf.Max(0.1f, radius);
+            pickupDelay = Mathf.Max(0f, delay);
+            openTime = Mathf.Max(0.05f, open);
+            fallbackHeal = Mathf.Clamp01(heal);
+            fallbackXp = Mathf.Max(0, xp);
+            fallbackWisps = Mathf.Max(1, wisps);
         }
     }
 }

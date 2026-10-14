@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using SurvivorSouls.Gameplay.Combat;
+using SurvivorSouls.Gameplay.Player;
 using SurvivorSouls.Gameplay.Skills;
 using UnityEngine;
 
@@ -17,6 +18,10 @@ namespace SurvivorSouls.Gameplay.Chests
     /// sets <see cref="StatId.RareChestEvery"/>; <see cref="StatId.ChestChoices"/> adds upgrade-screen cards.
     /// Run-only and per Chamber: chests left on the ground and the pity clock are lost with the scene (KAN-50 decision: a
     /// chest left behind is lost). Chests are pooled children of this object; one Update ticks them all.
+    /// Opening (KAN-73): the living Knight walks within <see cref="ChestDropConfig.PickupRadius"/> of a landed chest, it
+    /// leaves the ground (<see cref="OpenStarted"/>: sound, haptic), plays its open animation for
+    /// <see cref="ChestDropConfig.OpenTime"/> and raises <see cref="Opened"/> (<see cref="ChestRewards"/> queues the
+    /// upgrade screen) before going back to the pool. While no owned skill can level up, kills roll no chest at all.
     /// </summary>
     public sealed class ChestDropper : MonoBehaviour
     {
@@ -39,6 +44,10 @@ namespace SurvivorSouls.Gameplay.Chests
         [SerializeField] private ChestDropConfig config;
         [SerializeField] private PlayerStats stats;
         [SerializeField] private ReliquaryChest chestPrefab;
+        [Tooltip("The Knight: walks into chests to open them. Dead = no pickup.")]
+        [SerializeField] private PlayerHealth player;
+        [Tooltip("Owned skills: no chest drops while none can level up (a chest would have nothing to upgrade).")]
+        [SerializeField] private SkillManager skills;
         [Tooltip("0 = random every run. Fixed seeds make drops repeatable (tests, bug repro).")]
         [SerializeField] private int seed;
 
@@ -46,15 +55,26 @@ namespace SurvivorSouls.Gameplay.Chests
         public event Action<ReliquaryChest> Dropped;
         /// <summary>A chest faded away unopened (telemetry ChestExpired).</summary>
         public event Action<ReliquaryChest> Expired;
+        /// <summary>The Knight walked into a chest: open animation starts (sound, haptic).</summary>
+        public event Action<ReliquaryChest> OpenStarted;
+        /// <summary>
+        /// The open animation ended (telemetry ChestOpened): contents (<see cref="ReliquaryChest.Tier"/>, Choices, Upgrades)
+        /// and position are still valid during the call; the chest goes back to the pool right after.
+        /// </summary>
+        public event Action<ReliquaryChest> Opened;
 
         private readonly List<ReliquaryChest> _active = new List<ReliquaryChest>(4);
         private readonly List<ReliquaryChest> _free = new List<ReliquaryChest>(4);
+        private readonly List<ReliquaryChest> _opening = new List<ReliquaryChest>(4);
         private System.Random _rng;
         private Action<Enemy, float, bool> _onDamaged;
         private float _sinceDrop;
         private int _skillChests;
 
         public IReadOnlyList<ReliquaryChest> Active => _active;
+        /// <summary>Chests playing their open animation.</summary>
+        public IReadOnlyList<ReliquaryChest> Opening => _opening;
+        public int OpenedCount { get; private set; }
         public ChestDropConfig Config => config;
         /// <summary>Game seconds since the last chest while the skill is owned (pity clock).</summary>
         public float SinceLastDrop => _sinceDrop;
@@ -83,11 +103,14 @@ namespace SurvivorSouls.Gameplay.Chests
         }
 
         /// <summary>Wiring for code-built objects and tests.</summary>
-        public void Setup(ChestDropConfig dropConfig, PlayerStats playerStats, ReliquaryChest prefab, int rngSeed = 0)
+        public void Setup(ChestDropConfig dropConfig, PlayerStats playerStats, ReliquaryChest prefab, int rngSeed = 0,
+            PlayerHealth knight = null, SkillManager skillManager = null)
         {
             config = dropConfig;
             stats = playerStats;
             chestPrefab = prefab;
+            player = knight;
+            skills = skillManager;
             seed = rngSeed;
             _rng = seed != 0 ? new System.Random(seed) : new System.Random(Environment.TickCount);
             Prewarm();
@@ -121,6 +144,45 @@ namespace SurvivorSouls.Gameplay.Chests
                 Expired?.Invoke(chest);
                 Release(i);
             }
+            if (player != null && !player.IsDead && config != null) PickUp(player.transform.position);
+            for (int i = _opening.Count - 1; i >= 0; i--)
+            {
+                var chest = _opening[i];
+                if (!chest.TickOpen(dt, config != null ? config.OpenTime : 0.4f)) continue;
+                _opening.RemoveAt(i);
+                OpenedCount++;
+                Opened?.Invoke(chest);
+                chest.Despawn();
+                _free.Add(chest);
+            }
+        }
+
+        /// <summary>Opens every landed chest within the pickup radius of <paramref name="at"/> (ground plane).</summary>
+        private void PickUp(Vector3 at)
+        {
+            float r2 = config.PickupRadius * config.PickupRadius;
+            for (int i = _active.Count - 1; i >= 0; i--)
+            {
+                var chest = _active[i];
+                if (chest.Age < config.PickupDelay) continue;
+                var d = chest.transform.position - at;
+                if (d.x * d.x + d.z * d.z <= r2) Open(chest);
+            }
+        }
+
+        /// <summary>
+        /// Starts opening <paramref name="chest"/> (walk-in pickup, tests, debug): it leaves the ground (frees a cap slot,
+        /// no expiry) and plays its open animation; <see cref="Opened"/> follows after <see cref="ChestDropConfig.OpenTime"/>.
+        /// False when it is not a landed chest of this dropper.
+        /// </summary>
+        public bool Open(ReliquaryChest chest)
+        {
+            int i = _active.IndexOf(chest);
+            if (i < 0 || !chest.BeginOpen()) return false;
+            _active.RemoveAt(i);
+            _opening.Add(chest);
+            OpenStarted?.Invoke(chest);
+            return true;
         }
 
         /// <summary>
@@ -163,7 +225,7 @@ namespace SurvivorSouls.Gameplay.Chests
             return chest;
         }
 
-        /// <summary>Takes a chest off the ground (opened by KAN-73's pickup). Not counted as expired.</summary>
+        /// <summary>Takes a chest off the ground without opening it (tools, tests). Not counted as expired or opened.</summary>
         public bool Remove(ReliquaryChest chest)
         {
             int i = _active.IndexOf(chest);
@@ -206,7 +268,7 @@ namespace SurvivorSouls.Gameplay.Chests
         private bool Decide(bool elite, System.Random rng, float sinceDrop, out bool pity)
         {
             pity = false;
-            if (!IsHunting) return false;
+            if (!IsHunting || (skills != null && !skills.HasUpgradableSkill())) return false;
             if (rng.NextDouble() < (elite ? EliteChance : Chance)) return true;
             pity = sinceDrop >= config.PitySeconds;
             return pity;
@@ -233,7 +295,7 @@ namespace SurvivorSouls.Gameplay.Chests
         private void Prewarm()
         {
             if (chestPrefab == null || config == null) return;
-            while (_free.Count + _active.Count < config.MaxOnGround) _free.Add(Create());
+            while (_free.Count + _active.Count + _opening.Count < config.MaxOnGround) _free.Add(Create());
         }
 
         private ReliquaryChest Take()
