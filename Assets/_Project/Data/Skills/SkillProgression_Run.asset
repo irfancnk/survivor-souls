@@ -22,6 +22,7 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 20442184d1a844541909ed8ac32a9a4e, type: 2}
     - {fileID: 11400000, guid: 3ccec5f5805d14bef958c4ec6101fdb3, type: 2}
     - {fileID: 11400000, guid: 199cb3a4d93234cb88829c148da1d8e4, type: 2}
+    - {fileID: 11400000, guid: 294a5fab8c80549f4813b03d1ace8fa4, type: 2}
     common: 70
     rare: 27
     epic: 3
@@ -55,4 +56,6 @@ MonoBehaviour:
     skill: {fileID: 11400000, guid: 5240cd9c91fd24b3f9a8777f1ad43835, type: 2}
   - level: 6
     skill: {fileID: 11400000, guid: 5f5d24c2799bd49a98022b32c4ed4fea, type: 2}
+  - level: 3
+    skill: {fileID: 11400000, guid: 294a5fab8c80549f4813b03d1ace8fa4, type: 2}
   pityOffers: 3

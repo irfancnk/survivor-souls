@@ -1,0 +1,50 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1fe610960d6a34b01a28534f0f33effb, type: 3}
+  m_Name: Skill_DoubleShot
+  m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Skills.SkillDefinition
+  id: double_shot
+  displayName: Double Shot
+  description: 1 extra bolt down the same line
+  icon: {fileID: 2800000, guid: 66178374aca0344f3809a41cf972516f, type: 3}
+  rarity: 2
+  maxStack: 3
+  weight: 1
+  modifiers:
+  - stat: 19
+    kind: 0
+    value: 1
+  levels:
+  - description: 1 extra bolt down the same line
+    modifiers:
+    - stat: 19
+      kind: 0
+      value: 1
+  - description: 2 extra bolts down the same line
+    modifiers:
+    - stat: 19
+      kind: 0
+      value: 2
+  - description: 3 extra bolts, 90% damage each
+    modifiers:
+    - stat: 19
+      kind: 0
+      value: 3
+    - stat: 21
+      kind: 1
+      value: -0.1
+  effectPrefab: {fileID: 0}
+  requiresUpgradableSkill: 0
+  repeatOfferWeights:
+  - 0.25
+  - 0.06
+  upgradeOfferWeight: 0.35

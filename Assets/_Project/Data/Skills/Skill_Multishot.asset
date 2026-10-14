@@ -13,42 +13,39 @@ MonoBehaviour:
   m_Name: Skill_Multishot
   m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Skills.SkillDefinition
   id: multishot
-  displayName: Multishot
-  description: +1 bolt per volley, -15% damage
+  displayName: Spread Shot
+  description: "2 side bolts at 15\xB0, 50% damage"
   icon: {fileID: 2800000, guid: ee18565c2fe0d47c9a30ff889f122634, type: 3}
-  rarity: 2
+  rarity: 1
   maxStack: 3
   weight: 1
   modifiers:
   - stat: 6
     kind: 0
-    value: 1
-  - stat: 0
-    kind: 1
-    value: -0.15
+    value: 2
   levels:
-  - description: +1 bolt per volley, -15% damage
-    modifiers:
-    - stat: 6
-      kind: 0
-      value: 1
-    - stat: 0
-      kind: 1
-      value: -0.15
-  - description: +2 bolts per volley, -25% damage
+  - description: "2 side bolts at 15\xB0, 50% damage"
     modifiers:
     - stat: 6
       kind: 0
       value: 2
-    - stat: 0
-      kind: 1
-      value: -0.25
-  - description: +2 bolts per volley, -10% damage
+  - description: "4 side bolts to 30\xB0, 65% damage"
     modifiers:
     - stat: 6
       kind: 0
-      value: 2
-    - stat: 0
-      kind: 1
-      value: -0.1
+      value: 4
+    - stat: 20
+      kind: 0
+      value: 0.15
+  - description: "6 side bolts to 45\xB0, 80% damage"
+    modifiers:
+    - stat: 6
+      kind: 0
+      value: 6
+    - stat: 20
+      kind: 0
+      value: 0.3
   effectPrefab: {fileID: 0}
+  requiresUpgradableSkill: 0
+  repeatOfferWeights: []
+  upgradeOfferWeight: 1
