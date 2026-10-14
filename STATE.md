@@ -273,6 +273,15 @@
   - Note: in zsh pass player args as separate words (an unquoted `$VAR` holding several args is one word: `-ss-quality` and `-screen-width` were silently ignored).
   - Limits: an app kill mid-run loses that run's souls (banked only at run end; the run cannot be resumed either). Wallet is per device (no cloud save). Souls = XP value of absorbed wisps (same as the KAN-51 counter); no separate soul drops yet.
 
+- 2026-10-15: 15 new enemy models from Meshy, assets only, no game code (KAN-102, branch `claude/meshy-ai-api-access-e2c7c1`, from main 8f1bcb4). User session. Implementation tickets: KAN-103 (parent) + KAN-104..112 (= KAN-103.1..103.9, do in order).
+  - Claude now drives Meshy itself: Meshy CLI 0.4.0 (`npm exec --package=meshy-cli@0.4.0 -- meshy ...`), OAuth login stored in `~/.config/meshy/credentials.json`. No API key needed.
+  - Roster: 11 zombies in `Art/Characters/Enemies/<Name>/` (Graveyard Laborer, Fallen Militiaman, Rusted Watchman, Gravebound Knight = the 4 reference sheets made 3D; Plague Bloater, Bone Archer, Pyre Thrower, Bile Spitter, Frenzied Ghoul, Grave Brute 2.3 m, Hexbound Shaman) and 4 bosses in `Art/Characters/Bosses/<Name>/` (Butcher of Ashgrave 4.2 m, Pyre Lord 4.5 m, Rotting Colossus 5.0 m, Bone Matriarch 4.0 m; Knight 1.75 m).
+  - Per character: `SK_<Name>.fbx` (mesh + Meshy 24-bone rig, root scale 0.01), `A_<Name>_<Clip>.fbx` (rig only, take = clip name), `T_<Name>_BaseColor.jpg` 2048 / `_Normal.png` 1024 / `_Emission.jpg`. Zombies ~4k tris (Brute 6k), bosses ~12.4k. Unity batch import: all Generic, 0 errors, clips named right. No materials / prefabs / controllers yet (KAN-104).
+  - Pipeline: text-to-3d preview (review) -> refine 2k PBR (or multi-image-to-3d from the reference sheets) -> remesh triangles (refined models are ~545k faces; rig limit 320k) -> rig (`--height-meters`) -> Meshy library clips -> Blender `Tools/Meshy/to_unity.py` (strips the stray Icosphere in rig GLBs, armature-only clip FBX). Scripts + prompts + action ids in `Tools/Meshy/`. Raw jobs in `~/survivor-souls-assets/meshy_jobs/*enemy-*`.
+  - Design (attack patterns, numbers), table, known asset issues: `Docs/ENEMY_ROSTER.md`. Pose sheets: `Docs/enemies/<Name>.png`.
+  - Cost 838 credits (3 previews rejected: `--pose-mode a-pose` forced normal body shapes on the Bloater and Brute; `auto` fixed it). Balance after: 176. Meshy queue allows ~10 pending tasks (429 `NoMorePendingTasks`).
+  - Limits: repo grows ~77 MB of binaries (no git LFS yet). 4 hooded looks repeat. Bone Archer has no bow. Some clips stretch hand triangles. Butcher / Colossus differ from the brief (still read as big bosses). Long library clips (5-8 s) need trimming.
+
 ## DECISIONS
 - Design language: Archero / Archero 2 (menus, loop, chests, daily/weekly quests, gear merge, talents, energy). Look: Dark Souls, realistic, not dismal. User decision 2026-10-11.
 - Naming map: energy=Estus, gold=Souls, gems=Ember Shards, chests=Reliquaries, daily=Oaths, weekly=Pilgrimage, chapter=Realm, room=Chamber. See GAME_PLAN sec 2.
