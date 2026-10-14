@@ -170,6 +170,16 @@
   - Drive: Drive for Desktop on both machines (chosen). Not installed on Mac yet; stand-in `~/survivor-souls-assets/drive/SurvivorSouls/Assets/{Incoming,Approved,Rejected}`. Drive connector "pending" in session.
   - Verified on Mac: Meshy crossbow (780k tris) -> 5k/2.5k LODs in 12 s -> Unity prefab OK (rot 0, scale 1, pivot y 0, LODGroup, Lit, collider). Test assets not committed (no git-lfs).
   - Not done: laptop run, Drive both-way test, 5 PoC props, realism scores.
+- 2026-10-14: HUD skill row level pips + level-up glow, chime and haptic (KAN-74 = KAN-50.5, branch `feat/kan-74-hud-skill-pips`, from main 76dbdc3). Scheduled-task run.
+  - `UI/Hud/SkillHud`: under each skill slot a row of pips, one per level up to the skill's `MaxLevel` (lit = owned, tier rim colour; all in the tier glow colour at max, class `hud-skill--max`). The old "xN" label is gone (pips show it). Pips and slots pooled, rebuilt only on `SkillManager.Changed`.
+  - Glow: `SkillManager.SkillChanged` with old level > 0 (chest upgrade or level-up pick of an owned skill) queues the slot. The glow waits while any `GamePause` hold is open (the card screen covers the row), then every queued slot glows at once: tier-coloured ring outside the rim (flare, fade, grows 22 %), icon double pulse, the new pips blink 3 times. 1.1 s unscaled. One `SkillHud.UpgradeShown(count)` + one `Haptics.Light()` per batch. New skills (pick pop only), `Restore` (Chamber carry) and `ResetRun` never glow.
+  - Sound: `SfxBuilder` `sfx_skill_upgrade_01` (B5 -> E6 bell pair + sparkle). `GameAudio.skillHud` / `skillUpgrades`, played on `UpgradeShown` (vol 0.6). The pick itself keeps the boon strike (+ a fifth up for chests, KAN-73).
+  - Looks: `hud-skill__pips`, `hud-skill__pip(--on/--new)`, `hud-skill__glow` in GameHud.uss; slot bottom margin 28 px for the pips. Empty pips are dark: pale ones read as lit on snow.
+  - Dev: DevScreenshot `-ss-upgrade id,id` (+1 to owned skills 0.3 s before the capture, shows the glow).
+  - Tests `Tests/PlayMode/SkillHudTests` (11): pips per level + max class, pips under the slot inside its width, no glow for new skill / Restore, glow waits for the pause then 1 chime + 1 haptic, only the new pips flash, owned pick glows too, several upgrades in one pause = one batch, vibration off = no haptic, run reset drops glows, no GC alloc in Tick. Full suite: 323 pass, 2 skipped (soak), 0 fail.
+  - Shots: `-ss-scene Game -ss-delay 4 -ss-immortal -ss-skills multishot,keen_eye,keen_eye,keen_eye,soul_burst,vigor x6,ricochet -ss-upgrade keen_eye,soul_burst` at 540x1170 -> `Docs/screenshots/game-hud-skill-pips-glow.png`; same + blood_covenant x2 without upgrade at 1080x1920 -> `game-hud-skill-pips.png`.
+  - Verified: compile 0 errors, Game scene rebuild (scene + tile prefab / controller fileID churn committed, as in KAN-73), mac dev build + 2 screenshot runs without exceptions, iOS dev export + xcodebuild + install on iPhone 14 Pro Max OK; launch refused, phone locked.
+  - Not verified by hand: chime loudness against the boon strike, haptic feel. KAN-35 (HUD redesign) should keep the pip row.
 
 ## DECISIONS
 - Design language: Archero / Archero 2 (menus, loop, chests, daily/weekly quests, gear merge, talents, energy). Look: Dark Souls, realistic, not dismal. User decision 2026-10-11.
