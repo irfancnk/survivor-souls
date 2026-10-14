@@ -1,5 +1,10 @@
 using System;
 using System.Linq;
+using SurvivorSouls.Core;
+using SurvivorSouls.Editor.Chests;
+using SurvivorSouls.Gameplay.Chests;
+using SurvivorSouls.Gameplay.Combat;
+using SurvivorSouls.Gameplay.Player;
 using SurvivorSouls.Gameplay.Progression;
 using SurvivorSouls.Gameplay.Skills;
 using UnityEditor;
@@ -13,6 +18,9 @@ namespace SurvivorSouls.Editor.Skills
     /// Menu: Survivor Souls/Debug/Skills. Quick grant without the window: Survivor Souls/Debug/Grant Random Skill.
     /// Offer odds (KAN-37): "Survivor Souls/Debug/Print Skill Offer Odds" (edit or Play mode) rolls 1000 offers at levels
     /// 2, 4, 6 and 10 with the shipped table and prints the share per tier, Rare+ offers and pity swaps to the console.
+    /// KAN-75: a level slider per skill (<see cref="SkillManager.SetLevel(SkillDefinition, int)"/>: any level 0..max, 0 removes),
+    /// chest buttons (drop Light / Rare, open the upgrade screen), drop statistics per Reliquary Hunter level, the power curve
+    /// (<see cref="SkillPowerCurve"/>, also "Survivor Souls/Debug/Print Power Curve") and the last telemetry events.
     /// </summary>
     public sealed class SkillDebugWindow : EditorWindow
     {
@@ -22,6 +30,9 @@ namespace SurvivorSouls.Editor.Skills
         private string _odds = "";
         public const int OddsRolls = 1000;
         private static readonly int[] OddsLevels = { 2, 4, 6, 10 };
+        private int _curveRuns = 200, _curveLevels = 20;
+        private string _curve = "", _drops = "";
+        private const int TelemetryRows = 10;
 
         [MenuItem("Survivor Souls/Debug/Skills")]
         private static void Open() => GetWindow<SkillDebugWindow>("Skills").Show();
@@ -70,6 +81,39 @@ namespace SurvivorSouls.Editor.Skills
             }
         }
 
+        [MenuItem("Survivor Souls/Debug/Print Power Curve")]
+        private static void PrintPowerCurve() => Debug.Log("[Skills] " + PowerCurveNow(200, 20));
+
+        /// <summary>
+        /// Power curve with the shipped table (KAN-75). Play mode takes the base numbers from the live Knight (shooter,
+        /// health, mover), edit mode the defaults.
+        /// </summary>
+        public static string PowerCurveNow(int runs, int levels)
+        {
+            var table = AssetDatabase.LoadAssetAtPath<SkillProgression>(SkillsBuilder.ProgressionPath);
+            if (table == null) return $"Missing {SkillsBuilder.ProgressionPath}";
+            return SkillPowerCurve.Simulate(table, LiveBase(), runs, levels).ToString();
+        }
+
+        private static PowerBase LiveBase()
+        {
+            var b = PowerBase.Default;
+            if (!Application.isPlaying) return b;
+            var shooter = FindAnyObjectByType<AutoShooter>();
+            var health = FindAnyObjectByType<PlayerHealth>();
+            var mover = FindAnyObjectByType<PlayerMover>();
+            if (shooter != null)
+            {
+                b.Damage = shooter.BaseDamage;
+                b.ShotsPerSecond = shooter.BaseShotsPerSecond;
+                b.CritChance = shooter.BaseCritChance;
+                b.CritMultiplier = shooter.BaseCritMultiplier;
+            }
+            if (health != null) b.MaxHealth = health.BaseMax;
+            if (mover != null) b.MoveSpeed = mover.BaseSpeed;
+            return b;
+        }
+
         [MenuItem("Survivor Souls/Debug/Level Up Now")]
         private static void LevelUpNow()
         {
@@ -95,17 +139,21 @@ namespace SurvivorSouls.Editor.Skills
 
         private void OnGUI()
         {
+            _scroll = EditorGUILayout.BeginScrollView(_scroll);
             DrawOdds();
+            DrawCurveAndDrops();
             if (!Application.isPlaying)
             {
                 EditorGUILayout.HelpBox("Enter Play mode in the Game scene to grant skills.", MessageType.Info);
                 if (GUILayout.Button("Reload skill assets")) _skills = LoadSkills();
+                EditorGUILayout.EndScrollView();
                 return;
             }
             var manager = FindAnyObjectByType<SkillManager>();
             if (manager == null)
             {
                 EditorGUILayout.HelpBox("No SkillManager in the open scene.", MessageType.Warning);
+                EditorGUILayout.EndScrollView();
                 return;
             }
 
@@ -115,9 +163,18 @@ namespace SurvivorSouls.Editor.Skills
                 if (GUILayout.Button("Grant random")) GrantRandom();
                 if (GUILayout.Button("Reset run skills")) manager.ResetRun();
             }
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                if (GUILayout.Button("Drop Light chest")) ChestBuilder.DropTier(ChestTier.Light);
+                if (GUILayout.Button("Drop Rare chest")) ChestBuilder.DropTier(ChestTier.Rare);
+                if (GUILayout.Button("Upgrade screen"))
+                {
+                    var flow = FindAnyObjectByType<LevelUpFlow>();
+                    if (flow != null) flow.EnqueueUpgrade(new UpgradeOffer(3, 1, false));
+                }
+            }
 
-            _scroll = EditorGUILayout.BeginScrollView(_scroll);
-            EditorGUILayout.LabelField("Skills", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField("Skills (slider = set level, 0 removes; +1 = level-up pick)", EditorStyles.boldLabel);
             foreach (var skill in _skills)
             {
                 if (skill == null) continue;
@@ -126,12 +183,12 @@ namespace SurvivorSouls.Editor.Skills
                 {
                     GUILayout.Label(skill.Icon, GUILayout.Width(22), GUILayout.Height(22));
                     EditorGUILayout.LabelField($"{skill.DisplayName}  ({skill.Rarity})", GUILayout.MinWidth(160));
-                    EditorGUILayout.LabelField($"{level}/{skill.MaxLevel}", GUILayout.Width(40));
+                    int set = EditorGUILayout.IntSlider(level, 0, skill.MaxLevel, GUILayout.Width(150));
+                    if (set != level) manager.SetLevel(skill, set);
                     using (new EditorGUI.DisabledScope(!manager.CanTake(skill)))
                     {
                         if (GUILayout.Button("+1", GUILayout.Width(36))) manager.Grant(skill);
-                        if (GUILayout.Button("Max", GUILayout.Width(40)))
-                            while (manager.Grant(skill)) { }
+                        if (GUILayout.Button("Max", GUILayout.Width(40))) manager.SetLevel(skill, skill.MaxLevel);
                     }
                 }
             }
@@ -148,7 +205,40 @@ namespace SurvivorSouls.Editor.Skills
                     EditorGUILayout.LabelField(id.ToString(), $"{flat:+0.##;-0.##;0}  /  {pct * 100f:+0.#;-0.#;0}%");
                 }
             }
+
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField($"Telemetry (last {TelemetryRows} of {GameTelemetry.TotalCount})", EditorStyles.boldLabel);
+            for (int i = 0; i < Mathf.Min(TelemetryRows, GameTelemetry.RecentCount); i++)
+                EditorGUILayout.LabelField(GameTelemetry.Recent(i).ToString(), EditorStyles.miniLabel);
             EditorGUILayout.EndScrollView();
+        }
+
+        /// <summary>Power curve and chest drops per Reliquary Hunter level (KAN-75): edit or Play mode.</summary>
+        private void DrawCurveAndDrops()
+        {
+            EditorGUILayout.LabelField("Power curve / chest drops", EditorStyles.boldLabel);
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                _curveRuns = Mathf.Clamp(EditorGUILayout.IntField("Runs", _curveRuns), 1, 5000);
+                _curveLevels = Mathf.Clamp(EditorGUILayout.IntField("Levels", _curveLevels), 2, 60);
+            }
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                if (GUILayout.Button("Power curve"))
+                {
+                    _curve = PowerCurveNow(_curveRuns, _curveLevels);
+                    Debug.Log("[Skills] " + _curve);
+                }
+                if (GUILayout.Button("Drops per Hunter level"))
+                {
+                    _drops = ChestBuilder.DropTable();
+                    Debug.Log(_drops);
+                }
+            }
+            var mono = new GUIStyle(EditorStyles.helpBox) { font = EditorStyles.standardFont, fontSize = 10, wordWrap = false };
+            if (!string.IsNullOrEmpty(_curve)) EditorGUILayout.TextArea(_curve, mono);
+            if (!string.IsNullOrEmpty(_drops)) EditorGUILayout.TextArea(_drops, mono);
+            EditorGUILayout.Space();
         }
 
         /// <summary>Offer odds box: in Play mode the live run (owned skills count), else the shipped table from scratch.</summary>

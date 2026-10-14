@@ -31,7 +31,9 @@ namespace SurvivorSouls.Dev
     /// <c>-ss-chests &lt;n&gt;</c> drops n Reliquary chests (KAN-72) ahead of the player after load: Light, then Rare, ...
     /// <c>-ss-open-chest &lt;light|rare&gt;</c> drops that chest at the Knight's feet: the real walk-in pickup opens it
     /// (KAN-73) and the upgrade screen follows (cards: owned skills; force them with -ss-offer).
-    /// <c>-ss-skills id,id,...</c> grants those skills (by SkillDefinition id, repeat an id to stack) after load.
+    /// <c>-ss-skills id,id,...</c> grants those skills (by SkillDefinition id, repeat an id to stack) after load;
+    /// <c>id:N</c> puts that skill at level N (KAN-75 debug set level, 0 removes).
+    /// <c>-ss-power-curve</c> prints the power curve (KAN-75: 200 simulated runs, levels 1-20, live base numbers) to the log after load.
     /// <c>-ss-upgrade id,id,...</c> chest-upgrades those owned skills (+1 each) 0.3 s before the capture: HUD slot glow + new pips (KAN-74).
     /// <c>-ss-offer id,id,id</c> makes the next level-up offer those cards (KAN-37 tier look; use with -ss-xp).
     /// <c>-ss-horde &lt;n&gt;</c> places n enemies (wave table mix of the last phase) on a ring 4-11 m round the player after
@@ -76,6 +78,7 @@ namespace SurvivorSouls.Dev
         private int _souls;
         private int _xp;
         private string _skills;
+        private bool _powerCurve;
         private string _upgrade;
         private int _chests;
         private string _openChest;
@@ -123,6 +126,7 @@ namespace SurvivorSouls.Dev
             shot._release = float.TryParse(GetArg("-ss-release"), NumberStyles.Float, CultureInfo.InvariantCulture, out float r) ? r : 0f;
             shot._souls = int.TryParse(GetArg("-ss-souls"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int n) ? n : 0;
             shot._skills = GetArg("-ss-skills");
+            shot._powerCurve = Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-power-curve") >= 0;
             shot._upgrade = GetArg("-ss-upgrade");
             shot._chests = int.TryParse(GetArg("-ss-chests"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int ch) ? ch : 0;
             shot._offer = GetArg("-ss-offer");
@@ -182,6 +186,7 @@ namespace SurvivorSouls.Dev
             if (_horde > 0) PlaceHorde(_horde);
             if (_hold > 0) StartCoroutine(HoldHorde(_hold));
             if (!string.IsNullOrEmpty(_skills)) GrantSkills(_skills);
+            if (_powerCurve) PrintPowerCurve();
             if (_chests > 0) DropChests(_chests);
             if (!string.IsNullOrEmpty(_offer)) ForceOffer(_offer);
             if (!string.IsNullOrEmpty(_openChest)) DropChestUnderfoot(_openChest == "rare");
@@ -456,10 +461,37 @@ namespace SurvivorSouls.Dev
         {
             var manager = FindAnyObjectByType<SurvivorSouls.Gameplay.Skills.SkillManager>();
             if (manager == null) return;
-            foreach (string id in ids.Split(','))
+            foreach (string entry in ids.Split(','))
             {
-                if (!manager.Grant(id.Trim())) Debug.LogWarning($"[DevScreenshot] -ss-skills: cannot grant '{id}'");
+                string id = entry.Trim();
+                int colon = id.IndexOf(':');
+                if (colon > 0 && int.TryParse(id.Substring(colon + 1), NumberStyles.Integer, CultureInfo.InvariantCulture, out int level))
+                {
+                    var skill = manager.FindSkill(id.Substring(0, colon));
+                    if (skill == null || (!manager.SetLevel(skill, level) && manager.GetLevel(skill) != Mathf.Clamp(level, 0, skill.MaxLevel)))
+                        Debug.LogWarning($"[DevScreenshot] -ss-skills: cannot set '{id}'");
+                }
+                else if (!manager.Grant(id)) Debug.LogWarning($"[DevScreenshot] -ss-skills: cannot grant '{id}'");
             }
+        }
+
+        /// <summary>-ss-power-curve: shipped table, base numbers of the live Knight.</summary>
+        private static void PrintPowerCurve()
+        {
+            var manager = FindAnyObjectByType<SurvivorSouls.Gameplay.Skills.SkillManager>();
+            if (manager == null || manager.Progression == null) return;
+            var b = SurvivorSouls.Gameplay.Skills.PowerBase.Default;
+            var shooter = FindAnyObjectByType<AutoShooter>();
+            if (shooter != null)
+            {
+                b.Damage = shooter.BaseDamage;
+                b.ShotsPerSecond = shooter.BaseShotsPerSecond;
+                b.CritChance = shooter.BaseCritChance;
+                b.CritMultiplier = shooter.BaseCritMultiplier;
+            }
+            var health = FindAnyObjectByType<SurvivorSouls.Gameplay.Player.PlayerHealth>();
+            if (health != null) b.MaxHealth = health.BaseMax;
+            Debug.Log("[DevScreenshot] " + SurvivorSouls.Gameplay.Skills.SkillPowerCurve.Simulate(manager.Progression, b));
         }
 
         /// <summary>-ss-upgrade: +1 level on each owned skill listed (chest upgrade path, so the HUD glows).</summary>

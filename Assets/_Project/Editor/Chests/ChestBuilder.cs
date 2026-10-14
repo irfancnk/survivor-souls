@@ -200,6 +200,23 @@ namespace SurvivorSouls.Editor.Chests
             if (dropper.DropNow(at) == null) Debug.Log("[Chests] Ground full (cap reached).");
         }
 
+        [MenuItem("Survivor Souls/Debug/Chest: Drop Light")]
+        private static void DropLight() => DropTier(ChestTier.Light);
+
+        [MenuItem("Survivor Souls/Debug/Chest: Drop Rare")]
+        private static void DropRare() => DropTier(ChestTier.Rare);
+
+        /// <summary>A chest of <paramref name="tier"/> 2.5 m ahead of the Knight (KAN-75), counted as a skill chest.</summary>
+        public static ReliquaryChest DropTier(ChestTier tier)
+        {
+            var dropper = Object.FindAnyObjectByType<ChestDropper>();
+            var player = Object.FindAnyObjectByType<SurvivorSouls.Gameplay.Player.PlayerHealth>();
+            if (dropper == null || player == null) return null;
+            var chest = dropper.DropNow(player.transform.position + player.transform.forward * 2.5f, tier);
+            if (chest == null) Debug.Log("[Chests] Ground full (cap reached).");
+            return chest;
+        }
+
         [MenuItem("Survivor Souls/Debug/Chest: Open Upgrade Screen")]
         private static void OpenUpgradeScreen()
         {
@@ -217,7 +234,31 @@ namespace SurvivorSouls.Editor.Chests
                       dropper.Simulate(1000, 0.1f, 0.6f, System.Environment.TickCount));
         }
 
+        [MenuItem("Survivor Souls/Debug/Chest: Print Drop Statistics Per Level")]
+        private static void PrintPerLevel() => Debug.Log(DropTable());
+
+        /// <summary>
+        /// Drop statistics per Reliquary Hunter level (KAN-75): 1000 kills each, 10 % elites, a kill every 0.6 s, shipped
+        /// config and skill asset. Edit or Play mode (no live run needed).
+        /// </summary>
+        public static string DropTable(int kills = 1000, float eliteShare = 0.1f, float secondsPerKill = 0.6f)
+        {
+            var config = AssetDatabase.LoadAssetAtPath<ChestDropConfig>(ConfigPath);
+            var hunter = AssetDatabase.LoadAssetAtPath<SkillDefinition>(HunterPath);
+            if (config == null || hunter == null) return $"[Chests] Missing {ConfigPath} or {HunterPath}";
+            var rows = ChestDropper.SimulatePerLevel(config, hunter, kills, eliteShare, secondsPerKill, 75);
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine($"[Chests] Reliquary Hunter drops per level: {kills} kills, {eliteShare:P0} elite, a kill every " +
+                          $"{secondsPerKill:0.##} s, pity {config.PitySeconds:0} s, chests collected at once.");
+            for (int i = 0; i < rows.Length; i++) sb.AppendLine($"L{i + 1}: {rows[i]}");
+            return sb.ToString();
+        }
+
+        private const string HunterPath = "Assets/_Project/Data/Skills/Skill_ReliquaryHunter.asset";
+
         [MenuItem("Survivor Souls/Debug/Chest: Drop Now", true)]
+        [MenuItem("Survivor Souls/Debug/Chest: Drop Light", true)]
+        [MenuItem("Survivor Souls/Debug/Chest: Drop Rare", true)]
         [MenuItem("Survivor Souls/Debug/Chest: Open Upgrade Screen", true)]
         [MenuItem("Survivor Souls/Debug/Chest: Print Drop Statistics", true)]
         private static bool InPlayMode() => Application.isPlaying;

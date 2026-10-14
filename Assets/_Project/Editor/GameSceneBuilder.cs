@@ -24,6 +24,7 @@ using SurvivorSouls.Gameplay.Controls;
 using SurvivorSouls.Gameplay.Player;
 using SurvivorSouls.Gameplay.Realms;
 using SurvivorSouls.Gameplay.Skills;
+using SurvivorSouls.Gameplay.Telemetry;
 using SurvivorSouls.Gameplay.World;
 using SurvivorSouls.UI.Hud;
 using UnityEditor;
@@ -87,6 +88,10 @@ namespace SurvivorSouls.Editor
             var skills = SkillsBuilder.Create(kit, progression.Xp.gameObject, player, shooter, health);
             // Reliquary Hunter chest drops (KAN-72), walk-in pickup + upgrade screen queued on the level-up flow (KAN-73)
             var chests = ChestBuilder.Create(kit, player.GetComponent<PlayerStats>(), health, skills, progression.Flow, progression.Souls);
+            // Telemetry events only (KAN-75): SkillUpgraded, ChestDropped, ChestOpened, ChestExpired
+            var telemetry = chests.gameObject.AddComponent<RunTelemetry>();
+            SetRef(telemetry, "skills", skills);
+            SetRef(telemetry, "chests", chests);
             SetRef(game, "player", health);
             SetRef(game, "spawner", spawner);
             var timer = ChamberBuilder.Create(player, health); // portal opens when it ends (KAN-39)
