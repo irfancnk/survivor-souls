@@ -88,6 +88,8 @@ namespace SurvivorSouls.Dev
         private string _openChest;
         private string _offer;
         private int _horde;
+        private float _hordePower;
+        private bool _hordeTiers;
         private int _hold;
         private bool _immortal;
         private bool _bossStay;
@@ -138,6 +140,8 @@ namespace SurvivorSouls.Dev
             shot._openChest = GetArg("-ss-open-chest");
             shot._xp = int.TryParse(GetArg("-ss-xp"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int x) ? x : 0;
             shot._horde = int.TryParse(GetArg("-ss-horde"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int h) ? h : 0;
+            shot._hordePower = float.TryParse(GetArg("-ss-horde-power"), NumberStyles.Float, CultureInfo.InvariantCulture, out float hp) ? hp : 0f;
+            shot._hordeTiers = Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-horde-tiers") >= 0;
             shot._hold = int.TryParse(GetArg("-ss-hold"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int hold) ? hold : 0;
             shot._immortal = Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-immortal") >= 0;
             shot._timer = GetArg("-ss-timer");
@@ -188,7 +192,9 @@ namespace SurvivorSouls.Dev
             if (_souls > 0) DropSouls(_souls);
             if (_immortal)
                 foreach (var c in FindObjectsByType<ContactDamageReceiver>()) c.enabled = false;
+            if (_hordePower > 0f) SetHordePower(_hordePower);
             if (_horde > 0) PlaceHorde(_horde);
+            if (_hordeTiers) PlaceTierLineup();
             if (_hold > 0) StartCoroutine(HoldHorde(_hold));
             if (!string.IsNullOrEmpty(_skills)) GrantSkills(_skills);
             if (_powerCurve) PrintPowerCurve();
@@ -442,6 +448,48 @@ namespace SurvivorSouls.Dev
                 var prefab = EnemyWaveTable.PickEnemy(phase, UnityEngine.Random.value);
                 if (prefab != null) spawner.SpawnAt(prefab, player.transform.position + new Vector3(Mathf.Cos(a) * r, 0f, Mathf.Sin(a) * r));
             }
+        }
+
+        /// <summary>KAN-92: horde scaling uses power index <paramref name="power"/> instead of the Knight's stats.</summary>
+        private static void SetHordePower(float power)
+        {
+            var scaler = FindAnyObjectByType<SurvivorSouls.Gameplay.Chamber.HordeScaler>();
+            if (scaler == null)
+            {
+                Debug.LogWarning("[DevScreenshot] -ss-horde-power: no HordeScaler in the scene");
+                return;
+            }
+            scaler.PowerOverride = power;
+            scaler.Refresh();
+            var spawner = FindAnyObjectByType<EnemySpawner>();
+            Debug.Log($"[DevScreenshot] horde power {power:0.##}: zombie health x{scaler.Multiplier:0.00} (spawn x{spawner?.SpawnHealthMultiplier:0.00}, step {spawner?.DangerStep})");
+        }
+
+        /// <summary>KAN-92: one Shambler per danger colour step in an arc ahead of the Knight (step 0 left, last step right).</summary>
+        private static void PlaceTierLineup()
+        {
+            var spawner = FindAnyObjectByType<EnemySpawner>();
+            var player = FindAnyObjectByType<PlayerMover>();
+            var waves = spawner != null ? spawner.Waves : null;
+            var scaling = spawner != null ? spawner.Scaling : null;
+            if (player == null || waves == null || waves.PhaseCount == 0 || scaling == null)
+            {
+                Debug.LogWarning("[DevScreenshot] -ss-horde-tiers: no spawner, waves or horde scaling");
+                return;
+            }
+            var prefab = waves.GetPhase(0).enemies[0].prefab;
+            foreach (var shooter in FindObjectsByType<AutoShooter>()) shooter.enabled = false; // keep the lineup alive
+            int steps = scaling.StepCount;
+            for (int i = 0; i < steps; i++)
+            {
+                float t = steps > 1 ? i / (float)(steps - 1) : 0.5f;
+                float a = Mathf.Lerp(150f, 30f, t) * Mathf.Deg2Rad;
+                float r = i % 2 == 0 ? 4.2f : 6f;
+                var enemy = spawner.SpawnAt(prefab, player.transform.position + new Vector3(Mathf.Cos(a) * r, 0f, Mathf.Sin(a) * r));
+                enemy.SetDangerStep(scaling, i);
+                enemy.Halted = true;
+            }
+            Debug.Log($"[DevScreenshot] tier lineup: {steps} steps, {HordeTierMaterials.Count} tier materials");
         }
 
         /// <summary>Tops the field up to <paramref name="count"/> enemies once a second (off-screen spawn points).</summary>
