@@ -144,7 +144,9 @@ namespace SurvivorSouls.Tests
         /// <summary>Begin + wait + warning: the boss just rose and the intro started.</summary>
         private void Rise()
         {
-            Assert.That(_fight.Begin(new ChamberPlan(1, 5, ChamberType.Boss, false, 1f, 1f, 1f, 77)), Is.True);
+            // A yielding test lets BossFight.Start begin with the last scene's plan (a boss Chamber after a scene test).
+            if (_fight.Current == BossFight.Stage.Inactive)
+                Assert.That(_fight.Begin(new ChamberPlan(1, 5, ChamberType.Boss, false, 1f, 1f, 1f, 77)), Is.True);
             Run(_data.IntroDelay + _data.SpawnWarning + 2f * Frame);
             Assert.That(_fight.Current, Is.EqualTo(BossFight.Stage.Intro));
         }
