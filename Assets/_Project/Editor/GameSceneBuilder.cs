@@ -93,7 +93,7 @@ namespace SurvivorSouls.Editor
             // Portal -> fade -> same scene reloaded as the next Chamber, run carried over (KAN-40).
             var counters = ChamberBuilder.CreateCounters(timer.gameObject, progression.Souls); // kills + souls this run (KAN-51)
             var transition = ChamberBuilder.CreateTransition(timer.gameObject, player, health, progression.Xp, skills, counters, spawner, joystick);
-            ChamberBuilder.CreateSetup(timer.gameObject, world, spawner); // per-Chamber difficulty + layout seed (KAN-46)
+            var chamberSetup = ChamberBuilder.CreateSetup(timer.gameObject, world, spawner); // per-Chamber difficulty + layout seed (KAN-46)
             var boss = BossBuilder.Create(kit, health, timer, spawner, progression.Souls); // boss Chambers: fight, slam, reward (KAN-58)
             SetRef(game, "boss", boss); // slam camera shake
             var audio = CreateAudio(sfx, shooter, player.GetComponent<PlayerMover>(), health, progression, skills, timer, transition);
@@ -104,6 +104,10 @@ namespace SurvivorSouls.Editor
             var camera = CreateCamera(player.transform, realm.Look);
             SetRef(spawner, "viewCamera", camera); // off-screen test uses the live camera (aspect, zoom)
             SetRef(game, "followCamera", camera.GetComponent<TopDownFollowCamera>()); // shake when the portal opens
+            // Round arena for boss Chambers (KAN-59): ChamberSetup enters it instead of the streamed shore.
+            var arena = BossArenaBuilder.Create(kit, realm, sfx.PortalHum, world, spawner, player.transform, camera.GetComponent<TopDownFollowCamera>(),
+                player.GetComponent<ObjectiveArrow>(), GameObject.Find("Sun Light").GetComponent<Light>());
+            SetRef(chamberSetup, "arena", arena);
             var choice = CreateHud(panelSettings, joystick, camera, health, death, progression, skills, rarityStyles, player.transform, timer, transition,
                 counters);
             SetRef(audio, "skillChoice", choice); // card reveal sound per tier, chest upgrade pick
