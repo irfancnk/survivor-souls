@@ -64,7 +64,7 @@ namespace SurvivorSouls.UI.MainMenu
             _safeArea = new SafeAreaPadding(root.Q(SafeRootName));
             _overlay = root.Q(OverlayName);
             _toast = root.Q<Label>(ToastName);
-            root.Q<Label>(VersionName).text = $"v{Application.version}";
+            root.Q<Label>(VersionName).text = BetaMode.Enabled ? $"v{Application.version} {BetaMode.Tag}" : $"v{Application.version}";
 
             _play = root.Q<Button>(PlayName);
             _play.clicked += OnPlay;
@@ -136,9 +136,9 @@ namespace SurvivorSouls.UI.MainMenu
             StartRun(1);
         }
 
-        private void StartRealm(RealmDefinition realm) => StartRun(realm.Id);
+        private void StartRealm(RealmDefinition realm) => StartRun(realm.Id, _realmSelect != null ? _realmSelect.StartChamber : 1);
 
-        private void StartRun(int realm)
+        private void StartRun(int realm, int chamber = 1)
         {
             if (_loading) return;
             if (!SceneLoader.IsInBuild(SceneNames.Game))
@@ -151,6 +151,7 @@ namespace SurvivorSouls.UI.MainMenu
             _loading = true;
             _play.SetEnabled(false);
             RunState.NewRun(realm); // Chamber 1 of the chosen Realm, nothing carried (KAN-40)
+            if (chamber > RunState.FirstChamber) RunState.JumpToChamber(chamber); // Beta 1 Chamber picker
             SceneLoader.LoadAsync(SceneNames.Game);
         }
 

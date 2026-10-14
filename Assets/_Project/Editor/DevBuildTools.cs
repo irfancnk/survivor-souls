@@ -10,6 +10,8 @@ namespace SurvivorSouls.Editor
     /// Batchmode build helpers for automated checks.
     /// Mac dev build (pair with DevScreenshot):
     /// <c>-executeMethod SurvivorSouls.Editor.DevBuildTools.BuildMacDev -ss-out &lt;dir&gt;</c>
+    /// Any build: <c>-ss-beta1</c> adds the <c>SS_BETA1</c> define (<see cref="SurvivorSouls.Core.BetaMode"/>: all Realms
+    /// open, Chamber picker, "beta1" version tag). Project settings are not touched.
     /// </summary>
     public static class DevBuildTools
     {
@@ -23,6 +25,7 @@ namespace SurvivorSouls.Editor
                 target = BuildTarget.StandaloneOSX,
                 options = BuildOptions.Development,
             };
+            ApplyBeta(ref options);
             BuildReport report = BuildPipeline.BuildPlayer(options);
             Debug.Log($"[DevBuildTools] {report.summary.result} errors={report.summary.totalErrors} -> {options.locationPathName}");
             EditorApplication.Exit(report.summary.result == BuildResult.Succeeded ? 0 : 1);
@@ -44,6 +47,7 @@ namespace SurvivorSouls.Editor
                 target = BuildTarget.iOS,
                 options = dev ? BuildOptions.Development : BuildOptions.None,
             };
+            ApplyBeta(ref options);
             BuildReport report = BuildPipeline.BuildPlayer(options);
             Debug.Log($"[DevBuildTools] iOS {report.summary.result} errors={report.summary.totalErrors} -> {outDir}");
             EditorApplication.Exit(report.summary.result == BuildResult.Succeeded ? 0 : 1);
@@ -65,9 +69,17 @@ namespace SurvivorSouls.Editor
                 target = BuildTarget.Android,
                 options = dev ? BuildOptions.Development : BuildOptions.None,
             };
+            ApplyBeta(ref options);
             BuildReport report = BuildPipeline.BuildPlayer(options);
             Debug.Log($"[DevBuildTools] Android {report.summary.result} errors={report.summary.totalErrors} -> {outPath}");
             EditorApplication.Exit(report.summary.result == BuildResult.Succeeded ? 0 : 1);
+        }
+
+        private static void ApplyBeta(ref BuildPlayerOptions options)
+        {
+            if (!System.Environment.GetCommandLineArgs().Contains("-ss-beta1")) return;
+            options.extraScriptingDefines = new[] { SurvivorSouls.Core.BetaMode.Define };
+            Debug.Log("[DevBuildTools] Beta 1 build (SS_BETA1)");
         }
 
         private static string GetArg(string name)

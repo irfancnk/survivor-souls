@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using SurvivorSouls.Core;
 using SurvivorSouls.Gameplay.Chamber;
 using SurvivorSouls.Gameplay.Realms;
 using SurvivorSouls.UI.Hud;
@@ -55,6 +56,8 @@ namespace SurvivorSouls.UI.MainMenu
         private readonly Button _start;
         private readonly List<Card> _cards = new List<Card>();
         private IVisualElementScheduledItem _screenHide, _veilHide, _detailHide;
+        private Label _chamberPick; // Beta 1 only
+        private int _startChamber = 1;
 
         public bool IsOpen { get; private set; }
         public bool IsDetailOpen { get; private set; }
@@ -63,6 +66,8 @@ namespace SurvivorSouls.UI.MainMenu
         /// <summary>START is on in the detail sheet.</summary>
         public bool CanStart => _start != null && _start.enabledSelf;
         public VisualElement Page => _screen;
+        /// <summary>Chamber START begins at: 1, or the Beta 1 picker's choice.</summary>
+        public int StartChamber => BetaMode.Enabled ? _startChamber : 1;
 
         /// <param name="root">Tree that holds RealmSelect.uxml (the main menu root).</param>
         /// <param name="onStart">Called with the Realm when START is pressed on a startable Realm.</param>
@@ -94,6 +99,7 @@ namespace SurvivorSouls.UI.MainMenu
             _screen.Q<Button>(DetailBackName).clicked += CloseDetail;
             _veil.RegisterCallback<PointerDownEvent>(_ => CloseDetail());
             _start.clicked += OnStart;
+            if (BetaMode.Enabled) BuildChamberPicker();
 
             BuildCards();
         }
@@ -153,17 +159,19 @@ namespace SurvivorSouls.UI.MainMenu
             _estus.text = realm.EstusCost.ToString();
 
             string note = locked ? $"Clear Realm {ChamberTransitionHud.Roman(realm.Id - 1)} to unlock."
-                : !realm.Playable ? "This Realm is still being forged. Coming soon."
+                : !IsPlayable(realm) ? "This Realm is still being forged. Coming soon."
                 : null;
             _note.text = note ?? "";
             _note.EnableInClassList(HiddenClass, note == null);
             _start.SetEnabled(note == null);
             _start.text = locked ? "LOCKED"
-                : !realm.Playable ? "COMING SOON"
+                : !IsPlayable(realm) ? "COMING SOON"
                 : state == RealmState.Completed ? "START AGAIN"
                 : RunProgress.BestChamber(realm.Id) > 0 ? "START"
                 : "ENTER";
 
+            _startChamber = 1;
+            UpdateChamberPick();
             foreach (var card in _cards) card.Root.EnableInClassList(SelectedClass, card.Realm == realm);
             _veilHide?.Pause();
             _detailHide?.Pause();
@@ -220,7 +228,7 @@ namespace SurvivorSouls.UI.MainMenu
         {
             if (state == RealmState.Locked) return "LOCKED";
             if (state == RealmState.Completed) return "CLEARED";
-            if (!realm.Playable) return "SOON";
+            if (!IsPlayable(realm)) return "SOON";
             return RunProgress.BestChamber(realm.Id) > 0 ? "" : "NEW";
         }
 
@@ -228,6 +236,60 @@ namespace SurvivorSouls.UI.MainMenu
         {
             int best = Mathf.Min(RunProgress.BestChamber(realm.Id), realm.Chambers);
             return best > 0 ? $"BEST {best} / {realm.Chambers}" : "NOT YET ENTERED";
+        }
+
+        /// <summary>Has content to play. Beta 1: every Realm (no own content yet = Realm 1 content).</summary>
+        private static bool IsPlayable(RealmDefinition realm) => realm.Playable || BetaMode.Enabled;
+
+        /// <summary>Beta 1: "&lt; CHAMBER N &gt;" row above START, to start at any Chamber (boss Chambers 5 and 10).</summary>
+        private void BuildChamberPicker()
+        {
+            var row = new VisualElement { name = "rs-beta-chambers" };
+            row.style.flexDirection = FlexDirection.Row;
+            row.style.justifyContent = Justify.Center;
+            row.style.alignItems = Align.Center;
+            row.style.marginBottom = 18;
+            row.Add(StepButton("<", -1));
+            _chamberPick = new Label();
+            _chamberPick.style.fontSize = 44;
+            _chamberPick.style.color = new Color(0.93f, 0.84f, 0.6f);
+            _chamberPick.style.unityFontStyleAndWeight = FontStyle.Bold;
+            _chamberPick.style.minWidth = 420;
+            _chamberPick.style.unityTextAlign = TextAnchor.MiddleCenter;
+            row.Add(_chamberPick);
+            row.Add(StepButton(">", 1));
+            var parent = _start.parent;
+            parent.Insert(parent.IndexOf(_start), row);
+            UpdateChamberPick();
+        }
+
+        private Button StepButton(string text, int step)
+        {
+            var b = new Button(() => StepChamber(step)) { text = text };
+            b.style.width = 120;
+            b.style.height = 96;
+            b.style.fontSize = 48;
+            b.style.color = new Color(0.93f, 0.84f, 0.6f);
+            b.style.backgroundColor = new Color(0.08f, 0.09f, 0.11f);
+            var rim = new Color(0.6f, 0.5f, 0.3f);
+            b.style.borderTopColor = b.style.borderBottomColor = b.style.borderLeftColor = b.style.borderRightColor = rim;
+            b.style.borderTopWidth = b.style.borderBottomWidth = b.style.borderLeftWidth = b.style.borderRightWidth = 2;
+            return b;
+        }
+
+        /// <summary>Beta 1 picker: next / previous Chamber, wraps inside the Realm.</summary>
+        public void StepChamber(int step)
+        {
+            int count = Selected != null ? Mathf.Max(1, Selected.Chambers) : 1;
+            _startChamber = ((_startChamber - 1 + step) % count + count) % count + 1;
+            UpdateChamberPick();
+        }
+
+        private void UpdateChamberPick()
+        {
+            if (_chamberPick == null) return;
+            int count = Selected != null ? Selected.Chambers : 0;
+            _chamberPick.text = count > 0 ? $"CHAMBER {_startChamber} / {count}" : $"CHAMBER {_startChamber}";
         }
 
         private static string Or(string text, string fallback) => string.IsNullOrEmpty(text) ? fallback : text;

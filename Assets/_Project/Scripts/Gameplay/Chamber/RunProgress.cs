@@ -1,3 +1,4 @@
+using SurvivorSouls.Core;
 using UnityEngine;
 
 namespace SurvivorSouls.Gameplay.Chamber
@@ -40,8 +41,8 @@ namespace SurvivorSouls.Gameplay.Chamber
         /// <summary>The last Chamber of <paramref name="realm"/> was cleared at least once.</summary>
         public static bool IsCompleted(int realm) => PlayerPrefs.GetInt(CompletedKey(realm), 0) != 0;
 
-        /// <summary>Realm 1 always; any other Realm once the one before it is completed.</summary>
-        public static bool IsUnlocked(int realm) => realm <= 1 || IsCompleted(realm - 1);
+        /// <summary>Realm 1 always; any other Realm once the one before it is completed. Beta 1 builds: every Realm.</summary>
+        public static bool IsUnlocked(int realm) => BetaMode.Enabled || realm <= 1 || IsCompleted(realm - 1);
 
         /// <summary>Locked, unlocked or completed (a completed Realm is always open).</summary>
         public static RealmState StateOf(int realm) =>
