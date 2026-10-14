@@ -107,6 +107,7 @@ namespace SurvivorSouls.Editor
             var choice = CreateHud(panelSettings, joystick, camera, health, death, progression, skills, rarityStyles, player.transform, timer, transition,
                 counters);
             SetRef(audio, "skillChoice", choice); // card reveal sound per tier, chest upgrade pick
+            SetRef(audio, "skillHud", choice.GetComponent<SkillHud>()); // chime when a skill slot glows after a level-up (KAN-74)
             SetRef(audio, "boss", boss); // boss groans + slam thud
             SetRef(choice.gameObject.AddComponent<BossHud>(), "fight", boss); // boss bar in the timer's place
 
@@ -233,6 +234,7 @@ namespace SurvivorSouls.Editor
             SetClips(so.FindProperty("boonPicks"), sfx.BoonPicks);
             SetClips(so.FindProperty("chestDrops"), sfx.ChestDrops);
             SetClips(so.FindProperty("chestOpens"), sfx.ChestOpens);
+            SetClips(so.FindProperty("skillUpgrades"), sfx.SkillUpgrades);
             SetClips(so.FindProperty("portalOpens"), sfx.PortalOpens);
             SetClips(so.FindProperty("portalEnters"), sfx.PortalEnters);
             SetClips(so.FindProperty("chamberArrives"), sfx.ChamberArrives);

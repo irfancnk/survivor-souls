@@ -22,6 +22,8 @@ namespace SurvivorSouls.Editor.Audio
             public AudioClip[] Shots, Impacts, Deaths, Footsteps, HitMarkers, KillMarkers, SoulChimes, LevelUps, BoonPicks, PortalOpens, PortalEnters, ChamberArrives;
             /// <summary>Reliquary chest lands (KAN-73) and opens.</summary>
             public AudioClip[] ChestDrops, ChestOpens;
+            /// <summary>Owned skill levelled up, played when the HUD slot glows after the pause (KAN-74).</summary>
+            public AudioClip[] SkillUpgrades;
             public AudioClip Ambience, PortalHum;
             /// <summary>Skill card reveal per tier (KAN-37), index = SkillRarity: Common, Rare, Epic, Legendary.</summary>
             public AudioClip[] RarityReveals;
@@ -46,6 +48,7 @@ namespace SurvivorSouls.Editor.Audio
                 BoonPicks = Many("sfx_boon_pick", 1, BoonPick),
                 ChestDrops = Many("sfx_chest_drop", 1, ChestDrop),
                 ChestOpens = Many("sfx_chest_open", 1, ChestOpen),
+                SkillUpgrades = Many("sfx_skill_upgrade", 1, SkillUpgrade),
                 PortalOpens = Many("sfx_portal_open", 1, PortalOpen),
                 PortalEnters = Many("sfx_portal_enter", 1, PortalEnter),
                 ChamberArrives = Many("sfx_chamber_arrive", 1, ChamberArrive),
@@ -264,6 +267,23 @@ namespace SurvivorSouls.Editor.Audio
                 Sweep(b, 0.2f + i * 0.06f, 0.75f - i * 0.08f, notes[i], notes[i], 0.22f - i * 0.025f, 5f + i, 2);
             NoiseBurst(b, 0.2f, 0.7f, 0.1f, 4000f, 9000f, 5f, rng);           // shimmer
             return Normalize(b, 0.8f);
+        }
+
+        /// <summary>
+        /// Owned skill levelled up (KAN-74), under the HUD slot glow once play resumes: a short rising bell pair (B5 then
+        /// E6, a fourth up) with a soft shimmer. Small and bright, not the boon strike: it marks the HUD, not the pick.
+        /// </summary>
+        private static float[] SkillUpgrade(int seed)
+        {
+            var rng = new System.Random(seed * 1949);
+            var b = new float[(int)(Rate * 0.75f)];
+            Sweep(b, 0f, 0.4f, 987.8f, 987.8f, 0.3f, 9f, 2);                   // B5
+            Sweep(b, 0f, 0.25f, 1975.5f, 1975.6f, 0.08f, 14f, 1);              // octave shimmer
+            Sweep(b, 0.09f, 0.65f, 1318.5f, 1318.5f, 0.34f, 5.5f, 2);          // E6, rings out
+            Sweep(b, 0.09f, 0.4f, 2637.6f, 2637f, 0.09f, 10f, 1);
+            Sweep(b, 0.09f, 0.3f, 1318.5f * 2.76f, 1318.5f * 2.76f, 0.04f, 18f, 1); // bell partial
+            NoiseBurst(b, 0.09f, 0.4f, 0.06f, 5000f, 11000f, 9f, rng);         // sparkle
+            return Normalize(b, 0.65f);
         }
 
         // Skill card reveals (KAN-37): one short sound per tier, each a step bigger. Common is a soft card slap + one dull
