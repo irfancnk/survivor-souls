@@ -29,6 +29,8 @@ namespace SurvivorSouls.Dev
     /// <c>-ss-souls &lt;n&gt;</c> drops n soul wisps around the player after load (mostly small, some elite, one boss orb).
     /// <c>-ss-xp &lt;amount&gt;</c> grants that much XP <see cref="XpLead"/> s before the capture (level-up burst + skill cards).
     /// <c>-ss-chests &lt;n&gt;</c> drops n Reliquary chests (KAN-72) ahead of the player after load: Light, then Rare, ...
+    /// <c>-ss-open-chest &lt;light|rare&gt;</c> drops that chest at the Knight's feet: the real walk-in pickup opens it
+    /// (KAN-73) and the upgrade screen follows (cards: owned skills; force them with -ss-offer).
     /// <c>-ss-skills id,id,...</c> grants those skills (by SkillDefinition id, repeat an id to stack) after load.
     /// <c>-ss-offer id,id,id</c> makes the next level-up offer those cards (KAN-37 tier look; use with -ss-xp).
     /// <c>-ss-horde &lt;n&gt;</c> places n enemies (wave table mix of the last phase) on a ring 4-11 m round the player after
@@ -67,6 +69,7 @@ namespace SurvivorSouls.Dev
         private int _xp;
         private string _skills;
         private int _chests;
+        private string _openChest;
         private string _offer;
         private int _horde;
         private int _hold;
@@ -110,6 +113,7 @@ namespace SurvivorSouls.Dev
             shot._skills = GetArg("-ss-skills");
             shot._chests = int.TryParse(GetArg("-ss-chests"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int ch) ? ch : 0;
             shot._offer = GetArg("-ss-offer");
+            shot._openChest = GetArg("-ss-open-chest");
             shot._xp = int.TryParse(GetArg("-ss-xp"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int x) ? x : 0;
             shot._horde = int.TryParse(GetArg("-ss-horde"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int h) ? h : 0;
             shot._hold = int.TryParse(GetArg("-ss-hold"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int hold) ? hold : 0;
@@ -164,6 +168,7 @@ namespace SurvivorSouls.Dev
             if (!string.IsNullOrEmpty(_skills)) GrantSkills(_skills);
             if (_chests > 0) DropChests(_chests);
             if (!string.IsNullOrEmpty(_offer)) ForceOffer(_offer);
+            if (!string.IsNullOrEmpty(_openChest)) DropChestUnderfoot(_openChest == "rare");
             if (!string.IsNullOrEmpty(_timer))
             {
                 var timer = SurvivorSouls.Gameplay.Chamber.SurvivalTimer.Active;
@@ -430,6 +435,20 @@ namespace SurvivorSouls.Dev
                     ? $"[DevScreenshot] Chest {tier} at {chest.transform.position} choices={chest.Choices} upgrades={chest.Upgrades}"
                     : "[DevScreenshot] -ss-chests: ground full");
             }
+        }
+
+        /// <summary>-ss-open-chest: a chest 0.2 m ahead of the Knight; the dropper's own pickup opens it once it has landed.</summary>
+        private static void DropChestUnderfoot(bool rare)
+        {
+            var dropper = FindAnyObjectByType<SurvivorSouls.Gameplay.Chests.ChestDropper>();
+            var player = FindAnyObjectByType<PlayerHealth>();
+            if (dropper == null || player == null) return;
+            var tier = rare ? SurvivorSouls.Gameplay.Chests.ChestTier.Rare : SurvivorSouls.Gameplay.Chests.ChestTier.Light;
+            var chest = dropper.Drop(player.transform.position + player.transform.forward * 0.2f, tier, dropper.Choices,
+                rare ? dropper.Config.RareUpgrades : 1);
+            Debug.Log(chest != null
+                ? $"[DevScreenshot] Open chest {tier}: choices={chest.Choices} upgrades={chest.Upgrades}"
+                : "[DevScreenshot] -ss-open-chest: ground full");
         }
 
         private static void ForceOffer(string ids)

@@ -1,6 +1,7 @@
 using SurvivorSouls.Core;
 using SurvivorSouls.Gameplay.Boss;
 using SurvivorSouls.Gameplay.Chamber;
+using SurvivorSouls.Gameplay.Chests;
 using SurvivorSouls.Gameplay.Combat;
 using SurvivorSouls.Gameplay.Player;
 using SurvivorSouls.Gameplay.Progression;
@@ -32,6 +33,8 @@ namespace SurvivorSouls.Audio
         [SerializeField] private BossFight boss;
         [Tooltip("Level-up cards: each card landing plays its tier's reveal sound (KAN-37).")]
         [SerializeField] private SkillChoiceScreen skillChoice;
+        [Tooltip("Reliquary chests (KAN-73): land thud, open creak + shimmer.")]
+        [SerializeField] private ChestDropper chests;
 
         [Header("Clips")]
         [SerializeField] private AudioClip[] shots;
@@ -47,6 +50,8 @@ namespace SurvivorSouls.Audio
         [Tooltip("Level-up swell (KAN-21), plays while the game is paused.")]
         [SerializeField] private AudioClip[] levelUps;
         [SerializeField] private AudioClip[] boonPicks;
+        [SerializeField] private AudioClip[] chestDrops;
+        [SerializeField] private AudioClip[] chestOpens;
         [Tooltip("Survival timer ended: horn + chime (KAN-39). 2D, heard anywhere; the portal's own hum is 3D.")]
         [SerializeField] private AudioClip[] portalOpens;
         [Tooltip("Knight steps into the portal: rush into the white (KAN-40).")]
@@ -129,7 +134,16 @@ namespace SurvivorSouls.Audio
             if (souls != null) souls.Collected += OnSoulCollected;
             if (levelUp != null) levelUp.Started += OnLevelUp;
             if (skills != null) skills.Granted += OnSkillGranted;
-            if (skillChoice != null) skillChoice.CardRevealed += OnCardRevealed;
+            if (skillChoice != null)
+            {
+                skillChoice.CardRevealed += OnCardRevealed;
+                skillChoice.Upgraded += OnSkillUpgraded;
+            }
+            if (chests != null)
+            {
+                chests.Dropped += OnChestDropped;
+                chests.OpenStarted += OnChestOpened;
+            }
             if (timer != null) timer.Finished += OnPortalOpens;
             if (transition != null)
             {
@@ -161,7 +175,16 @@ namespace SurvivorSouls.Audio
             if (souls != null) souls.Collected -= OnSoulCollected;
             if (levelUp != null) levelUp.Started -= OnLevelUp;
             if (skills != null) skills.Granted -= OnSkillGranted;
-            if (skillChoice != null) skillChoice.CardRevealed -= OnCardRevealed;
+            if (skillChoice != null)
+            {
+                skillChoice.CardRevealed -= OnCardRevealed;
+                skillChoice.Upgraded -= OnSkillUpgraded;
+            }
+            if (chests != null)
+            {
+                chests.Dropped -= OnChestDropped;
+                chests.OpenStarted -= OnChestOpened;
+            }
             if (timer != null) timer.Finished -= OnPortalOpens;
             if (transition != null)
             {
@@ -227,6 +250,14 @@ namespace SurvivorSouls.Audio
         private void OnLevelUp(int level) => Play(levelUps, levelUpVolume, 0f);
 
         private void OnSkillGranted(SkillDefinition skill, int stacks) => Play(boonPicks, boonPickVolume, 0f);
+
+        /// <summary>Chest upgrade picked: the boon strike a fifth higher (same family, reads as "more of it").</summary>
+        private void OnSkillUpgraded(SkillDefinition skill, int oldLevel, int newLevel) =>
+            Play(boonPicks, boonPickVolume, 0f, 1.335f);
+
+        private void OnChestDropped(ReliquaryChest chest) => Play(chestDrops, boonPickVolume * 0.8f, 0.04f);
+
+        private void OnChestOpened(ReliquaryChest chest) => Play(chestOpens, boonPickVolume, 0.02f);
 
         private void OnCardRevealed(int index, SkillDefinition skill)
         {

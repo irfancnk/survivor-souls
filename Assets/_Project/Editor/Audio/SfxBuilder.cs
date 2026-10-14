@@ -20,6 +20,8 @@ namespace SurvivorSouls.Editor.Audio
         public sealed class Set
         {
             public AudioClip[] Shots, Impacts, Deaths, Footsteps, HitMarkers, KillMarkers, SoulChimes, LevelUps, BoonPicks, PortalOpens, PortalEnters, ChamberArrives;
+            /// <summary>Reliquary chest lands (KAN-73) and opens.</summary>
+            public AudioClip[] ChestDrops, ChestOpens;
             public AudioClip Ambience, PortalHum;
             /// <summary>Skill card reveal per tier (KAN-37), index = SkillRarity: Common, Rare, Epic, Legendary.</summary>
             public AudioClip[] RarityReveals;
@@ -42,6 +44,8 @@ namespace SurvivorSouls.Editor.Audio
                 SoulChimes = Many("sfx_soul_chime", 2, SoulChime),
                 LevelUps = Many("sfx_level_up", 1, LevelUp),
                 BoonPicks = Many("sfx_boon_pick", 1, BoonPick),
+                ChestDrops = Many("sfx_chest_drop", 1, ChestDrop),
+                ChestOpens = Many("sfx_chest_open", 1, ChestOpen),
                 PortalOpens = Many("sfx_portal_open", 1, PortalOpen),
                 PortalEnters = Many("sfx_portal_enter", 1, PortalEnter),
                 ChamberArrives = Many("sfx_chamber_arrive", 1, ChamberArrive),
@@ -224,6 +228,41 @@ namespace SurvivorSouls.Editor.Audio
             Sweep(b, 0.03f, 0.5f, 1761f, 1760f, 0.08f, 9f, 1);                 // octave shimmer
             for (int i = 0; i < 9; i++)                                        // ember crackle
                 Click(b, 0.12f + (float)rng.NextDouble() * 0.45f, 0.004f, 0.12f + (float)rng.NextDouble() * 0.1f, 4200f, rng);
+            return Normalize(b, 0.8f);
+        }
+
+        /// <summary>
+        /// Reliquary chest lands (KAN-73): a dull wooden thud on snow, a short iron rattle and one soft high bell (D6) so it
+        /// reads as treasure through the fight noise.
+        /// </summary>
+        private static float[] ChestDrop(int seed)
+        {
+            var rng = new System.Random(seed * 1913);
+            var b = new float[(int)(Rate * 0.7f)];
+            NoiseBurst(b, 0f, 0.09f, 0.6f, 80f, 700f, 40f, rng);               // wood on snow
+            Sweep(b, 0f, 0.16f, 140f, 96f, 0.5f, 22f, 2);                      // low thud body
+            for (int i = 0; i < 4; i++)                                        // iron straps rattle
+                Click(b, 0.03f + i * 0.035f + (float)rng.NextDouble() * 0.01f, 0.006f, 0.16f - i * 0.03f, 3600f, rng);
+            Sweep(b, 0.06f, 0.6f, 1174.7f, 1174.7f, 0.16f, 7f, 2);             // D6 bell
+            return Normalize(b, 0.7f);
+        }
+
+        /// <summary>
+        /// Reliquary chest opens (KAN-73): a short hinge creak, the lid knock, then a rising gold shimmer (A5 C#6 E6 A6
+        /// quick arpeggio over bright noise). About 0.4 s to the top note, matching the open animation.
+        /// </summary>
+        private static float[] ChestOpen(int seed)
+        {
+            var rng = new System.Random(seed * 1931);
+            var b = new float[(int)(Rate * 1.1f)];
+            Sweep(b, 0f, 0.16f, 520f, 760f, 0.12f, 6f, 4);                     // hinge creak
+            NoiseBurst(b, 0f, 0.16f, 0.12f, 900f, 2600f, 12f, rng);
+            NoiseBurst(b, 0.15f, 0.08f, 0.45f, 120f, 900f, 45f, rng);          // lid knock
+            Sweep(b, 0.15f, 0.12f, 120f, 90f, 0.35f, 25f, 2);
+            float[] notes = { 880f, 1108.7f, 1318.5f, 1760f };
+            for (int i = 0; i < notes.Length; i++)                             // gold arpeggio
+                Sweep(b, 0.2f + i * 0.06f, 0.75f - i * 0.08f, notes[i], notes[i], 0.22f - i * 0.025f, 5f + i, 2);
+            NoiseBurst(b, 0.2f, 0.7f, 0.1f, 4000f, 9000f, 5f, rng);           // shimmer
             return Normalize(b, 0.8f);
         }
 

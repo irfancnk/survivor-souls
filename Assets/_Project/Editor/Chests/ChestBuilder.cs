@@ -1,6 +1,8 @@
 using SurvivorSouls.Editor.Procedural;
 using SurvivorSouls.Editor.World;
 using SurvivorSouls.Gameplay.Chests;
+using SurvivorSouls.Gameplay.Player;
+using SurvivorSouls.Gameplay.Progression;
 using SurvivorSouls.Gameplay.Skills;
 using UnityEditor;
 using UnityEngine;
@@ -11,8 +13,9 @@ namespace SurvivorSouls.Editor.Chests
     /// <summary>
     /// Reliquary chest drops of the Game scene (KAN-72): the drop rules asset (<see cref="ChestDropConfig"/>, made once,
     /// never overwritten), the light chest prefab (procedural wooden chest on the palette material + gold light beam +
-    /// ground glow) and the "Chests" scene object with <see cref="ChestDropper"/>. Placeholder look until KAN-73 / KAN-23
-    /// bring the real chest and its open animation (they replace the body, not the dropper). Called by GameSceneBuilder.
+    /// ground glow; the lid is its own part hinged at the back so it can swing open, KAN-73) and the "Chests" scene object
+    /// with <see cref="ChestDropper"/> (drops, walk-in pickup) and <see cref="ChestRewards"/> (upgrade queue, fallback).
+    /// Placeholder look until KAN-23 brings the real chest (it replaces the body, not the dropper). Called by GameSceneBuilder.
     /// Debug menu (Play mode): "Survivor Souls/Debug/Chest: Drop Now", "Chest: Print Drop Statistics".
     /// </summary>
     public static class ChestBuilder
@@ -25,8 +28,11 @@ namespace SurvivorSouls.Editor.Chests
         public const string PrefabPath = PrefabDir + "/Chest_Reliquary.prefab";
         private const float BeamHeight = 4.2f;
         private const float BeamWidth = 1.2f;
+        /// <summary>Lid hinge in body space: top of the box, back edge (+Z; the lock plate faces -Z).</summary>
+        private static readonly Vector3 Hinge = new Vector3(0f, 0.34f, 0.21f);
 
-        public static ChestDropper Create(GameArtKit kit, PlayerStats stats)
+        public static ChestDropper Create(GameArtKit kit, PlayerStats stats, PlayerHealth player, SkillManager skills,
+            LevelUpFlow flow, SoulWispField souls)
         {
             var config = LoadOrCreateConfig();
             var prefab = BuildPrefab(kit);
@@ -36,6 +42,17 @@ namespace SurvivorSouls.Editor.Chests
             so.FindProperty("config").objectReferenceValue = config;
             so.FindProperty("stats").objectReferenceValue = stats;
             so.FindProperty("chestPrefab").objectReferenceValue = prefab;
+            so.FindProperty("player").objectReferenceValue = player;
+            so.FindProperty("skills").objectReferenceValue = skills;
+            so.ApplyModifiedPropertiesWithoutUndo();
+
+            var rewards = go.AddComponent<ChestRewards>();
+            so = new SerializedObject(rewards);
+            so.FindProperty("dropper").objectReferenceValue = dropper;
+            so.FindProperty("flow").objectReferenceValue = flow;
+            so.FindProperty("skills").objectReferenceValue = skills;
+            so.FindProperty("player").objectReferenceValue = player;
+            so.FindProperty("souls").objectReferenceValue = souls;
             so.ApplyModifiedPropertiesWithoutUndo();
             return dropper;
         }
@@ -61,6 +78,8 @@ namespace SurvivorSouls.Editor.Chests
             var glowMat = EditorAssetUtil.ParticleMaterial(ArtDir + "/M_FX_ChestGlow.mat", kit.SoftDot, additive: false);
             var bodyMesh = EditorAssetUtil.LoadOrCreateMesh(ArtDir + "/Mesh_ChestBody.asset");
             ChestMesh().WriteTo(bodyMesh);
+            var lidMesh = EditorAssetUtil.LoadOrCreateMesh(ArtDir + "/Mesh_ChestLid.asset");
+            LidMesh().WriteTo(lidMesh);
             var beamMesh = EditorAssetUtil.LoadOrCreateMesh(ArtDir + "/Mesh_ChestBeam.asset");
             WriteBeam(beamMesh);
 
@@ -68,13 +87,15 @@ namespace SurvivorSouls.Editor.Chests
             try
             {
                 var body = Part("Body", root.transform, bodyMesh, kit.Palette);
+                var lid = Part("Lid", body.transform, lidMesh, kit.Palette);
+                lid.transform.localPosition = Hinge;
                 var beam = Part("Beam", root.transform, beamMesh, beamMat);
                 var glow = Part("Glow", root.transform, kit.Quad, glowMat);
                 glow.transform.localPosition = Vector3.up * 0.03f;
                 glow.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
                 glow.transform.localScale = Vector3.one * 2.6f;
                 var chest = root.AddComponent<ReliquaryChest>();
-                chest.Setup(body.transform, beam, glow);
+                chest.Setup(body.transform, beam, glow, lid.transform);
                 var prefab = PrefabUtility.SaveAsPrefabAsset(root, PrefabPath);
                 return prefab.GetComponent<ReliquaryChest>();
             }
@@ -99,8 +120,9 @@ namespace SurvivorSouls.Editor.Chests
         }
 
         /// <summary>
-        /// Small wooden reliquary, about 0.64 x 0.56 x 0.44 m: box body, round lid (half-buried cylinder), iron straps and
-        /// rims, a bright lock plate at the front (-Z). Palette atlas: one draw call, batches with the props.
+        /// Small wooden reliquary, about 0.64 x 0.56 x 0.44 m: box body, iron straps and rims, a bright lock plate at the
+        /// front (-Z), a glowing gold floor inside (seen when the lid opens). The round lid is <see cref="LidMesh"/>.
+        /// Palette atlas: batches with the props.
         /// </summary>
         private static MeshBuilder ChestMesh()
         {
@@ -110,15 +132,25 @@ namespace SurvivorSouls.Editor.Chests
             var bright = PropKit.Pal(Swatch.BrightMetal);
             var id = Quaternion.identity;
             mb.Box(new Vector3(0f, 0.18f, 0f), new Vector3(0.62f, 0.32f, 0.42f), id, wood, 0);
-            mb.Tube(new[] { new Vector3(-0.31f, 0.34f, 0f), new Vector3(0.31f, 0.34f, 0f) }, _ => 0.21f, wood, 0, sides: 10);
             mb.Box(new Vector3(0f, 0.035f, 0f), new Vector3(0.66f, 0.07f, 0.46f), id, iron, 0); // foot rim
             mb.Box(new Vector3(0f, 0.335f, 0f), new Vector3(0.66f, 0.04f, 0.46f), id, iron, 0); // lid seam
+            mb.Box(new Vector3(0f, 0.36f, 0f), new Vector3(0.54f, 0.01f, 0.34f), id, bright, 0); // treasure (shows when open)
             foreach (float x in new[] { -0.2f, 0.2f })
-            {
                 mb.Box(new Vector3(x, 0.18f, 0f), new Vector3(0.06f, 0.33f, 0.44f), id, iron, 0);
-                mb.Tube(new[] { new Vector3(x - 0.03f, 0.34f, 0f), new Vector3(x + 0.03f, 0.34f, 0f) }, _ => 0.225f, iron, 0, sides: 10);
-            }
             mb.Box(new Vector3(0f, 0.28f, -0.225f), new Vector3(0.12f, 0.14f, 0.03f), id, bright, 0); // lock plate
+            return mb;
+        }
+
+        /// <summary>Round lid (half-buried cylinder) with two iron straps, in hinge space (pivot at <see cref="Hinge"/>).</summary>
+        private static MeshBuilder LidMesh()
+        {
+            var mb = new MeshBuilder();
+            var wood = PropKit.Pal(Swatch.Wood);
+            var iron = PropKit.Pal(Swatch.Gunmetal);
+            var c = new Vector3(0f, 0.34f, 0f) - Hinge; // cylinder axis relative to the hinge
+            mb.Tube(new[] { c + new Vector3(-0.31f, 0f, 0f), c + new Vector3(0.31f, 0f, 0f) }, _ => 0.21f, wood, 0, sides: 10);
+            foreach (float x in new[] { -0.2f, 0.2f })
+                mb.Tube(new[] { c + new Vector3(x - 0.03f, 0f, 0f), c + new Vector3(x + 0.03f, 0f, 0f) }, _ => 0.225f, iron, 0, sides: 10);
             return mb;
         }
 
@@ -168,6 +200,13 @@ namespace SurvivorSouls.Editor.Chests
             if (dropper.DropNow(at) == null) Debug.Log("[Chests] Ground full (cap reached).");
         }
 
+        [MenuItem("Survivor Souls/Debug/Chest: Open Upgrade Screen")]
+        private static void OpenUpgradeScreen()
+        {
+            var flow = Object.FindAnyObjectByType<LevelUpFlow>();
+            if (flow == null || !flow.EnqueueUpgrade(new UpgradeOffer(3, 1, false))) Debug.Log("[Chests] Upgrade queue full.");
+        }
+
         [MenuItem("Survivor Souls/Debug/Chest: Print Drop Statistics")]
         private static void PrintStatistics()
         {
@@ -179,6 +218,7 @@ namespace SurvivorSouls.Editor.Chests
         }
 
         [MenuItem("Survivor Souls/Debug/Chest: Drop Now", true)]
+        [MenuItem("Survivor Souls/Debug/Chest: Open Upgrade Screen", true)]
         [MenuItem("Survivor Souls/Debug/Chest: Print Drop Statistics", true)]
         private static bool InPlayMode() => Application.isPlaying;
     }

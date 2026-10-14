@@ -84,7 +84,8 @@ namespace SurvivorSouls.Editor
             var (health, death) = CreatePlayerHealth(player, joystick, shooter);
             SetRef(progression.Flow, "player", health);
             var skills = SkillsBuilder.Create(kit, progression.Xp.gameObject, player, shooter, health);
-            ChestBuilder.Create(kit, player.GetComponent<PlayerStats>()); // Reliquary Hunter chest drops (KAN-72)
+            // Reliquary Hunter chest drops (KAN-72), walk-in pickup + upgrade screen queued on the level-up flow (KAN-73)
+            var chests = ChestBuilder.Create(kit, player.GetComponent<PlayerStats>(), health, skills, progression.Flow, progression.Souls);
             SetRef(game, "player", health);
             SetRef(game, "spawner", spawner);
             var timer = ChamberBuilder.Create(player, health); // portal opens when it ends (KAN-39)
@@ -96,6 +97,7 @@ namespace SurvivorSouls.Editor
             var boss = BossBuilder.Create(kit, health, timer, spawner, progression.Souls); // boss Chambers: fight, slam, reward (KAN-58)
             SetRef(game, "boss", boss); // slam camera shake
             var audio = CreateAudio(sfx, shooter, player.GetComponent<PlayerMover>(), health, progression, skills, timer, transition);
+            SetRef(audio, "chests", chests); // chest land thud + open creak
             var rarityStyles = SkillsBuilder.BuildStyles(sfx.RarityReveals); // tier names, gems, reveal sounds (KAN-37)
             WindTrailBuilder.Create(kit, player);
 
@@ -104,7 +106,7 @@ namespace SurvivorSouls.Editor
             SetRef(game, "followCamera", camera.GetComponent<TopDownFollowCamera>()); // shake when the portal opens
             var choice = CreateHud(panelSettings, joystick, camera, health, death, progression, skills, rarityStyles, player.transform, timer, transition,
                 counters);
-            SetRef(audio, "skillChoice", choice); // card reveal sound per tier
+            SetRef(audio, "skillChoice", choice); // card reveal sound per tier, chest upgrade pick
             SetRef(audio, "boss", boss); // boss groans + slam thud
             SetRef(choice.gameObject.AddComponent<BossHud>(), "fight", boss); // boss bar in the timer's place
 
@@ -229,6 +231,8 @@ namespace SurvivorSouls.Editor
             so.FindProperty("timer").objectReferenceValue = timer;
             so.FindProperty("transition").objectReferenceValue = transition;
             SetClips(so.FindProperty("boonPicks"), sfx.BoonPicks);
+            SetClips(so.FindProperty("chestDrops"), sfx.ChestDrops);
+            SetClips(so.FindProperty("chestOpens"), sfx.ChestOpens);
             SetClips(so.FindProperty("portalOpens"), sfx.PortalOpens);
             SetClips(so.FindProperty("portalEnters"), sfx.PortalEnters);
             SetClips(so.FindProperty("chamberArrives"), sfx.ChamberArrives);
