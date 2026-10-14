@@ -15,7 +15,8 @@ namespace SurvivorSouls.Editor.Boss
     /// Boss fight of the Game scene (KAN-58): the "Boss" object with <see cref="BossFight"/> and its red ground telegraph
     /// (ring + growing disc, two flat quads, procedural textures), the Realm 1 boss asset (<see cref="BossData"/>, never
     /// overwritten: only an empty body slot is filled) and the boss Chamber rules (<see cref="OpenCondition.KillBoss"/>).
-    /// The body prefab is built by <see cref="CombatBuilder"/>. Called by GameSceneBuilder.
+    /// The body prefab is built by <see cref="CombatBuilder"/>. Healing hearts (KAN-60) live on the same object
+    /// (<see cref="BossHeartsBuilder"/>). Called by GameSceneBuilder.
     /// Debug menus (Play mode): "Survivor Souls/Debug/Boss: Kill" and "Boss: Half Health".
     /// </summary>
     public static class BossBuilder
@@ -44,6 +45,7 @@ namespace SurvivorSouls.Editor.Boss
             so.FindProperty("souls").objectReferenceValue = souls;
             so.FindProperty("telegraph").objectReferenceValue = telegraph;
             so.ApplyModifiedPropertiesWithoutUndo();
+            BossHeartsBuilder.Create(kit, root, fight, player); // healing hearts during the fight (KAN-60)
             return fight;
         }
 

@@ -16,6 +16,7 @@ using SurvivorSouls.Editor.Procedural;
 using SurvivorSouls.FX;
 using SurvivorSouls.Gameplay.Characters;
 using SurvivorSouls.Gameplay;
+using SurvivorSouls.Gameplay.Boss;
 using SurvivorSouls.Gameplay.CameraRig;
 using SurvivorSouls.Gameplay.Chamber;
 using SurvivorSouls.Gameplay.Combat;
@@ -96,6 +97,8 @@ namespace SurvivorSouls.Editor
             var chamberSetup = ChamberBuilder.CreateSetup(timer.gameObject, world, spawner); // per-Chamber difficulty + layout seed (KAN-46)
             var boss = BossBuilder.Create(kit, health, timer, spawner, progression.Souls); // boss Chambers: fight, slam, reward (KAN-58)
             SetRef(game, "boss", boss); // slam camera shake
+            var hearts = boss.GetComponent<BossHearts>();
+            SetRef(game, "hearts", hearts); // haptic tap on a heart pickup (KAN-60)
             var audio = CreateAudio(sfx, shooter, player.GetComponent<PlayerMover>(), health, progression, skills, timer, transition);
             SetRef(audio, "chests", chests); // chest land thud + open creak
             var rarityStyles = SkillsBuilder.BuildStyles(sfx.RarityReveals); // tier names, gems, reveal sounds (KAN-37)
@@ -113,6 +116,7 @@ namespace SurvivorSouls.Editor
             SetRef(audio, "skillChoice", choice); // card reveal sound per tier, chest upgrade pick
             SetRef(audio, "skillHud", choice.GetComponent<SkillHud>()); // chime when a skill slot glows after a level-up (KAN-74)
             SetRef(audio, "boss", boss); // boss groans + slam thud
+            SetRef(audio, "hearts", hearts); // heal swell (KAN-60)
             SetRef(choice.gameObject.AddComponent<BossHud>(), "fight", boss); // boss bar in the timer's place
 
             EditorSceneManager.SaveScene(scene, ScenePath);
@@ -239,6 +243,7 @@ namespace SurvivorSouls.Editor
             SetClips(so.FindProperty("chestDrops"), sfx.ChestDrops);
             SetClips(so.FindProperty("chestOpens"), sfx.ChestOpens);
             SetClips(so.FindProperty("skillUpgrades"), sfx.SkillUpgrades);
+            SetClips(so.FindProperty("heartHeals"), sfx.HeartHeals);
             SetClips(so.FindProperty("portalOpens"), sfx.PortalOpens);
             SetClips(so.FindProperty("portalEnters"), sfx.PortalEnters);
             SetClips(so.FindProperty("chamberArrives"), sfx.ChamberArrives);

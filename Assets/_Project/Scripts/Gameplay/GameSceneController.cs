@@ -14,7 +14,8 @@ namespace SurvivorSouls.Gameplay
     /// run-only (XpManager starts fresh with the scene), and no pause outlives the scene.
     /// Chamber (KAN-39): when the survival timer ends, a light haptic tap and a small camera shake mark the portal opening
     /// (HUD message, sound and the portal itself listen to the same event).
-    /// Boss (KAN-58): a landed slam shakes the camera (harder when it hit the Knight, plus a haptic tap).
+    /// Boss (KAN-58): a landed slam shakes the camera (harder when it hit the Knight, plus a haptic tap). A healing heart
+    /// taken in the fight (KAN-60) gives a haptic tap.
     /// </summary>
     public sealed class GameSceneController : MonoBehaviour
     {
@@ -23,6 +24,7 @@ namespace SurvivorSouls.Gameplay
         [SerializeField] private SurvivalTimer timer;
         [SerializeField] private TopDownFollowCamera followCamera;
         [SerializeField] private BossFight boss;
+        [SerializeField] private BossHearts hearts;
         [Header("Portal opens")]
         [SerializeField, Min(0f)] private float shakeAmplitude = 0.16f;
         [SerializeField, Min(0f)] private float shakeTime = 0.5f;
@@ -38,6 +40,7 @@ namespace SurvivorSouls.Gameplay
             if (player != null) player.OnDeath += OnPlayerDeath;
             if (timer != null) timer.Finished += OnPortalOpens;
             if (boss != null) boss.Slammed += OnSlam;
+            if (hearts != null) hearts.PickedUp += OnHeartPickedUp;
         }
 
         private void OnDisable()
@@ -45,6 +48,7 @@ namespace SurvivorSouls.Gameplay
             if (player != null) player.OnDeath -= OnPlayerDeath;
             if (timer != null) timer.Finished -= OnPortalOpens;
             if (boss != null) boss.Slammed -= OnSlam;
+            if (hearts != null) hearts.PickedUp -= OnHeartPickedUp;
         }
 
         // Leaving the scene (retry / menu) must never keep a level-up pause alive.
@@ -60,6 +64,8 @@ namespace SurvivorSouls.Gameplay
             if (dealt > 0f) Haptics.Light();
             if (followCamera != null) followCamera.Shake(dealt > 0f ? slamHitShake : slamShake, slamShakeTime);
         }
+
+        private void OnHeartPickedUp(HealingHeart heart, float healed) => Haptics.Light();
 
         private void OnPortalOpens()
         {

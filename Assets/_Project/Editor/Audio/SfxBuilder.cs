@@ -24,6 +24,8 @@ namespace SurvivorSouls.Editor.Audio
             public AudioClip[] ChestDrops, ChestOpens;
             /// <summary>Owned skill levelled up, played when the HUD slot glows after the pause (KAN-74).</summary>
             public AudioClip[] SkillUpgrades;
+            /// <summary>Boss fight healing heart picked up (KAN-60).</summary>
+            public AudioClip[] HeartHeals;
             public AudioClip Ambience, PortalHum;
             /// <summary>Skill card reveal per tier (KAN-37), index = SkillRarity: Common, Rare, Epic, Legendary.</summary>
             public AudioClip[] RarityReveals;
@@ -49,6 +51,7 @@ namespace SurvivorSouls.Editor.Audio
                 ChestDrops = Many("sfx_chest_drop", 1, ChestDrop),
                 ChestOpens = Many("sfx_chest_open", 1, ChestOpen),
                 SkillUpgrades = Many("sfx_skill_upgrade", 1, SkillUpgrade),
+                HeartHeals = Many("sfx_heart_heal", 1, HeartHeal),
                 PortalOpens = Many("sfx_portal_open", 1, PortalOpen),
                 PortalEnters = Many("sfx_portal_enter", 1, PortalEnter),
                 ChamberArrives = Many("sfx_chamber_arrive", 1, ChamberArrive),
@@ -284,6 +287,23 @@ namespace SurvivorSouls.Editor.Audio
             Sweep(b, 0.09f, 0.3f, 1318.5f * 2.76f, 1318.5f * 2.76f, 0.04f, 18f, 1); // bell partial
             NoiseBurst(b, 0.09f, 0.4f, 0.06f, 5000f, 11000f, 9f, rng);         // sparkle
             return Normalize(b, 0.65f);
+        }
+
+        /// <summary>
+        /// Healing heart taken in the boss fight (KAN-60): soft and warm, not a loot sound. A low A major chord (A3 E4 A4)
+        /// swells in over 80 ms, a C#5 joins on top, a breath of air rises under it; slow decay. Quiet peak.
+        /// </summary>
+        private static float[] HeartHeal(int seed)
+        {
+            var rng = new System.Random(seed * 2203);
+            var b = new float[(int)(Rate * 1.1f)];
+            Swell(b, 0f, 1.05f, 220f, 0.3f, 0.08f, 3.2f, 3);                     // A3
+            Swell(b, 0f, 1.0f, 329.6f, 0.22f, 0.09f, 3.6f, 2);                   // E4
+            Swell(b, 0.03f, 0.95f, 440f, 0.2f, 0.1f, 4f, 2);                     // A4
+            Swell(b, 0.12f, 0.85f, 554.4f, 0.14f, 0.12f, 4.5f, 1);               // C#5, the lift
+            Sweep(b, 0.02f, 0.5f, 300f, 330f, 0.05f, 6f, 1);                     // slight upward glide
+            NoiseBurst(b, 0f, 0.6f, 0.05f, 500f, 2400f, 5f, rng);                // breath
+            return Normalize(b, 0.5f);
         }
 
         // Skill card reveals (KAN-37): one short sound per tier, each a step bigger. Common is a soft card slap + one dull
@@ -544,6 +564,20 @@ namespace SurvivorSouls.Editor.Audio
                 float env = Mathf.Exp(-t * decay) * Mathf.Min(1f, t * 2000f);
                 float sum = 0f;
                 for (int h = 1; h <= harmonics; h++) sum += Mathf.Sin((float)(phase * h * Math.PI * 2)) / h;
+                b[i] += sum * amp * env;
+            }
+        }
+
+        /// <summary>Tone with a soft linear attack (<paramref name="attack"/> s), then exponential decay. No click at the start.</summary>
+        private static void Swell(float[] b, float start, float length, float f, float amp, float attack, float decay, int harmonics)
+        {
+            int s = (int)(start * Rate), e = Mathf.Min(b.Length, s + (int)(length * Rate));
+            for (int i = s; i < e; i++)
+            {
+                float t = (i - s) / (float)Rate;
+                float env = Mathf.Min(1f, t / Mathf.Max(0.001f, attack)) * Mathf.Exp(-Mathf.Max(0f, t - attack) * decay);
+                float sum = 0f;
+                for (int h = 1; h <= harmonics; h++) sum += Mathf.Sin(t * f * h * Mathf.PI * 2f) / (h * h);
                 b[i] += sum * amp * env;
             }
         }
