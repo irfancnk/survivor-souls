@@ -802,19 +802,20 @@
     position: absolute;
     left: -3px;
     right: -3px;
-    bottom: -21px;
+    bottom: -22px;
     flex-direction: row;
     justify-content: center;
 }
 
+/* Empty pip is dark (not translucent white): on snow a pale empty pip read like a lit Common one. */
 .hud-skill__pip {
-    width: 9px;
-    height: 7px;
+    width: 10px;
+    height: 8px;
     margin: 0 1px;
     border-radius: 2px;
-    background-color: rgba(255, 255, 255, 0.14);
+    background-color: rgba(14, 12, 10, 0.8);
     border-width: 1px;
-    border-color: rgba(0, 0, 0, 0.8);
+    border-color: rgba(0, 0, 0, 0.9);
 }
 
 .hud-skill__pip--on {
