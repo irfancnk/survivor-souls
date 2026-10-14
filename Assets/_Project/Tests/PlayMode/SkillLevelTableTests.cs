@@ -123,6 +123,11 @@ namespace SurvivorSouls.Tests
             new object[] { "SoulBurst", 2, new[] { "KillBurst+=0.7" } },
             new object[] { "SoulBurst", 3, new[] { "KillBurst+=0.9", "BurstRadius+=0.6" } },
             new object[] { "SoulBurst", 4, new[] { "KillBurst+=1.2", "BurstRadius+=1" } },
+            new object[] { "ReliquaryHunter", 1, new[] { "ChestChance+=0.01", "ChestEliteChance+=0.08" } },
+            new object[] { "ReliquaryHunter", 2, new[] { "ChestChance+=0.015", "ChestEliteChance+=0.1" } },
+            new object[] { "ReliquaryHunter", 3, new[] { "ChestChance+=0.02", "ChestEliteChance+=0.12", "ChestChoices+=1" } },
+            new object[] { "ReliquaryHunter", 4, new[] { "ChestChance+=0.025", "ChestEliteChance+=0.14", "ChestChoices+=1" } },
+            new object[] { "ReliquaryHunter", 5, new[] { "ChestChance+=0.03", "ChestEliteChance+=0.16", "ChestChoices+=1", "RareChestEvery+=5" } },
         };
 
         [TestCaseSource(nameof(Sheet))]
@@ -157,7 +162,7 @@ namespace SurvivorSouls.Tests
         {
             var rows = Sheet.Cast<object[]>().Select(r => ((string)r[0], (int)r[1])).ToList();
             var skills = Shipped().ToList();
-            Assert.That(skills.Count, Is.EqualTo(12));
+            Assert.That(skills.Count, Is.EqualTo(13)); // 12 KAN-19 skills + Reliquary Hunter (KAN-72)
             foreach (var s in skills)
             {
                 string file = s.name.Substring("Skill_".Length);
@@ -174,7 +179,7 @@ namespace SurvivorSouls.Tests
             foreach (var s in Shipped())
             {
                 Assert.That(s.HasLevelTable, Is.True, s.Id + " has a level table");
-                var (min, max) = s.Rarity switch
+                var (min, max) = s.Id == "reliquary_hunter" ? (5, 5) : s.Rarity switch // utility Epic: KAN-50 asks for 5 levels
                 {
                     SkillRarity.Common => (5, 6),
                     SkillRarity.Rare => (4, 5),
