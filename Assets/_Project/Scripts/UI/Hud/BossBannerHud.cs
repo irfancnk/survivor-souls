@@ -136,7 +136,7 @@ namespace SurvivorSouls.UI.Hud
         {
             if (_age < 0f || _root == null) return;
             _age += dt;
-            if (_fadeStart < 0f && _age >= fadeIn + _hold) BeginFade();
+            if (_fadeStart < 0f && _age >= fadeIn + _hold) _fadeStart = fadeIn + _hold; // on schedule, even after a long frame
 
             float alpha = Mathf.Clamp01(_age / fadeIn);
             if (_fadeStart >= 0f)

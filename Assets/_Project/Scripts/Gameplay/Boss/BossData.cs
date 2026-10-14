@@ -27,7 +27,7 @@ namespace SurvivorSouls.Gameplay.Boss
 
         [Header("Health")]
         [Tooltip("Max health in Chamber 1 terms; the Chamber health multiplier (KAN-46) scales it.")]
-        [SerializeField, Min(1f)] private float maxHealth = 3200f;
+        [SerializeField, Min(1f)] private float maxHealth = 7200f; // KAN-62 balance: 10 picks win Chamber 5 in ~73 s
 
         [Header("Arrival")]
         [Tooltip("Scaled seconds after the Chamber starts before the spawn warning shows.")]

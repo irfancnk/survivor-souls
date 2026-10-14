@@ -15,7 +15,7 @@ MonoBehaviour:
   displayName: THE DROWNED WARDEN
   title: Keeper of the Frozen Shore
   prefab: {fileID: 1317692799552540941, guid: ab24a5628fd604a53bde46e46d8e3f0c, type: 3}
-  maxHealth: 3200
+  maxHealth: 7200
   introDelay: 2
   spawnWarning: 1.2
   spawnDistance: 8

@@ -284,8 +284,9 @@ namespace SurvivorSouls.Editor.Boss
                 return data;
             }
             EditorAssetUtil.EnsureFolder(DataDir);
-            // First guesses (KAN-62 balances): 3200 HP x Chamber 5 health (x1.6) ~ 5100; slam 22 % of max HP, 1 s warning.
-            data = BossData.Create(body, fanBolts: 5, charge: true);
+            // KAN-62 balance: 7200 HP x Chamber 5 health (x1.6) = 11520: a 10-pick Knight (~290 dps) shooting 55 % of the
+            // time wins in ~73 s (BossIntroTests balance check); slam 22 % of max HP, 1 s warning; 2.4 s intro, 1.8 s beat.
+            data = BossData.Create(body, health: 7200f, fanBolts: 5, charge: true, introTime: 2.4f, victoryBeat: 1.8f);
             AssetDatabase.CreateAsset(data, BossDataPath);
             AssetDatabase.SaveAssets();
             return data;
