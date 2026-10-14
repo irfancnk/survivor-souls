@@ -24,6 +24,7 @@ namespace SurvivorSouls.Editor.Chamber
         private const string DataDir = "Assets/_Project/Data/Chamber";
         public const string RulesPath = DataDir + "/ChamberRules_Realm1.asset";
         public const string DifficultyPath = DataDir + "/ChamberDifficulty_Realm1.asset";
+        public const string HordeScalingPath = "Assets/_Project/Data/Combat/HordeScaling_Realm1.asset";
 
         public static SurvivalTimer Create(GameObject player, PlayerHealth health)
         {
@@ -86,6 +87,44 @@ namespace SurvivorSouls.Editor.Chamber
             return setup;
         }
 
+        /// <summary>
+        /// Horde scaling to the Knight's power (KAN-92) on the "Chamber" object: power index from the stats, Chamber clock
+        /// progress from the timer, dynamic zombie health + danger tier colour to the spawner.
+        /// </summary>
+        public static HordeScaler CreateHordeScaler(GameObject chamber, EnemySpawner spawner, PlayerStats stats, SurvivalTimer timer)
+        {
+            var scaler = chamber.AddComponent<HordeScaler>();
+            var so = new SerializedObject(scaler);
+            so.FindProperty("scaling").objectReferenceValue = LoadOrCreateHordeScaling();
+            so.FindProperty("spawner").objectReferenceValue = spawner;
+            so.FindProperty("stats").objectReferenceValue = stats;
+            so.FindProperty("timer").objectReferenceValue = timer;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            return scaler;
+        }
+
+        public static HordeScaling LoadOrCreateHordeScaling()
+        {
+            var scaling = AssetDatabase.LoadAssetAtPath<HordeScaling>(HordeScalingPath);
+            if (scaling != null) return scaling;
+            EditorAssetUtil.EnsureFolder("Assets/_Project/Data/Combat");
+            // Health x power^0.6, +30 % through the Chamber clock, cap x6; tiers at x1 / 1.6 / 2.5 / 4 / 6.5, 3 colour steps each.
+            scaling = HordeScaling.Create();
+            AssetDatabase.CreateAsset(scaling, HordeScalingPath);
+            AssetDatabase.SaveAssets();
+            return scaling;
+        }
+
+        [MenuItem("Survivor Souls/Debug/Horde: Print Scaling Table")]
+        private static void PrintHordeTable()
+        {
+            var table = AssetDatabase.LoadAssetAtPath<SkillProgression>(SurvivorSouls.Editor.Skills.SkillsBuilder.ProgressionPath);
+            var curve = SkillPowerCurve.Simulate(table, PowerBase.Default, 200, 20);
+            var difficulty = LoadOrCreateDifficulty();
+            var scaling = LoadOrCreateHordeScaling();
+            Debug.Log("[Horde] " + scaling.Table(curve) + "\n" + scaling.Table(curve, 100f, difficulty.HealthMultiplier(difficulty.ChambersInRealm - 1)));
+        }
+
         private static ChamberDifficulty LoadOrCreateDifficulty()
         {
             var difficulty = AssetDatabase.LoadAssetAtPath<ChamberDifficulty>(DifficultyPath);
@@ -103,7 +142,7 @@ namespace SurvivorSouls.Editor.Chamber
             var rules = AssetDatabase.LoadAssetAtPath<ChamberRules>(RulesPath);
             if (rules != null) return rules;
             EditorAssetUtil.EnsureFolder(DataDir);
-            rules = ChamberRules.Create(600f); // defaults: 10 min, warnings 5 / 2 / 1 min, 10 s pulse, 2 s opening
+            rules = ChamberRules.Create(120f, new[] { 60, 30 }); // 2 min Chambers (KAN-92), warnings 1 min / 30 s, 10 s pulse, 2 s opening
             AssetDatabase.CreateAsset(rules, RulesPath);
             AssetDatabase.SaveAssets();
             return rules;

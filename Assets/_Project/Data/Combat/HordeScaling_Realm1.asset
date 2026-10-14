@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eef2b56c08100440d83d86c90028242c, type: 3}
+  m_Name: HordeScaling_Realm1
+  m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Combat.HordeScaling
+  crowdWeight: 0.35
+  powerExponent: 0.6
+  timeGrowth: 0.3
+  maxMultiplier: 6
+  tierThresholds:
+  - 1
+  - 1.6
+  - 2.5
+  - 4
+  - 6.5
+  tierColors:
+  - {r: 1, g: 1, b: 1, a: 1}
+  - {r: 0.82, g: 1.05, b: 0.55, a: 1}
+  - {r: 1.2, g: 0.85, b: 0.4, a: 1}
+  - {r: 1.3, g: 0.48, b: 0.36, a: 1}
+  - {r: 0.78, g: 0.42, b: 1.15, a: 1}
+  stepsPerTier: 3

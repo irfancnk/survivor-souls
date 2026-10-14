@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: ChamberRules_Realm1
   m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Chamber.ChamberRules
   openCondition: 0
-  survivalSeconds: 600
-  warnings: 2c010000780000003c000000i
+  survivalSeconds: 120
+  warnings: 3c0000001e000000i
   finalCountdown: 10
   openSequence: 2

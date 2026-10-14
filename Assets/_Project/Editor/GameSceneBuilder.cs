@@ -100,6 +100,7 @@ namespace SurvivorSouls.Editor
             var counters = ChamberBuilder.CreateCounters(timer.gameObject, progression.Souls); // kills + souls this run (KAN-51)
             var transition = ChamberBuilder.CreateTransition(timer.gameObject, player, health, progression.Xp, skills, counters, spawner, joystick);
             var chamberSetup = ChamberBuilder.CreateSetup(timer.gameObject, world, spawner); // per-Chamber difficulty + layout seed (KAN-46)
+            ChamberBuilder.CreateHordeScaler(timer.gameObject, spawner, player.GetComponent<PlayerStats>(), timer); // zombie health to power + tiers (KAN-92)
             var boss = BossBuilder.Create(kit, health, timer, spawner, progression.Souls); // boss Chambers: fight, slam, reward (KAN-58)
             SetRef(game, "boss", boss); // slam camera shake
             var hearts = boss.GetComponent<BossHearts>();
