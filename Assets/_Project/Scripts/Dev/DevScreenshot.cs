@@ -48,7 +48,8 @@ namespace SurvivorSouls.Dev
     /// (KAN-46: layout seed + difficulty of that Chamber; same run seed + Chamber = same layout).
     /// <c>-ss-boss &lt;0..1&gt;</c> (KAN-58, with <c>-ss-chamber 5</c>): once the boss has risen, sets its health to that share and
     /// stands the Knight 2.6 m in front of it, so the slam winds up about 1.5 s later (add -ss-immortal to survive it).
-    /// 0 kills it and moves the Knight in front of the arena portal, which then opens (KAN-59).
+    /// 0 kills it and moves the Knight in front of the arena portal, which then opens (KAN-59) after the victory beat (KAN-62).
+    /// <c>-ss-boss-stay</c> (KAN-62, with <c>-ss-boss 0</c>): the Knight stays where it was (victory beat, reward chest).
     /// <c>-ss-boss-attack fan|charge</c> (KAN-61, with <c>-ss-boss</c>): the Knight stands 8 m in front of the boss instead,
     /// and the boss starts that attack at once (charge: below the phase 2 share, e.g. <c>-ss-boss 0.4</c>, for the look of
     /// phase 2; the debug start works in phase 1 too).
@@ -82,6 +83,7 @@ namespace SurvivorSouls.Dev
         private int _horde;
         private int _hold;
         private bool _immortal;
+        private bool _bossStay;
         private string _timer;
         private bool _portal;
         private int _soak;
@@ -137,6 +139,7 @@ namespace SurvivorSouls.Dev
             shot._best = GetArg("-ss-best");
             shot._boss = GetArg("-ss-boss");
             shot._bossAttack = GetArg("-ss-boss-attack");
+            shot._bossStay = Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-boss-stay") >= 0;
             shot._hearts = int.TryParse(GetArg("-ss-hearts"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int hs) ? hs : 0;
             shot._cleared = int.TryParse(GetArg("-ss-cleared"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int cl) ? cl : 0;
 
@@ -189,7 +192,7 @@ namespace SurvivorSouls.Dev
                 else timer.SetRemaining(float.Parse(_timer, CultureInfo.InvariantCulture));
             }
 
-            if (!string.IsNullOrEmpty(_boss)) StartCoroutine(SetupBoss(float.Parse(_boss, CultureInfo.InvariantCulture), _bossAttack));
+            if (!string.IsNullOrEmpty(_boss)) StartCoroutine(SetupBoss(float.Parse(_boss, CultureInfo.InvariantCulture), _bossAttack, _bossStay));
             if (_hearts > 0) DropHearts(_hearts);
             if (_portal) EnterPortal();
             if (_soak > 0) yield return PortalSoak(_soak);
@@ -253,7 +256,7 @@ namespace SurvivorSouls.Dev
         }
 
         /// <summary>Waits for the boss to rise, sets its health share and puts the Knight in slam range in front of it.</summary>
-        private static IEnumerator SetupBoss(float health, string attack)
+        private static IEnumerator SetupBoss(float health, string attack, bool stay)
         {
             var fight = SurvivorSouls.Gameplay.Boss.BossFight.Active;
             if (fight == null || fight.Current == SurvivorSouls.Gameplay.Boss.BossFight.Stage.Inactive)
@@ -267,7 +270,7 @@ namespace SurvivorSouls.Dev
             if (target <= 0f) // kill: reward drops, the portal opens; the Knight waits in front of the exit (KAN-59 arena)
             {
                 boss.TakeDamage(boss.Health + 1f, Vector3.zero, DamageKind.Burst);
-                MoveNearExit();
+                if (!stay) MoveNearExit(); // -ss-boss-stay: the Knight stays to watch the victory beat and the reward chest
                 Debug.Log($"[DevScreenshot] Boss {fight.Data.DisplayName} killed, stage={fight.Current}");
                 yield break;
             }
