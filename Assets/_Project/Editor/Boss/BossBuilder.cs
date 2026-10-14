@@ -1,5 +1,6 @@
 using SurvivorSouls.Editor.Combat;
 using SurvivorSouls.Editor.Procedural;
+using SurvivorSouls.Editor.World;
 using SurvivorSouls.Gameplay.Boss;
 using SurvivorSouls.Gameplay.Chamber;
 using SurvivorSouls.Gameplay.Combat;
@@ -16,8 +17,10 @@ namespace SurvivorSouls.Editor.Boss
     /// (ring + growing disc, two flat quads, procedural textures), the Realm 1 boss asset (<see cref="BossData"/>, never
     /// overwritten: only an empty body slot is filled) and the boss Chamber rules (<see cref="OpenCondition.KillBoss"/>).
     /// The body prefab is built by <see cref="CombatBuilder"/>. Healing hearts (KAN-60) live on the same object
-    /// (<see cref="BossHeartsBuilder"/>). Called by GameSceneBuilder.
-    /// Debug menus (Play mode): "Survivor Souls/Debug/Boss: Kill" and "Boss: Half Health".
+    /// (<see cref="BossHeartsBuilder"/>). KAN-61: the lane telegraph of the fan and the charge (<see cref="LineTelegraph"/>,
+    /// 9 lanes of two flat quads) and the fan bolts (<see cref="BossProjectiles"/>, one script-driven particle system).
+    /// Called by GameSceneBuilder.
+    /// Debug menus (Play mode): "Survivor Souls/Debug/Boss: Kill", "Boss: Half Health" (= phase 2), "Boss: Fan", "Boss: Charge".
     /// </summary>
     public static class BossBuilder
     {
@@ -27,6 +30,13 @@ namespace SurvivorSouls.Editor.Boss
         private const string ArtDir = "Assets/_Project/Art/Boss";
         private const string RingTexturePath = ArtDir + "/T_TelegraphRing.png";
         private const string DiscTexturePath = ArtDir + "/T_TelegraphDisc.png";
+        private const string LaneTexturePath = ArtDir + "/T_TelegraphLane.png";
+        private const string LaneFillTexturePath = ArtDir + "/T_TelegraphLaneFill.png";
+        private const string BoltTexturePath = ArtDir + "/T_BossBolt.png";
+        private const int LaneTextureWidth = 64;
+        private const int LaneTextureHeight = 256;
+        private const int BoltTextureSize = 64;
+        private const int BoltCapacity = 32;
         private const int TextureSize = 256;
 
         public static BossFight Create(GameArtKit kit, PlayerHealth player, SurvivalTimer timer, EnemySpawner spawner, SoulWispField souls)
@@ -35,6 +45,8 @@ namespace SurvivorSouls.Editor.Boss
             var rules = LoadOrCreateRules();
             var root = new GameObject("Boss");
             var telegraph = CreateTelegraph(kit, root.transform);
+            var lines = CreateLanes(kit, root.transform);
+            var bolts = CreateBolts(root.transform, player);
             var fight = root.AddComponent<BossFight>();
             var so = new SerializedObject(fight);
             so.FindProperty("data").objectReferenceValue = data;
@@ -44,6 +56,8 @@ namespace SurvivorSouls.Editor.Boss
             so.FindProperty("player").objectReferenceValue = player;
             so.FindProperty("souls").objectReferenceValue = souls;
             so.FindProperty("telegraph").objectReferenceValue = telegraph;
+            so.FindProperty("lines").objectReferenceValue = lines;
+            so.FindProperty("projectiles").objectReferenceValue = bolts;
             so.ApplyModifiedPropertiesWithoutUndo();
             BossHeartsBuilder.Create(kit, root, fight, player); // healing hearts during the fight (KAN-60)
             return fight;
@@ -70,6 +84,75 @@ namespace SurvivorSouls.Editor.Boss
             so.FindProperty("fill").objectReferenceValue = fill;
             so.ApplyModifiedPropertiesWithoutUndo();
             return telegraph;
+        }
+
+        /// <summary>Lane warnings (KAN-61): <see cref="LineTelegraph.MaxLanes"/> lanes, each an edge quad + a fill quad.</summary>
+        private static LineTelegraph CreateLanes(GameArtKit kit, Transform parent)
+        {
+            var edgeTex = TextureFactory.Write(LaneTexturePath, LaneTextureWidth, LaneTextureHeight, LanePixel, TextureFactory.Kind.Color,
+                wrap: TextureWrapMode.Clamp, maxSize: LaneTextureHeight);
+            var fillTex = TextureFactory.Write(LaneFillTexturePath, LaneTextureWidth, LaneTextureHeight, LaneFillPixel, TextureFactory.Kind.Color,
+                wrap: TextureWrapMode.Clamp, maxSize: LaneTextureHeight);
+            var edgeMat = EditorAssetUtil.ParticleMaterial(ArtDir + "/M_FX_TelegraphLane.mat", edgeTex, additive: false);
+            var fillMat = EditorAssetUtil.ParticleMaterial(ArtDir + "/M_FX_TelegraphLaneFill.mat", fillTex, additive: false);
+
+            var go = new GameObject("Lane Telegraph");
+            go.transform.SetParent(parent, false);
+            var edges = new Renderer[LineTelegraph.MaxLanes];
+            var fills = new Renderer[LineTelegraph.MaxLanes];
+            for (int i = 0; i < LineTelegraph.MaxLanes; i++)
+            {
+                fills[i] = Flat("Fill " + i, go.transform, kit.Quad, fillMat);
+                edges[i] = Flat("Edge " + i, go.transform, kit.Quad, edgeMat);
+                edges[i].sortingOrder = 1; // edge over the fill
+            }
+            var lines = go.AddComponent<LineTelegraph>();
+            var so = new SerializedObject(lines);
+            SetArray(so.FindProperty("edges"), edges);
+            SetArray(so.FindProperty("fills"), fills);
+            so.ApplyModifiedPropertiesWithoutUndo();
+            return lines;
+        }
+
+        private static void SetArray(SerializedProperty prop, Object[] items)
+        {
+            prop.arraySize = items.Length;
+            for (int i = 0; i < items.Length; i++) prop.GetArrayElementAtIndex(i).objectReferenceValue = items[i];
+        }
+
+        /// <summary>Fan bolts (KAN-61): one particle system the script fills with SetParticles (head + 2 ghosts per bolt).</summary>
+        private static BossProjectiles CreateBolts(Transform parent, PlayerHealth player)
+        {
+            var tex = TextureFactory.Write(BoltTexturePath, BoltTextureSize, BoltTextureSize, BoltPixel, TextureFactory.Kind.Color,
+                wrap: TextureWrapMode.Clamp, maxSize: BoltTextureSize);
+            // Alpha blend with a dark rim: an additive ember would vanish on the pale arena stone and the snow.
+            var mat = EditorAssetUtil.ParticleMaterial(ArtDir + "/M_FX_BossBolt.mat", tex, additive: false);
+            var go = new GameObject("Bolts");
+            go.transform.SetParent(parent, false);
+            var ps = PropKit.Particles("Bolt Sprites", go.transform, mat);
+            var main = ps.main;
+            main.loop = true;
+            main.prewarm = false;
+            main.playOnAwake = true;
+            main.maxParticles = BoltCapacity * 3;
+            main.startLifetime = 1000f;
+            main.startSpeed = 0f;
+            main.cullingMode = ParticleSystemCullingMode.AlwaysSimulate;
+            var emission = ps.emission;
+            emission.enabled = false;
+            var shape = ps.shape;
+            shape.enabled = false;
+            var r = ps.GetComponent<ParticleSystemRenderer>();
+            r.sortMode = ParticleSystemSortMode.Distance;
+            r.lightProbeUsage = LightProbeUsage.Off;
+            r.reflectionProbeUsage = ReflectionProbeUsage.Off;
+            var bolts = go.AddComponent<BossProjectiles>();
+            var so = new SerializedObject(bolts);
+            so.FindProperty("player").objectReferenceValue = player;
+            so.FindProperty("bodies").objectReferenceValue = ps;
+            so.FindProperty("capacity").intValue = BoltCapacity;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            return bolts;
         }
 
         private static MeshRenderer Flat(string name, Transform parent, Mesh quad, Material mat)
@@ -108,6 +191,54 @@ namespace SurvivorSouls.Editor.Boss
             return new Color(1f, 1f, 1f, a);
         }
 
+        /// <summary>Lane edge: bold rims along both sides, a faint wash between, a rounded far end and a soft start.</summary>
+        private static Color LanePixel(int x, int y)
+        {
+            float u = Mathf.Abs((x + 0.5f) / LaneTextureWidth * 2f - 1f); // 0 centre .. 1 side
+            float v = (y + 0.5f) / LaneTextureHeight;                     // 0 boss .. 1 far end
+            float rim = 1f - TextureFactory.SmoothStep(0.05f, 0.12f, Mathf.Abs(u - 0.86f));
+            float wash = u < 0.84f ? 0.16f : 0f;
+            float end = 1f - TextureFactory.SmoothStep(0.93f, 1f, v);
+            float start = TextureFactory.SmoothStep(0f, 0.06f, v);
+            float a = Mathf.Clamp01(Mathf.Max(rim, wash)) * end * start * (1f - TextureFactory.SmoothStep(0.96f, 1f, u));
+            return new Color(1f, 1f, 1f, a);
+        }
+
+        /// <summary>Lane fill: solid with soft sides and three chevron bands near the tip (reads as direction).</summary>
+        private static Color LaneFillPixel(int x, int y)
+        {
+            float u = Mathf.Abs((x + 0.5f) / LaneTextureWidth * 2f - 1f);
+            float v = (y + 0.5f) / LaneTextureHeight;
+            float body = 0.72f * (1f - TextureFactory.SmoothStep(0.78f, 0.9f, u));
+            float chevron = 0f;
+            for (int i = 0; i < 3; i++)
+            {
+                float c = 0.7f + i * 0.09f + u * 0.06f; // arrow tips point to the far end
+                chevron = Mathf.Max(chevron, 1f - TextureFactory.SmoothStep(0.008f, 0.02f, Mathf.Abs(v - c)));
+            }
+            float a = Mathf.Clamp01(body + chevron * 0.28f) * (1f - TextureFactory.SmoothStep(0.95f, 1f, v));
+            return new Color(1f, 1f, 1f, a);
+        }
+
+        /// <summary>Boss bolt: white-hot core, ember orange, crimson shell, dark rim (reads on snow), soft outer glow.</summary>
+        private static Color BoltPixel(int x, int y)
+        {
+            float u = (x + 0.5f) / BoltTextureSize * 2f - 1f, v = (y + 0.5f) / BoltTextureSize * 2f - 1f;
+            float r = Mathf.Sqrt(u * u + v * v);
+            var core = new Color(1f, 0.93f, 0.7f);
+            var ember = new Color(1f, 0.45f, 0.1f);
+            var crimson = new Color(0.62f, 0.05f, 0.03f);
+            var rim = new Color(0.16f, 0.01f, 0.01f);
+            Color c = r < 0.22f ? core
+                : r < 0.45f ? Color.Lerp(core, ember, (r - 0.22f) / 0.23f)
+                : r < 0.68f ? Color.Lerp(ember, crimson, (r - 0.45f) / 0.23f)
+                : Color.Lerp(crimson, rim, Mathf.Clamp01((r - 0.68f) / 0.12f));
+            float a = r < 0.8f ? 1f : 0.35f * (1f - TextureFactory.SmoothStep(0.8f, 1f, r));
+            if (r >= 0.78f && r < 0.8f) a = 1f;
+            c.a = a;
+            return c;
+        }
+
         private static float Radius(int x, int y)
         {
             float u = (x + 0.5f) / TextureSize * 2f - 1f, v = (y + 0.5f) / TextureSize * 2f - 1f;
@@ -128,11 +259,13 @@ namespace SurvivorSouls.Editor.Boss
                     so.ApplyModifiedPropertiesWithoutUndo();
                     EditorUtility.SetDirty(data);
                 }
+                // New fields (KAN-61 fan, charge, phase 2) get their defaults written into the YAML; set values stay.
+                AssetDatabase.ForceReserializeAssets(new[] { BossDataPath });
                 return data;
             }
             EditorAssetUtil.EnsureFolder(DataDir);
             // First guesses (KAN-62 balances): 3200 HP x Chamber 5 health (x1.6) ~ 5100; slam 22 % of max HP, 1 s warning.
-            data = BossData.Create(body);
+            data = BossData.Create(body, fanBolts: 5, charge: true);
             AssetDatabase.CreateAsset(data, BossDataPath);
             AssetDatabase.SaveAssets();
             return data;
@@ -162,8 +295,16 @@ namespace SurvivorSouls.Editor.Boss
             if (boss != null && boss.Health > boss.MaxHealth * 0.5f) boss.TakeDamage(boss.Health - boss.MaxHealth * 0.5f, Vector3.zero);
         }
 
+        [MenuItem("Survivor Souls/Debug/Boss: Fan")]
+        private static void Fan() => BossFight.Active.ForceAttack(BossFight.Move.Fan);
+
+        [MenuItem("Survivor Souls/Debug/Boss: Charge")]
+        private static void Charge() => BossFight.Active.ForceAttack(BossFight.Move.Charge);
+
         [MenuItem("Survivor Souls/Debug/Boss: Kill", true)]
         [MenuItem("Survivor Souls/Debug/Boss: Half Health", true)]
+        [MenuItem("Survivor Souls/Debug/Boss: Fan", true)]
+        [MenuItem("Survivor Souls/Debug/Boss: Charge", true)]
         private static bool BossAlive() =>
             Application.isPlaying && BossFight.Active != null && BossFight.Active.Boss != null && BossFight.Active.Boss.IsAlive;
     }

@@ -28,6 +28,31 @@ MonoBehaviour:
   firstSlamDelay: 1.5
   slamDamage: 0.22
   maxHitShare: 0.35
+  fanBolts: 5
+  fanSpread: 56
+  fanRange: 13
+  fanTelegraph: 0.9
+  fanSpeed: 9
+  fanDistance: 15
+  fanLaneWidth: 0.7
+  fanHitRadius: 0.7
+  fanDamage: 0.12
+  fanRecover: 0.5
+  fanCooldown: 3.4
+  chargeEnabled: 1
+  chargeMinRange: 4.5
+  chargeMaxRange: 13
+  chargeTelegraph: 0.9
+  chargeSpeed: 15
+  chargeDistance: 12
+  chargeWidth: 2.4
+  chargeDamage: 0.2
+  chargeRecover: 1
+  chargeCooldown: 3.8
+  phase2At: 0.5
+  phase2Cooldown: 0.7
+  phase2Telegraph: 0.85
+  phase2Speed: 1.25
   rewardXp: 600
   rewardWisps: 6
   hordeCap: 0.45
