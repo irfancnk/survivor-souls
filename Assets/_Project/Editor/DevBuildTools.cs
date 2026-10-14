@@ -75,6 +75,8 @@ namespace SurvivorSouls.Editor
                     excluded.GetArrayElementAtIndex(at).stringValue = StandalonePlatform;
                     so.ApplyModifiedPropertiesWithoutUndo();
                 }
+                // Memory matches the file again: not dirty, so the editor does not re-save (and re-serialize) it on exit.
+                EditorUtility.ClearDirty(so.targetObject);
                 if (onDisk != null && !File.ReadAllBytes(QualitySettingsPath).SequenceEqual(onDisk))
                     File.WriteAllBytes(QualitySettingsPath, onDisk);
             }

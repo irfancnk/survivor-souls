@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using NUnit.Framework;
 using SurvivorSouls.Editor;
+using UnityEditor;
 
 namespace SurvivorSouls.Tests
 {
@@ -24,6 +25,8 @@ namespace SurvivorSouls.Tests
             Assert.IsTrue(during, "Mobile must be enabled for Standalone while the Mac dev player builds");
             Assert.AreEqual(before, DevBuildTools.IsQualityLevelOnStandalone(DevBuildTools.MobileQuality), "exclusion restored");
             Assert.IsTrue(File.ReadAllBytes(QualitySettingsPath).SequenceEqual(onDisk), "QualitySettings.asset unchanged on disk");
+            Assert.IsFalse(EditorUtility.IsDirty(AssetDatabase.LoadAllAssetsAtPath(QualitySettingsPath)[0]),
+                "not dirty: the editor must not re-save (re-serialize) the settings on exit");
         }
 
         [Test]
