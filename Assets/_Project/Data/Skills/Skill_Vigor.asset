@@ -17,10 +17,41 @@ MonoBehaviour:
   description: +80 max health, healed at once
   icon: {fileID: 2800000, guid: ac446dfe6037344529b23eb382139467, type: 3}
   rarity: 0
-  maxStack: 5
+  maxStack: 6
   weight: 1
   modifiers:
   - stat: 3
     kind: 0
     value: 80
+  levels:
+  - description: +80 max health, healed at once
+    modifiers:
+    - stat: 3
+      kind: 0
+      value: 80
+  - description: +150 max health, healed at once
+    modifiers:
+    - stat: 3
+      kind: 0
+      value: 150
+  - description: +215 max health, healed at once
+    modifiers:
+    - stat: 3
+      kind: 0
+      value: 215
+  - description: +275 max health, healed at once
+    modifiers:
+    - stat: 3
+      kind: 0
+      value: 275
+  - description: +330 max health, healed at once
+    modifiers:
+    - stat: 3
+      kind: 0
+      value: 330
+  - description: +380 max health, healed at once
+    modifiers:
+    - stat: 3
+      kind: 0
+      value: 380
   effectPrefab: {fileID: 0}

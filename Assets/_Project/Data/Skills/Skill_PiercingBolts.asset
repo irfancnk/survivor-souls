@@ -17,10 +17,37 @@ MonoBehaviour:
   description: Bolts pass through +1 enemy
   icon: {fileID: 2800000, guid: 991054c7ab8bf4a17b91afcd37c442ba, type: 3}
   rarity: 1
-  maxStack: 3
+  maxStack: 4
   weight: 1
   modifiers:
   - stat: 7
     kind: 0
     value: 1
+  levels:
+  - description: Bolts pass through +1 enemy
+    modifiers:
+    - stat: 7
+      kind: 0
+      value: 1
+  - description: Bolts pass through +2 enemies
+    modifiers:
+    - stat: 7
+      kind: 0
+      value: 2
+  - description: Pierce +2 enemies, +10% bolt damage
+    modifiers:
+    - stat: 7
+      kind: 0
+      value: 2
+    - stat: 0
+      kind: 1
+      value: 0.1
+  - description: Pierce +3 enemies, +15% bolt damage
+    modifiers:
+    - stat: 7
+      kind: 0
+      value: 3
+    - stat: 0
+      kind: 1
+      value: 0.15
   effectPrefab: {fileID: 0}

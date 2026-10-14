@@ -33,45 +33,135 @@ namespace SurvivorSouls.Editor.Skills
 
         private sealed class Spec
         {
-            public string Id, Name, Text, File;
+            public string Id, Name, File;
             public SkillRarity Rarity;
-            public int Max;
             public float Weight = 1f;
-            public StatModifier[] Mods;
+            /// <summary>Level table (KAN-71): row N = total effect at level N. Row 1 is also the card text and stacking fallback.</summary>
+            public SkillLevelData[] Levels;
             public Func<Vector2, float> Glyph;
             public Fx Effect;
+
+            public string Text => Levels[0].description;
+            public StatModifier[] Mods => Levels[0].modifiers;
+            public int Max => Levels.Length;
         }
 
         private static StatModifier Pct(StatId s, float v) => new StatModifier(s, ModifierKind.Percent, v);
         private static StatModifier Add(StatId s, float v) => new StatModifier(s, ModifierKind.Flat, v);
+        private static SkillLevelData L(string text, params StatModifier[] mods) => new SkillLevelData(text, mods);
 
-        // Base numbers for reference: bolt 100 dmg / 1 shot per s, zombie 150 HP, player 400 HP at 5 m/s, pickup 2.6 m.
+        // Base numbers for reference: bolt 100 dmg / 1 shot per s, no crit / x2 crit damage, zombie 150 HP (Shambler 100),
+        // player 400 HP at 5 m/s, pickup 2.6 m, burn 3 s, soul burst 2.6 m.
+        // Level tables (KAN-71, balance sheet in Confluence SS > 01 Product & Game Design): each row is the TOTAL at that
+        // level. Common = one stat, shrinking steps, up to 6 levels (5 where the stat saturates: move, pickup). Rare / Epic
+        // = 3-5 levels, the last level adds a second stat. Legendary = 4 levels, level 3 adds reach (burn length, burst
+        // radius). Level 1 keeps the KAN-19 numbers, so the first pick feels the same as before.
         private static readonly Spec[] Specs =
         {
-            new Spec { Id = "sharpened_bolts", File = "SharpenedBolts", Name = "Sharpened Bolts", Text = "+20% bolt damage",
-                Rarity = SkillRarity.Common, Max = 5, Mods = new[] { Pct(StatId.Damage, 0.2f) }, Glyph = SkillIconPainter.Damage },
-            new Spec { Id = "quick_draw", File = "QuickDraw", Name = "Quick Draw", Text = "+15% attack speed",
-                Rarity = SkillRarity.Common, Max = 5, Mods = new[] { Pct(StatId.AttackSpeed, 0.15f) }, Glyph = SkillIconPainter.AttackSpeed },
-            new Spec { Id = "fleet_foot", File = "FleetFoot", Name = "Fleet Foot", Text = "+10% move speed",
-                Rarity = SkillRarity.Common, Max = 3, Mods = new[] { Pct(StatId.MoveSpeed, 0.1f) }, Glyph = SkillIconPainter.MoveSpeed },
-            new Spec { Id = "vigor", File = "Vigor", Name = "Vigor", Text = "+80 max health, healed at once",
-                Rarity = SkillRarity.Common, Max = 5, Mods = new[] { Add(StatId.MaxHealth, 80f) }, Glyph = SkillIconPainter.MaxHealth },
-            new Spec { Id = "soul_siphon", File = "SoulSiphon", Name = "Soul Siphon", Text = "+40% soul pickup range",
-                Rarity = SkillRarity.Common, Max = 3, Weight = 0.7f, Mods = new[] { Pct(StatId.PickupRadius, 0.4f) }, Glyph = SkillIconPainter.PickupRadius },
-            new Spec { Id = "keen_eye", File = "KeenEye", Name = "Keen Eye", Text = "+10% crit chance, +25% crit damage",
-                Rarity = SkillRarity.Rare, Max = 4, Mods = new[] { Add(StatId.CritChance, 0.1f), Add(StatId.CritDamage, 0.25f) }, Glyph = SkillIconPainter.Crit },
-            new Spec { Id = "piercing_bolts", File = "PiercingBolts", Name = "Piercing Bolts", Text = "Bolts pass through +1 enemy",
-                Rarity = SkillRarity.Rare, Max = 3, Mods = new[] { Add(StatId.Pierce, 1f) }, Glyph = SkillIconPainter.Pierce },
-            new Spec { Id = "ricochet", File = "Ricochet", Name = "Ricochet", Text = "Bolts bounce to +1 nearby enemy",
-                Rarity = SkillRarity.Rare, Max = 3, Mods = new[] { Add(StatId.Ricochet, 1f) }, Glyph = SkillIconPainter.Ricochet },
-            new Spec { Id = "ember_bolts", File = "EmberBolts", Name = "Ember Bolts", Text = "Hits set foes ablaze: +25 fire damage/s for 3 s",
-                Rarity = SkillRarity.Legendary, Max = 3, Mods = new[] { Add(StatId.BurnDps, 25f) }, Glyph = SkillIconPainter.Burn, Effect = Fx.Burn },
-            new Spec { Id = "blood_covenant", File = "BloodCovenant", Name = "Blood Covenant", Text = "Heal 5% of bolt damage dealt",
-                Rarity = SkillRarity.Epic, Max = 3, Mods = new[] { Add(StatId.LifeSteal, 0.05f) }, Glyph = SkillIconPainter.LifeSteal, Effect = Fx.LifeSteal },
-            new Spec { Id = "multishot", File = "Multishot", Name = "Multishot", Text = "+1 bolt per volley, -15% bolt damage",
-                Rarity = SkillRarity.Epic, Max = 2, Mods = new[] { Add(StatId.Multishot, 1f), Pct(StatId.Damage, -0.15f) }, Glyph = SkillIconPainter.Multishot },
-            new Spec { Id = "soul_burst", File = "SoulBurst", Name = "Soul Burst", Text = "Kills burst for 50% bolt damage around them",
-                Rarity = SkillRarity.Legendary, Max = 3, Mods = new[] { Add(StatId.KillBurst, 0.5f) }, Glyph = SkillIconPainter.KillBurst, Effect = Fx.KillBurst },
+            new Spec { Id = "sharpened_bolts", File = "SharpenedBolts", Name = "Sharpened Bolts", Rarity = SkillRarity.Common,
+                Glyph = SkillIconPainter.Damage, Levels = new[]
+                {
+                    L("+20% bolt damage", Pct(StatId.Damage, 0.2f)),
+                    L("+36% bolt damage", Pct(StatId.Damage, 0.36f)),
+                    L("+52% bolt damage", Pct(StatId.Damage, 0.52f)),
+                    L("+66% bolt damage", Pct(StatId.Damage, 0.66f)),
+                    L("+80% bolt damage", Pct(StatId.Damage, 0.8f)),
+                    L("+95% bolt damage", Pct(StatId.Damage, 0.95f)),
+                } },
+            new Spec { Id = "quick_draw", File = "QuickDraw", Name = "Quick Draw", Rarity = SkillRarity.Common,
+                Glyph = SkillIconPainter.AttackSpeed, Levels = new[]
+                {
+                    L("+15% attack speed", Pct(StatId.AttackSpeed, 0.15f)),
+                    L("+28% attack speed", Pct(StatId.AttackSpeed, 0.28f)),
+                    L("+40% attack speed", Pct(StatId.AttackSpeed, 0.4f)),
+                    L("+51% attack speed", Pct(StatId.AttackSpeed, 0.51f)),
+                    L("+62% attack speed", Pct(StatId.AttackSpeed, 0.62f)),
+                    L("+72% attack speed", Pct(StatId.AttackSpeed, 0.72f)),
+                } },
+            new Spec { Id = "fleet_foot", File = "FleetFoot", Name = "Fleet Foot", Rarity = SkillRarity.Common,
+                Glyph = SkillIconPainter.MoveSpeed, Levels = new[]
+                {
+                    L("+10% move speed", Pct(StatId.MoveSpeed, 0.1f)),
+                    L("+18% move speed", Pct(StatId.MoveSpeed, 0.18f)),
+                    L("+24% move speed", Pct(StatId.MoveSpeed, 0.24f)),
+                    L("+29% move speed", Pct(StatId.MoveSpeed, 0.29f)),
+                    L("+33% move speed", Pct(StatId.MoveSpeed, 0.33f)),
+                } },
+            new Spec { Id = "vigor", File = "Vigor", Name = "Vigor", Rarity = SkillRarity.Common,
+                Glyph = SkillIconPainter.MaxHealth, Levels = new[]
+                {
+                    L("+80 max health, healed at once", Add(StatId.MaxHealth, 80f)),
+                    L("+150 max health, healed at once", Add(StatId.MaxHealth, 150f)),
+                    L("+215 max health, healed at once", Add(StatId.MaxHealth, 215f)),
+                    L("+275 max health, healed at once", Add(StatId.MaxHealth, 275f)),
+                    L("+330 max health, healed at once", Add(StatId.MaxHealth, 330f)),
+                    L("+380 max health, healed at once", Add(StatId.MaxHealth, 380f)),
+                } },
+            new Spec { Id = "soul_siphon", File = "SoulSiphon", Name = "Soul Siphon", Rarity = SkillRarity.Common, Weight = 0.7f,
+                Glyph = SkillIconPainter.PickupRadius, Levels = new[]
+                {
+                    L("+40% soul pickup range", Pct(StatId.PickupRadius, 0.4f)),
+                    L("+70% soul pickup range", Pct(StatId.PickupRadius, 0.7f)),
+                    L("+95% soul pickup range", Pct(StatId.PickupRadius, 0.95f)),
+                    L("+115% soul pickup range", Pct(StatId.PickupRadius, 1.15f)),
+                    L("+130% soul pickup range", Pct(StatId.PickupRadius, 1.3f)),
+                } },
+            new Spec { Id = "keen_eye", File = "KeenEye", Name = "Keen Eye", Rarity = SkillRarity.Rare,
+                Glyph = SkillIconPainter.Crit, Levels = new[]
+                {
+                    L("+10% crit chance, +25% crit damage", Add(StatId.CritChance, 0.1f), Add(StatId.CritDamage, 0.25f)),
+                    L("+15% crit chance, +40% crit damage", Add(StatId.CritChance, 0.15f), Add(StatId.CritDamage, 0.4f)),
+                    L("+20% crit chance, +55% crit damage", Add(StatId.CritChance, 0.2f), Add(StatId.CritDamage, 0.55f)),
+                    L("+25% crit chance, +70% crit damage", Add(StatId.CritChance, 0.25f), Add(StatId.CritDamage, 0.7f)),
+                    L("+30% crit chance, +90% crit damage", Add(StatId.CritChance, 0.3f), Add(StatId.CritDamage, 0.9f)),
+                } },
+            new Spec { Id = "piercing_bolts", File = "PiercingBolts", Name = "Piercing Bolts", Rarity = SkillRarity.Rare,
+                Glyph = SkillIconPainter.Pierce, Levels = new[]
+                {
+                    L("Bolts pass through +1 enemy", Add(StatId.Pierce, 1f)),
+                    L("Bolts pass through +2 enemies", Add(StatId.Pierce, 2f)),
+                    L("Pierce +2 enemies, +10% bolt damage", Add(StatId.Pierce, 2f), Pct(StatId.Damage, 0.1f)),
+                    L("Pierce +3 enemies, +15% bolt damage", Add(StatId.Pierce, 3f), Pct(StatId.Damage, 0.15f)),
+                } },
+            new Spec { Id = "ricochet", File = "Ricochet", Name = "Ricochet", Rarity = SkillRarity.Rare,
+                Glyph = SkillIconPainter.Ricochet, Levels = new[]
+                {
+                    L("Bolts bounce to +1 nearby enemy", Add(StatId.Ricochet, 1f)),
+                    L("Bolts bounce to +2 nearby enemies", Add(StatId.Ricochet, 2f)),
+                    L("Bolts bounce to +3 nearby enemies", Add(StatId.Ricochet, 3f)),
+                    L("Bounce to +3 enemies, +15% bolt damage", Add(StatId.Ricochet, 3f), Pct(StatId.Damage, 0.15f)),
+                } },
+            new Spec { Id = "ember_bolts", File = "EmberBolts", Name = "Ember Bolts", Rarity = SkillRarity.Legendary,
+                Glyph = SkillIconPainter.Burn, Effect = Fx.Burn, Levels = new[]
+                {
+                    L("Hits burn: 25 fire damage/s for 3 s", Add(StatId.BurnDps, 25f)),
+                    L("Hits burn: 40 fire damage/s for 3 s", Add(StatId.BurnDps, 40f)),
+                    L("Hits burn: 55 fire damage/s for 4 s", Add(StatId.BurnDps, 55f), Add(StatId.BurnDuration, 1f)),
+                    L("Hits burn: 75 fire damage/s for 5 s", Add(StatId.BurnDps, 75f), Add(StatId.BurnDuration, 2f)),
+                } },
+            new Spec { Id = "blood_covenant", File = "BloodCovenant", Name = "Blood Covenant", Rarity = SkillRarity.Epic,
+                Glyph = SkillIconPainter.LifeSteal, Effect = Fx.LifeSteal, Levels = new[]
+                {
+                    L("Heal 5% of bolt damage dealt", Add(StatId.LifeSteal, 0.05f)),
+                    L("Heal 7% of bolt damage dealt", Add(StatId.LifeSteal, 0.07f)),
+                    L("Heal 9% of bolt damage dealt", Add(StatId.LifeSteal, 0.09f)),
+                    L("Heal 12% of bolt damage, +60 max health", Add(StatId.LifeSteal, 0.12f), Add(StatId.MaxHealth, 60f)),
+                } },
+            new Spec { Id = "multishot", File = "Multishot", Name = "Multishot", Rarity = SkillRarity.Epic,
+                Glyph = SkillIconPainter.Multishot, Levels = new[]
+                {
+                    L("+1 bolt per volley, -15% bolt damage", Add(StatId.Multishot, 1f), Pct(StatId.Damage, -0.15f)),
+                    L("+2 bolts per volley, -25% bolt damage", Add(StatId.Multishot, 2f), Pct(StatId.Damage, -0.25f)),
+                    L("+2 bolts per volley, -10% bolt damage", Add(StatId.Multishot, 2f), Pct(StatId.Damage, -0.1f)),
+                } },
+            new Spec { Id = "soul_burst", File = "SoulBurst", Name = "Soul Burst", Rarity = SkillRarity.Legendary,
+                Glyph = SkillIconPainter.KillBurst, Effect = Fx.KillBurst, Levels = new[]
+                {
+                    L("Kills burst: 50% bolt damage in 2.6 m", Add(StatId.KillBurst, 0.5f)),
+                    L("Kills burst: 70% bolt damage in 2.6 m", Add(StatId.KillBurst, 0.7f)),
+                    L("Kills burst: 90% bolt damage in 3.2 m", Add(StatId.KillBurst, 0.9f), Add(StatId.BurstRadius, 0.6f)),
+                    L("Kills burst: 120% bolt damage in 3.6 m", Add(StatId.KillBurst, 1.2f), Add(StatId.BurstRadius, 1f)),
+                } },
         };
 
         /// <summary>Builds the assets and adds the SkillManager (plus PlayerStats on the player when missing).</summary>
@@ -152,11 +242,13 @@ namespace SurvivorSouls.Editor.Skills
             {
                 skill = ScriptableObject.CreateInstance<SkillDefinition>();
                 skill.Configure(spec.Id, spec.Name, spec.Text, spec.Rarity, spec.Max, spec.Mods);
+                skill.SetLevels(spec.Levels);
                 skill.SetPresentation(icon, effect, spec.Weight);
                 AssetDatabase.CreateAsset(skill, path);
                 return skill;
             }
-            // Existing asset: keep designer numbers, only repair missing links.
+            // Existing asset: keep designer numbers, only repair missing links and give a table-less skill its table.
+            if (!skill.HasLevelTable) FillLevels(skill, spec);
             var so = new SerializedObject(skill);
             var iconProp = so.FindProperty("icon");
             if (iconProp.objectReferenceValue == null) iconProp.objectReferenceValue = icon;
@@ -164,6 +256,18 @@ namespace SurvivorSouls.Editor.Skills
             if (fxProp.objectReferenceValue == null && effect != null) fxProp.objectReferenceValue = effect;
             so.ApplyModifiedPropertiesWithoutUndo();
             return skill;
+        }
+
+        /// <summary>
+        /// One-time move of a KAN-19 asset (old stacking, empty table) to its level table (KAN-71). The fallback fields
+        /// (card text, modifiers, max stack) are set to row 1 / the table length so every view of the skill agrees. An
+        /// asset that already has a table is never touched: tune it in the Inspector.
+        /// </summary>
+        private static void FillLevels(SkillDefinition skill, Spec spec)
+        {
+            skill.Configure(skill.Id, skill.DisplayName, spec.Text, skill.Rarity, spec.Max, spec.Mods);
+            skill.SetLevels(spec.Levels);
+            EditorUtility.SetDirty(skill);
         }
 
         /// <summary>
