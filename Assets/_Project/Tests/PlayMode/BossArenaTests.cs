@@ -25,7 +25,7 @@ namespace SurvivorSouls.Tests
     /// </summary>
     public sealed class BossArenaTests
     {
-        private const int TestRealm = 1;
+        private const int TestRealm = 97; // never touches the saved progress of a real Realm
         private static readonly Vector3 ArenaCentre = new Vector3(0f, 0f, -30f);
 
         private readonly List<Object> _objects = new List<Object>();
