@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Skills.SkillDefinition
   id: soul_burst
   displayName: Soul Burst
-  description: 'Kills burst: 50% bolt damage in 2.6 m'
+  description: 'Kills burst: 50% damage in 2.6 m'
   icon: {fileID: 2800000, guid: c1d6a866a6c5e4e1994deb935f510b7d, type: 3}
   rarity: 3
   maxStack: 4
@@ -24,17 +24,17 @@ MonoBehaviour:
     kind: 0
     value: 0.5
   levels:
-  - description: 'Kills burst: 50% bolt damage in 2.6 m'
+  - description: 'Kills burst: 50% damage in 2.6 m'
     modifiers:
     - stat: 11
       kind: 0
       value: 0.5
-  - description: 'Kills burst: 70% bolt damage in 2.6 m'
+  - description: 'Kills burst: 70% damage in 2.6 m'
     modifiers:
     - stat: 11
       kind: 0
       value: 0.7
-  - description: 'Kills burst: 90% bolt damage in 3.2 m'
+  - description: 'Kills burst: 90% damage in 3.2 m'
     modifiers:
     - stat: 11
       kind: 0
@@ -42,7 +42,7 @@ MonoBehaviour:
     - stat: 14
       kind: 0
       value: 0.6
-  - description: 'Kills burst: 120% bolt damage in 3.6 m'
+  - description: 'Kills burst: 120% damage in 3.6 m'
     modifiers:
     - stat: 11
       kind: 0

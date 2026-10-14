@@ -39,7 +39,7 @@ MonoBehaviour:
     - stat: 8
       kind: 0
       value: 3
-  - description: Bounce to +3 enemies, +15% bolt damage
+  - description: Bounce to +3 enemies, +15% damage
     modifiers:
     - stat: 8
       kind: 0

@@ -34,7 +34,7 @@ MonoBehaviour:
     - stat: 7
       kind: 0
       value: 2
-  - description: Pierce +2 enemies, +10% bolt damage
+  - description: Pierce +2 enemies, +10% damage
     modifiers:
     - stat: 7
       kind: 0
@@ -42,7 +42,7 @@ MonoBehaviour:
     - stat: 0
       kind: 1
       value: 0.1
-  - description: Pierce +3 enemies, +15% bolt damage
+  - description: Pierce +3 enemies, +15% damage
     modifiers:
     - stat: 7
       kind: 0

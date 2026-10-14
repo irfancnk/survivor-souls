@@ -186,7 +186,7 @@ namespace SurvivorSouls.Tests
                 var texts = Enumerable.Range(1, s.MaxLevel).Select(s.DescriptionAt).ToArray();
                 Assert.That(texts.All(t => !string.IsNullOrWhiteSpace(t)), Is.True, s.Id + " text on every level");
                 Assert.That(texts.Distinct().Count(), Is.EqualTo(texts.Length), s.Id + " each level reads differently");
-                Assert.That(texts.Max(t => t.Length), Is.LessThanOrEqualTo(40), s.Id + " card text fits two lines");
+                Assert.That(texts.Max(t => t.Length), Is.LessThanOrEqualTo(35), s.Id + " short card text (layout for long text: KAN-76)");
 
                 Assert.That(s.Description, Is.EqualTo(texts[0]), s.Id + " description = level 1 text");
                 Assert.That(s.Modifiers, Is.EqualTo(s.Levels[0].modifiers), s.Id + " fallback modifiers = level 1 row");

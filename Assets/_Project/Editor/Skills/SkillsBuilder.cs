@@ -120,8 +120,8 @@ namespace SurvivorSouls.Editor.Skills
                 {
                     L("Bolts pass through +1 enemy", Add(StatId.Pierce, 1f)),
                     L("Bolts pass through +2 enemies", Add(StatId.Pierce, 2f)),
-                    L("Pierce +2 enemies, +10% bolt damage", Add(StatId.Pierce, 2f), Pct(StatId.Damage, 0.1f)),
-                    L("Pierce +3 enemies, +15% bolt damage", Add(StatId.Pierce, 3f), Pct(StatId.Damage, 0.15f)),
+                    L("Pierce +2 enemies, +10% damage", Add(StatId.Pierce, 2f), Pct(StatId.Damage, 0.1f)),
+                    L("Pierce +3 enemies, +15% damage", Add(StatId.Pierce, 3f), Pct(StatId.Damage, 0.15f)),
                 } },
             new Spec { Id = "ricochet", File = "Ricochet", Name = "Ricochet", Rarity = SkillRarity.Rare,
                 Glyph = SkillIconPainter.Ricochet, Levels = new[]
@@ -129,7 +129,7 @@ namespace SurvivorSouls.Editor.Skills
                     L("Bolts bounce to +1 nearby enemy", Add(StatId.Ricochet, 1f)),
                     L("Bolts bounce to +2 nearby enemies", Add(StatId.Ricochet, 2f)),
                     L("Bolts bounce to +3 nearby enemies", Add(StatId.Ricochet, 3f)),
-                    L("Bounce to +3 enemies, +15% bolt damage", Add(StatId.Ricochet, 3f), Pct(StatId.Damage, 0.15f)),
+                    L("Bounce to +3 enemies, +15% damage", Add(StatId.Ricochet, 3f), Pct(StatId.Damage, 0.15f)),
                 } },
             new Spec { Id = "ember_bolts", File = "EmberBolts", Name = "Ember Bolts", Rarity = SkillRarity.Legendary,
                 Glyph = SkillIconPainter.Burn, Effect = Fx.Burn, Levels = new[]
@@ -145,22 +145,22 @@ namespace SurvivorSouls.Editor.Skills
                     L("Heal 5% of bolt damage dealt", Add(StatId.LifeSteal, 0.05f)),
                     L("Heal 7% of bolt damage dealt", Add(StatId.LifeSteal, 0.07f)),
                     L("Heal 9% of bolt damage dealt", Add(StatId.LifeSteal, 0.09f)),
-                    L("Heal 12% of bolt damage, +60 max health", Add(StatId.LifeSteal, 0.12f), Add(StatId.MaxHealth, 60f)),
+                    L("Heal 12% of damage, +60 max HP", Add(StatId.LifeSteal, 0.12f), Add(StatId.MaxHealth, 60f)),
                 } },
             new Spec { Id = "multishot", File = "Multishot", Name = "Multishot", Rarity = SkillRarity.Epic,
                 Glyph = SkillIconPainter.Multishot, Levels = new[]
                 {
-                    L("+1 bolt per volley, -15% bolt damage", Add(StatId.Multishot, 1f), Pct(StatId.Damage, -0.15f)),
-                    L("+2 bolts per volley, -25% bolt damage", Add(StatId.Multishot, 2f), Pct(StatId.Damage, -0.25f)),
-                    L("+2 bolts per volley, -10% bolt damage", Add(StatId.Multishot, 2f), Pct(StatId.Damage, -0.1f)),
+                    L("+1 bolt per volley, -15% damage", Add(StatId.Multishot, 1f), Pct(StatId.Damage, -0.15f)),
+                    L("+2 bolts per volley, -25% damage", Add(StatId.Multishot, 2f), Pct(StatId.Damage, -0.25f)),
+                    L("+2 bolts per volley, -10% damage", Add(StatId.Multishot, 2f), Pct(StatId.Damage, -0.1f)),
                 } },
             new Spec { Id = "soul_burst", File = "SoulBurst", Name = "Soul Burst", Rarity = SkillRarity.Legendary,
                 Glyph = SkillIconPainter.KillBurst, Effect = Fx.KillBurst, Levels = new[]
                 {
-                    L("Kills burst: 50% bolt damage in 2.6 m", Add(StatId.KillBurst, 0.5f)),
-                    L("Kills burst: 70% bolt damage in 2.6 m", Add(StatId.KillBurst, 0.7f)),
-                    L("Kills burst: 90% bolt damage in 3.2 m", Add(StatId.KillBurst, 0.9f), Add(StatId.BurstRadius, 0.6f)),
-                    L("Kills burst: 120% bolt damage in 3.6 m", Add(StatId.KillBurst, 1.2f), Add(StatId.BurstRadius, 1f)),
+                    L("Kills burst: 50% damage in 2.6 m", Add(StatId.KillBurst, 0.5f)),
+                    L("Kills burst: 70% damage in 2.6 m", Add(StatId.KillBurst, 0.7f)),
+                    L("Kills burst: 90% damage in 3.2 m", Add(StatId.KillBurst, 0.9f), Add(StatId.BurstRadius, 0.6f)),
+                    L("Kills burst: 120% damage in 3.6 m", Add(StatId.KillBurst, 1.2f), Add(StatId.BurstRadius, 1f)),
                 } },
         };
 

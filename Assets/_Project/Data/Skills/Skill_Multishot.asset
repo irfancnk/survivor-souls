@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Skills.SkillDefinition
   id: multishot
   displayName: Multishot
-  description: +1 bolt per volley, -15% bolt damage
+  description: +1 bolt per volley, -15% damage
   icon: {fileID: 2800000, guid: ee18565c2fe0d47c9a30ff889f122634, type: 3}
   rarity: 2
   maxStack: 3
@@ -27,7 +27,7 @@ MonoBehaviour:
     kind: 1
     value: -0.15
   levels:
-  - description: +1 bolt per volley, -15% bolt damage
+  - description: +1 bolt per volley, -15% damage
     modifiers:
     - stat: 6
       kind: 0
@@ -35,7 +35,7 @@ MonoBehaviour:
     - stat: 0
       kind: 1
       value: -0.15
-  - description: +2 bolts per volley, -25% bolt damage
+  - description: +2 bolts per volley, -25% damage
     modifiers:
     - stat: 6
       kind: 0
@@ -43,7 +43,7 @@ MonoBehaviour:
     - stat: 0
       kind: 1
       value: -0.25
-  - description: +2 bolts per volley, -10% bolt damage
+  - description: +2 bolts per volley, -10% damage
     modifiers:
     - stat: 6
       kind: 0

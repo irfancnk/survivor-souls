@@ -39,7 +39,7 @@ MonoBehaviour:
     - stat: 10
       kind: 0
       value: 0.09
-  - description: Heal 12% of bolt damage, +60 max health
+  - description: Heal 12% of damage, +60 max HP
     modifiers:
     - stat: 10
       kind: 0
