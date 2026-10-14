@@ -358,6 +358,8 @@ namespace SurvivorSouls.Tests
             cam.aspect = aspect;
             foreach (var c in mover.GetComponents<ContactDamageReceiver>()) c.enabled = false; // immortal
             foreach (var c in mover.GetComponents<SoulCollector>()) c.enabled = false;          // no level-up pause
+            // Chambers last 2 minutes (KAN-92): no portal mid-soak, so a wandering Knight never leaves the scene.
+            SurvivorSouls.Gameplay.Chamber.SurvivalTimer.Active?.Stop();
 
             var rules = spawner.SpawnRules;
             var failures = new List<string>();
