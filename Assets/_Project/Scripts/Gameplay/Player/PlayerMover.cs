@@ -25,6 +25,8 @@ namespace SurvivorSouls.Gameplay.Player
         private float _verticalSpeed;
 
         public float MaxSpeed => PlayerStats.Eval(_stats, StatId.MoveSpeed, maxSpeed);
+        /// <summary>Base speed before skills (KAN-75 power curve).</summary>
+        public float BaseSpeed => maxSpeed;
         /// <summary>The stick is ignored (the Knight slows to a stop): boss intro (KAN-62). Gravity still runs.</summary>
         public bool InputLocked { get; set; }
         public Vector3 Velocity => _velocity;

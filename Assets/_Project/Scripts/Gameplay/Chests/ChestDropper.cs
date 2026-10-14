@@ -278,6 +278,36 @@ namespace SurvivorSouls.Gameplay.Chests
             return result;
         }
 
+        /// <summary>
+        /// Drop statistics per skill level (KAN-75 debug and balance check): <see cref="Simulate"/> on a throw-away stat sheet
+        /// with <paramref name="hunter"/> (Reliquary Hunter) at each level 1..max, so no scene or live run is needed. Index
+        /// L - 1 = level L. Debug only: allocates.
+        /// </summary>
+        public static DropStats[] SimulatePerLevel(ChestDropConfig dropConfig, SkillDefinition hunter, int kills, float eliteShare,
+            float secondsPerKill, int rngSeed)
+        {
+            if (dropConfig == null || hunter == null) return new DropStats[0];
+            var go = new GameObject("Chest Statistics (temp)") { hideFlags = HideFlags.HideAndDontSave };
+            try
+            {
+                var sheet = go.AddComponent<PlayerStats>();
+                var dropper = go.AddComponent<ChestDropper>();
+                dropper.Setup(dropConfig, sheet, null, rngSeed);
+                dropper.enabled = false; // no live kill events
+                var result = new DropStats[hunter.MaxLevel];
+                for (int level = 1; level <= hunter.MaxLevel; level++)
+                {
+                    hunter.ApplyLevel(sheet, level);
+                    result[level - 1] = dropper.Simulate(kills, eliteShare, secondsPerKill, rngSeed + level);
+                }
+                return result;
+            }
+            finally
+            {
+                DestroyImmediate(go);
+            }
+        }
+
         /// <summary>Roll for one kill: the skill's chance, else the pity rule once the clock passed the pity time.</summary>
         private bool Decide(bool elite, System.Random rng, float sinceDrop, out bool pity)
         {

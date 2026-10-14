@@ -36,6 +36,8 @@ namespace SurvivorSouls.Gameplay.Player
 
         public float Current => _current;
         public float Max => _max;
+        /// <summary>Base max health before skills (KAN-75 power curve).</summary>
+        public float BaseMax => maxHealth;
         public float Normalized => _current / _max;
         public bool IsDead => _dead;
         /// <summary>Takes no damage while set (boss intro, KAN-62: the Knight cannot move, so nothing may hurt it).</summary>

@@ -6,10 +6,13 @@ using UnityEngine;
 
 namespace SurvivorSouls.Gameplay.Skills
 {
+    /// <summary>What changed a skill's level (<see cref="SkillManager.LastChangeSource"/>, telemetry KAN-75).</summary>
+    public enum SkillChangeSource { Pick, Upgrade, Debug }
+
     /// <summary>
     /// The run's skills (KAN-19): owned skills and their levels (KAN-50), in pick order. The one place that changes a
     /// level: <see cref="Grant(SkillDefinition)"/> (level-up pick, new or +1), <see cref="Upgrade(SkillDefinition, int)"/>
-    /// (chest, owned only, +N capped), <see cref="Restore"/> (Chamber carry). Each writes the skill's effect at the new
+    /// (chest, owned only, +N capped), <see cref="Restore"/> (Chamber carry), <see cref="SetLevel"/> (debug, KAN-75). Each writes the skill's effect at the new
     /// level from its data to <see cref="PlayerStats"/> and spawns its effect at level 1. <see cref="Roll"/> offers
     /// distinct skills for a level: pool and rarity odds from <see cref="SkillProgression"/>, maxed and gated skills
     /// (<see cref="CanOffer"/>) left out, the
@@ -59,6 +62,13 @@ namespace SurvivorSouls.Gameplay.Skills
         /// <see cref="Restore"/> or <see cref="ResetRun"/>. HUD glow (KAN-50.5) and telemetry hook here.
         /// </summary>
         public event Action<SkillDefinition, int, int> SkillChanged;
+        /// <summary>What raised the <see cref="SkillChanged"/> being handled now (valid during the call).</summary>
+        public SkillChangeSource LastChangeSource { get; private set; }
+        /// <summary>
+        /// Debug / sims (KAN-75 power curve): false = skills change stats only, no effect prefab is spawned. Set before the
+        /// first grant.
+        /// </summary>
+        public bool SpawnEffects { get; set; } = true;
         /// <summary>Owned list changed (grant or reset). HUD rebuilds its row.</summary>
         public event Action Changed;
 
@@ -158,7 +168,7 @@ namespace SurvivorSouls.Gameplay.Skills
         public bool Grant(SkillDefinition skill)
         {
             if (!CanTake(skill)) return false;
-            var o = Raise(skill, 1);
+            var o = Raise(skill, 1, SkillChangeSource.Pick);
             Granted?.Invoke(skill, o.Level);
             Changed?.Invoke();
             return true;
@@ -175,7 +185,7 @@ namespace SurvivorSouls.Gameplay.Skills
         public bool Upgrade(SkillDefinition skill, int levels = 1)
         {
             if (levels < 1 || !CanUpgrade(skill)) return false;
-            Raise(skill, levels);
+            Raise(skill, levels, SkillChangeSource.Upgrade);
             Changed?.Invoke();
             return true;
         }
@@ -197,15 +207,54 @@ namespace SurvivorSouls.Gameplay.Skills
             Changed?.Invoke();
         }
 
+        /// <summary>
+        /// Debug (KAN-75: debug window, DevScreenshot <c>-ss-skills id:N</c>): puts <paramref name="skill"/> at exactly
+        /// <paramref name="level"/>, clamped to 0..max; up or down, owned or not. 0 removes the skill (modifiers and effect).
+        /// Raises <see cref="SkillChanged"/> with <see cref="SkillChangeSource.Debug"/> and <see cref="Changed"/>; never
+        /// <see cref="Granted"/> (no pick sound). False when the skill is null or already at that level.
+        /// </summary>
+        public bool SetLevel(SkillDefinition skill, int level)
+        {
+            if (skill == null) return false;
+            level = Mathf.Clamp(level, 0, skill.MaxLevel);
+            var o = Find(skill);
+            int old = o != null ? o.Level : 0;
+            if (old == level) return false;
+            if (level == 0)
+            {
+                skill.ApplyLevel(stats, 0);
+                if (o.Effect != null) Destroy(o.Effect.gameObject);
+                _owned.Remove(o);
+            }
+            else
+            {
+                o ??= Add(skill);
+                o.Level = level;
+                Apply(o);
+            }
+            RaiseChanged(skill, old, level, SkillChangeSource.Debug);
+            Changed?.Invoke();
+            return true;
+        }
+
+        /// <summary>Same as <see cref="SetLevel(SkillDefinition, int)"/> by id. False when unknown.</summary>
+        public bool SetLevel(string skillId, int level) => SetLevel(FindSkill(skillId), level);
+
         /// <summary>Adds <paramref name="levels"/> (capped), applies the new level and raises <see cref="SkillChanged"/>.</summary>
-        private Owned Raise(SkillDefinition skill, int levels)
+        private Owned Raise(SkillDefinition skill, int levels, SkillChangeSource source)
         {
             var o = Find(skill) ?? Add(skill);
             int old = o.Level;
             o.Level = Mathf.Min(old + levels, skill.MaxLevel);
             Apply(o);
-            SkillChanged?.Invoke(skill, old, o.Level);
+            RaiseChanged(skill, old, o.Level, source);
             return o;
+        }
+
+        private void RaiseChanged(SkillDefinition skill, int old, int level, SkillChangeSource source)
+        {
+            LastChangeSource = source;
+            SkillChanged?.Invoke(skill, old, level);
         }
 
         private Owned Add(SkillDefinition skill)
@@ -219,7 +268,7 @@ namespace SurvivorSouls.Gameplay.Skills
         private void Apply(Owned o)
         {
             o.Skill.ApplyLevel(stats, o.Level);
-            if (o.Effect == null && o.Skill.EffectPrefab != null)
+            if (o.Effect == null && o.Skill.EffectPrefab != null && SpawnEffects)
             {
                 o.Effect = Instantiate(o.Skill.EffectPrefab, effectRoot != null ? effectRoot : transform, false);
                 o.Effect.name = o.Skill.EffectPrefab.name;

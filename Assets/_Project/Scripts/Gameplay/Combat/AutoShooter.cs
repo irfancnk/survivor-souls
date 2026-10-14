@@ -56,6 +56,11 @@ namespace SurvivorSouls.Gameplay.Combat
         private float _reload = 1f; // ready at spawn, like the old zero cooldown
         private bool _engaged;
 
+        /// <summary>Base numbers before skills (KAN-75 power curve).</summary>
+        public float BaseDamage => damage;
+        public float BaseShotsPerSecond => 1f / fireInterval;
+        public float BaseCritChance => critChance;
+        public float BaseCritMultiplier => critMultiplier;
         /// <summary>Bolt damage after skills (burst and similar skills scale from it).</summary>
         public float CurrentDamage => PlayerStats.Eval(_stats, StatId.Damage, damage);
         /// <summary>Seconds between shots after attack speed skills.</summary>
