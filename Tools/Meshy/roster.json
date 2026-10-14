@@ -1,0 +1,243 @@
+{
+ "style": "Full body, A-pose, arms away from body, separated legs, game-ready character, realistic gritty Dark Souls dark fantasy, not cartoonish.",
+ "jobs": [
+  {
+   "slug": "graveyard-laborer",
+   "name": "GraveyardLaborer",
+   "kind": "zombie",
+   "height": 1.72,
+   "ref": "graveyard-laborer",
+   "texture": "Pale grey undead skin, worn leather vest, faded moss-green linen tunic, dirt and grave soil stains, non-graphic decay, faint ember eyes.",
+   "anims": {
+    "Shamble": 123,
+    "Attack": 97,
+    "Hit": 178,
+    "Death": 189
+   },
+   "tris": 4000
+  },
+  {
+   "slug": "fallen-militiaman",
+   "name": "FallenMilitiaman",
+   "kind": "zombie",
+   "height": 1.78,
+   "ref": "fallen-militiaman",
+   "texture": "Pale grey undead skin, blue-grey padded gambeson, brown leather bracers and boots, mud and old blood stains, non-graphic decay.",
+   "anims": {
+    "Shamble": 113,
+    "Attack": 198,
+    "Hit": 178,
+    "Death": 187
+   },
+   "tris": 4000
+  },
+  {
+   "slug": "rusted-watchman",
+   "name": "RustedWatchman",
+   "kind": "zombie",
+   "height": 1.8,
+   "ref": "rusted-watchman",
+   "texture": "Rusted iron kettle helmet, rusted breastplate and shin plates, grey-brown cloth, pale undead skin, non-graphic decay.",
+   "anims": {
+    "Shamble": 123,
+    "Attack": 219,
+    "Hit": 179,
+    "Death": 184
+   },
+   "tris": 4000
+  },
+  {
+   "slug": "gravebound-knight",
+   "name": "GraveboundKnight",
+   "kind": "zombie",
+   "height": 1.85,
+   "ref": "gravebound-knight",
+   "texture": "Corroded dark steel plate armour with rust, chainmail, torn oxblood tabard with faded gold sigil, pale undead face, glowing pale eyes.",
+   "anims": {
+    "Walk": 119,
+    "Attack": 92,
+    "Hit": 178,
+    "Death": 190
+   },
+   "tris": 4000
+  },
+  {
+   "slug": "plague-bloater",
+   "name": "PlagueBloater",
+   "kind": "zombie",
+   "height": 1.8,
+   "prompt": "Grotesque morbidly obese plague zombie, enormous round bloated belly, very wide fat body shaped like a barrel, short thick legs, fat arms, swollen sickly yellow-green skin with large glowing green pustules, tiny bald head, filthy leather apron stretched over the belly. Standing, arms slightly away from body.",
+   "texture": "Swollen sickly yellow-green rotting skin, glowing toxic green pustules, purple bruising, filthy brown stained apron and rags, gritty realistic.",
+   "anims": {
+    "Walk": 119,
+    "Burst": 386,
+    "Hit": 178,
+    "Death": 189
+   },
+   "ver": 3,
+   "tris": 4000,
+   "pose": "auto"
+  },
+  {
+   "slug": "bone-archer",
+   "name": "BoneArcher",
+   "kind": "zombie",
+   "height": 1.78,
+   "prompt": "Undead skeleton archer, lean skeletal body with scraps of dried flesh, tattered dark hooded cloak, leather quiver of black arrows on its back, holding a weathered longbow in its left hand, cold blue glowing eye sockets.",
+   "texture": "Aged yellow-white bone, scraps of dried brown flesh, tattered charcoal hooded cloak, dark leather quiver and straps, weathered wooden longbow, cold blue eye glow.",
+   "anims": {
+    "Walk": -2,
+    "Shoot": 224,
+    "Hit": 178,
+    "Death": 183
+   },
+   "tris": 4000
+  },
+  {
+   "slug": "pyre-thrower",
+   "name": "PyreThrower",
+   "kind": "zombie",
+   "height": 1.75,
+   "prompt": "Burning cultist zombie, charred blackened corpse with glowing orange cracks of embers under the skin, scorched hooded cultist robe, belt of clay fire pots, empty hands with glowing ember palms, smoldering head.",
+   "texture": "Charred black skin with bright glowing orange lava cracks, scorched dark red cultist robe with burnt edges, clay fire pots on belt, ember glow on hands and eyes.",
+   "anims": {
+    "Walk": 123,
+    "Throw": 239,
+    "Hit": 178,
+    "Death": 189
+   },
+   "tris": 4000
+  },
+  {
+   "slug": "bile-spitter",
+   "name": "BileSpitter",
+   "kind": "zombie",
+   "height": 1.7,
+   "prompt": "Gaunt bile spitter zombie, emaciated hunched corpse with an unnaturally wide torn jaw and swollen throat sac glowing acid green, dripping green bile, ragged torn shirt, long thin arms, exposed ribs.",
+   "texture": "Pale grey-green rotting skin, glowing acid green throat sac and dripping bile, dark bruising, ragged torn grey shirt and trousers, gritty realistic.",
+   "anims": {
+    "Walk": 123,
+    "Spit": 386,
+    "Hit": 178,
+    "Death": 187
+   },
+   "tris": 4000
+  },
+  {
+   "slug": "frenzied-ghoul",
+   "name": "FrenziedGhoul",
+   "kind": "zombie",
+   "height": 1.7,
+   "prompt": "Frenzied ghoul, lean wiry fast undead with grey stretched skin, long sharp claws, feral snarling face with bared teeth, torn trousers only, bony spine and ribs visible, athletic predator build.",
+   "texture": "Stretched ash-grey skin with dark veins, black long claws, blood-stained teeth, torn dark brown trousers, red glowing eyes, gritty realistic.",
+   "anims": {
+    "Sprint": 16,
+    "Leap": 86,
+    "Hit": 178,
+    "Death": 184
+   },
+   "tris": 4000
+  },
+  {
+   "slug": "grave-brute",
+   "name": "GraveBrute",
+   "kind": "zombie",
+   "height": 2.3,
+   "prompt": "Hulking giant zombie brute, massively muscular ogre-like undead, very broad shoulders and huge arms longer than its legs, enormous fists wrapped in rusted chains, hunched back, small head low between the shoulders, iron shackle collar, stitched grey-purple skin, torn leather loincloth. Standing, arms slightly away from body.",
+   "texture": "Grey-purple rotting muscular skin with stitched scars, rusted iron chains and shackles, torn dark leather loincloth, dried blood, gritty realistic.",
+   "anims": {
+    "Walk": 119,
+    "Slam": 127,
+    "Hit": 179,
+    "Death": 190
+   },
+   "tris": 6000,
+   "ver": 2,
+   "pose": "auto"
+  },
+  {
+   "slug": "hexbound-shaman",
+   "name": "HexboundShaman",
+   "kind": "zombie",
+   "height": 1.75,
+   "prompt": "Undead hex shaman, thin corpse priest in tattered dark purple robes with bone charms and small skulls on cords, antler and bone headdress, hands empty and open, glowing violet runes carved into the skin.",
+   "texture": "Pale grey withered skin with glowing violet carved runes, tattered dark purple robes, yellowed bone charms and small skulls, antler headdress, violet eye glow.",
+   "anims": {
+    "Walk": -2,
+    "Cast": 129,
+    "Summon": 126,
+    "Hit": 178,
+    "Death": 189
+   },
+   "tris": 4000
+  },
+  {
+   "slug": "pyre-lord",
+   "name": "PyreLord",
+   "kind": "boss",
+   "height": 4.5,
+   "prompt": "Giant Pyre Lord boss, colossal burning undead king, towering armoured body of charred black iron plates with molten orange lava cracks, crown of fire horns on the head, burning cape, flames rising from shoulders, empty clawed hands with glowing fire palms, imposing heavy build.",
+   "texture": "Charred black iron armour with glowing molten orange lava cracks, burning ember crown, scorched tattered red cape, bright fire glow on hands and eyes.",
+   "anims": {
+    "Walk": 119,
+    "Slam": 127,
+    "CastFan": 125,
+    "CastNova": 130,
+    "Roar": 255,
+    "Death": 189
+   },
+   "tris": 12000
+  },
+  {
+   "slug": "rotting-colossus",
+   "name": "RottingColossus",
+   "kind": "boss",
+   "height": 5.0,
+   "prompt": "Rotting Colossus boss, enormous hulking flesh golem made of many fused corpses, bodies and limbs grown into its torso, huge long arms with massive fists, hunched back with bones jutting out, small head sunk between shoulders, rusted iron bands holding the flesh together.",
+   "texture": "Grey-purple rotting fused flesh, many pale corpse faces and limbs in the body, yellow bones jutting out, rusted iron bands, dark dried blood, gritty realistic.",
+   "anims": {
+    "Walk": 119,
+    "Slam": 127,
+    "Throw": 398,
+    "Grab": 389,
+    "Roar": 255,
+    "Death": 187
+   },
+   "tris": 12000
+  },
+  {
+   "slug": "bone-matriarch",
+   "name": "BoneMatriarch",
+   "kind": "boss",
+   "height": 4.0,
+   "prompt": "Bone Matriarch boss, tall skeletal lich queen sorceress, crown of bone spikes, long tattered black and grey royal gown, ribcage visible through torn bodice, long bony fingers with empty open hands, cold teal soul fire in eye sockets and chest.",
+   "texture": "Aged ivory bone, crown of bone spikes, tattered black and ash-grey royal gown with silver trim, glowing cold teal soul fire in eyes and ribcage.",
+   "anims": {
+    "Walk": -2,
+    "CastOrbs": 131,
+    "CastRing": 132,
+    "Summon": 126,
+    "Roar": 386,
+    "Death": 185
+   },
+   "tris": 12000
+  },
+  {
+   "slug": "ashgrave-butcher",
+   "name": "AshgraveButcher",
+   "kind": "boss",
+   "height": 4.2,
+   "prompt": "Butcher of Ashgrave boss, giant undead executioner, huge fat muscular body, black leather executioner hood, bloodied leather apron, meat hooks and chains on the belt, holding a giant rusted cleaver in the right hand, thick arms.",
+   "texture": "Pale grey rotting skin, black leather executioner hood, blood-stained brown leather apron, rusted iron meat hooks and chains, giant rusted bloody cleaver.",
+   "anims": {
+    "Walk": 119,
+    "Chop": 237,
+    "Spin": 238,
+    "Charge": 16,
+    "Roar": 255,
+    "Death": 190
+   },
+   "tris": 12000
+  }
+ ]
+}
