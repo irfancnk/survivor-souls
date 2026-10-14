@@ -1,0 +1,288 @@
+#if UNITY_EDITOR
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using NUnit.Framework;
+using SurvivorSouls.Core;
+using SurvivorSouls.Gameplay.Skills;
+using SurvivorSouls.UI.Hud;
+using UnityEngine;
+using UnityEngine.TestTools;
+using UnityEngine.TestTools.Constraints;
+using UnityEngine.UIElements;
+using Is = UnityEngine.TestTools.Constraints.Is;
+using Object = UnityEngine.Object;
+
+namespace SurvivorSouls.Tests
+{
+    /// <summary>
+    /// HUD skill row level pips and level-up glow (KAN-74) on the real HUD: one pip per level up to the max, lit to the
+    /// owned level, max class at the cap; a level up of an owned skill glows only after the pause ends, all waiting slots
+    /// together with one <see cref="SkillHud.UpgradeShown"/> and one haptic; new skills and Chamber restores do not glow.
+    /// </summary>
+    public sealed class SkillHudTests
+    {
+        private const string SkillDir = "Assets/_Project/Data/Skills";
+
+        private readonly List<Object> _objects = new List<Object>();
+        private SkillManager _manager;
+        private SkillHud _hud;
+        private int _shown, _shownSlots;
+        private bool _savedVibration;
+
+        [UnitySetUp]
+        public IEnumerator SetUp()
+        {
+            GamePause.Clear();
+            _shown = _shownSlots = 0; // NUnit reuses the fixture instance
+            _savedVibration = GameSettings.Vibration;
+            GameSettings.Vibration = true;
+            Haptics.ResetState();
+
+            var player = Track(new GameObject("Player"));
+            var stats = player.AddComponent<PlayerStats>();
+            _manager = Track(new GameObject("Skills")).AddComponent<SkillManager>();
+            _manager.Setup(Track(ScriptableObject.CreateInstance<SkillProgression>()), stats, null, null, player.transform, rngSeed: 74);
+
+            var go = Track(new GameObject("HUD"));
+            go.SetActive(false);
+            var doc = go.AddComponent<UIDocument>();
+            doc.panelSettings = UnityEditor.AssetDatabase.LoadAssetAtPath<PanelSettings>("Assets/_Project/UI/Hud/GameHudPanelSettings.asset");
+            doc.visualTreeAsset = UnityEditor.AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/_Project/UI/Hud/GameHud.uxml");
+            _hud = go.AddComponent<SkillHud>();
+            _hud.Setup(_manager);
+            go.SetActive(true); // [Test]s run in one frame: no Update between steps, Tick drives the time
+            _hud.UpgradeShown += n => { _shown++; _shownSlots += n; };
+            yield return null;
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            GamePause.Clear();
+            foreach (var o in _objects)
+                if (o != null) Object.DestroyImmediate(o);
+            _objects.Clear();
+            GameSettings.Vibration = _savedVibration;
+            Haptics.ResetState();
+        }
+
+        private T Track<T>(T o) where T : Object
+        {
+            _objects.Add(o);
+            return o;
+        }
+
+        /// <summary>Shipped skills with at least <paramref name="minLevels"/> levels, longest table first.</summary>
+        private static SkillDefinition[] Shipped(int minLevels = 3) =>
+            UnityEditor.AssetDatabase.FindAssets("t:SkillDefinition", new[] { SkillDir })
+                .Select(g => UnityEditor.AssetDatabase.LoadAssetAtPath<SkillDefinition>(UnityEditor.AssetDatabase.GUIDToAssetPath(g)))
+                .Where(s => s.MaxLevel >= minLevels)
+                .OrderByDescending(s => s.MaxLevel).ThenBy(s => s.Id)
+                .ToArray();
+
+        private List<VisualElement> Pips(int slot) =>
+            _hud.SlotElement(slot).Query(className: "hud-skill__pip").Where(p => p.resolvedStyle.display == DisplayStyle.Flex).ToList();
+
+        private int Lit(int slot) => Pips(slot).Count(p => p.ClassListContains("hud-skill__pip--on"));
+        private int[] Flashing(int slot) => Pips(slot).Select((p, i) => (p, i)).Where(t => t.p.ClassListContains("hud-skill__pip--new")).Select(t => t.i).ToArray();
+
+        [UnityTest]
+        public IEnumerator Pips_OnePerLevel_LitToOwnedLevel_MaxClassAtCap()
+        {
+            var skills = Shipped();
+            Assert.That(skills.Length, Is.GreaterThanOrEqualTo(2));
+            var a = skills[0];
+            var b = skills[skills.Length - 1];
+            _manager.Grant(a);
+            _manager.Grant(b);
+            _manager.Grant(a);
+            yield return null;
+
+            Assert.That(_hud.VisibleSlots, Is.EqualTo(2));
+            Assert.That(Pips(0).Count, Is.EqualTo(a.MaxLevel), a.Id);
+            Assert.That(Pips(1).Count, Is.EqualTo(b.MaxLevel), b.Id);
+            Assert.That(Lit(0), Is.EqualTo(2));
+            Assert.That(Lit(1), Is.EqualTo(1));
+            Assert.That(_hud.SlotElement(0).ClassListContains("hud-skill--max"), Is.False);
+
+            Assert.That(_manager.Upgrade(a, a.MaxLevel), Is.True);
+            yield return null;
+            Assert.That(Lit(0), Is.EqualTo(a.MaxLevel));
+            Assert.That(_hud.SlotElement(0).ClassListContains("hud-skill--max"), Is.True);
+            Assert.That(_hud.SlotElement(1).ClassListContains("hud-skill--max"), Is.False);
+        }
+
+        [UnityTest]
+        public IEnumerator Pips_SitUnderTheSlot_InsideItsWidth()
+        {
+            var a = Shipped(6).FirstOrDefault() ?? Shipped()[0];
+            _manager.Grant(a);
+            yield return null;
+            yield return null;
+            var slot = _hud.SlotElement(0).worldBound;
+            var pips = Pips(0);
+            Assert.That(pips.Count, Is.EqualTo(a.MaxLevel));
+            foreach (var p in pips)
+            {
+                var r = p.worldBound;
+                Assert.That(r.yMin, Is.GreaterThanOrEqualTo(slot.yMax), "pip below the rim");
+                Assert.That(r.xMin, Is.GreaterThanOrEqualTo(slot.xMin - 4f));
+                Assert.That(r.xMax, Is.LessThanOrEqualTo(slot.xMax + 4f));
+            }
+        }
+
+        [Test]
+        public void NewSkill_DoesNotGlow()
+        {
+            _manager.Grant(Shipped()[0]);
+            _hud.Tick(0.05f);
+            Assert.That(_hud.PendingGlows, Is.Zero);
+            Assert.That(_hud.IsGlowing(0), Is.False);
+            Assert.That(_shown, Is.Zero);
+        }
+
+        [Test]
+        public void Restore_DoesNotGlow_PipsShowLevel()
+        {
+            var a = Shipped()[0];
+            _manager.Restore(a, 3);
+            _hud.Tick(0.05f);
+            Assert.That(_hud.PendingGlows, Is.Zero);
+            Assert.That(_hud.IsGlowing(0), Is.False);
+            Assert.That(Lit(0), Is.EqualTo(3));
+            Assert.That(Haptics.PulseCount, Is.Zero);
+        }
+
+        [Test]
+        public void Upgrade_WhilePaused_GlowsAfterRelease_WithOneChimeAndHaptic()
+        {
+            var a = Shipped()[0];
+            _manager.Grant(a);
+            GamePause.Acquire(); // the chest card screen
+            Assert.That(_manager.Upgrade(a), Is.True);
+            _hud.Tick(0.5f);
+            Assert.That(_hud.PendingGlows, Is.EqualTo(1));
+            Assert.That(_hud.IsGlowing(0), Is.False, "the screen covers the row: no glow yet");
+            Assert.That(_shown, Is.Zero);
+            Assert.That(Lit(0), Is.EqualTo(2), "pips already show the new level");
+
+            GamePause.Release();
+            _hud.Tick(0.01f);
+            Assert.That(_hud.IsGlowing(0), Is.True);
+            Assert.That(_hud.PendingGlows, Is.Zero);
+            Assert.That(_shown, Is.EqualTo(1));
+            Assert.That(_shownSlots, Is.EqualTo(1));
+            Assert.That(Haptics.PulseCount, Is.EqualTo(1));
+            Assert.That(Flashing(0), Is.EqualTo(new[] { 1 }), "only the pip the upgrade added flashes");
+
+            _hud.Tick(_hud.GlowTime);
+            Assert.That(_hud.IsGlowing(0), Is.False);
+            Assert.That(Flashing(0), Is.Empty);
+            Assert.That(Lit(0), Is.EqualTo(2));
+            Assert.That(_hud.SlotElement(0).Q(className: "hud-skill__glow").style.opacity.value, Is.Zero);
+            Assert.That(_shown, Is.EqualTo(1), "one chime per level-up batch");
+        }
+
+        [Test]
+        public void Upgrade_WithoutPause_GlowsOnNextTick()
+        {
+            var a = Shipped()[0];
+            _manager.Grant(a);
+            _manager.Upgrade(a);
+            _hud.Tick(0.01f);
+            Assert.That(_hud.IsGlowing(0), Is.True);
+            Assert.That(_shown, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void OwnedSkillPickedOnLevelUp_AlsoGlows()
+        {
+            var a = Shipped()[0];
+            _manager.Grant(a);
+            GamePause.Acquire();
+            _manager.Grant(a); // level-up card of an owned skill: LV 1 -> 2
+            GamePause.Release();
+            _hud.Tick(0.01f);
+            Assert.That(_hud.IsGlowing(0), Is.True);
+            Assert.That(Flashing(0), Is.EqualTo(new[] { 1 }));
+        }
+
+        [Test]
+        public void SeveralUpgradesInOnePause_GlowTogether_OneChime()
+        {
+            var skills = Shipped(4);
+            var a = skills[0];
+            var b = skills[1];
+            _manager.Grant(a);
+            _manager.Grant(b);
+            GamePause.Acquire();
+            _manager.Upgrade(a, 2); // Rare chest
+            _manager.Upgrade(b);
+            _manager.Upgrade(a); // queued second chest, same skill
+            GamePause.Release();
+            _hud.Tick(0.01f);
+
+            Assert.That(_hud.IsGlowing(0), Is.True);
+            Assert.That(_hud.IsGlowing(1), Is.True);
+            Assert.That(_shown, Is.EqualTo(1));
+            Assert.That(_shownSlots, Is.EqualTo(2));
+            Assert.That(Haptics.PulseCount, Is.EqualTo(1));
+            Assert.That(Flashing(0), Is.EqualTo(new[] { 1, 2, 3 }), "LV 1 -> 4 flashes the three new pips");
+            Assert.That(Flashing(1), Is.EqualTo(new[] { 1 }));
+        }
+
+        [Test]
+        public void VibrationOff_GlowsWithoutHaptic()
+        {
+            GameSettings.Vibration = false;
+            var a = Shipped()[0];
+            _manager.Grant(a);
+            _manager.Upgrade(a);
+            _hud.Tick(0.01f);
+            Assert.That(_hud.IsGlowing(0), Is.True);
+            Assert.That(_shown, Is.EqualTo(1));
+            Assert.That(Haptics.PulseCount, Is.Zero);
+        }
+
+        [Test]
+        public void ResetRun_DropsWaitingAndRunningGlows()
+        {
+            var skills = Shipped();
+            var a = skills[0];
+            _manager.Grant(a);
+            _manager.Upgrade(a);
+            _hud.Tick(0.01f);
+            Assert.That(_hud.IsGlowing(0), Is.True);
+
+            GamePause.Acquire();
+            _manager.Upgrade(a);
+            _manager.ResetRun();
+            GamePause.Release();
+            _hud.Tick(0.01f);
+            Assert.That(_hud.PendingGlows, Is.Zero);
+            Assert.That(_hud.IsGlowing(0), Is.False);
+            Assert.That(_hud.VisibleSlots, Is.Zero);
+            Assert.That(_shown, Is.EqualTo(1));
+
+            _manager.Grant(skills[1]); // new skill in the old slot: no leftover glow
+            _hud.Tick(0.01f);
+            Assert.That(_hud.IsGlowing(0), Is.False);
+            Assert.That(Flashing(0), Is.Empty);
+        }
+
+        [Test]
+        public void GlowTick_NoGcAlloc()
+        {
+            var a = Shipped(5)[0];
+            _manager.Grant(a);
+            _manager.Upgrade(a);
+            for (float t = 0f; t < _hud.GlowTime + 0.1f; t += 0.02f) _hud.Tick(0.02f); // warm up styles and class lists
+            _manager.Upgrade(a);
+            _hud.Tick(0.01f);
+            Assert.That(_hud.IsGlowing(0), Is.True);
+            Assert.That(() => { for (int i = 0; i < 20; i++) _hud.Tick(0.02f); }, Is.Not.AllocatingGCMemory());
+        }
+    }
+}
+#endif
