@@ -32,6 +32,7 @@ namespace SurvivorSouls.Dev
     /// <c>-ss-open-chest &lt;light|rare&gt;</c> drops that chest at the Knight's feet: the real walk-in pickup opens it
     /// (KAN-73) and the upgrade screen follows (cards: owned skills; force them with -ss-offer).
     /// <c>-ss-skills id,id,...</c> grants those skills (by SkillDefinition id, repeat an id to stack) after load.
+    /// <c>-ss-upgrade id,id,...</c> chest-upgrades those owned skills (+1 each) 0.3 s before the capture: HUD slot glow + new pips (KAN-74).
     /// <c>-ss-offer id,id,id</c> makes the next level-up offer those cards (KAN-37 tier look; use with -ss-xp).
     /// <c>-ss-horde &lt;n&gt;</c> places n enemies (wave table mix of the last phase) on a ring 4-11 m round the player after
     /// load, from the spawner's pools (perf runs; KAN-30). <c>-ss-immortal</c> turns off contact damage on the player.
@@ -68,6 +69,7 @@ namespace SurvivorSouls.Dev
         private int _souls;
         private int _xp;
         private string _skills;
+        private string _upgrade;
         private int _chests;
         private string _openChest;
         private string _offer;
@@ -111,6 +113,7 @@ namespace SurvivorSouls.Dev
             shot._release = float.TryParse(GetArg("-ss-release"), NumberStyles.Float, CultureInfo.InvariantCulture, out float r) ? r : 0f;
             shot._souls = int.TryParse(GetArg("-ss-souls"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int n) ? n : 0;
             shot._skills = GetArg("-ss-skills");
+            shot._upgrade = GetArg("-ss-upgrade");
             shot._chests = int.TryParse(GetArg("-ss-chests"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int ch) ? ch : 0;
             shot._offer = GetArg("-ss-offer");
             shot._openChest = GetArg("-ss-open-chest");
@@ -199,6 +202,11 @@ namespace SurvivorSouls.Dev
                 yield return new WaitForSecondsRealtime(release);
             }
             if (!string.IsNullOrEmpty(_closeup)) FrameCloseup(float.Parse(_closeup, CultureInfo.InvariantCulture));
+            if (!string.IsNullOrEmpty(_upgrade))
+            {
+                UpgradeSkills(_upgrade);
+                yield return new WaitForSecondsRealtime(0.3f); // glow near its peak, new pips mid-blink
+            }
             if (!string.IsNullOrEmpty(_hitMarker)) ShowHitMarker(_hitMarker == "kill");
             yield return null;
             yield return new WaitForEndOfFrame();
@@ -415,6 +423,17 @@ namespace SurvivorSouls.Dev
             foreach (string id in ids.Split(','))
             {
                 if (!manager.Grant(id.Trim())) Debug.LogWarning($"[DevScreenshot] -ss-skills: cannot grant '{id}'");
+            }
+        }
+
+        /// <summary>-ss-upgrade: +1 level on each owned skill listed (chest upgrade path, so the HUD glows).</summary>
+        private static void UpgradeSkills(string ids)
+        {
+            var manager = FindAnyObjectByType<SurvivorSouls.Gameplay.Skills.SkillManager>();
+            if (manager == null) return;
+            foreach (string id in ids.Split(','))
+            {
+                if (!manager.Upgrade(id.Trim())) Debug.LogWarning($"[DevScreenshot] -ss-upgrade: cannot upgrade '{id}'");
             }
         }
 
