@@ -1,6 +1,7 @@
 using SurvivorSouls.Core;
 using SurvivorSouls.Gameplay.Chamber;
 using SurvivorSouls.Gameplay.Realms;
+using SurvivorSouls.UI.Hud;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UIElements;
@@ -30,6 +31,7 @@ namespace SurvivorSouls.UI.MainMenu
         private const string ReloadRingName = "tgl-reload-ring";
         private const string CloseName = "btn-settings-close";
         private const string HiddenClass = "ss-hidden";
+        private const string WalletName = "lbl-wallet-souls";
 
         [SerializeField, Min(0.5f)] private float toastSeconds = 2f;
         [Tooltip("Realms on the selection page (Data/Realms/RealmCatalog.asset). Null = PLAY starts Realm 1.")]
@@ -40,6 +42,7 @@ namespace SurvivorSouls.UI.MainMenu
         private SafeAreaPadding _realmSafeArea;
         private VisualElement _overlay;
         private Label _toast;
+        private Label _wallet;
         private Button _play;
         private IVisualElementScheduledItem _toastHide;
         private RealmSelectScreen _realmSelect;
@@ -65,6 +68,9 @@ namespace SurvivorSouls.UI.MainMenu
             _overlay = root.Q(OverlayName);
             _toast = root.Q<Label>(ToastName);
             root.Q<Label>(VersionName).text = $"v{Application.version}";
+            _wallet = root.Q<Label>(WalletName);
+            ShowWallet(SoulWallet.Balance);
+            SoulWallet.Changed += ShowWallet;
 
             _play = root.Q<Button>(PlayName);
             _play.clicked += OnPlay;
@@ -83,6 +89,14 @@ namespace SurvivorSouls.UI.MainMenu
                 ? new RealmSelectScreen(root, realms, StartRealm)
                 : null;
             _play.Focus();
+        }
+
+        private void OnDisable() => SoulWallet.Changed -= ShowWallet;
+
+        /// <summary>Souls held, top right (KAN-96).</summary>
+        private void ShowWallet(int balance)
+        {
+            if (_wallet != null) _wallet.text = PlayerHealthHud.FormatCount(balance);
         }
 
         private void Start()

@@ -99,6 +99,8 @@ namespace SurvivorSouls.Editor
             // Portal -> fade -> same scene reloaded as the next Chamber, run carried over (KAN-40).
             var counters = ChamberBuilder.CreateCounters(timer.gameObject, progression.Souls); // kills + souls this run (KAN-51)
             var transition = ChamberBuilder.CreateTransition(timer.gameObject, player, health, progression.Xp, skills, counters, spawner, joystick);
+            SetRef(counters, "health", health); // death banks the run's souls into the wallet (KAN-96)
+            SetRef(counters, "transition", transition); // so does a cleared Realm
             var chamberSetup = ChamberBuilder.CreateSetup(timer.gameObject, world, spawner); // per-Chamber difficulty + layout seed (KAN-46)
             ChamberBuilder.CreateHordeScaler(timer.gameObject, spawner, player.GetComponent<PlayerStats>(), timer); // zombie health to power + tiers (KAN-92)
             var boss = BossBuilder.Create(kit, health, timer, spawner, progression.Souls); // boss Chambers: fight, slam, reward (KAN-58)
@@ -308,7 +310,10 @@ namespace SurvivorSouls.Editor
             doc.panelSettings = panelSettings;
             doc.visualTreeAsset = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(HudUxmlPath);
             if (doc.visualTreeAsset == null) throw new System.InvalidOperationException($"UXML missing: {HudUxmlPath}");
-            SetRef(go.AddComponent<GameHudController>(), "joystick", joystick);
+            var hudController = go.AddComponent<GameHudController>();
+            SetRef(hudController, "joystick", joystick);
+            SetRef(hudController, "counters", counters); // leaving to the menu banks the run's souls (KAN-96)
+            SetRef(go.AddComponent<SoulCounterHud>(), "counters", counters); // souls this run, right of the health bar (KAN-96)
             SetRef(go.AddComponent<JoystickView>(), "joystick", joystick);
             SetRef(go.AddComponent<CombatHud>(), "worldCamera", camera);
             SetRef(go.AddComponent<HitMarkerHud>(), "worldCamera", camera);
@@ -334,6 +339,7 @@ namespace SurvivorSouls.Editor
             var victory = go.AddComponent<RealmVictoryHud>(); // "REALM CLEARED" after the last Chamber's portal (KAN-47)
             SetRef(victory, "transition", transition);
             SetRef(victory, "realms", AssetDatabase.LoadAssetAtPath<RealmCatalog>(RealmCatalogPath));
+            SetRef(victory, "counters", counters); // banked souls + wallet line (KAN-96)
             return choice;
         }
 

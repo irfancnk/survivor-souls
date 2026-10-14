@@ -59,6 +59,11 @@ namespace SurvivorSouls.Gameplay.Chamber
         /// Read once by the menu (<see cref="TakeOpenRealms"/>).
         /// </summary>
         public static bool OpenRealmsOnMenu { get; private set; }
+        /// <summary>
+        /// This run's souls are already in the <see cref="Core.SoulWallet"/> (KAN-96): death, Realm cleared or leaving to the
+        /// menu banks once, later calls bank nothing. Reset by <see cref="NewRun"/>.
+        /// </summary>
+        public static bool SoulsBanked { get; private set; }
 
         /// <summary>Start of a run: Chamber 1 of <paramref name="realm"/>, nothing carried. <paramref name="seed"/> 0 = random.</summary>
         public static void NewRun(int realm = 1, int seed = 0)
@@ -67,6 +72,15 @@ namespace SurvivorSouls.Gameplay.Chamber
             Chamber = FirstChamber;
             RunSeed = seed != 0 ? seed : NewSeed();
             _carry = null;
+            SoulsBanked = false;
+        }
+
+        /// <summary>True once per run: the caller banks the souls now. False when this run was already banked.</summary>
+        public static bool TryMarkSoulsBanked()
+        {
+            if (SoulsBanked) return false;
+            SoulsBanked = true;
+            return true;
         }
 
         /// <summary>Dev and tests: jump the current run to <paramref name="chamber"/> (nothing carried).</summary>

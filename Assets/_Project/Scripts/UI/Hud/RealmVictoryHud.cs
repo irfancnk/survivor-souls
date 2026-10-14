@@ -10,7 +10,8 @@ namespace SurvivorSouls.UI.Hud
     /// End of Realm victory screen (KAN-47). Opens on <see cref="ChamberTransition.RealmCleared"/> (the Knight left the
     /// last Chamber through the portal; the game is paused and the Realm is already saved as completed):
     /// "REALM CLEARED" band in gold with the Realm name, the run counters (souls, kills, level) counting up from 0, the
-    /// unlock line for the next Realm ("REALM II UNLOCKED", "COMING SOON" or "ALL REALMS CLEARED"), and CONTINUE, which
+    /// unlock line for the next Realm ("REALM II UNLOCKED", "COMING SOON" or "ALL REALMS CLEARED"), the banked souls +
+    /// wallet line (KAN-96), and CONTINUE, which
     /// goes back to the main menu on the Realm page (<see cref="RunState.TakeOpenRealms"/>).
     /// Everything runs on unscaled time (the game is paused). Element names are constants below; keep them in sync with
     /// GameHud.uxml. Looks: victory* in GameHud.uss.
@@ -24,6 +25,7 @@ namespace SurvivorSouls.UI.Hud
         private const string KillsName = "victory-kills";
         private const string LevelName = "victory-level";
         private const string UnlockName = "victory-unlock";
+        private const string WalletName = "victory-wallet";
         private const string ContinueName = "btn-victory-continue";
         private const string HintName = "lbl-hint";
         private const string HintGoneClass = "hud-hint--gone"; // GameHud.uss, shared with GameHudController
@@ -32,6 +34,8 @@ namespace SurvivorSouls.UI.Hud
         private const string UnlockNewClass = "victory__unlock--new";
 
         [SerializeField] private ChamberTransition transition;
+        [Tooltip("Run souls banked into the wallet when the screen opens (KAN-96). Null = no wallet line.")]
+        [SerializeField] private RunCounters counters;
         [Tooltip("Realm names and the next Realm (Data/Realms/RealmCatalog.asset). Null = numbers only.")]
         [SerializeField] private RealmCatalog realms;
         [Tooltip("Seconds before the counters start (the screen fades in first).")]
@@ -50,13 +54,15 @@ namespace SurvivorSouls.UI.Hud
         /// <summary>Texts as last drawn (tests and dev tools).</summary>
         public string RealmText { get; private set; }
         public string UnlockText { get; private set; }
+        public string WalletText { get; private set; }
 
         /// <summary>Tests: wiring without the scene builder.</summary>
-        public void Setup(ChamberTransition chamberTransition, RealmCatalog catalog)
+        public void Setup(ChamberTransition chamberTransition, RealmCatalog catalog, RunCounters runCounters = null)
         {
             if (isActiveAndEnabled && transition != null) transition.RealmCleared -= Show;
             transition = chamberTransition;
             realms = catalog;
+            counters = runCounters;
             if (isActiveAndEnabled && transition != null) transition.RealmCleared += Show;
         }
 
@@ -88,9 +94,20 @@ namespace SurvivorSouls.UI.Hud
             int realm = RunState.Realm;
             RealmText = RealmTitle(realms, realm);
             UnlockText = UnlockLine(realms, realm, out bool unlocked);
+            if (counters != null)
+            {
+                counters.BankToWallet(); // the counters bank on RealmCleared too; whichever handler runs first banks once
+                WalletText = PlayerHealthHud.WalletLine(run.Souls, SoulWallet.Balance);
+            }
             if (_screen == null) return;
             var root = _document.rootVisualElement;
             SetText(root, RealmName, RealmText);
+            var wallet = root.Q<Label>(WalletName);
+            if (wallet != null)
+            {
+                wallet.text = WalletText ?? "";
+                wallet.EnableInClassList(HiddenClass, WalletText == null);
+            }
             var unlock = root.Q<Label>(UnlockName);
             if (unlock != null)
             {

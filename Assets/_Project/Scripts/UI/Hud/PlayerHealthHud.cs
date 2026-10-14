@@ -10,8 +10,8 @@ namespace SurvivorSouls.UI.Hud
     /// <summary>
     /// Player health on the HUD document: top bar (fill eases to the value, a pale trail drains behind it after a
     /// short delay), a small bar over the Knight, a red screen-edge vignette on every hurt pulse (plus a slow
-    /// heartbeat at low health), and the "YOU DIED" screen with the run counters (souls, kills, Chamber; KAN-51) and
-    /// Retry / Menu once <see cref="PlayerDeath.Finished"/>.
+    /// heartbeat at low health), and the "YOU DIED" screen with the run counters (souls, kills, Chamber; KAN-51), the
+    /// banked souls + wallet line (KAN-96) and Retry / Menu once <see cref="PlayerDeath.Finished"/>.
     /// Nothing here blocks touches except the death screen buttons. Element names are constants below; keep them in
     /// sync with GameHud.uxml. Looks live in GameHud.uss (hud-hp*, hud-overhead*, hud-vignette, death*).
     /// </summary>
@@ -32,6 +32,7 @@ namespace SurvivorSouls.UI.Hud
         private const string SoulsName = "death-souls";
         private const string KillsName = "death-kills";
         private const string ChamberName = "death-chamber";
+        private const string WalletName = "death-wallet";
         private const string HintGoneClass = "hud-hint--gone"; // GameHud.uss, shared with GameHudController
         private const string HiddenClass = "hud-hidden";
         private const string DeathShownClass = "death--shown";
@@ -190,6 +191,8 @@ namespace SurvivorSouls.UI.Hud
         private void ShowDeathScreen()
         {
             var root = _document.rootVisualElement;
+            counters?.BankToWallet(); // already banked at the moment of death; this only covers a scene without that hook
+            SetText(root, WalletName, WalletLine(counters != null ? counters.Souls : 0, SoulWallet.Balance));
             SetText(root, SoulsName, FormatCount(counters != null ? counters.Souls : 0));
             SetText(root, KillsName, FormatCount(counters != null ? counters.Kills : 0));
             SetText(root, ChamberName, ChamberTransitionHud.Roman(RunState.Chamber));
@@ -204,6 +207,9 @@ namespace SurvivorSouls.UI.Hud
             var label = root.Q<Label>(name);
             if (label != null) label.text = text;
         }
+
+        /// <summary>Death / victory screen wallet line (KAN-96): "+1,240 BANKED · 12,480 SOULS HELD".</summary>
+        public static string WalletLine(int banked, int balance) => $"+{FormatCount(banked)} BANKED · {FormatCount(balance)} SOULS HELD";
 
         /// <summary>Death / victory screen number: digits with thousands separators ("12,480"), never negative.</summary>
         public static string FormatCount(int n) => Mathf.Max(0, n).ToString("N0", CultureInfo.InvariantCulture);
