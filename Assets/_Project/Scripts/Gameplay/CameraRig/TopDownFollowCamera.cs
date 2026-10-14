@@ -9,6 +9,9 @@ namespace SurvivorSouls.Gameplay.CameraRig
     /// <see cref="Shake"/> adds a short decaying wobble on top (unscaled time, so it settles during a pause too).
     /// <see cref="SetBounds"/> (boss arena, KAN-59) keeps the look point inside a circle with a soft edge: it follows freely
     /// in the middle, slows down in the last <c>softBand</c> metres and never passes the limit.
+    /// <see cref="Focus"/> (boss intro and victory beat, KAN-62) eases the look point to a fixed spot and the distance by a zoom
+    /// factor (above 1 = pulled out); <see cref="ReleaseFocus"/> eases back to the follow view. Unscaled time, so slow motion
+    /// does not slow the move.
     /// </summary>
     [RequireComponent(typeof(Camera))]
     public sealed class TopDownFollowCamera : MonoBehaviour
@@ -25,6 +28,8 @@ namespace SurvivorSouls.Gameplay.CameraRig
         [SerializeField] private float arenaCentreX;
         [Tooltip("Clamp of the look point Z, so the camera does not show too much outside the arena.")]
         [SerializeField] private Vector2 lookZRange = new Vector2(-8f, 8f);
+        [Tooltip("How fast Focus / ReleaseFocus blend in and out (1/s, exponential).")]
+        [SerializeField, Min(0.1f)] private float focusSharpness = 3.5f;
 
         private Camera _camera;
         private Vector3 _look;
@@ -32,6 +37,9 @@ namespace SurvivorSouls.Gameplay.CameraRig
         private Vector3 _boundsCentre;
         private float _boundsRadius, _boundsSoftBand;
         private float _shakeAmplitude, _shakeTime, _shakeLength;
+        private bool _focused;
+        private Vector3 _focusPoint;
+        private float _focusZoom = 1f, _focusWeight;
 
         public Transform Target
         {
@@ -51,6 +59,7 @@ namespace SurvivorSouls.Gameplay.CameraRig
         private void LateUpdate()
         {
             if (target == null) return;
+            StepFocus(Time.unscaledDeltaTime);
             _look = Vector3.Lerp(_look, DesiredLook(), 1f - Mathf.Exp(-followSharpness * Time.deltaTime));
             if (_shakeTime > 0f) _shakeTime = Mathf.Max(0f, _shakeTime - Time.unscaledDeltaTime);
             Place();
@@ -77,6 +86,36 @@ namespace SurvivorSouls.Gameplay.CameraRig
         }
 
         public void ClearBounds() => _bounded = false;
+
+        /// <summary>A <see cref="Focus"/> is on (it may still be blending in).</summary>
+        public bool Focused => _focused;
+        /// <summary>Blend 0 (follow view) .. 1 (fully on the focus point and zoom).</summary>
+        public float FocusWeight => _focusWeight;
+        /// <summary>Distance factor now: 1 in the follow view, the focus zoom when fully focused.</summary>
+        public float CurrentZoom => Mathf.Lerp(1f, _focusZoom, _focusWeight);
+
+        /// <summary>
+        /// Eases the look point to <paramref name="point"/> (XZ) and the camera distance x <paramref name="zoom"/> (boss intro:
+        /// both fighters in view). A new call moves the target; the blend keeps going from where it is.
+        /// </summary>
+        public void Focus(Vector3 point, float zoom)
+        {
+            _focused = true;
+            _focusPoint = new Vector3(point.x, 0f, point.z);
+            _focusZoom = Mathf.Max(0.1f, zoom);
+        }
+
+        /// <summary>Eases back to the follow view.</summary>
+        public void ReleaseFocus() => _focused = false;
+
+        /// <summary>Moves the focus blend by <paramref name="dt"/> real seconds. Public for tests (LateUpdate calls it).</summary>
+        public void StepFocus(float dt)
+        {
+            float goal = _focused ? 1f : 0f;
+            if (Mathf.Approximately(_focusWeight, goal)) return;
+            _focusWeight = Mathf.Lerp(_focusWeight, goal, 1f - Mathf.Exp(-focusSharpness * Mathf.Max(0f, dt)));
+            if (Mathf.Abs(_focusWeight - goal) < 0.002f) _focusWeight = goal;
+        }
 
         /// <summary>
         /// Soft circular clamp of an offset from the centre: unchanged up to <c>radius - band</c>, then eased so it reaches
@@ -125,14 +164,15 @@ namespace SurvivorSouls.Gameplay.CameraRig
                 x = _boundsCentre.x + o.x;
                 z = _boundsCentre.z + o.y;
             }
-            return new Vector3(x, 0f, z);
+            var follow = new Vector3(x, 0f, z);
+            return _focusWeight > 0f ? Vector3.Lerp(follow, _focusPoint, _focusWeight) : follow;
         }
 
         private void Place()
         {
             float halfV = _camera.fieldOfView * 0.5f * Mathf.Deg2Rad;
             float halfH = Mathf.Atan(Mathf.Tan(halfV) * _camera.aspect);
-            float distance = viewWidth * 0.5f / Mathf.Tan(halfH);
+            float distance = viewWidth * CurrentZoom * 0.5f / Mathf.Tan(halfH);
 
             var rotation = Quaternion.Euler(pitch, 0f, 0f);
             transform.SetPositionAndRotation(_look - rotation * Vector3.forward * distance + ShakeOffset, rotation);

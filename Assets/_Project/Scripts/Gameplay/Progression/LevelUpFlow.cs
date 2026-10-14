@@ -74,6 +74,17 @@ namespace SurvivorSouls.Gameplay.Progression
             return true;
         }
 
+        /// <summary>
+        /// Queues one extra skill pick for <paramref name="level"/> (boss reward when no owned skill can level up, KAN-62). It
+        /// plays like a level-up. False for a dead Knight.
+        /// </summary>
+        public bool EnqueueBonusPick(int level)
+        {
+            if (player != null && player.IsDead) return false;
+            _pending.Enqueue(Mathf.Max(1, level));
+            return true;
+        }
+
         private void Awake() => _onChosen = OnChosen;
 
         /// <summary>Wiring for code-built objects and tests.</summary>

@@ -30,8 +30,14 @@ namespace SurvivorSouls.Gameplay.Boss
     /// Every hit is a share of max health, capped by the max-hit share (no instant kill).</item>
     /// <item><b>Phase 2</b> (<see cref="BossData.Phase2At"/> health): <see cref="PhaseChanged"/> (a heart drops, the bar's
     /// phase mark lights, a roar), shorter cooldowns and wind-ups, a faster walk, and the charge joins.</item>
-    /// <item><b>Defeated</b>: gold soul wisps (<see cref="BossData.RewardXp"/>) burst from the body and the portal opens
-    /// (<see cref="SurvivalTimer.Complete"/>): the usual toast, sound and camera shake follow.</item>
+    /// <item><b>Intro</b> (KAN-62, <see cref="BossData.IntroTime"/>): right after the boss rises it stands and faces the
+    /// Knight; the Knight cannot move and takes no damage (<see cref="PlayerMover.InputLocked"/>,
+    /// <see cref="PlayerHealth.Invulnerable"/>). <see cref="IntroStarted"/> / <see cref="IntroEnded"/> drive the camera pull-out
+    /// and the name banner. Then the fight starts.</item>
+    /// <item><b>Defeated</b>: gold soul wisps (<see cref="BossData.RewardXp"/>) burst from the body (<see cref="Defeated"/>:
+    /// slow motion, "felled" banner). After the victory beat (<see cref="BossData.VictoryBeat"/>) the portal opens
+    /// (<see cref="SurvivalTimer.Complete"/>: the usual toast, sound and camera shake) and <see cref="VictoryFinished"/> drops the
+    /// guaranteed reward (<see cref="BossReward"/>).</item>
     /// </list>
     /// Everything runs on scaled time, so level-up cards and the Chamber fade-in pause it. On the "Boss" object (BossBuilder).
     /// </summary>
@@ -44,6 +50,8 @@ namespace SurvivorSouls.Gameplay.Boss
             Rising = 2,
             Fighting = 3,
             Defeated = 4,
+            /// <summary>KAN-62: the boss stands after rising; the Knight is held (no move, no damage).</summary>
+            Intro = 5,
         }
 
         public enum Attack
@@ -97,6 +105,10 @@ namespace SurvivorSouls.Gameplay.Boss
         private bool _dashHit;
         private Move _lastRanged = Move.Slam;
         private readonly Vector3[] _fanDirs = new Vector3[LineTelegraph.MaxLanes];
+        private PlayerMover _mover;
+        private bool _knightHeld;
+        private bool _victoryDone;
+        private Vector3 _deathPoint;
 
         public static BossFight Active { get; private set; }
 
@@ -106,8 +118,14 @@ namespace SurvivorSouls.Gameplay.Boss
         public event Action<Vector3, float> SlamWarned;
         /// <summary>A slam landed: centre, damage dealt to the Knight (0 = dodged).</summary>
         public event Action<Vector3, float> Slammed;
-        /// <summary>The boss died (reward dropped, portal opening).</summary>
+        /// <summary>The boss died: wisps dropped, the victory beat starts (portal and reward follow).</summary>
         public event Action Defeated;
+        /// <summary>KAN-62: the intro starts (boss risen, Knight held).</summary>
+        public event Action<Enemy> IntroStarted;
+        /// <summary>KAN-62: the intro is over (the fight starts, or the boss died during it).</summary>
+        public event Action IntroEnded;
+        /// <summary>KAN-62: the victory beat is over: the portal opened; the guaranteed reward goes here (where the boss fell).</summary>
+        public event Action<Vector3> VictoryFinished;
         /// <summary>The boss entered a new phase (2). Hearts drop, the HUD lights the phase mark.</summary>
         public event Action<int> PhaseChanged;
         /// <summary>A fan winds up: boss ground point, aim direction.</summary>
@@ -135,6 +153,12 @@ namespace SurvivorSouls.Gameplay.Boss
         public GroundTelegraph Telegraph => telegraph;
         public LineTelegraph Lines => lines;
         public BossProjectiles Projectiles => projectiles;
+        /// <summary>The Knight is held by the intro (no move, no damage).</summary>
+        public bool KnightHeld => _knightHeld;
+        /// <summary>The victory beat is over (portal open, reward given).</summary>
+        public bool VictoryDone => _victoryDone;
+        /// <summary>Where the boss fell (valid once defeated).</summary>
+        public Vector3 DeathPoint => _deathPoint;
 
         /// <summary>Tests: wiring without the scene builder.</summary>
         public void Setup(BossData bossData, ChamberRules rules, SurvivalTimer survivalTimer, EnemySpawner enemySpawner,
@@ -162,6 +186,7 @@ namespace SurvivorSouls.Gameplay.Boss
         {
             if (Active == this) Active = null;
             Enemy.Damaged -= OnEnemyDamaged;
+            HoldKnight(false);
         }
 
         private void Start() => Begin(ChamberSetup.Current);
@@ -199,8 +224,18 @@ namespace SurvivorSouls.Gameplay.Boss
                     if (telegraph != null) telegraph.SetProgress(_time / data.SpawnWarning);
                     if (_time >= data.SpawnWarning) SpawnBoss();
                     break;
+                case Stage.Intro:
+                    _time += dt;
+                    if (_boss != null && player != null) FaceKnight();
+                    if (_time >= data.IntroTime) EndIntro();
+                    break;
                 case Stage.Fighting:
                     TickAttack(dt);
+                    break;
+                case Stage.Defeated:
+                    if (_victoryDone) break;
+                    _time += dt;
+                    if (_time >= data.VictoryBeat) FinishVictory();
                     break;
             }
         }
@@ -220,8 +255,35 @@ namespace SurvivorSouls.Gameplay.Boss
             _cooldown = data.FirstSlamDelay;
             CurrentAttack = Attack.Chase;
             Phase = 1;
-            SetStage(Stage.Fighting);
+            if (data.IntroTime <= 0f)
+            {
+                SetStage(Stage.Fighting);
+                Spawned?.Invoke(_boss);
+                return;
+            }
+            SetStage(Stage.Intro);
+            if (player != null) FaceKnight(); // also halts the boss: it stands for its entrance
+            HoldKnight(true);
             Spawned?.Invoke(_boss);
+            IntroStarted?.Invoke(_boss);
+        }
+
+        private void EndIntro()
+        {
+            HoldKnight(false);
+            if (_boss != null) _boss.Halted = false;
+            SetStage(Stage.Fighting);
+            IntroEnded?.Invoke();
+        }
+
+        /// <summary>Holds (or frees) the Knight: no stick input, no damage. Only the intro holds it.</summary>
+        private void HoldKnight(bool hold)
+        {
+            if (_knightHeld == hold || player == null) return;
+            if (_mover == null) _mover = player.GetComponent<PlayerMover>();
+            if (_mover != null) _mover.InputLocked = hold;
+            player.Invulnerable = hold;
+            _knightHeld = hold;
         }
 
         private void TickAttack(float dt)
@@ -469,19 +531,34 @@ namespace SurvivorSouls.Gameplay.Boss
 
         private void OnEnemyDamaged(Enemy enemy, float amount, bool killed)
         {
-            if (enemy != _boss || Current != Stage.Fighting) return;
+            if (enemy != _boss || (Current != Stage.Fighting && Current != Stage.Intro)) return;
             if (!killed)
             {
                 if (Phase == 1 && data.Phase2At > 0f && enemy.Health <= enemy.MaxHealth * data.Phase2At) EnterPhase2();
                 return;
             }
+            if (Current == Stage.Intro)
+            {
+                HoldKnight(false);
+                IntroEnded?.Invoke();
+            }
             if (CurrentAttack == Attack.WindUp) HideWarnings();
             if (projectiles != null) projectiles.Clear(); // the fight is over: no bolt lands after the kill
             CurrentAttack = Attack.Chase;
+            _deathPoint = enemy.transform.position;
             SetStage(Stage.Defeated);
-            DropReward(enemy.transform.position);
-            if (timer != null) timer.Complete(); // the portal opens
+            DropReward(_deathPoint);
+            if (data.VictoryBeat <= 0f) FinishVictory();
             Defeated?.Invoke();
+        }
+
+        /// <summary>End of the victory beat: the portal opens and the reward pick drops where the boss fell. Once.</summary>
+        private void FinishVictory()
+        {
+            if (_victoryDone) return;
+            _victoryDone = true;
+            if (timer != null) timer.Complete(); // the portal opens
+            VictoryFinished?.Invoke(_deathPoint);
         }
 
         private void DropReward(Vector3 at)

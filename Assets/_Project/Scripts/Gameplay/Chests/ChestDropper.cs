@@ -216,6 +216,20 @@ namespace SurvivorSouls.Gameplay.Chests
             return chest;
         }
 
+        /// <summary>
+        /// Guaranteed reward chest (boss kill, KAN-62): lands near <paramref name="position"/> even when the ground is full and
+        /// never fades. Does not touch the pity clock or the skill chest count. Null without a config or prefab.
+        /// </summary>
+        public ReliquaryChest DropReward(Vector3 position, ChestTier tier, int choices, int upgrades)
+        {
+            if (config == null || chestPrefab == null) return null;
+            var chest = Take();
+            chest.Spawn(LandingPoint(position), tier, choices, upgrades, float.PositiveInfinity, 0f);
+            _active.Add(chest);
+            Dropped?.Invoke(chest);
+            return chest;
+        }
+
         /// <summary>Debug / dev (DevScreenshot -ss-chests, KAN-75 menu): a skill chest now, as if rolled.</summary>
         public ReliquaryChest DropNow(Vector3 position, ChestTier? tier = null)
         {

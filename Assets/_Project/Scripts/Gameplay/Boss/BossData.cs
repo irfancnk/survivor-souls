@@ -10,6 +10,8 @@ namespace SurvivorSouls.Gameplay.Boss
     /// <see cref="maxHitShare"/> of the Knight's max health. Phase 1: slam + fan. Phase 2 (at <see cref="Phase2At"/>
     /// health): shorter cooldowns and wind-ups, a faster walk and the charge dash. Edit the asset; the builder never
     /// overwrites it (it only fills an empty prefab slot). Hearts have their own asset (<see cref="HeartRules"/>).
+    /// KAN-62: intro (Knight held, camera pulled out), victory beat (slow motion, then reward + portal) and the guaranteed
+    /// reward pick. <see cref="Create"/> has no intro and no beat (tests of the fight itself).
     /// </summary>
     [CreateAssetMenu(menuName = "Survivor Souls/Boss Data", fileName = "Boss")]
     public sealed class BossData : ScriptableObject
@@ -34,6 +36,24 @@ namespace SurvivorSouls.Gameplay.Boss
         [SerializeField, Min(0.1f)] private float spawnWarning = 1.2f;
         [Tooltip("Distance from the Knight where the boss rises.")]
         [SerializeField, Min(2f)] private float spawnDistance = 8f;
+
+        [Header("Intro and victory (KAN-62)")]
+        [Tooltip("Seconds after the boss rises: it roars in place, the camera pulls out, the name slides in. The Knight cannot move "
+            + "and takes no damage. 0 = no intro.")]
+        [SerializeField, Min(0f)] private float introTime = 2.4f;
+        [Tooltip("Camera view width x this during the intro (above 1 = pulled out).")]
+        [SerializeField, Range(1f, 2f)] private float introZoom = 1.35f;
+        [Tooltip("Scaled seconds from the kill to the reward and the open portal (the victory beat). 0 = at once.")]
+        [SerializeField, Min(0f)] private float victoryBeat = 1.8f;
+        [Tooltip("Time scale right after the kill (slow motion), easing back to 1.")]
+        [SerializeField, Range(0.05f, 1f)] private float victorySlowMo = 0.3f;
+        [Tooltip("Real seconds of the slow motion (half held, half easing back).")]
+        [SerializeField, Min(0f)] private float victorySlowMoTime = 0.8f;
+        [Tooltip("Guaranteed reward pick after the beat: a Rare Reliquary chest with this many cards (or a skill pick when no "
+            + "owned skill can level up).")]
+        [SerializeField, Range(1, 4)] private int rewardChoices = 3;
+        [Tooltip("Levels the reward chest's pick adds to the chosen skill.")]
+        [SerializeField, Range(1, 3)] private int rewardUpgrades = 2;
 
         [Header("Slam")]
         [Tooltip("The slam starts when the Knight is this close to the boss (m).")]
@@ -121,6 +141,13 @@ namespace SurvivorSouls.Gameplay.Boss
         public float IntroDelay => introDelay;
         public float SpawnWarning => spawnWarning;
         public float SpawnDistance => spawnDistance;
+        public float IntroTime => introTime;
+        public float IntroZoom => introZoom;
+        public float VictoryBeat => victoryBeat;
+        public float VictorySlowMo => victorySlowMo;
+        public float VictorySlowMoTime => victorySlowMoTime;
+        public int RewardChoices => rewardChoices;
+        public int RewardUpgrades => rewardUpgrades;
         public float SlamRange => slamRange;
         public float SlamReach => slamReach;
         public float SlamRadius => slamRadius;
@@ -182,7 +209,8 @@ namespace SurvivorSouls.Gameplay.Boss
             float slamTelegraph = 1f, float slamDamage = 0.22f, float maxHitShare = 0.35f, int rewardXp = 600, int rewardWisps = 6,
             float slamRange = 4f, float slamRadius = 3f, float slamReach = 1.6f, float firstSlamDelay = 1.5f, float slamCooldown = 3.2f,
             float slamRecover = 0.7f, int fanBolts = 0, float fanTelegraph = 0.9f, float fanDamage = 0.12f, bool charge = false,
-            float chargeTelegraph = 0.9f, float chargeDamage = 0.2f, float phase2At = 0.5f)
+            float chargeTelegraph = 0.9f, float chargeDamage = 0.2f, float phase2At = 0.5f, float introTime = 0f,
+            float victoryBeat = 0f)
         {
             var data = CreateInstance<BossData>();
             data.prefab = body;
@@ -207,6 +235,8 @@ namespace SurvivorSouls.Gameplay.Boss
             data.chargeTelegraph = chargeTelegraph;
             data.chargeDamage = chargeDamage;
             data.phase2At = phase2At;
+            data.introTime = introTime;
+            data.victoryBeat = victoryBeat;
             return data;
         }
     }

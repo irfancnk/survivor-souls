@@ -101,6 +101,19 @@ namespace SurvivorSouls.Gameplay.Chamber
             return ChamberType.Normal;
         }
 
+        /// <summary>
+        /// First boss Chamber after <paramref name="chamber"/>; past the last boss of the Realm it wraps to the first one
+        /// (debug "jump to boss Chamber", KAN-62). The last Chamber is always a boss, so there is always one.
+        /// </summary>
+        public int NextBossChamber(int chamber)
+        {
+            for (int c = Mathf.Max(0, chamber) + 1; c <= chambersInRealm; c++)
+                if (TypeOf(c) == ChamberType.Boss) return c;
+            for (int c = 1; c <= chambersInRealm; c++)
+                if (TypeOf(c) == ChamberType.Boss) return c;
+            return chambersInRealm;
+        }
+
         public float HealthMultiplier(int chamber) => Mathf.Min(1f + healthGrowth * Steps(chamber), maxHealthMultiplier);
 
         public float CapMultiplier(int chamber) => Mathf.Min(1f + capGrowth * Steps(chamber), maxCapMultiplier);

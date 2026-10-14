@@ -38,6 +38,8 @@ namespace SurvivorSouls.Gameplay.Player
         public float Max => _max;
         public float Normalized => _current / _max;
         public bool IsDead => _dead;
+        /// <summary>Takes no damage while set (boss intro, KAN-62: the Knight cannot move, so nothing may hurt it).</summary>
+        public bool Invulnerable { get; set; }
 
         private void Awake()
         {
@@ -69,7 +71,7 @@ namespace SurvivorSouls.Gameplay.Player
         /// <summary>Deducts up to <paramref name="amount"/>. Returns the health actually deducted.</summary>
         public float TakeDamage(float amount)
         {
-            if (_dead || amount <= 0f) return 0f;
+            if (_dead || Invulnerable || amount <= 0f) return 0f;
             float deducted = Mathf.Min(amount, _current);
             _current -= deducted; // exactly 0 when amount >= current (no float drift past zero)
             _dead = _current <= 0f;

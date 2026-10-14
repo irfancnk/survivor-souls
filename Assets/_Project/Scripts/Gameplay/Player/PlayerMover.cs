@@ -25,6 +25,8 @@ namespace SurvivorSouls.Gameplay.Player
         private float _verticalSpeed;
 
         public float MaxSpeed => PlayerStats.Eval(_stats, StatId.MoveSpeed, maxSpeed);
+        /// <summary>The stick is ignored (the Knight slows to a stop): boss intro (KAN-62). Gravity still runs.</summary>
+        public bool InputLocked { get; set; }
         public Vector3 Velocity => _velocity;
 
         public void SetJoystick(FloatingJoystick value) => joystick = value;
@@ -41,7 +43,7 @@ namespace SurvivorSouls.Gameplay.Player
         private void Update()
         {
             float dt = Time.deltaTime;
-            Vector2 stick = joystick != null ? joystick.Move : Vector2.zero;
+            Vector2 stick = joystick != null && !InputLocked ? joystick.Move : Vector2.zero;
 
             float magnitude = Mathf.Clamp01(stick.magnitude / fullSpeedAt);
             Vector3 desired = stick.sqrMagnitude > 0f
