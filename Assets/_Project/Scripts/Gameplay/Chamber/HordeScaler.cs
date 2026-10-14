@@ -1,0 +1,90 @@
+using SurvivorSouls.Gameplay.Combat;
+using SurvivorSouls.Gameplay.Skills;
+using UnityEngine;
+
+namespace SurvivorSouls.Gameplay.Chamber
+{
+    /// <summary>
+    /// Live horde scaling (KAN-92). Measures the Knight's power index from <see cref="PlayerStats"/> when the stats change
+    /// (pick, chest upgrade, Chamber restore; no work per frame), reads the Chamber clock progress from the
+    /// <see cref="SurvivalTimer"/>, and gives the spawner the dynamic health factor of the <see cref="HordeScaling"/>
+    /// asset every frame (two floats, no allocation). Zombies already on the field keep the health they spawned with.
+    /// Boss Chambers: no clock, progress 0. <see cref="PowerOverride"/> / <see cref="ProgressOverride"/> are debug hooks
+    /// (dev screenshots, tests). On the "Chamber" object (ChamberBuilder).
+    /// </summary>
+    public sealed class HordeScaler : MonoBehaviour
+    {
+        [SerializeField] private HordeScaling scaling;
+        [SerializeField] private EnemySpawner spawner;
+        [SerializeField] private PlayerStats stats;
+        [SerializeField] private SurvivalTimer timer;
+
+        private PowerSnapshot _bare;
+        private bool _dirty = true;
+
+        /// <summary>Power index now (1 = bare Knight). Updated when the stats change.</summary>
+        public float Power { get; private set; } = 1f;
+        /// <summary>Chamber clock progress used now (0 = start, 1 = portal open).</summary>
+        public float Progress { get; private set; }
+        /// <summary>Dynamic health factor given to the spawner now.</summary>
+        public float Multiplier { get; private set; } = 1f;
+        /// <summary>Debug: power index to use instead of the measured one (0 = off).</summary>
+        public float PowerOverride { get; set; }
+        /// <summary>Debug: clock progress to use instead of the timer (below 0 = off).</summary>
+        public float ProgressOverride { get; set; } = -1f;
+        public HordeScaling Scaling => scaling;
+
+        /// <summary>Tests: wiring without the scene builder.</summary>
+        public void Setup(HordeScaling rules, EnemySpawner enemySpawner, PlayerStats playerStats, SurvivalTimer survivalTimer)
+        {
+            if (isActiveAndEnabled && stats != null) stats.Changed -= MarkDirty;
+            scaling = rules;
+            spawner = enemySpawner;
+            stats = playerStats;
+            timer = survivalTimer;
+            if (isActiveAndEnabled && stats != null) stats.Changed += MarkDirty;
+            _dirty = true;
+            Refresh();
+        }
+
+        private void Awake() => _bare = PowerSnapshot.Measure(null, PowerBase.Default);
+
+        private void OnEnable()
+        {
+            if (stats != null) stats.Changed += MarkDirty;
+            _dirty = true;
+            Refresh();
+        }
+
+        private void OnDisable()
+        {
+            if (stats != null) stats.Changed -= MarkDirty;
+        }
+
+        private void Update() => Refresh();
+
+        private void MarkDirty() => _dirty = true;
+
+        /// <summary>Measures (when the stats changed) and pushes the factor to the spawner. Public for tests (Update calls it).</summary>
+        public void Refresh()
+        {
+            if (_dirty)
+            {
+                _dirty = false;
+                if (_bare.ShotsPerSecond <= 0f) _bare = PowerSnapshot.Measure(null, PowerBase.Default);
+                var now = PowerSnapshot.Measure(stats, PowerBase.Default);
+                Power = scaling != null ? scaling.PowerOf(now, _bare) : HordeScaling.PowerIndex(now, _bare);
+            }
+            Progress = ProgressOverride >= 0f ? Mathf.Clamp01(ProgressOverride) : ClockProgress();
+            float power = PowerOverride > 0f ? PowerOverride : Power;
+            Multiplier = scaling != null ? scaling.DynamicMultiplier(power, Progress) : 1f;
+            if (spawner != null) spawner.SetHordeScale(scaling, Multiplier);
+        }
+
+        private float ClockProgress()
+        {
+            if (timer == null || !timer.UsesTimer || timer.Duration <= 0f) return 0f;
+            return Mathf.Clamp01(1f - timer.Remaining / timer.Duration);
+        }
+    }
+}

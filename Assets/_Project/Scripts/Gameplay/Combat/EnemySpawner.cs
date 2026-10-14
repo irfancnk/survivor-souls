@@ -137,6 +137,8 @@ namespace SurvivorSouls.Gameplay.Combat
         private float _headingBias;
         private bool _started;
         private float _capMul = 1f, _intervalMul = 1f, _healthMul = 1f;
+        private float _dynamicMul = 1f;
+        private HordeScaling _scaling;
 
         /// <summary>An enemy was put into the world: position, true when it was a recycle (moved back in) rather than a spawn.</summary>
         public event Action<Enemy, Vector3, bool> Placed;
@@ -154,6 +156,11 @@ namespace SurvivorSouls.Gameplay.Combat
         public float CapMultiplier => _capMul;
         public float IntervalMultiplier => _intervalMul;
         public float HealthMultiplier => _healthMul;
+        /// <summary>Power x time health factor of regular spawns (KAN-92, <see cref="HordeScaling"/>). 1 = none.</summary>
+        public float DynamicHealthMultiplier => _dynamicMul;
+        /// <summary>Max health factor a regular zombie spawns with now: Chamber x dynamic.</summary>
+        public float SpawnHealthMultiplier => _healthMul * _dynamicMul;
+        public HordeScaling Scaling => _scaling;
 
         /// <summary>
         /// Chamber scaling (KAN-46): max alive and burst sizes x <paramref name="cap"/>, group and burst intervals x
@@ -165,6 +172,20 @@ namespace SurvivorSouls.Gameplay.Combat
             _intervalMul = Mathf.Max(0.05f, interval);
             _healthMul = Mathf.Max(0.01f, health);
         }
+
+        /// <summary>
+        /// Horde scaling to the Knight's power (KAN-92): regular (not boss) spawns get max health x
+        /// <paramref name="dynamicHealth"/> on top of the Chamber multiplier and the danger tier colour of the total.
+        /// Set every frame by <see cref="Chamber.HordeScaler"/>; spawned zombies keep the health they spawned with.
+        /// </summary>
+        public void SetHordeScale(HordeScaling scaling, float dynamicHealth)
+        {
+            _scaling = scaling;
+            _dynamicMul = Mathf.Max(1f, dynamicHealth);
+        }
+
+        /// <summary>Danger tier colour step a regular zombie would spawn with now (0 = calm or no scaling).</summary>
+        public int DangerStep => _scaling != null ? _scaling.StepOf(_scaling.TierValue(SpawnHealthMultiplier)) : 0;
 
         /// <summary>Max alive of <paramref name="phase"/> after Chamber scaling.</summary>
         public int MaxAliveOf(in EnemyWaveTable.Phase phase) => Mathf.RoundToInt(phase.maxAlive * _capMul);
@@ -298,7 +319,9 @@ namespace SurvivorSouls.Gameplay.Combat
         {
             var enemy = Take(prefab);
             _live.Add(enemy);
-            enemy.Spawn(position, player, _releaseAction, _healthMul);
+            bool boss = prefab.IsBoss; // bosses: Chamber health only, own colour (KAN-92)
+            enemy.Spawn(position, player, _releaseAction, boss ? _healthMul : SpawnHealthMultiplier);
+            if (!boss && _scaling != null) enemy.SetDangerStep(_scaling, DangerStep);
             Remember(position);
             Audit(position, "spawn");
             _stats.Spawned++;
@@ -550,6 +573,7 @@ namespace SurvivorSouls.Gameplay.Combat
         {
             var enemy = Instantiate(prefab, transform);
             enemy.gameObject.SetActive(false);
+            enemy.CacheBodyMaterials(); // tier swaps (KAN-92) never allocate during play
             _prefabOf[enemy] = prefab;
             _created++;
             return enemy;

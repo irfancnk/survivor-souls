@@ -114,6 +114,9 @@ namespace SurvivorSouls.Gameplay.Combat
         private float _burnTick;
         private float _burnPhase; // per enemy, so a burning crowd does not pulse in sync
         private Color _tint = Color.clear;
+        private Color _calmTint = Color.white; // base tint x danger tier colour (KAN-92)
+        private Material[] _sourceMaterials;   // the body's own materials (tier step 0)
+        private int _tierStep;
         private float _detourSide = 1f;
         private bool _detouring;
         private float _steerTimer;
@@ -213,6 +216,8 @@ namespace SurvivorSouls.Gameplay.Combat
             transform.SetPositionAndRotation(position, toTarget.sqrMagnitude > 0.01f ? Quaternion.LookRotation(toTarget) : Quaternion.identity);
             transform.localScale = new Vector3(_scale, _scale, _scale);
             gameObject.SetActive(true);
+            if (_tierStep != 0) SetDangerStep(null, 0);
+            _calmTint = baseTint;
             SetTint(baseTint);
             StartAnimation();
             Active.Add(this);
@@ -490,11 +495,11 @@ namespace SurvivorSouls.Gameplay.Combat
         /// <summary>White hit flash over an ember glow while burning (pulsing), else the base tint.</summary>
         private void UpdateTint(float dt)
         {
-            Color c = baseTint;
+            Color c = _calmTint;
             if (_burnLeft > 0f)
             {
                 float pulse = 0.55f + 0.25f * Mathf.Sin(Time.time * 11f + _burnPhase);
-                c = Color.Lerp(baseTint, BurnTint, pulse * Mathf.Clamp01(_burnLeft / 0.3f));
+                c = Color.Lerp(_calmTint, BurnTint, pulse * Mathf.Clamp01(_burnLeft / 0.3f));
             }
             if (_flash > 0f)
             {
@@ -505,6 +510,34 @@ namespace SurvivorSouls.Gameplay.Combat
         }
 
         /// <summary>
+        /// Danger tier colour step of this spawn (KAN-92): the body gets the shared tier materials of
+        /// <paramref name="step"/> (<see cref="HordeTierMaterials"/>), so a calm tinted zombie still has no property block.
+        /// Step 0 or no <paramref name="scaling"/> = the type's own materials. Call after <see cref="Spawn"/>; the next spawn resets it.
+        /// </summary>
+        public void SetDangerStep(HordeScaling scaling, int step)
+        {
+            if (body == null) return;
+            CacheBodyMaterials();
+            step = scaling != null ? Mathf.Clamp(step, 0, scaling.StepCount - 1) : 0;
+            var mats = HordeTierMaterials.Get(_sourceMaterials, scaling, step);
+            if (mats != null && (step != 0 || _tierStep != 0)) body.sharedMaterials = mats; // calm -> calm: nothing to swap
+            _tierStep = mats == _sourceMaterials ? 0 : step;
+            _calmTint = HordeTierMaterials.CalmTint(baseTint, scaling, _tierStep);
+            SetTint(_calmTint);
+        }
+
+        /// <summary>Remembers the body's own materials (tier step 0). The spawner calls it when it makes a pooled enemy.</summary>
+        public void CacheBodyMaterials()
+        {
+            if (_sourceMaterials == null && body != null) _sourceMaterials = body.sharedMaterials;
+        }
+
+        /// <summary>Danger tier colour step of this spawn (0 = calm, the type's own colour).</summary>
+        public int DangerStep => _tierStep;
+        /// <summary>Body colour when not flashing or burning: the type tint x the danger tier colour.</summary>
+        public Color CalmTint => _calmTint;
+
+        /// <summary>
         /// Base tint = no property block (the material already has that colour), so a calm horde stays SRP-Batcher
         /// friendly; only flashing or burning bodies carry a block.
         /// </summary>
@@ -512,7 +545,7 @@ namespace SurvivorSouls.Gameplay.Combat
         {
             _tint = c;
             if (body == null) return;
-            if (c == baseTint)
+            if (c == _calmTint)
             {
                 body.SetPropertyBlock(null);
                 return;
