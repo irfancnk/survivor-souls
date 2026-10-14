@@ -49,6 +49,38 @@
     align-items: center;
 }
 
+/* Souls held (KAN-96): pill in the top-right corner, same soul gem as the in-game HUD counter. */
+.ss-wallet {
+    position: absolute;
+    top: 48px;
+    right: 40px;
+    flex-direction: row;
+    align-items: center;
+    padding: 8px 26px 8px 18px;
+    border-radius: 32px;
+    border-width: 2px;
+    border-color: rgba(156, 210, 255, 0.45);
+    background-color: rgba(8, 10, 16, 0.7);
+}
+
+.ss-wallet__gem {
+    width: 30px;
+    height: 30px;
+    rotate: 45deg;
+    border-radius: 6px;
+    border-width: 2px;
+    border-color: rgb(226, 244, 255);
+    background-color: rgb(156, 210, 255);
+}
+
+.ss-wallet__value {
+    margin: 0 0 0 18px;
+    padding: 0;
+    font-size: 38px;
+    -unity-font-style: bold;
+    color: rgb(226, 244, 255);
+}
+
 .ss-title-block {
     margin-top: 150px;
     align-items: center;

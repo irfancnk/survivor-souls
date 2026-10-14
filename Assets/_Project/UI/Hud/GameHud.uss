@@ -265,6 +265,40 @@
     -unity-text-outline-color: rgba(0, 0, 0, 0.85);
 }
 
+/* Souls this run (SoulCounterHud, KAN-96): right of the health bar. Scale set in code (pop on pickup). */
+.hud-souls {
+    flex-direction: row;
+    align-items: center;
+    margin-left: 18px;
+    padding: 6px 22px 6px 16px;
+    border-radius: 30px;
+    border-width: 2px;
+    border-color: rgba(156, 210, 255, 0.4);
+    background-color: rgba(8, 10, 16, 0.62);
+}
+
+.hud-souls__gem {
+    width: 30px;
+    height: 30px;
+    rotate: 45deg;
+    border-radius: 6px;
+    border-width: 2px;
+    border-color: var(--hud-soul-glow);
+    background-color: var(--hud-soul);
+}
+
+.hud-souls__value {
+    min-width: 70px;
+    margin: 0 0 0 16px;
+    padding: 0;
+    font-size: 38px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-left;
+    color: var(--hud-soul-glow);
+    -unity-text-outline-width: 2px;
+    -unity-text-outline-color: rgba(0, 0, 0, 0.85);
+}
+
 .hud-overhead {
     position: absolute;
     left: 0; top: 0;
@@ -367,6 +401,20 @@
     width: 2px;
     height: 96px;
     background-color: rgba(232, 196, 120, 0.3);
+}
+
+/* Banked souls + wallet balance under the run counters (KAN-96). */
+.death__wallet {
+    margin-top: 28px;
+    padding: 14px 36px;
+    align-self: center;
+    font-size: 34px;
+    letter-spacing: 4px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    color: var(--hud-soul-glow);
+    background-color: rgba(0, 0, 0, 0.55);
+    border-radius: 6px;
 }
 
 .death__buttons {

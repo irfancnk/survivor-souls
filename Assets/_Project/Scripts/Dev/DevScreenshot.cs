@@ -63,6 +63,7 @@ namespace SurvivorSouls.Dev
     /// Main menu (KAN-20): <c>-ss-realms</c> opens the Realm selection page, <c>-ss-realm &lt;id&gt;</c> also opens that
     /// Realm's detail sheet. With either, the saved progress of Realms 1-3 is wiped first (repeatable shots); then
     /// <c>-ss-best &lt;realm&gt;:&lt;chamber&gt;</c> records a best Chamber and <c>-ss-cleared &lt;realm&gt;</c> marks a Realm completed.
+    /// <c>-ss-wallet &lt;n&gt;</c> (KAN-96) sets the saved Souls wallet to n before the first scene wakes.
     /// Used by tools/agents to verify visuals without a human. Inactive in release builds (Debug.isDebugBuild).
     /// </summary>
     public sealed class DevScreenshot : MonoBehaviour
@@ -151,6 +152,12 @@ namespace SurvivorSouls.Dev
             shot._bossStay = Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-boss-stay") >= 0;
             shot._hearts = int.TryParse(GetArg("-ss-hearts"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int hs) ? hs : 0;
             shot._cleared = int.TryParse(GetArg("-ss-cleared"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int cl) ? cl : 0;
+            // Souls wallet (KAN-96) set before any scene wakes, so the menu and the end screens show a known balance.
+            if (int.TryParse(GetArg("-ss-wallet"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int wallet))
+            {
+                SurvivorSouls.Core.SoulWallet.Clear();
+                SurvivorSouls.Core.SoulWallet.Earn(wallet);
+            }
 
             // Before any scene wakes: ChamberSetup reads the run in Awake (KAN-46).
             int runSeed = int.TryParse(GetArg("-ss-run-seed"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int rs) ? rs : 0;

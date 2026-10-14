@@ -1,4 +1,5 @@
 using SurvivorSouls.Core;
+using SurvivorSouls.Gameplay.Chamber;
 using SurvivorSouls.Gameplay.Controls;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -8,7 +9,8 @@ namespace SurvivorSouls.UI.Hud
 {
     /// <summary>
     /// Binds GameHud.uxml: shows a first-time hint until the joystick first moves (JoystickView draws the stick),
-    /// and handles the pause button (for now: back to main menu). Android back / Escape does the same.
+    /// and handles the pause button (for now: back to main menu). Android back / Escape does the same. Leaving ends the run:
+    /// its souls are banked into the wallet first (KAN-96).
     /// Element names are constants below; keep them in sync with the UXML.
     /// </summary>
     [RequireComponent(typeof(UIDocument))]
@@ -20,6 +22,8 @@ namespace SurvivorSouls.UI.Hud
         private const string HintGoneClass = "hud-hint--gone";
 
         [SerializeField] private FloatingJoystick joystick;
+        [Tooltip("Leaving to the menu banks this run's souls (KAN-96).")]
+        [SerializeField] private RunCounters counters;
 
         private UIDocument _document;
         private SafeAreaPadding _safeArea;
@@ -49,6 +53,7 @@ namespace SurvivorSouls.UI.Hud
         {
             if (_leaving || !SceneLoader.IsInBuild(SceneNames.MainMenu)) return;
             _leaving = true;
+            if (counters != null) counters.BankToWallet();
             SceneLoader.LoadAsync(SceneNames.MainMenu);
         }
     }

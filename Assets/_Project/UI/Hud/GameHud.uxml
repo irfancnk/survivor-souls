@@ -55,6 +55,11 @@
                 </ui:VisualElement>
                 <ui:Label name="player-hp-value" text="" class="hud-hp__value" picking-mode="Ignore" />
             </ui:VisualElement>
+            <!-- Souls this run (SoulCounterHud, KAN-96): soul gem + number, pops when it rises. -->
+            <ui:VisualElement name="run-souls" class="hud-souls" picking-mode="Ignore">
+                <ui:VisualElement class="hud-souls__gem" picking-mode="Ignore" />
+                <ui:Label name="run-souls-value" text="0" class="hud-souls__value" picking-mode="Ignore" />
+            </ui:VisualElement>
         </ui:VisualElement>
         <!-- Owned skills (SkillHud, KAN-19): icon slots added in code, pick order. -->
         <ui:VisualElement name="skill-row" class="hud-skills" picking-mode="Ignore" />
@@ -161,6 +166,8 @@
                 <ui:Label text="CHAMBER" class="death__stat-label" picking-mode="Ignore" />
             </ui:VisualElement>
         </ui:VisualElement>
+        <!-- Run souls banked + wallet balance (PlayerHealthHud, KAN-96). -->
+        <ui:Label name="death-wallet" text="" class="death__wallet" picking-mode="Ignore" />
         <ui:VisualElement class="death__buttons" picking-mode="Ignore">
             <ui:Button name="btn-retry" text="RETRY" class="death__button death__button--primary" />
             <ui:Button name="btn-menu" text="MENU" class="death__button" />
@@ -198,6 +205,8 @@
                 <ui:Label text="LEVEL" class="death__stat-label" picking-mode="Ignore" />
             </ui:VisualElement>
         </ui:VisualElement>
+        <!-- Run souls banked + wallet balance (RealmVictoryHud, KAN-96). -->
+        <ui:Label name="victory-wallet" text="" class="death__wallet" picking-mode="Ignore" />
         <ui:Label name="victory-unlock" text="REALM II UNLOCKED" class="victory__unlock" picking-mode="Ignore" />
         <ui:VisualElement class="death__buttons" picking-mode="Ignore">
             <ui:Button name="btn-victory-continue" text="CONTINUE" class="death__button death__button--primary victory__button" />
