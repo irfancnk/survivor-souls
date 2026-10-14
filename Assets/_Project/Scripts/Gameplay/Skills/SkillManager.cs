@@ -11,7 +11,8 @@ namespace SurvivorSouls.Gameplay.Skills
     /// level: <see cref="Grant(SkillDefinition)"/> (level-up pick, new or +1), <see cref="Upgrade(SkillDefinition, int)"/>
     /// (chest, owned only, +N capped), <see cref="Restore"/> (Chamber carry). Each writes the skill's effect at the new
     /// level from its data to <see cref="PlayerStats"/> and spawns its effect at level 1. <see cref="Roll"/> offers
-    /// distinct skills for a level: pool and rarity odds from <see cref="SkillProgression"/>, maxed skills left out, the
+    /// distinct skills for a level: pool and rarity odds from <see cref="SkillProgression"/>, maxed and gated skills
+    /// (<see cref="CanOffer"/>) left out, the
     /// level's guaranteed skill first, and the pity rule (KAN-37): after <see cref="SkillProgression.PityOffers"/> - 1 offers
     /// in a row without a Rare or better card, the next offer swaps its last Common card for a Rare+ one.
     /// Run-only: fresh in Awake (a new run reloads the scene) and on <see cref="ResetRun"/>.
@@ -126,6 +127,25 @@ namespace SurvivorSouls.Gameplay.Skills
 
         /// <summary>Can go one level higher: new (level 0) or owned below max. Level-up offers use this.</summary>
         public bool CanTake(SkillDefinition skill) => skill != null && GetLevel(skill) < skill.MaxLevel;
+
+        /// <summary>
+        /// Level-up offers (<see cref="Roll"/>): <see cref="CanTake"/> plus the offer gate (KAN-72): a new skill marked
+        /// <see cref="SkillDefinition.RequiresUpgradableSkill"/> (Reliquary Hunter) waits until another owned skill can
+        /// still level up, since its chests would have nothing to upgrade. Forced offers (dev) skip the gate.
+        /// </summary>
+        public bool CanOffer(SkillDefinition skill) =>
+            CanTake(skill) && (!skill.RequiresUpgradableSkill || GetLevel(skill) > 0 || HasUpgradableSkill(skill));
+
+        /// <summary>True when an owned skill other than <paramref name="except"/> is below its max level.</summary>
+        public bool HasUpgradableSkill(SkillDefinition except = null)
+        {
+            for (int i = 0; i < _owned.Count; i++)
+            {
+                var o = _owned[i];
+                if (o.Skill != except && o.Level < o.Skill.MaxLevel) return true;
+            }
+            return false;
+        }
 
         /// <summary>Owned and below max: a chest (KAN-50.4) can raise it. Never true for a skill not owned yet.</summary>
         public bool CanUpgrade(SkillDefinition skill) => skill != null && GetLevel(skill) > 0 && GetLevel(skill) < skill.MaxLevel;
@@ -255,10 +275,10 @@ namespace SurvivorSouls.Gameplay.Skills
             _candidates.Clear();
             progression.CollectPool(level, _pool);
             foreach (var s in _pool)
-                if (CanTake(s)) _candidates.Add(s);
+                if (CanOffer(s)) _candidates.Add(s);
 
             var guaranteed = progression.GuaranteedAt(level);
-            if (guaranteed != null && CanTake(guaranteed))
+            if (guaranteed != null && CanOffer(guaranteed))
             {
                 results.Add(guaranteed);
                 _candidates.Remove(guaranteed);

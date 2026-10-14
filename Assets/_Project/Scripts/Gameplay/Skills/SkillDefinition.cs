@@ -58,6 +58,8 @@ namespace SurvivorSouls.Gameplay.Skills
         [SerializeField] private SkillLevelData[] levels = new SkillLevelData[0];
         [Tooltip("Behaviour skills only: spawned under the player at level 1, destroyed on run reset.")]
         [SerializeField] private SkillEffect effectPrefab;
+        [Tooltip("Offered as a new skill only while the player owns another skill that can still level up (chest skills, KAN-72).")]
+        [SerializeField] private bool requiresUpgradableSkill;
 
         public string Id => id;
         public string DisplayName => displayName;
@@ -67,6 +69,8 @@ namespace SurvivorSouls.Gameplay.Skills
         public float Weight => weight;
         public StatModifier[] Modifiers => modifiers;
         public SkillEffect EffectPrefab => effectPrefab;
+        /// <summary>Offer gate (KAN-72): not offered as new until another owned skill can still level up.</summary>
+        public bool RequiresUpgradableSkill => requiresUpgradableSkill;
         public SkillLevelData[] Levels => levels;
         public bool HasLevelTable => levels != null && levels.Length > 0;
         /// <summary>Highest level: the table length, or the old max stack without a table.</summary>
@@ -110,6 +114,13 @@ namespace SurvivorSouls.Gameplay.Skills
         public SkillDefinition SetLevels(params SkillLevelData[] table)
         {
             levels = table ?? new SkillLevelData[0];
+            return this;
+        }
+
+        /// <summary>Code-side offer gate (asset builder, tests): see <see cref="RequiresUpgradableSkill"/>.</summary>
+        public SkillDefinition SetRequiresUpgradableSkill(bool required)
+        {
+            requiresUpgradableSkill = required;
             return this;
         }
 

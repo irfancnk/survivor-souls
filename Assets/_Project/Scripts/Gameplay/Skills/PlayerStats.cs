@@ -10,8 +10,10 @@ namespace SurvivorSouls.Gameplay.Skills
     /// MoveSpeed (m/s), MaxHealth (HP), CritChance (0..1), CritDamage (damage multiplier on a crit), Multishot / Pierce /
     /// Ricochet (extra bolts / enemies), BurnDps (fire damage per second), LifeSteal (share of bolt damage healed),
     /// KillBurst (burst damage on kill, as a share of bolt damage), PickupRadius (m), BurnDuration (s, burn length;
-    /// base from the burn effect), BurstRadius (m, soul burst reach; base from the burst effect). Append new ids at the
-    /// end: assets store them as numbers.
+    /// base from the burn effect), BurstRadius (m, soul burst reach; base from the burst effect), ChestChance /
+    /// ChestEliteChance (0..1 Reliquary chest drop per normal / elite kill, KAN-72), ChestChoices (extra cards on a chest's
+    /// upgrade screen; base from the drop config), RareChestEvery (every Nth skill chest is Rare; 0 = never). Append new
+    /// ids at the end: assets store them as numbers.
     /// </summary>
     public enum StatId
     {
@@ -30,6 +32,10 @@ namespace SurvivorSouls.Gameplay.Skills
         PickupRadius,
         BurnDuration,
         BurstRadius,
+        ChestChance,
+        ChestEliteChance,
+        ChestChoices,
+        RareChestEvery,
     }
 
     /// <summary>Flat adds to the base value; Percent scales it (0.2 = +20 %). Percents from all sources add up.</summary>
