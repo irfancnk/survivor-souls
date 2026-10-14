@@ -773,7 +773,7 @@
 .hud-skill {
     width: 76px;
     height: 76px;
-    margin: 0 10px 10px 0;
+    margin: 0 10px 28px 0;
     border-radius: 38px;
     border-width: 3px;
     border-color: var(--slot-rim);
@@ -796,18 +796,57 @@
     -unity-background-image-tint-color: var(--slot-glow);
 }
 
-.hud-skill__stack {
+/* Level pips under each slot (KAN-74): one per level up to the skill's max, lit in the tier rim colour, glow colour at
+   max level. Absolute under the rim so the icon keeps its size; .hud-skill margin-bottom leaves room for them. */
+.hud-skill__pips {
     position: absolute;
-    right: -8px;
-    bottom: -8px;
-    font-size: 26px;
-    -unity-font-style: bold;
-    color: rgb(255, 236, 196);
-    -unity-text-outline-width: 2px;
-    -unity-text-outline-color: rgba(0, 0, 0, 0.95);
-    margin: 0;
-    padding: 0;
+    left: -3px;
+    right: -3px;
+    bottom: -21px;
+    flex-direction: row;
+    justify-content: center;
 }
+
+.hud-skill__pip {
+    width: 9px;
+    height: 7px;
+    margin: 0 1px;
+    border-radius: 2px;
+    background-color: rgba(255, 255, 255, 0.14);
+    border-width: 1px;
+    border-color: rgba(0, 0, 0, 0.8);
+}
+
+.hud-skill__pip--on {
+    background-color: var(--slot-rim);
+}
+
+.hud-skill--max .hud-skill__pip--on {
+    background-color: var(--slot-glow);
+}
+
+/* Pips the last level-up added, blinking during the glow. */
+.hud-skill__pip--new {
+    background-color: rgb(255, 255, 255);
+    border-color: var(--slot-glow);
+}
+
+/* Level-up glow ring (KAN-74): tier glow colour, outside the rim; opacity and scale set in code. Radius = slot radius + 10. */
+.hud-skill__glow {
+    position: absolute;
+    left: -13px;
+    top: -13px;
+    right: -13px;
+    bottom: -13px;
+    border-width: 5px;
+    border-color: var(--slot-glow);
+    border-radius: 51px;
+    background-color: rgba(255, 236, 196, 0.08);
+}
+
+.hud-skill--rare .hud-skill__glow { border-radius: 37px; }
+.hud-skill--epic .hud-skill__glow { border-radius: 25px; }
+.hud-skill--legendary .hud-skill__glow { border-radius: 19px; left: -15px; top: -15px; right: -15px; bottom: -15px; }
 
 /* Crit and fire damage numbers (CombatHud, KAN-19). */
 .combat-number--crit {
