@@ -15,7 +15,8 @@ namespace SurvivorSouls.Dev
     /// <summary>
     /// Automation hook for development builds. Launch the player with
     /// <c>-ss-screenshot &lt;path.png&gt; [-ss-delay &lt;seconds&gt;] [-ss-quality &lt;name&gt;]</c>
-    /// to save one frame and quit. -ss-quality picks a quality level by name (e.g. Mobile) to preview mobile visuals on desktop.
+    /// to save one frame and quit. -ss-quality picks a quality level by name (e.g. Mobile) to preview mobile visuals on desktop
+    /// (the Mac dev build ships the Mobile level too, KAN-52; the active level + URP asset is logged).
     /// Game options: <c>-ss-scene &lt;name&gt;</c> loads a scene first; <c>-ss-move x,y</c> holds the joystick;
     /// <c>-ss-closeup &lt;yawDeg&gt;</c> frames the player up close (0 = from the front).
     /// <c>-ss-near-exit</c> moves the player in front of the exit door (open world) or the arena portal (boss Chamber, KAN-59).
@@ -391,7 +392,7 @@ namespace SurvivorSouls.Dev
             frames = Mathf.Max(1, frames);
             float ms = (Time.realtimeSinceStartup - start) * 1000f / frames;
             Debug.Log($"[DevScreenshot] Stats drawCalls={d / frames} batches={b / frames} setPass={sp / frames} tris={t / frames} frameMs={ms:F1} " +
-                      $"mainThreadMs={m / frames * 1e-6f:F2} mainThreadMaxMs={mMax * 1e-6f:F2} enemies={enemies / frames}");
+                      $"mainThreadMs={m / frames * 1e-6f:F2} mainThreadMaxMs={mMax * 1e-6f:F2} enemies={enemies / frames} {QualityTag()}");
         }
 
         private static void MoveNearExit()
@@ -641,7 +642,15 @@ namespace SurvivorSouls.Dev
             if (string.IsNullOrEmpty(qualityName)) return;
             int index = Array.IndexOf(QualitySettings.names, qualityName);
             if (index >= 0) QualitySettings.SetQualityLevel(index, applyExpensiveChanges: true);
-            else Debug.LogWarning($"[DevScreenshot] Unknown quality level '{qualityName}'");
+            else Debug.LogWarning($"[DevScreenshot] Unknown quality level '{qualityName}' (levels: {string.Join(", ", QualitySettings.names)})");
+            Debug.Log($"[DevScreenshot] {QualityTag()}");
+        }
+
+        /// <summary>Active quality level and render pipeline asset, e.g. <c>quality=Mobile pipeline=Mobile_RPAsset</c> (KAN-52).</summary>
+        private static string QualityTag()
+        {
+            var pipeline = QualitySettings.renderPipeline != null ? QualitySettings.renderPipeline : UnityEngine.Rendering.GraphicsSettings.defaultRenderPipeline;
+            return $"quality={QualitySettings.names[QualitySettings.GetQualityLevel()]} pipeline={(pipeline != null ? pipeline.name : "none")}";
         }
 
         private static string GetArg(string name)

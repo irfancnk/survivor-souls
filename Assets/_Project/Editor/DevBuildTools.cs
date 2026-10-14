@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using System.Linq;
 using UnityEditor;
@@ -13,6 +14,15 @@ namespace SurvivorSouls.Editor
     /// </summary>
     public static class DevBuildTools
     {
+        public const string MobileQuality = "Mobile";
+        private const string StandalonePlatform = "Standalone";
+        private const string QualitySettingsPath = "ProjectSettings/QualitySettings.asset";
+
+        /// <summary>
+        /// The Mac dev player also gets the phone quality level (KAN-52), so <c>-ss-quality Mobile</c> renders with
+        /// Mobile_RPAsset and the draw-call log matches the phone. The player still starts on the Standalone default (PC).
+        /// QualitySettings.asset is restored byte for byte after the build.
+        /// </summary>
         public static void BuildMacDev()
         {
             string outDir = GetArg("-ss-out") ?? "Builds/MacDev";
@@ -23,9 +33,80 @@ namespace SurvivorSouls.Editor
                 target = BuildTarget.StandaloneOSX,
                 options = BuildOptions.Development,
             };
-            BuildReport report = BuildPipeline.BuildPlayer(options);
+            BuildReport report = null;
+            WithQualityLevelOnStandalone(MobileQuality, () => report = BuildPipeline.BuildPlayer(options));
             Debug.Log($"[DevBuildTools] {report.summary.result} errors={report.summary.totalErrors} -> {options.locationPathName}");
             EditorApplication.Exit(report.summary.result == BuildResult.Succeeded ? 0 : 1);
+        }
+
+        /// <summary>
+        /// Runs <paramref name="action"/> with the named quality level enabled for Standalone, then puts the
+        /// exclusion back and restores QualitySettings.asset on disk (no ProjectSettings diff after a dev build).
+        /// Unknown level = runs the action unchanged.
+        /// </summary>
+        public static void WithQualityLevelOnStandalone(string qualityName, Action action)
+        {
+            var so = LoadQualitySettings();
+            SerializedProperty excluded = FindExcludedPlatforms(so, qualityName);
+            int at = excluded == null ? -1 : IndexOf(excluded, StandalonePlatform);
+            if (at < 0)
+            {
+                if (excluded == null) Debug.LogWarning($"[DevBuildTools] No quality level '{qualityName}'");
+                action();
+                return;
+            }
+
+            byte[] onDisk = File.Exists(QualitySettingsPath) ? File.ReadAllBytes(QualitySettingsPath) : null;
+            excluded.DeleteArrayElementAtIndex(at);
+            so.ApplyModifiedPropertiesWithoutUndo();
+            Debug.Log($"[DevBuildTools] Quality level '{qualityName}' enabled for {StandalonePlatform} for this build");
+            try
+            {
+                action();
+            }
+            finally
+            {
+                so = LoadQualitySettings();
+                excluded = FindExcludedPlatforms(so, qualityName);
+                if (excluded != null && IndexOf(excluded, StandalonePlatform) < 0)
+                {
+                    at = Mathf.Min(at, excluded.arraySize);
+                    excluded.InsertArrayElementAtIndex(at);
+                    excluded.GetArrayElementAtIndex(at).stringValue = StandalonePlatform;
+                    so.ApplyModifiedPropertiesWithoutUndo();
+                }
+                if (onDisk != null && !File.ReadAllBytes(QualitySettingsPath).SequenceEqual(onDisk))
+                    File.WriteAllBytes(QualitySettingsPath, onDisk);
+            }
+        }
+
+        /// <summary>True when the named quality level is not excluded for Standalone (Mac / PC players).</summary>
+        public static bool IsQualityLevelOnStandalone(string qualityName)
+        {
+            SerializedProperty excluded = FindExcludedPlatforms(LoadQualitySettings(), qualityName);
+            return excluded != null && IndexOf(excluded, StandalonePlatform) < 0;
+        }
+
+        private static SerializedObject LoadQualitySettings() =>
+            new SerializedObject(AssetDatabase.LoadAllAssetsAtPath(QualitySettingsPath)[0]);
+
+        private static SerializedProperty FindExcludedPlatforms(SerializedObject so, string qualityName)
+        {
+            SerializedProperty levels = so.FindProperty("m_QualitySettings");
+            for (int i = 0; i < levels.arraySize; i++)
+            {
+                SerializedProperty level = levels.GetArrayElementAtIndex(i);
+                if (level.FindPropertyRelative("name").stringValue == qualityName)
+                    return level.FindPropertyRelative("excludedTargetPlatforms");
+            }
+            return null;
+        }
+
+        private static int IndexOf(SerializedProperty stringArray, string value)
+        {
+            for (int i = 0; i < stringArray.arraySize; i++)
+                if (stringArray.GetArrayElementAtIndex(i).stringValue == value) return i;
+            return -1;
         }
 
         /// <summary>
@@ -36,7 +117,7 @@ namespace SurvivorSouls.Editor
         public static void BuildIosXcode()
         {
             string outDir = GetArg("-ss-out") ?? "Builds/iOS";
-            bool dev = System.Environment.GetCommandLineArgs().Contains("-ss-dev");
+            bool dev = Environment.GetCommandLineArgs().Contains("-ss-dev");
             var options = new BuildPlayerOptions
             {
                 scenes = EditorBuildSettings.scenes.Where(s => s.enabled).Select(s => s.path).ToArray(),
@@ -56,7 +137,7 @@ namespace SurvivorSouls.Editor
         public static void BuildAndroidApk()
         {
             string outPath = GetArg("-ss-out") ?? "Builds/Android/SurvivorSouls.apk";
-            bool dev = System.Environment.GetCommandLineArgs().Contains("-ss-dev");
+            bool dev = Environment.GetCommandLineArgs().Contains("-ss-dev");
             EditorUserBuildSettings.buildAppBundle = false;
             var options = new BuildPlayerOptions
             {
@@ -72,7 +153,7 @@ namespace SurvivorSouls.Editor
 
         private static string GetArg(string name)
         {
-            string[] args = System.Environment.GetCommandLineArgs();
+            string[] args = Environment.GetCommandLineArgs();
             for (int i = 0; i < args.Length - 1; i++)
                 if (args[i] == name) return args[i + 1];
             return null;
