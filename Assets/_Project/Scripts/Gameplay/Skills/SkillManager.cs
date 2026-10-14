@@ -67,6 +67,7 @@ namespace SurvivorSouls.Gameplay.Skills
         private readonly List<SkillDefinition> _candidates = new List<SkillDefinition>(32);
         private readonly List<float> _weights = new List<float>(32);
         private readonly List<SkillDefinition> _forced = new List<SkillDefinition>(4);
+        private readonly Dictionary<SkillDefinition, int> _upgradeOffers = new Dictionary<SkillDefinition, int>(16);
         private SkillContext _context;
         private System.Random _rng;
         private int _dryOffers;
@@ -239,6 +240,7 @@ namespace SurvivorSouls.Gameplay.Skills
             _owned.Clear();
             _dryOffers = 0;
             _forced.Clear();
+            _upgradeOffers.Clear();
             if (had) Changed?.Invoke();
         }
 
@@ -318,6 +320,70 @@ namespace SurvivorSouls.Gameplay.Skills
 
             ApplyPity(results, guaranteed);
             return results.Count;
+        }
+
+        /// <summary>
+        /// Chest upgrade screen (KAN-73): fills <paramref name="results"/> with up to <paramref name="count"/> distinct OWNED
+        /// skills that can still level up (<see cref="CanUpgrade"/>), never a maxed one. Weighted so the same skill does
+        /// not show up on every chest: weight = 1 / (1 + times it was already on a chest screen this Chamber). Fewer results
+        /// when fewer skills can level up (one card, no empty slots); 0 = nothing to upgrade (fallback reward). A forced
+        /// offer (<see cref="ForceNextOffer"/>, dev) is used first when its skills can be upgraded. No allocation after the
+        /// first chest.
+        /// </summary>
+        public int RollUpgrades(int count, List<SkillDefinition> results)
+        {
+            results.Clear();
+            if (count <= 0) return 0;
+            if (_forced.Count > 0)
+            {
+                foreach (var s in _forced)
+                    if (results.Count < count && CanUpgrade(s)) results.Add(s);
+                _forced.Clear();
+                if (results.Count > 0)
+                {
+                    foreach (var s in results) CountUpgradeOffer(s);
+                    return results.Count;
+                }
+            }
+            _candidates.Clear();
+            _weights.Clear();
+            foreach (var o in _owned)
+            {
+                if (o.Level >= o.Skill.MaxLevel) continue;
+                _candidates.Add(o.Skill);
+                _upgradeOffers.TryGetValue(o.Skill, out int shown);
+                _weights.Add(1f / (1f + shown));
+            }
+            while (results.Count < count && _candidates.Count > 0)
+            {
+                float total = 0f;
+                for (int i = 0; i < _weights.Count; i++) total += _weights[i];
+                float r = (float)_rng.NextDouble() * total;
+                int pick = _weights.Count - 1;
+                for (int i = 0; i < _weights.Count; i++)
+                {
+                    r -= _weights[i];
+                    if (r < 0f) { pick = i; break; }
+                }
+                results.Add(_candidates[pick]);
+                int last = _candidates.Count - 1;
+                _candidates[pick] = _candidates[last];
+                _weights[pick] = _weights[last];
+                _candidates.RemoveAt(last);
+                _weights.RemoveAt(last);
+            }
+            foreach (var s in results) CountUpgradeOffer(s);
+            return results.Count;
+        }
+
+        /// <summary>Times <paramref name="skill"/> was on a chest upgrade screen this Chamber (rotation weight).</summary>
+        public int UpgradeOffersOf(SkillDefinition skill) =>
+            skill != null && _upgradeOffers.TryGetValue(skill, out int n) ? n : 0;
+
+        private void CountUpgradeOffer(SkillDefinition skill)
+        {
+            _upgradeOffers.TryGetValue(skill, out int n);
+            _upgradeOffers[skill] = n + 1;
         }
 
         /// <summary>
