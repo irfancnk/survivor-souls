@@ -4,9 +4,10 @@ using UnityEngine;
 namespace SurvivorSouls.Gameplay.Skills.Effects
 {
     /// <summary>
-    /// "Ember Bolts": every bolt hit sets the enemy on fire (<see cref="Enemy.ApplyBurn"/>) for <see cref="duration"/>
-    /// seconds at <see cref="StatId.BurnDps"/> damage per second. Embers rise from burning enemies through ONE shared
-    /// world-space particle system (<see cref="embers"/>, Emit only): one draw call for any number of fires.
+    /// "Ember Bolts": every bolt hit sets the enemy on fire (<see cref="Enemy.ApplyBurn"/>) for <see cref="Duration"/>
+    /// seconds (<see cref="duration"/> + <see cref="StatId.BurnDuration"/>) at <see cref="StatId.BurnDps"/> damage per
+    /// second. Embers rise from burning enemies through ONE shared world-space particle system (<see cref="embers"/>,
+    /// Emit only): one draw call for any number of fires.
     /// </summary>
     public sealed class BurnOnHitEffect : SkillEffect
     {
@@ -16,6 +17,9 @@ namespace SurvivorSouls.Gameplay.Skills.Effects
         [SerializeField, Min(0f)] private float emberRate = 14f;
 
         private float _emitDebt;
+
+        /// <summary>Burn length in seconds after skill levels (KAN-71: higher Ember Bolts levels burn longer).</summary>
+        public float Duration => Mathf.Max(0.1f, PlayerStats.Eval(Context?.Stats, StatId.BurnDuration, duration));
         private System.Action<BoltHit> _onHit;
 
         protected override void Subscribe()
@@ -32,7 +36,7 @@ namespace SurvivorSouls.Gameplay.Skills.Effects
         private void OnHit(BoltHit hit)
         {
             float dps = PlayerStats.Eval(Context.Stats, StatId.BurnDps, 0f);
-            if (dps > 0f && !hit.Killed) hit.Enemy.ApplyBurn(dps, duration);
+            if (dps > 0f && !hit.Killed) hit.Enemy.ApplyBurn(dps, Duration);
         }
 
         private void Update()

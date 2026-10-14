@@ -5,9 +5,10 @@ namespace SurvivorSouls.Gameplay.Skills.Effects
 {
     /// <summary>
     /// "Soul Burst": every enemy death bursts a ring of soul fire that deals <see cref="StatId.KillBurst"/> times the
-    /// current bolt damage to every enemy within <see cref="radius"/>. Kills from a burst burst again (chain reaction),
-    /// one frame later: deaths are queued (fixed ring buffer) and resolved in Update, never inside the damage event, so
-    /// <see cref="Enemy.Active"/> is not edited while someone walks it. Ring + sparks via Emit on two shared systems.
+    /// current bolt damage to every enemy within <see cref="Radius"/> (<see cref="radius"/> + <see cref="StatId.BurstRadius"/>).
+    /// Kills from a burst burst again (chain reaction), one frame later: deaths are queued (fixed ring buffer) and resolved
+    /// in Update, never inside the damage event, so <see cref="Enemy.Active"/> is not edited while someone walks it. Ring +
+    /// sparks via Emit on two shared systems.
     /// </summary>
     public sealed class KillBurstEffect : SkillEffect
     {
@@ -22,7 +23,8 @@ namespace SurvivorSouls.Gameplay.Skills.Effects
         private int _head, _count;
         private System.Action<Enemy, float, bool> _onDamaged;
 
-        public float Radius => radius;
+        /// <summary>Burst reach in metres after skill levels (KAN-71: higher Soul Burst levels reach further).</summary>
+        public float Radius => Mathf.Max(0.5f, PlayerStats.Eval(Context?.Stats, StatId.BurstRadius, radius));
         /// <summary>Bursts resolved this run.</summary>
         public int BurstCount { get; private set; }
 
@@ -65,7 +67,8 @@ namespace SurvivorSouls.Gameplay.Skills.Effects
             BurstCount++;
             PlayFx(centre);
             if (damage <= 0f) return;
-            float r2 = radius * radius;
+            float r = Radius;
+            float r2 = r * r;
             var enemies = Enemy.Active;
             for (int i = enemies.Count - 1; i >= 0; i--) // backwards: a kill removes enemies[i] only
             {
@@ -85,7 +88,7 @@ namespace SurvivorSouls.Gameplay.Skills.Effects
             {
                 p.position = centre + Vector3.up * 0.08f;
                 p.velocity = Vector3.zero;
-                p.startSize = radius * 2.2f;
+                p.startSize = Radius * 2.2f;
                 ring.Emit(p, 1);
             }
             if (sparks == null) return;
