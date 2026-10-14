@@ -19,8 +19,8 @@ namespace SurvivorSouls.Gameplay.Chests
         [SerializeField] private Transform body;
         [SerializeField] private Renderer beam;
         [SerializeField] private Renderer glow;
-        [SerializeField] private Color lightColor = new Color(1f, 0.74f, 0.2f, 0.8f);
-        [SerializeField] private Color rareColor = new Color(0.45f, 0.72f, 1f, 0.85f);
+        [SerializeField] private Color lightColor = new Color(1f, 0.7f, 0.12f, 1f);
+        [SerializeField] private Color rareColor = new Color(0.4f, 0.66f, 1f, 1f);
         [Tooltip("Body scale of a Rare chest (a Light chest is 1).")]
         [SerializeField, Min(0.5f)] private float rareScale = 1.25f;
 

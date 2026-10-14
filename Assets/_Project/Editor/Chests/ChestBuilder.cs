@@ -23,8 +23,8 @@ namespace SurvivorSouls.Editor.Chests
         private const string BeamTexturePath = ArtDir + "/T_ChestBeam.png";
         private const string PrefabDir = "Assets/_Project/Prefabs/Chests";
         public const string PrefabPath = PrefabDir + "/Chest_Reliquary.prefab";
-        private const float BeamHeight = 3.4f;
-        private const float BeamWidth = 0.75f;
+        private const float BeamHeight = 4.2f;
+        private const float BeamWidth = 1.2f;
 
         public static ChestDropper Create(GameArtKit kit, PlayerStats stats)
         {
@@ -72,7 +72,7 @@ namespace SurvivorSouls.Editor.Chests
                 var glow = Part("Glow", root.transform, kit.Quad, glowMat);
                 glow.transform.localPosition = Vector3.up * 0.03f;
                 glow.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
-                glow.transform.localScale = Vector3.one * 1.8f;
+                glow.transform.localScale = Vector3.one * 2.6f;
                 var chest = root.AddComponent<ReliquaryChest>();
                 chest.Setup(body.transform, beam, glow);
                 var prefab = PrefabUtility.SaveAsPrefabAsset(root, PrefabPath);
@@ -151,11 +151,11 @@ namespace SurvivorSouls.Editor.Chests
         private static Color BeamPixel(int x, int y)
         {
             float u = (x + 0.5f) / 64f * 2f - 1f, v = (y + 0.5f) / 128f;
-            float across = Mathf.Exp(-u * u * 5f) * (1f - TextureFactory.SmoothStep(0.85f, 1f, Mathf.Abs(u)));
-            float along = TextureFactory.SmoothStep(0f, 0.06f, v) * Mathf.Pow(1f - v, 1.4f);
+            float across = Mathf.Exp(-u * u * 3f) * (1f - TextureFactory.SmoothStep(0.85f, 1f, Mathf.Abs(u)));
+            float along = TextureFactory.SmoothStep(0f, 0.06f, v) * Mathf.Pow(1f - v, 1.1f);
             float core = Mathf.Exp(-u * u * 40f);
             float g = Mathf.Lerp(0.85f, 1f, core);
-            return new Color(g, g, g, Mathf.Clamp01(across * along * 1.1f));
+            return new Color(g, g, g, Mathf.Clamp01(across * along * 1.5f));
         }
 
         [MenuItem("Survivor Souls/Debug/Chest: Drop Now")]
