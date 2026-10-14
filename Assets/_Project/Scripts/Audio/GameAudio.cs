@@ -71,6 +71,9 @@ namespace SurvivorSouls.Audio
 
         [Header("Mix")]
         [SerializeField, Range(0f, 1f)] private float shotVolume = 0.8f;
+        [Tooltip("Double Shot follow-up bolt (KAN-83): a quiet extra shot layer, as a share of the shot volume, pitched up a little.")]
+        [SerializeField, Range(0f, 1f)] private float followUpShotShare = 0.35f;
+        [SerializeField, Range(0.5f, 2f)] private float followUpShotPitch = 1.1f;
         [SerializeField, Range(0f, 1f)] private float impactVolume = 0.75f;
         [SerializeField, Range(0f, 1f)] private float deathVolume = 0.7f;
         [SerializeField, Range(0f, 1f)] private float footstepVolume = 0.35f;
@@ -142,7 +145,11 @@ namespace SurvivorSouls.Audio
 
         private void OnEnable()
         {
-            if (shooter != null) shooter.Fired += OnFired;
+            if (shooter != null)
+            {
+                shooter.Fired += OnFired;
+                shooter.FollowUpFired += OnFollowUpFired;
+            }
             Bolt.Hit += OnHit;
             Enemy.Damaged += OnDamaged;
             if (playerHealth != null)
@@ -189,7 +196,11 @@ namespace SurvivorSouls.Audio
 
         private void OnDisable()
         {
-            if (shooter != null) shooter.Fired -= OnFired;
+            if (shooter != null)
+            {
+                shooter.Fired -= OnFired;
+                shooter.FollowUpFired -= OnFollowUpFired;
+            }
             Bolt.Hit -= OnHit;
             Enemy.Damaged -= OnDamaged;
             if (playerHealth != null)
@@ -246,6 +257,8 @@ namespace SurvivorSouls.Audio
         }
 
         private void OnFired(Vector3 muzzle, Vector3 direction) => Play(shots, shotVolume, 0.06f);
+        private void OnFollowUpFired(Vector3 muzzle, Vector3 direction) =>
+            Play(shots, shotVolume * followUpShotShare, 0.04f, followUpShotPitch);
         private void OnHit(Vector3 point, Vector3 direction) => Play(impacts, impactVolume, 0.1f);
 
         private void OnDamaged(Enemy enemy, float amount, bool killed)

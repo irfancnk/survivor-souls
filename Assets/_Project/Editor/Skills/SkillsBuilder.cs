@@ -16,8 +16,8 @@ namespace SurvivorSouls.Editor.Skills
     /// prefabs (burn embers, life steal motes, soul burst ring + sparks) and the scene <see cref="SkillManager"/>.
     /// Skill and table assets are created only when missing: designer edits are never overwritten (missing icon / effect
     /// links are filled in). Icons and effect prefabs are rebuilt every run. Called by GameSceneBuilder.
-    /// Tiers (KAN-37): Common = plain stat boosts, Rare = crit / pierce / ricochet, Epic = life steal / multishot,
-    /// Legendary = burning bolts / soul burst. Reliquary Hunter (KAN-72, Epic) drops upgrade chests through stats only.
+    /// Tiers (KAN-37): Common = plain stat boosts, Rare = crit / pierce / ricochet / Spread Shot, Epic = life steal /
+    /// Double Shot, Legendary = burning bolts / soul burst. Reliquary Hunter (KAN-72, Epic) drops upgrade chests through stats only.
     /// <see cref="BuildStyles"/> makes the per-tier style asset (labels, gems, sounds).
     /// </summary>
     public static class SkillsBuilder
@@ -43,6 +43,15 @@ namespace SurvivorSouls.Editor.Skills
             public Fx Effect;
             /// <summary>Offer gate (KAN-72): only offered as new while another owned skill can still level up.</summary>
             public bool NeedsUpgradable;
+            /// <summary>Repeat offer weights while owned (KAN-83), null = 1.</summary>
+            public float[] RepeatWeights;
+            /// <summary>Chest upgrade card weight (KAN-83).</summary>
+            public float UpgradeWeight = 1f;
+            /// <summary>
+            /// Rework migration (KAN-83): an existing asset still named this is rewritten once from the spec (name, text,
+            /// tier, levels, offer weights). After that its display name differs and designer edits stay.
+            /// </summary>
+            public string ReworkFrom;
 
             public string Text => Levels[0].description;
             public StatModifier[] Mods => Levels[0].modifiers;
@@ -150,12 +159,25 @@ namespace SurvivorSouls.Editor.Skills
                     L("Heal 9% of bolt damage dealt", Add(StatId.LifeSteal, 0.09f)),
                     L("Heal 12% of damage, +60 max HP", Add(StatId.LifeSteal, 0.12f), Add(StatId.MaxHealth, 60f)),
                 } },
-            new Spec { Id = "multishot", File = "Multishot", Name = "Multishot", Rarity = SkillRarity.Epic,
+            // KAN-83: the old Multishot is now Spread Shot (same asset and id "multishot", so saves and debug configs load).
+            // The main bolt always flies straight; angled bolts at 15 deg steps on both sides deal a damage share (AutoShooter
+            // base 50 %, levels add to it). Rare: a fan is a crowd tool, not a boss killer.
+            new Spec { Id = "multishot", File = "Multishot", Name = "Spread Shot", Rarity = SkillRarity.Rare, ReworkFrom = "Multishot",
                 Glyph = SkillIconPainter.Multishot, Levels = new[]
                 {
-                    L("+1 bolt per volley, -15% damage", Add(StatId.Multishot, 1f), Pct(StatId.Damage, -0.15f)),
-                    L("+2 bolts per volley, -25% damage", Add(StatId.Multishot, 2f), Pct(StatId.Damage, -0.25f)),
-                    L("+2 bolts per volley, -10% damage", Add(StatId.Multishot, 2f), Pct(StatId.Damage, -0.1f)),
+                    L("2 side bolts at 15°, 50% damage", Add(StatId.Multishot, 2f)),
+                    L("4 side bolts to 30°, 65% damage", Add(StatId.Multishot, 4f), Add(StatId.SpreadDamage, 0.15f)),
+                    L("6 side bolts to 45°, 80% damage", Add(StatId.Multishot, 6f), Add(StatId.SpreadDamage, 0.3f)),
+                } },
+            // KAN-83 (KAN-36): Double Shot. The volley fires again down the same line 0.09 s later. Repeats are rare on
+            // purpose: owned, its level-up weight drops to 25 % (2nd stack) and 6 % (3rd), pity and guarantees never push
+            // it again, and chest screens offer it at 35 % weight.
+            new Spec { Id = "double_shot", File = "DoubleShot", Name = "Double Shot", Rarity = SkillRarity.Epic,
+                Glyph = SkillIconPainter.DoubleShot, RepeatWeights = new[] { 0.25f, 0.06f }, UpgradeWeight = 0.35f, Levels = new[]
+                {
+                    L("1 extra bolt down the same line", Add(StatId.DoubleShot, 1f)),
+                    L("2 extra bolts down the same line", Add(StatId.DoubleShot, 2f)),
+                    L("3 extra bolts, 90% damage each", Add(StatId.DoubleShot, 3f), Pct(StatId.ChainDamage, -0.1f)),
                 } },
             new Spec { Id = "soul_burst", File = "SoulBurst", Name = "Soul Burst", Rarity = SkillRarity.Legendary,
                 Glyph = SkillIconPainter.KillBurst, Effect = Fx.KillBurst, Levels = new[]
@@ -183,7 +205,10 @@ namespace SurvivorSouls.Editor.Skills
         };
 
         /// <summary>Skills added after the progression asset was first made: id -> tier fromLevel they join (once).</summary>
-        private static readonly (string id, int fromLevel)[] LateUnlocks = { ("reliquary_hunter", 4) };
+        private static readonly (string id, int fromLevel)[] LateUnlocks = { ("reliquary_hunter", 4), ("double_shot", 2) };
+
+        /// <summary>Guarantees added after the progression asset was first made: id -> level (once, if that level is free).</summary>
+        private static readonly (string id, int level)[] LateGuarantees = { ("double_shot", 3) };
 
         /// <summary>Builds the assets and adds the SkillManager (plus PlayerStats on the player when missing).</summary>
         public static SkillManager Create(GameArtKit kit, GameObject host, GameObject player, AutoShooter shooter, PlayerHealth health)
@@ -265,12 +290,14 @@ namespace SurvivorSouls.Editor.Skills
                 skill.Configure(spec.Id, spec.Name, spec.Text, spec.Rarity, spec.Max, spec.Mods);
                 skill.SetLevels(spec.Levels);
                 skill.SetRequiresUpgradableSkill(spec.NeedsUpgradable);
+                skill.SetOfferWeights(spec.RepeatWeights, spec.UpgradeWeight);
                 skill.SetPresentation(icon, effect, spec.Weight);
                 AssetDatabase.CreateAsset(skill, path);
                 return skill;
             }
             // Existing asset: keep designer numbers, only repair missing links and give a table-less skill its table.
-            if (!skill.HasLevelTable) FillLevels(skill, spec);
+            if (spec.ReworkFrom != null && skill.DisplayName == spec.ReworkFrom) Rework(skill, spec);
+            else if (!skill.HasLevelTable) FillLevels(skill, spec);
             var so = new SerializedObject(skill);
             var iconProp = so.FindProperty("icon");
             if (iconProp.objectReferenceValue == null) iconProp.objectReferenceValue = icon;
@@ -293,8 +320,22 @@ namespace SurvivorSouls.Editor.Skills
         }
 
         /// <summary>
+        /// One-time rewrite of a reworked skill (<see cref="Spec.ReworkFrom"/>, KAN-83): same asset, guid and id (saves, debug
+        /// configs and level tables keep their link), new name, card text, tier, level table and offer weights.
+        /// </summary>
+        private static void Rework(SkillDefinition skill, Spec spec)
+        {
+            skill.Configure(spec.Id, spec.Name, spec.Text, spec.Rarity, spec.Max, spec.Mods);
+            skill.SetLevels(spec.Levels);
+            skill.SetOfferWeights(spec.RepeatWeights, spec.UpgradeWeight);
+            EditorUtility.SetDirty(skill);
+            Debug.Log($"[SkillsBuilder] Reworked {spec.ReworkFrom} -> {spec.Name} ({skill.name})");
+        }
+
+        /// <summary>
         /// Run pacing (XP curve: levels 2-4 come every few kills). Stat skills first, behaviour skills from level 4, epic
-        /// game-changers from level 6. Level 4 always offers Ember Bolts (the first Legendary), level 6 Multishot.
+        /// game-changers from level 6. Level 3 always offers Double Shot (KAN-83, from level 2), level 4 Ember Bolts (the
+        /// first Legendary), level 6 Spread Shot.
         /// Tier odds (KAN-37) grow with the level: 70/27/3/0 at L2, 55/30/12/3 at L4, 45/32/16/7 at L6, 38/32/20/10 from L10.
         /// Pity: at least one Rare+ card in every 3 offers.
         /// </summary>
@@ -304,6 +345,7 @@ namespace SurvivorSouls.Editor.Skills
             if (table != null)
             {
                 AddLateUnlocks(table, s);
+                AddLateGuarantees(table, s);
                 return table;
             }
             table = ScriptableObject.CreateInstance<SkillProgression>();
@@ -313,7 +355,7 @@ namespace SurvivorSouls.Editor.Skills
                     new SkillProgression.Tier
                     {
                         fromLevel = 2, common = 70f, rare = 27f, epic = 3f, legendary = 0f,
-                        unlocks = new[] { s["sharpened_bolts"], s["quick_draw"], s["fleet_foot"], s["vigor"], s["soul_siphon"], s["keen_eye"], s["piercing_bolts"] },
+                        unlocks = new[] { s["sharpened_bolts"], s["quick_draw"], s["fleet_foot"], s["vigor"], s["soul_siphon"], s["keen_eye"], s["piercing_bolts"], s["double_shot"] },
                     },
                     new SkillProgression.Tier
                     {
@@ -333,6 +375,7 @@ namespace SurvivorSouls.Editor.Skills
                 },
                 new[]
                 {
+                    new SkillProgression.Guarantee { level = 3, skill = s["double_shot"] },
                     new SkillProgression.Guarantee { level = 4, skill = s["ember_bolts"] },
                     new SkillProgression.Guarantee { level = 6, skill = s["multishot"] },
                 });
@@ -358,6 +401,21 @@ namespace SurvivorSouls.Editor.Skills
                 tier.unlocks = list.ToArray();
                 EditorUtility.SetDirty(table);
                 Debug.Log($"[SkillsBuilder] Added {id} to the level {fromLevel} tier of {ProgressionPath}");
+            }
+        }
+
+        /// <summary>
+        /// Adds a guarantee made after the table (<see cref="LateGuarantees"/>), once: only when the skill has no guarantee
+        /// yet and its level is free. Remove it in the Inspector and it comes back; set the level to an unused one instead.
+        /// </summary>
+        private static void AddLateGuarantees(SkillProgression table, Dictionary<string, SkillDefinition> s)
+        {
+            foreach (var (id, level) in LateGuarantees)
+            {
+                if (!s.TryGetValue(id, out var skill) || table.GuaranteedAt(level) != null || table.HasGuarantee(skill)) continue;
+                table.AddGuarantee(level, skill);
+                EditorUtility.SetDirty(table);
+                Debug.Log($"[SkillsBuilder] Added a level {level} guarantee for {id} to {ProgressionPath}");
             }
         }
 

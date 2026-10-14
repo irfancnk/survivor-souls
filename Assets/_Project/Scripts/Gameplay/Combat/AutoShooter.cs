@@ -11,11 +11,13 @@ namespace SurvivorSouls.Gameplay.Combat
     /// every <see cref="fireInterval"/> seconds. Moving = no shooting (unless <see cref="fireWhileMoving"/>).
     /// Default numbers: enemy 150 HP, bolt 100 damage, so one bolt leaves it at a third and the second kills.
     /// The serialized numbers are base values: damage, fire rate, crit and the extra-bolt counts go through the player's
-    /// <see cref="PlayerStats"/> (KAN-19 skills) when it has one. Multishot fans extra bolts around the aim line.
-    /// Every bolt hit is reported by <see cref="EnemyHit"/>.
+    /// <see cref="PlayerStats"/> (KAN-19 skills) when it has one. The bolt list of a volley comes from
+    /// <see cref="VolleyBuilder"/> (KAN-83): Spread Shot adds angled bolts around the straight main bolt, Double Shot fires
+    /// the volley again after a short delay (follow-up bolts wait in a fixed-size queue, no allocation per shot). Bolts come
+    /// from a pool with an active cap. Every bolt hit is reported by <see cref="EnemyHit"/>.
     /// Reload (KAN-42) is a 0..1 fraction, not a countdown in seconds: each frame it grows by dt / <see cref="CurrentInterval"/>,
     /// so an attack speed change mid-reload keeps the fraction and only changes the rate (the reload ring does not jump), and
-    /// the volley fires in the frame the fraction reaches 1. One volley (all multishot bolts) = one reload.
+    /// the volley fires in the frame the fraction reaches 1. One volley (all spread and Double Shot bolts) = one reload.
     /// </summary>
     [RequireComponent(typeof(PlayerMover))]
     public sealed class AutoShooter : MonoBehaviour
@@ -33,22 +35,51 @@ namespace SurvivorSouls.Gameplay.Combat
         [Header("Skill bases (PlayerStats modifies these)")]
         [SerializeField, Range(0f, 1f)] private float critChance;
         [SerializeField, Min(1f)] private float critMultiplier = 2f;
-        [Tooltip("Degrees between two neighbouring bolts of a multishot fan.")]
-        [SerializeField, Range(0f, 45f)] private float multishotSpread = 11f;
+        [Tooltip("Spread Shot (KAN-83): degrees between two neighbouring bolts of the fan.")]
+        [SerializeField, Range(0f, 45f)] private float spreadAngle = 15f;
+        [Tooltip("Spread Shot: damage share of each angled bolt before skills (levels add to it).")]
+        [SerializeField, Range(0f, 1f)] private float spreadDamage = 0.5f;
+        [Tooltip("Double Shot (KAN-83): seconds between the bolts fired down the same line.")]
+        [SerializeField, Range(0f, 0.3f)] private float doubleShotDelay = 0.09f;
+        [Tooltip("Double Shot: sideways step (m) of each follow-up bolt, so the bolts do not overlap.")]
+        [SerializeField, Range(0f, 0.5f)] private float doubleShotOffset = 0.18f;
+        [Tooltip("Most bolts in one volley (spread x Double Shot), for performance and balance.")]
+        [SerializeField, Range(1, 24)] private int maxBoltsPerVolley = VolleyBuilder.DefaultCap;
+        [Tooltip("Most bolts in flight at once; a volley over it drops its extra bolts.")]
+        [SerializeField, Range(8, 200)] private int maxActiveBolts = 72;
         [Tooltip("How far (m) a ricochet bolt looks for its next enemy.")]
         [SerializeField, Min(0.5f)] private float ricochetRange = 6.5f;
 
         private const float MovingSpeed = 0.2f;
         private const float MaxCarry = 0.25f; // most reload overshoot one frame may carry into the next reload
 
-        /// <summary>Raised on every shot: muzzle position, flight direction. Recoil, muzzle FX and audio listen.</summary>
+        /// <summary>Raised once per volley, with its first bolts: muzzle position, aim direction. Recoil, muzzle FX, audio and the reload ring listen.</summary>
         public event Action<Vector3, Vector3> Fired;
+        /// <summary>Raised for each Double Shot follow-up step (KAN-83): a lighter recoil and a quiet extra shot layer.</summary>
+        public event Action<Vector3, Vector3> FollowUpFired;
         /// <summary>Raised in the frame the reload fraction reaches 1 (before a volley that fires in the same frame).</summary>
         public event Action ReloadCompleted;
         /// <summary>Raised for every enemy any of this shooter's bolts hits (on-hit skills listen).</summary>
         public event Action<BoltHit> EnemyHit;
 
+        /// <summary>A follow-up bolt waiting for its Double Shot delay.</summary>
+        private struct Pending
+        {
+            public float Time;
+            public Vector3 Direction;
+            public float Lateral;
+            /// <summary>The shot of its own volley, damage share applied (a newer volley does not change it).</summary>
+            public BoltShot Shot;
+            public bool Lead;
+        }
+
+        private const int MaxPending = 48;
+
         private readonly Stack<Bolt> _pool = new Stack<Bolt>();
+        private readonly VolleyArrow[] _volley = new VolleyArrow[24];
+        private readonly Pending[] _pending = new Pending[MaxPending];
+        private int _pendingCount;
+        private int _active;
         private PlayerMover _mover;
         private PlayerStats _stats;
         private Action<Bolt> _release;
@@ -61,6 +92,8 @@ namespace SurvivorSouls.Gameplay.Combat
         public float BaseShotsPerSecond => 1f / fireInterval;
         public float BaseCritChance => critChance;
         public float BaseCritMultiplier => critMultiplier;
+        /// <summary>Spread Shot angled bolt damage share before skills (power curve base, KAN-83).</summary>
+        public float BaseSpreadDamage => spreadDamage;
         /// <summary>Bolt damage after skills (burst and similar skills scale from it).</summary>
         public float CurrentDamage => PlayerStats.Eval(_stats, StatId.Damage, damage);
         /// <summary>Seconds between shots after attack speed skills.</summary>
@@ -73,14 +106,50 @@ namespace SurvivorSouls.Gameplay.Combat
         /// </summary>
         public bool Engaged => _engaged;
 
+        /// <summary>Bolts in flight now (active cap check).</summary>
+        public int ActiveBolts => _active;
+        /// <summary>Double Shot bolts still waiting for their delay.</summary>
+        public int PendingBolts => _pendingCount;
+
+        /// <summary>The volley the current stats fire (KAN-83): spread, Double Shot, damage shares, cap.</summary>
+        public VolleySpec CurrentVolleySpec => new VolleySpec
+        {
+            Spread = _stats != null ? _stats.ModifyInt(StatId.Multishot, 0) : 0,
+            SpreadStep = spreadAngle,
+            SpreadDamage = Mathf.Clamp01(PlayerStats.Eval(_stats, StatId.SpreadDamage, spreadDamage)),
+            Chain = _stats != null ? _stats.ModifyInt(StatId.DoubleShot, 0) : 0,
+            ChainDelay = doubleShotDelay,
+            ChainLateral = doubleShotOffset,
+            ChainDamage = Mathf.Max(0f, PlayerStats.Eval(_stats, StatId.ChainDamage, 1f)),
+            Cap = Mathf.Min(maxBoltsPerVolley, _volley.Length),
+        };
+
+        /// <summary>Debug text of the current volley (Survivor Souls/Debug/Skills: Print Volley).</summary>
+        public string DescribeVolley()
+        {
+            var spec = CurrentVolleySpec;
+            return VolleyBuilder.Describe(spec, _volley, VolleyBuilder.Build(spec, _volley));
+        }
+
         /// <summary>Wiring for code-built objects and tests.</summary>
         public void SetBoltPrefab(Bolt prefab) => boltPrefab = prefab;
+
+        /// <summary>Volley cap and active bolt budget (tests, perf runs).</summary>
+        public void SetBoltLimits(int perVolley, int active)
+        {
+            maxBoltsPerVolley = Mathf.Clamp(perVolley, 1, _volley.Length);
+            maxActiveBolts = Mathf.Max(1, active);
+        }
 
         private void Awake()
         {
             _mover = GetComponent<PlayerMover>();
             _stats = GetComponent<PlayerStats>();
-            _release = b => _pool.Push(b);
+            _release = b =>
+            {
+                _pool.Push(b);
+                _active = Mathf.Max(0, _active - 1);
+            };
             _onHit = hit => EnemyHit?.Invoke(hit);
         }
 
@@ -89,6 +158,7 @@ namespace SurvivorSouls.Gameplay.Combat
         /// <summary>One frame of reload, aim and fire. Public so tests can step exact frame times.</summary>
         public void Tick(float dt)
         {
+            TickPending(dt);
             float before = _reload;
             // Capped above 1 only so a long wait cannot grow it without bound; the overshoot of one frame is what matters.
             _reload = Mathf.Min(before + dt / CurrentInterval, 2f);
@@ -130,11 +200,15 @@ namespace SurvivorSouls.Gameplay.Combat
             return best;
         }
 
-        /// <summary>Shoots one volley at <paramref name="target"/> now (no cooldown check). Public for tests and debug.</summary>
+        /// <summary>
+        /// Shoots one volley at <paramref name="target"/> now (no cooldown check): the first bolts leave at once, Double Shot
+        /// follow-ups after their delay (<see cref="Tick"/> launches them, from the muzzle where it is then, down the line
+        /// aimed now). Public for tests and debug.
+        /// </summary>
         public void Fire(Enemy target)
         {
             if (boltPrefab == null || target == null) return;
-            Vector3 from = muzzle != null ? muzzle.position : transform.position + Vector3.up * 1.1f;
+            Vector3 from = MuzzlePosition;
             Vector3 dir = (target.AimPoint - from).normalized;
             var shot = new BoltShot
             {
@@ -147,15 +221,59 @@ namespace SurvivorSouls.Gameplay.Combat
                 Ricochet = _stats != null ? _stats.ModifyInt(StatId.Ricochet, 0) : 0,
                 RicochetRange = ricochetRange,
             };
-            int count = 1 + (_stats != null ? _stats.ModifyInt(StatId.Multishot, 0) : 0);
+            int count = VolleyBuilder.Build(CurrentVolleySpec, _volley);
             for (int i = 0; i < count; i++)
             {
-                float yaw = (i - (count - 1) * 0.5f) * multishotSpread; // symmetric fan around the aim line
-                Vector3 d = yaw == 0f ? dir : Quaternion.AngleAxis(yaw, Vector3.up) * dir;
-                var bolt = _pool.Count > 0 ? _pool.Pop() : Instantiate(boltPrefab);
-                bolt.Launch(from, d, shot, _release, _onHit);
+                var a = _volley[i];
+                Vector3 d = a.Yaw == 0f ? dir : Quaternion.AngleAxis(a.Yaw, Vector3.up) * dir;
+                var scaled = shot;
+                scaled.Damage *= a.DamageScale;
+                if (a.Delay <= 0f)
+                {
+                    Launch(from, d, a.Lateral, scaled);
+                }
+                else if (_pendingCount < MaxPending)
+                {
+                    _pending[_pendingCount++] = new Pending
+                    {
+                        Time = a.Delay, Direction = d, Lateral = a.Lateral, Shot = scaled, Lead = a.Lead,
+                    };
+                }
             }
             Fired?.Invoke(from, dir);
         }
+
+        private Vector3 MuzzlePosition => muzzle != null ? muzzle.position : transform.position + Vector3.up * 1.1f;
+
+        /// <summary>Counts down the Double Shot queue and launches what is due (in fire order; swap-remove keeps it cheap).</summary>
+        private void TickPending(float dt)
+        {
+            if (_pendingCount == 0) return;
+            Vector3 from = MuzzlePosition;
+            for (int i = 0; i < _pendingCount; i++)
+            {
+                _pending[i].Time -= dt;
+                if (_pending[i].Time > 0f) continue;
+                var p = _pending[i];
+                Launch(from, p.Direction, p.Lateral, p.Shot);
+                if (p.Lead) FollowUpFired?.Invoke(from, p.Direction);
+                _pending[i] = _pending[--_pendingCount];
+                i--;
+            }
+        }
+
+        /// <summary>Drops queued Double Shot bolts (run reset, death).</summary>
+        public void CancelPending() => _pendingCount = 0;
+
+        private void Launch(Vector3 from, Vector3 dir, float lateral, in BoltShot shot)
+        {
+            if (_active >= maxActiveBolts) return; // over the budget: this bolt is skipped, the volley still counts
+            if (lateral != 0f) from += Vector3.Cross(Vector3.up, dir).normalized * lateral;
+            var bolt = _pool.Count > 0 ? _pool.Pop() : Instantiate(boltPrefab);
+            _active++;
+            bolt.Launch(from, dir, shot, _release, _onHit);
+        }
+
+        private void OnDisable() => CancelPending();
     }
 }

@@ -85,7 +85,7 @@ namespace SurvivorSouls.Editor.Skills
             return Min(core, inner, outer);
         }
 
-        /// <summary>Three arrows fanned from the bottom.</summary>
+        /// <summary>Three arrows fanned from the bottom (Spread Shot).</summary>
         public static float Multishot(Vector2 p)
         {
             Vector2 o = new Vector2(0f, -0.82f);
@@ -96,6 +96,22 @@ namespace SurvivorSouls.Editor.Skills
                 Vector2 dir = new Vector2(Mathf.Cos(a), Mathf.Sin(a)), n = new Vector2(-dir.y, dir.x);
                 Vector2 tip = o + dir * 1.66f, b = o + dir * 1.28f;
                 d = Min(d, Segment(p, o + dir * 0.2f, b, 0.055f), Triangle(p, tip, b + n * 0.17f, b - n * 0.17f));
+            }
+            return d;
+        }
+
+        /// <summary>Double Shot (KAN-83): two arrows on parallel lines, the second one a step behind.</summary>
+        public static float DoubleShot(Vector2 p)
+        {
+            float d = float.MaxValue;
+            foreach (var (x, lead) in new[] { (-0.26f, 0.22f), (0.26f, -0.12f) })
+            {
+                Vector2 tip = new Vector2(x, 0.68f + lead), b = new Vector2(x, 0.3f + lead);
+                float shaft = Segment(p, new Vector2(x, -0.86f + lead), b, 0.06f);
+                float head = Triangle(p, tip, b + new Vector2(0.19f, 0f), b - new Vector2(0.19f, 0f));
+                float f1 = Segment(p, new Vector2(x, -0.86f + lead), new Vector2(x - 0.16f, -0.64f + lead), 0.05f);
+                float f2 = Segment(p, new Vector2(x, -0.86f + lead), new Vector2(x + 0.16f, -0.64f + lead), 0.05f);
+                d = Min(d, shaft, head, f1, f2);
             }
             return d;
         }

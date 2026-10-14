@@ -60,6 +60,11 @@ namespace SurvivorSouls.Gameplay.Skills
         [SerializeField] private SkillEffect effectPrefab;
         [Tooltip("Offered as a new skill only while the player owns another skill that can still level up (chest skills, KAN-72).")]
         [SerializeField] private bool requiresUpgradableSkill;
+        [Tooltip("Repeat offers (KAN-83): level-up weight multiplier while owned. Element N-1 applies at owned level N (the " +
+                 "last element covers higher levels). Empty = 1 (no change). Owned skills below 1 are never pushed by pity or guarantees.")]
+        [SerializeField] private float[] repeatOfferWeights = new float[0];
+        [Tooltip("Chest upgrade screens (KAN-83): weight multiplier of this skill's card (1 = normal, 0.35 = rarely offered).")]
+        [SerializeField, Range(0.01f, 1f)] private float upgradeOfferWeight = 1f;
 
         public string Id => id;
         public string DisplayName => displayName;
@@ -72,6 +77,21 @@ namespace SurvivorSouls.Gameplay.Skills
         /// <summary>Offer gate (KAN-72): not offered as new until another owned skill can still level up.</summary>
         public bool RequiresUpgradableSkill => requiresUpgradableSkill;
         public SkillLevelData[] Levels => levels;
+        /// <summary>Chest upgrade card weight multiplier (KAN-83).</summary>
+        public float UpgradeOfferWeight => upgradeOfferWeight;
+
+        /// <summary>
+        /// Level-up weight multiplier at owned level <paramref name="ownedLevel"/> (KAN-83): 1 when not owned or without a
+        /// table, else the entry for that level (the last one covers higher levels).
+        /// </summary>
+        public float RepeatOfferWeight(int ownedLevel)
+        {
+            if (ownedLevel <= 0 || repeatOfferWeights == null || repeatOfferWeights.Length == 0) return 1f;
+            return Mathf.Max(0f, repeatOfferWeights[Mathf.Min(ownedLevel, repeatOfferWeights.Length) - 1]);
+        }
+
+        /// <summary>True when owning it lowers its repeat odds: pity and guarantees must not push it again.</summary>
+        public bool DampsRepeats(int ownedLevel) => RepeatOfferWeight(ownedLevel) < 1f;
         public bool HasLevelTable => levels != null && levels.Length > 0;
         /// <summary>Highest level: the table length, or the old max stack without a table.</summary>
         public int MaxLevel => HasLevelTable ? levels.Length : maxStack;
@@ -121,6 +141,14 @@ namespace SurvivorSouls.Gameplay.Skills
         public SkillDefinition SetRequiresUpgradableSkill(bool required)
         {
             requiresUpgradableSkill = required;
+            return this;
+        }
+
+        /// <summary>Code-side offer odds (asset builder, tests): see <see cref="RepeatOfferWeight"/> and <see cref="UpgradeOfferWeight"/>.</summary>
+        public SkillDefinition SetOfferWeights(float[] repeat, float upgrade = 1f)
+        {
+            repeatOfferWeights = repeat ?? new float[0];
+            upgradeOfferWeight = Mathf.Clamp(upgrade, 0.01f, 1f);
             return this;
         }
 

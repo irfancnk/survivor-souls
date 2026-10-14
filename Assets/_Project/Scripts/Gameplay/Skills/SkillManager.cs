@@ -18,6 +18,9 @@ namespace SurvivorSouls.Gameplay.Skills
     /// (<see cref="CanOffer"/>) left out, the
     /// level's guaranteed skill first, and the pity rule (KAN-37): after <see cref="SkillProgression.PityOffers"/> - 1 offers
     /// in a row without a Rare or better card, the next offer swaps its last Common card for a Rare+ one.
+    /// Repeat odds (KAN-83): an owned skill's weight is scaled by <see cref="SkillDefinition.RepeatOfferWeight"/>; a skill
+    /// whose repeats are damped (Double Shot) is never forced back by its guarantee or the pity rule, and chest screens scale
+    /// it by <see cref="SkillDefinition.UpgradeOfferWeight"/>.
     /// Run-only: fresh in Awake (a new run reloads the scene) and on <see cref="ResetRun"/>.
     /// </summary>
     public sealed class SkillManager : MonoBehaviour
@@ -329,6 +332,7 @@ namespace SurvivorSouls.Gameplay.Skills
                 if (CanOffer(s)) _candidates.Add(s);
 
             var guaranteed = progression.GuaranteedAt(level);
+            if (guaranteed != null && guaranteed.DampsRepeats(GetLevel(guaranteed))) guaranteed = null; // no forced repeat
             if (guaranteed != null && CanOffer(guaranteed))
             {
                 results.Add(guaranteed);
@@ -336,7 +340,8 @@ namespace SurvivorSouls.Gameplay.Skills
             }
 
             _weights.Clear();
-            foreach (var s in _candidates) _weights.Add(progression.RarityWeight(level, s.Rarity) * s.Weight);
+            foreach (var s in _candidates)
+                _weights.Add(progression.RarityWeight(level, s.Rarity) * s.Weight * s.RepeatOfferWeight(GetLevel(s)));
 
             while (results.Count < count && _candidates.Count > 0)
             {
@@ -401,7 +406,7 @@ namespace SurvivorSouls.Gameplay.Skills
                 if (o.Level >= o.Skill.MaxLevel) continue;
                 _candidates.Add(o.Skill);
                 _upgradeOffers.TryGetValue(o.Skill, out int shown);
-                _weights.Add(1f / (1f + shown));
+                _weights.Add(o.Skill.UpgradeOfferWeight / (1f + shown));
             }
             while (results.Count < count && _candidates.Count > 0)
             {
@@ -454,14 +459,14 @@ namespace SurvivorSouls.Gameplay.Skills
                     if (results[i] != guaranteed) { slot = i; break; }
                 float total = 0f;
                 for (int i = 0; i < _candidates.Count; i++)
-                    if (IsRarePlus(_candidates[i].Rarity) && _weights[i] > 0f) total += _weights[i];
+                    if (CanPityPick(i)) total += _weights[i];
                 if (slot >= 0 && total > 0f)
                 {
                     float r = (float)_rng.NextDouble() * total;
                     int pick = -1;
                     for (int i = 0; i < _candidates.Count; i++)
                     {
-                        if (!IsRarePlus(_candidates[i].Rarity) || _weights[i] <= 0f) continue;
+                        if (!CanPityPick(i)) continue;
                         pick = i;
                         r -= _weights[i];
                         if (r < 0f) break;
@@ -472,6 +477,13 @@ namespace SurvivorSouls.Gameplay.Skills
                 }
             }
             _dryOffers = hasRarePlus ? 0 : _dryOffers + 1;
+        }
+
+        /// <summary>Pity candidate: Rare+, weight above 0, and not an owned skill with damped repeats (KAN-83).</summary>
+        private bool CanPityPick(int i)
+        {
+            var s = _candidates[i];
+            return IsRarePlus(s.Rarity) && _weights[i] > 0f && !s.DampsRepeats(GetLevel(s));
         }
 
         /// <summary>

@@ -21,6 +21,8 @@ namespace SurvivorSouls.Editor.Skills
     /// KAN-75: a level slider per skill (<see cref="SkillManager.SetLevel(SkillDefinition, int)"/>: any level 0..max, 0 removes),
     /// chest buttons (drop Light / Rare, open the upgrade screen), drop statistics per Reliquary Hunter level, the power curve
     /// (<see cref="SkillPowerCurve"/>, also "Survivor Souls/Debug/Print Power Curve") and the last telemetry events.
+    /// KAN-83 volley menus: "Volley: Double Shot Level 0..3", "Volley: Spread Shot Level 0..3" (Play mode, set level),
+    /// "Volley: Print" (the live bolt list) and "Volley: Print Double Shot Stack Odds" (1000 runs, edit or Play mode).
     /// </summary>
     public sealed class SkillDebugWindow : EditorWindow
     {
@@ -52,6 +54,54 @@ namespace SurvivorSouls.Editor.Skills
         [MenuItem("Survivor Souls/Debug/Grant Random Skill", true)]
         [MenuItem("Survivor Souls/Debug/Level Up Now", true)]
         private static bool InPlayMode() => Application.isPlaying;
+
+        // ------------------------------------------------------------ Volley (KAN-83)
+
+        private const string DoubleShotId = "double_shot", SpreadShotId = "multishot";
+
+        [MenuItem("Survivor Souls/Debug/Volley: Double Shot Level 0")] private static void Double0() => SetVolleySkill(DoubleShotId, 0);
+        [MenuItem("Survivor Souls/Debug/Volley: Double Shot Level 1")] private static void Double1() => SetVolleySkill(DoubleShotId, 1);
+        [MenuItem("Survivor Souls/Debug/Volley: Double Shot Level 2")] private static void Double2() => SetVolleySkill(DoubleShotId, 2);
+        [MenuItem("Survivor Souls/Debug/Volley: Double Shot Level 3")] private static void Double3() => SetVolleySkill(DoubleShotId, 3);
+        [MenuItem("Survivor Souls/Debug/Volley: Spread Shot Level 0")] private static void Spread0() => SetVolleySkill(SpreadShotId, 0);
+        [MenuItem("Survivor Souls/Debug/Volley: Spread Shot Level 1")] private static void Spread1() => SetVolleySkill(SpreadShotId, 1);
+        [MenuItem("Survivor Souls/Debug/Volley: Spread Shot Level 2")] private static void Spread2() => SetVolleySkill(SpreadShotId, 2);
+        [MenuItem("Survivor Souls/Debug/Volley: Spread Shot Level 3")] private static void Spread3() => SetVolleySkill(SpreadShotId, 3);
+
+        [MenuItem("Survivor Souls/Debug/Volley: Double Shot Level 0", true)]
+        [MenuItem("Survivor Souls/Debug/Volley: Double Shot Level 1", true)]
+        [MenuItem("Survivor Souls/Debug/Volley: Double Shot Level 2", true)]
+        [MenuItem("Survivor Souls/Debug/Volley: Double Shot Level 3", true)]
+        [MenuItem("Survivor Souls/Debug/Volley: Spread Shot Level 0", true)]
+        [MenuItem("Survivor Souls/Debug/Volley: Spread Shot Level 1", true)]
+        [MenuItem("Survivor Souls/Debug/Volley: Spread Shot Level 2", true)]
+        [MenuItem("Survivor Souls/Debug/Volley: Spread Shot Level 3", true)]
+        [MenuItem("Survivor Souls/Debug/Volley: Print", true)]
+        private static bool VolleyInPlayMode() => Application.isPlaying;
+
+        /// <summary>Debug set level (0 removes) of a multi-arrow skill, then prints the volley it fires now.</summary>
+        private static void SetVolleySkill(string id, int level)
+        {
+            var manager = FindManager();
+            if (manager == null) return;
+            if (!manager.SetLevel(id, level)) { Debug.LogWarning($"[Skills] Cannot set {id} to level {level}"); return; }
+            PrintVolley();
+        }
+
+        [MenuItem("Survivor Souls/Debug/Volley: Print")]
+        private static void PrintVolley()
+        {
+            var shooter = FindAnyObjectByType<AutoShooter>();
+            Debug.Log(shooter != null ? "[Skills] " + shooter.DescribeVolley() : "[Skills] No AutoShooter in the open scene.");
+        }
+
+        [MenuItem("Survivor Souls/Debug/Volley: Print Double Shot Stack Odds")]
+        private static void PrintStackOdds()
+        {
+            var table = AssetDatabase.LoadAssetAtPath<SkillProgression>(SkillsBuilder.ProgressionPath);
+            if (table == null) { Debug.LogWarning($"[Skills] Missing {SkillsBuilder.ProgressionPath}"); return; }
+            Debug.Log("[Skills] " + SkillStackOdds.Simulate(table, DoubleShotId));
+        }
 
         [MenuItem("Survivor Souls/Debug/Print Skill Offer Odds")]
         private static void PrintOdds()
@@ -108,6 +158,7 @@ namespace SurvivorSouls.Editor.Skills
                 b.ShotsPerSecond = shooter.BaseShotsPerSecond;
                 b.CritChance = shooter.BaseCritChance;
                 b.CritMultiplier = shooter.BaseCritMultiplier;
+                b.SpreadDamage = shooter.BaseSpreadDamage;
             }
             if (health != null) b.MaxHealth = health.BaseMax;
             if (mover != null) b.MoveSpeed = mover.BaseSpeed;
@@ -162,6 +213,7 @@ namespace SurvivorSouls.Editor.Skills
                 if (GUILayout.Button("Level up now")) LevelUpNow();
                 if (GUILayout.Button("Grant random")) GrantRandom();
                 if (GUILayout.Button("Reset run skills")) manager.ResetRun();
+                if (GUILayout.Button("Print volley")) PrintVolley();
             }
             using (new EditorGUILayout.HorizontalScope())
             {

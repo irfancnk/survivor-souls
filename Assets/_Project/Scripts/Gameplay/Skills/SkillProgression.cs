@@ -100,6 +100,21 @@ namespace SurvivorSouls.Gameplay.Skills
             return null;
         }
 
+        /// <summary>True when any guarantee names <paramref name="skill"/>.</summary>
+        public bool HasGuarantee(SkillDefinition skill)
+        {
+            foreach (var g in guarantees)
+                if (g != null && g.skill == skill) return true;
+            return false;
+        }
+
+        /// <summary>Appends a guarantee (asset builder migrations).</summary>
+        public void AddGuarantee(int level, SkillDefinition skill)
+        {
+            var list = new List<Guarantee>(guarantees ?? new Guarantee[0]) { new Guarantee { level = level, skill = skill } };
+            guarantees = list.ToArray();
+        }
+
         /// <summary>Code-side setup (asset builder, tests).</summary>
         public void Configure(Tier[] tierTable, Guarantee[] guaranteeTable = null, int pity = 3)
         {

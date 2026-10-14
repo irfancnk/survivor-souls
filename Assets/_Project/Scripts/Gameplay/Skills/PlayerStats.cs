@@ -7,12 +7,14 @@ namespace SurvivorSouls.Gameplay.Skills
     /// <summary>
     /// Every number a skill can change (KAN-19). Each consumer owns the base value in its natural unit and asks
     /// <see cref="PlayerStats.Modify"/> for the final one: Damage (per bolt), AttackSpeed (shots per second),
-    /// MoveSpeed (m/s), MaxHealth (HP), CritChance (0..1), CritDamage (damage multiplier on a crit), Multishot / Pierce /
-    /// Ricochet (extra bolts / enemies), BurnDps (fire damage per second), LifeSteal (share of bolt damage healed),
+    /// MoveSpeed (m/s), MaxHealth (HP), CritChance (0..1), CritDamage (damage multiplier on a crit), Multishot (extra
+    /// angled bolts of Spread Shot, KAN-83: the main bolt always flies straight), Pierce / Ricochet (extra enemies), BurnDps (fire damage per second), LifeSteal (share of bolt damage healed),
     /// KillBurst (burst damage on kill, as a share of bolt damage), PickupRadius (m), BurnDuration (s, burn length;
     /// base from the burn effect), BurstRadius (m, soul burst reach; base from the burst effect), ChestChance /
     /// ChestEliteChance (0..1 Reliquary chest drop per normal / elite kill, KAN-72), ChestChoices (extra cards on a chest's
-    /// upgrade screen; base from the drop config), RareChestEvery (every Nth skill chest is Rare; 0 = never). Append new
+    /// upgrade screen; base from the drop config), RareChestEvery (every Nth skill chest is Rare; 0 = never), DoubleShot
+    /// (extra bolts fired one after another down the same line, KAN-83), SpreadDamage (damage share of each angled Spread
+    /// Shot bolt; base from the shooter), ChainDamage (damage share of each follow-up Double Shot bolt; base 1). Append new
     /// ids at the end: assets store them as numbers.
     /// </summary>
     public enum StatId
@@ -36,6 +38,9 @@ namespace SurvivorSouls.Gameplay.Skills
         ChestEliteChance,
         ChestChoices,
         RareChestEvery,
+        DoubleShot,
+        SpreadDamage,
+        ChainDamage,
     }
 
     /// <summary>Flat adds to the base value; Percent scales it (0.2 = +20 %). Percents from all sources add up.</summary>

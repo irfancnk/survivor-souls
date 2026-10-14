@@ -33,6 +33,8 @@ namespace SurvivorSouls.Dev
     /// (KAN-73) and the upgrade screen follows (cards: owned skills; force them with -ss-offer).
     /// <c>-ss-skills id,id,...</c> grants those skills (by SkillDefinition id, repeat an id to stack) after load;
     /// <c>id:N</c> puts that skill at level N (KAN-75 debug set level, 0 removes).
+    /// <c>-ss-volley</c> prints the live volley list (KAN-83: Spread Shot / Double Shot bolts after -ss-skills) and the Double
+    /// Shot stack odds (1000 simulated runs) to the log after load.
     /// <c>-ss-power-curve</c> prints the power curve (KAN-75: 200 simulated runs, levels 1-20, live base numbers) to the log after load.
     /// <c>-ss-upgrade id,id,...</c> chest-upgrades those owned skills (+1 each) 0.3 s before the capture: HUD slot glow + new pips (KAN-74).
     /// <c>-ss-offer id,id,id</c> makes the next level-up offer those cards (KAN-37 tier look; use with -ss-xp).
@@ -79,6 +81,7 @@ namespace SurvivorSouls.Dev
         private int _xp;
         private string _skills;
         private bool _powerCurve;
+        private bool _volley;
         private string _upgrade;
         private int _chests;
         private string _openChest;
@@ -127,6 +130,7 @@ namespace SurvivorSouls.Dev
             shot._souls = int.TryParse(GetArg("-ss-souls"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int n) ? n : 0;
             shot._skills = GetArg("-ss-skills");
             shot._powerCurve = Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-power-curve") >= 0;
+            shot._volley = Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-volley") >= 0;
             shot._upgrade = GetArg("-ss-upgrade");
             shot._chests = int.TryParse(GetArg("-ss-chests"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int ch) ? ch : 0;
             shot._offer = GetArg("-ss-offer");
@@ -187,6 +191,7 @@ namespace SurvivorSouls.Dev
             if (_hold > 0) StartCoroutine(HoldHorde(_hold));
             if (!string.IsNullOrEmpty(_skills)) GrantSkills(_skills);
             if (_powerCurve) PrintPowerCurve();
+            if (_volley) PrintVolley();
             if (_chests > 0) DropChests(_chests);
             if (!string.IsNullOrEmpty(_offer)) ForceOffer(_offer);
             if (!string.IsNullOrEmpty(_openChest)) DropChestUnderfoot(_openChest == "rare");
@@ -488,10 +493,21 @@ namespace SurvivorSouls.Dev
                 b.ShotsPerSecond = shooter.BaseShotsPerSecond;
                 b.CritChance = shooter.BaseCritChance;
                 b.CritMultiplier = shooter.BaseCritMultiplier;
+                b.SpreadDamage = shooter.BaseSpreadDamage;
             }
             var health = FindAnyObjectByType<SurvivorSouls.Gameplay.Player.PlayerHealth>();
             if (health != null) b.MaxHealth = health.BaseMax;
             Debug.Log("[DevScreenshot] " + SurvivorSouls.Gameplay.Skills.SkillPowerCurve.Simulate(manager.Progression, b));
+        }
+
+        /// <summary>-ss-volley: the bolts the Knight fires now and the Double Shot stack odds of the shipped table.</summary>
+        private static void PrintVolley()
+        {
+            var shooter = FindAnyObjectByType<AutoShooter>();
+            if (shooter != null) Debug.Log("[DevScreenshot] " + shooter.DescribeVolley());
+            var manager = FindAnyObjectByType<SurvivorSouls.Gameplay.Skills.SkillManager>();
+            if (manager != null && manager.Progression != null)
+                Debug.Log("[DevScreenshot] " + SurvivorSouls.Gameplay.Skills.SkillStackOdds.Simulate(manager.Progression, "double_shot"));
         }
 
         /// <summary>-ss-upgrade: +1 level on each owned skill listed (chest upgrade path, so the HUD glows).</summary>

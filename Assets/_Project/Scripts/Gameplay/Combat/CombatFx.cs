@@ -22,13 +22,21 @@ namespace SurvivorSouls.Gameplay.Combat
 
         private void OnEnable()
         {
-            if (shooter != null) shooter.Fired += OnFired;
+            if (shooter != null)
+            {
+                shooter.Fired += OnFired;
+                shooter.FollowUpFired += OnFired; // Double Shot follow-ups puff too (KAN-83)
+            }
             Bolt.Hit += OnHit;
         }
 
         private void OnDisable()
         {
-            if (shooter != null) shooter.Fired -= OnFired;
+            if (shooter != null)
+            {
+                shooter.Fired -= OnFired;
+                shooter.FollowUpFired -= OnFired;
+            }
             Bolt.Hit -= OnHit;
         }
 
