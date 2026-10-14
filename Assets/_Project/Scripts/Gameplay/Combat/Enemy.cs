@@ -152,8 +152,10 @@ namespace SurvivorSouls.Gameplay.Combat
         public bool IsHurt => _health < MaxHealth;
         public float HitRadius => hitRadius * _scale;
         public float Height => height * _scale;
-        /// <summary>This spawn's move speed (type speed x random spread).</summary>
-        public float MoveSpeed => moveSpeed * _speedMul;
+        /// <summary>This spawn's move speed (type speed x random spread x <see cref="SpeedBoost"/>).</summary>
+        public float MoveSpeed => moveSpeed * _speedMul * SpeedBoost;
+        /// <summary>Extra walk speed factor set by an attack pattern (KAN-61 boss phase 2). Reset to 1 on spawn.</summary>
+        public float SpeedBoost { get; set; } = 1f;
         /// <summary>This spawn's root scale (type scale x random spread).</summary>
         public float Scale => _scale;
         public float AnimRefSpeed => animRefSpeed;
@@ -199,6 +201,7 @@ namespace SurvivorSouls.Gameplay.Combat
             _steerAngle = 0f;
             _steerTimer = UnityEngine.Random.value * SteerInterval; // staggered: probes spread over the frames
             _speedMul = 1f + UnityEngine.Random.Range(-speedJitter, speedJitter);
+            SpeedBoost = 1f;
             _scale = bodyScale * (1f + UnityEngine.Random.Range(-scaleJitter, scaleJitter));
             _groundSpeed = MoveSpeed;
             _attacking = false;

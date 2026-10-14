@@ -99,6 +99,14 @@ namespace SurvivorSouls.Audio
         [SerializeField, Range(0.2f, 1.5f)] private float bossGroanPitch = 0.45f;
         [SerializeField, Range(0f, 1f)] private float slamVolume = 1f;
         [SerializeField, Range(0.2f, 1.5f)] private float slamPitch = 0.4f;
+        [Tooltip("Boss fan volley (KAN-61): the crossbow shot clip, pitched down.")]
+        [SerializeField, Range(0f, 1f)] private float fanVolume = 0.8f;
+        [SerializeField, Range(0.2f, 1.5f)] private float fanPitch = 0.55f;
+        [Tooltip("Fan bolt hits a pillar or the wall.")]
+        [SerializeField, Range(0f, 1f)] private float boltBlockVolume = 0.35f;
+        [SerializeField, Range(0.2f, 2f)] private float boltBlockPitch = 1.25f;
+        [Tooltip("Boss phase 2 roar: the groan, higher.")]
+        [SerializeField, Range(0.2f, 1.5f)] private float phaseRoarPitch = 0.6f;
         [SerializeField, Range(0f, 1f)] private float heartHealVolume = 0.7f;
         [Tooltip("Minimum seconds between two soul chimes (a pile absorbed in one frame gives one chime).")]
         [SerializeField, Min(0f)] private float soulInterval = 0.035f;
@@ -168,6 +176,10 @@ namespace SurvivorSouls.Audio
                 boss.Spawned += OnBossSpawned;
                 boss.Slammed += OnBossSlammed;
                 boss.Defeated += OnBossDefeated;
+                boss.PhaseChanged += OnBossPhase;
+                boss.FanFired += OnBossFan;
+                boss.Charged += OnBossCharged;
+                if (boss.Projectiles != null) boss.Projectiles.Blocked += OnBoltBlocked;
             }
             if (hearts != null) hearts.PickedUp += OnHeartPickedUp;
             GameSettings.Changed += ApplyVolumes;
@@ -211,6 +223,10 @@ namespace SurvivorSouls.Audio
                 boss.Spawned -= OnBossSpawned;
                 boss.Slammed -= OnBossSlammed;
                 boss.Defeated -= OnBossDefeated;
+                boss.PhaseChanged -= OnBossPhase;
+                boss.FanFired -= OnBossFan;
+                boss.Charged -= OnBossCharged;
+                if (boss.Projectiles != null) boss.Projectiles.Blocked -= OnBoltBlocked;
             }
             if (hearts != null) hearts.PickedUp -= OnHeartPickedUp;
             GameSettings.Changed -= ApplyVolumes;
@@ -302,6 +318,10 @@ namespace SurvivorSouls.Audio
 
         private void OnBossSpawned(Enemy body) => Play(deaths, bossGroanVolume, 0.02f, bossGroanPitch);
         private void OnBossSlammed(Vector3 centre, float dealt) => Play(impacts, slamVolume, 0.03f, slamPitch);
+        private void OnBossPhase(int phase) => Play(deaths, bossGroanVolume, 0.02f, phaseRoarPitch);
+        private void OnBossFan(Vector3 origin, int bolts) => Play(shots, fanVolume, 0.03f, fanPitch);
+        private void OnBossCharged(Vector3 end, float dealt) => Play(impacts, slamVolume, 0.03f, slamPitch * 1.15f);
+        private void OnBoltBlocked(Vector3 at) => Play(impacts, boltBlockVolume, 0.08f, boltBlockPitch);
         private void OnBossDefeated() => Play(deaths, bossGroanVolume, 0.02f, bossGroanPitch * 0.85f);
         private void OnHeartPickedUp(HealingHeart heart, float healed) => Play(heartHeals, heartHealVolume, 0.02f);
 

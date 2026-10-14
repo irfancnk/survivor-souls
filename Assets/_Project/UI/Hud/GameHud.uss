@@ -1031,6 +1031,31 @@
     border-color: rgba(255, 150, 120, 0.6);
 }
 
+/* Phase 2 (KAN-61): a dark-edged gold tick at the phase 2 share (BossHud sets left), lit once phase 2 starts; the bar
+   turns a hotter red ("enraged"). */
+.hud-boss__phase {
+    position: absolute;
+    top: 0; bottom: 0;
+    width: 6px;
+    margin-left: -3px;
+    background-color: rgba(236, 196, 104, 0.55);
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-color: rgba(0, 0, 0, 0.85);
+}
+
+.hud-boss__phase--lit {
+    background-color: rgb(255, 228, 150);
+}
+
+.hud-boss--enraged .hud-boss__fill {
+    background-color: rgb(212, 52, 20);
+}
+
+.hud-boss--enraged .hud-boss__track {
+    border-color: rgba(255, 160, 90, 0.85);
+}
+
 .hud-boss__title {
     margin: 4px 0 0 0;
     padding: 0;

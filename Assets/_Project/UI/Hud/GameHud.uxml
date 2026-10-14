@@ -40,6 +40,8 @@
             <ui:VisualElement class="hud-boss__track" picking-mode="Ignore">
                 <ui:VisualElement name="boss-trail" class="hud-boss__trail" picking-mode="Ignore" />
                 <ui:VisualElement name="boss-fill" class="hud-boss__fill" picking-mode="Ignore" />
+                <!-- Phase 2 mark (KAN-61): tick at the phase 2 health share, lights when phase 2 starts. -->
+                <ui:VisualElement name="boss-phase" class="hud-boss__phase" picking-mode="Ignore" />
             </ui:VisualElement>
             <ui:Label name="boss-title" text="" class="hud-boss__title" picking-mode="Ignore" />
         </ui:VisualElement>

@@ -49,6 +49,9 @@ namespace SurvivorSouls.Dev
     /// <c>-ss-boss &lt;0..1&gt;</c> (KAN-58, with <c>-ss-chamber 5</c>): once the boss has risen, sets its health to that share and
     /// stands the Knight 2.6 m in front of it, so the slam winds up about 1.5 s later (add -ss-immortal to survive it).
     /// 0 kills it and moves the Knight in front of the arena portal, which then opens (KAN-59).
+    /// <c>-ss-boss-attack fan|charge</c> (KAN-61, with <c>-ss-boss</c>): the Knight stands 8 m in front of the boss instead,
+    /// and the boss starts that attack at once (charge: below the phase 2 share, e.g. <c>-ss-boss 0.4</c>, for the look of
+    /// phase 2; the debug start works in phase 1 too).
     /// <c>-ss-hearts &lt;n&gt;</c> (KAN-60, boss Chamber): drops n healing hearts ahead of the Knight right after load (cap
     /// permitting); each shows its ground glow for 1 s, then floats.
     /// Main menu (KAN-20): <c>-ss-realms</c> opens the Realm selection page, <c>-ss-realm &lt;id&gt;</c> also opens that
@@ -87,6 +90,7 @@ namespace SurvivorSouls.Dev
         private string _best;
         private int _cleared;
         private string _boss;
+        private string _bossAttack;
         private int _hearts;
 
         private const float XpLead = 1.5f; // realtime seconds between the XP grant and the capture (cards fully in)
@@ -132,6 +136,7 @@ namespace SurvivorSouls.Dev
             shot._realms = shot._realmDetail > 0 || Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-realms") >= 0;
             shot._best = GetArg("-ss-best");
             shot._boss = GetArg("-ss-boss");
+            shot._bossAttack = GetArg("-ss-boss-attack");
             shot._hearts = int.TryParse(GetArg("-ss-hearts"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int hs) ? hs : 0;
             shot._cleared = int.TryParse(GetArg("-ss-cleared"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int cl) ? cl : 0;
 
@@ -184,7 +189,7 @@ namespace SurvivorSouls.Dev
                 else timer.SetRemaining(float.Parse(_timer, CultureInfo.InvariantCulture));
             }
 
-            if (!string.IsNullOrEmpty(_boss)) StartCoroutine(SetupBoss(float.Parse(_boss, CultureInfo.InvariantCulture)));
+            if (!string.IsNullOrEmpty(_boss)) StartCoroutine(SetupBoss(float.Parse(_boss, CultureInfo.InvariantCulture), _bossAttack));
             if (_hearts > 0) DropHearts(_hearts);
             if (_portal) EnterPortal();
             if (_soak > 0) yield return PortalSoak(_soak);
@@ -248,7 +253,7 @@ namespace SurvivorSouls.Dev
         }
 
         /// <summary>Waits for the boss to rise, sets its health share and puts the Knight in slam range in front of it.</summary>
-        private static IEnumerator SetupBoss(float health)
+        private static IEnumerator SetupBoss(float health, string attack)
         {
             var fight = SurvivorSouls.Gameplay.Boss.BossFight.Active;
             if (fight == null || fight.Current == SurvivorSouls.Gameplay.Boss.BossFight.Stage.Inactive)
@@ -268,8 +273,21 @@ namespace SurvivorSouls.Dev
             }
             if (boss.Health > target) boss.TakeDamage(boss.Health - target, Vector3.zero, DamageKind.Burst);
             var b = boss.transform;
-            Teleport(b.position + b.forward * 2.6f);
-            Debug.Log($"[DevScreenshot] Boss {fight.Data.DisplayName} hp={boss.Health:F0}/{boss.MaxHealth:F0} at {b.position}");
+            bool ranged = attack == "fan" || attack == "charge";
+            Teleport(b.position + b.forward * (ranged ? 8f : 2.6f));
+            Debug.Log($"[DevScreenshot] Boss {fight.Data.DisplayName} hp={boss.Health:F0}/{boss.MaxHealth:F0} phase={fight.Phase} at {b.position}");
+            if (!ranged) yield break;
+            var move = attack == "fan" ? SurvivorSouls.Gameplay.Boss.BossFight.Move.Fan : SurvivorSouls.Gameplay.Boss.BossFight.Move.Charge;
+            for (float t = 0f; t < 6f; t += Time.unscaledDeltaTime)
+            {
+                yield return null;
+                if (fight.ForceAttack(move))
+                {
+                    Debug.Log($"[DevScreenshot] Boss attack {move} started, wind-up {fight.WindUpTime:F2} s");
+                    yield break;
+                }
+            }
+            Debug.LogWarning($"[DevScreenshot] -ss-boss-attack: {move} did not start");
         }
 
         /// <summary>Starts the portal exit as if the Knight walked into the arch 1.5 m ahead (KAN-40).</summary>

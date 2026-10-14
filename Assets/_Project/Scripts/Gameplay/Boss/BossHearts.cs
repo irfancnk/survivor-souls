@@ -13,8 +13,8 @@ namespace SurvivorSouls.Gameplay.Boss
     /// while the Knight is hurt (stopped at full health) and drops a heart every <see cref="HeartRules.IntervalMin"/> ..
     /// <see cref="HeartRules.IntervalMax"/> s (random per drop). Under <see cref="HeartRules.LowHealthShare"/> it runs
     /// <see cref="HeartRules.LowHealthSpeed"/> times faster (low-HP help).</item>
-    /// <item><b>Phase drop</b>: <see cref="DropForPhase"/> drops one heart at once. Boss phases arrive with KAN-61, which
-    /// calls it on the phase change.</item>
+    /// <item><b>Phase drop</b>: <see cref="DropForPhase"/> drops one heart at once, on the boss's
+    /// <see cref="BossFight.PhaseChanged"/> (KAN-61, phase 2 at half health).</item>
     /// <item><b>Cap</b>: at most <see cref="HeartRules.MaxOnGround"/> hearts glow or float at once; a drop past the cap is
     /// skipped (the clock starts over). Unpicked hearts fade after <see cref="HeartRules.Lifetime"/>.</item>
     /// <item><b>Placement</b>: random walkable ground (<see cref="Enemy.Walkability"/>: inside the arena ring, off the
@@ -65,6 +65,7 @@ namespace SurvivorSouls.Gameplay.Boss
         private float _nextDelay;
         private Action<Enemy> _onSpawned;
         private Action _onDefeated;
+        private Action<int> _onPhase;
 
         public HeartRules Rules => rules;
         /// <summary>Hearts glowing or floating (count against the cap).</summary>
@@ -113,8 +114,10 @@ namespace SurvivorSouls.Gameplay.Boss
             if (fight == null) return;
             _onSpawned ??= body => Begin(body != null ? body.transform : null);
             _onDefeated ??= Stop;
+            _onPhase ??= phase => DropForPhase();
             fight.Spawned += _onSpawned;
             fight.Defeated += _onDefeated;
+            fight.PhaseChanged += _onPhase;
         }
 
         private void Unsubscribe()
@@ -122,6 +125,7 @@ namespace SurvivorSouls.Gameplay.Boss
             if (fight == null || _onSpawned == null) return;
             fight.Spawned -= _onSpawned;
             fight.Defeated -= _onDefeated;
+            fight.PhaseChanged -= _onPhase;
         }
 
         /// <summary>The boss stands: timed drops start (clock from zero). <paramref name="boss"/> keeps hearts away from it.</summary>
@@ -137,7 +141,7 @@ namespace SurvivorSouls.Gameplay.Boss
         /// <summary>The boss died: no more timed drops. Hearts already out stay until they are taken or fade.</summary>
         public void Stop() => Running = false;
 
-        /// <summary>Boss phase change (KAN-61 calls this): one heart at once, if the rules allow it and the cap has room.</summary>
+        /// <summary>Boss phase change (<see cref="BossFight.PhaseChanged"/>, KAN-61): one heart at once, if the rules allow it and the cap has room.</summary>
         public HealingHeart DropForPhase() => rules != null && rules.DropOnPhaseChange ? TryDrop(DropReason.Phase) : null;
 
         /// <summary>Debug menu and dev screenshots: a heart now, at <paramref name="at"/> or by the placement rules.</summary>

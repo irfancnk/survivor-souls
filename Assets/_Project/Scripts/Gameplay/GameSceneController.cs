@@ -32,6 +32,10 @@ namespace SurvivorSouls.Gameplay
         [SerializeField, Min(0f)] private float slamShake = 0.14f;
         [SerializeField, Min(0f)] private float slamHitShake = 0.3f;
         [SerializeField, Min(0f)] private float slamShakeTime = 0.35f;
+        [Header("Boss phase 2, charge, fan bolts (KAN-61)")]
+        [SerializeField, Min(0f)] private float phaseShake = 0.22f;
+        [SerializeField, Min(0f)] private float phaseShakeTime = 0.6f;
+        [SerializeField, Min(0f)] private float boltHitShake = 0.12f;
 
         private void Awake() => GameSettings.Apply();
 
@@ -39,7 +43,13 @@ namespace SurvivorSouls.Gameplay
         {
             if (player != null) player.OnDeath += OnPlayerDeath;
             if (timer != null) timer.Finished += OnPortalOpens;
-            if (boss != null) boss.Slammed += OnSlam;
+            if (boss != null)
+            {
+                boss.Slammed += OnSlam;
+                boss.Charged += OnSlam; // the dash ends like a slam: shake, + haptic when it hit
+                boss.PhaseChanged += OnBossPhase;
+                if (boss.Projectiles != null) boss.Projectiles.HitPlayer += OnBoltHit;
+            }
             if (hearts != null) hearts.PickedUp += OnHeartPickedUp;
         }
 
@@ -47,7 +57,13 @@ namespace SurvivorSouls.Gameplay
         {
             if (player != null) player.OnDeath -= OnPlayerDeath;
             if (timer != null) timer.Finished -= OnPortalOpens;
-            if (boss != null) boss.Slammed -= OnSlam;
+            if (boss != null)
+            {
+                boss.Slammed -= OnSlam;
+                boss.Charged -= OnSlam;
+                boss.PhaseChanged -= OnBossPhase;
+                if (boss.Projectiles != null) boss.Projectiles.HitPlayer -= OnBoltHit;
+            }
             if (hearts != null) hearts.PickedUp -= OnHeartPickedUp;
         }
 
@@ -63,6 +79,19 @@ namespace SurvivorSouls.Gameplay
         {
             if (dealt > 0f) Haptics.Light();
             if (followCamera != null) followCamera.Shake(dealt > 0f ? slamHitShake : slamShake, slamShakeTime);
+        }
+
+        private void OnBossPhase(int phase)
+        {
+            Haptics.Light();
+            if (followCamera != null) followCamera.Shake(phaseShake, phaseShakeTime);
+        }
+
+        private void OnBoltHit(UnityEngine.Vector3 at, float dealt)
+        {
+            if (dealt <= 0f) return;
+            Haptics.Light();
+            if (followCamera != null) followCamera.Shake(boltHitShake, slamShakeTime);
         }
 
         private void OnHeartPickedUp(HealingHeart heart, float healed) => Haptics.Light();
