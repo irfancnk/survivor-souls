@@ -2,6 +2,7 @@
     "name": "SurvivorSouls.Tests.EditMode",
     "rootNamespace": "SurvivorSouls.Tests",
     "references": [
+        "SurvivorSouls.Runtime",
         "SurvivorSouls.Editor",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
