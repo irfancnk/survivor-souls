@@ -62,6 +62,13 @@
         <ui:Label name="lbl-hint" text="Drag anywhere to move" class="hud-hint" picking-mode="Ignore" />
         <!-- Timer toasts: "5 MINUTES REMAIN", "THE PORTAL IS OPEN" (TimerHud). Opacity and scale set in code. -->
         <ui:Label name="chamber-toast" text="" class="chamber-toast hud-hidden" picking-mode="Ignore" />
+        <!-- Boss banner (BossBannerHud, KAN-62): dark band with the boss name during the intro, "GREAT FOE FELLED" after the
+             kill. Opacity and text scale set in code. -->
+        <ui:VisualElement name="boss-banner" class="boss-banner hud-hidden" picking-mode="Ignore">
+            <ui:Label name="boss-banner-text" text="" class="boss-banner__text" picking-mode="Ignore" />
+            <ui:VisualElement class="boss-banner__rule" picking-mode="Ignore" />
+            <ui:Label name="boss-banner-sub" text="" class="boss-banner__sub" picking-mode="Ignore" />
+        </ui:VisualElement>
     </ui:VisualElement>
 
     <!-- Small bar over the Knight, placed in code at a world point. -->

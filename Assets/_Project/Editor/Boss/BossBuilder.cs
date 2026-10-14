@@ -2,13 +2,17 @@ using SurvivorSouls.Editor.Combat;
 using SurvivorSouls.Editor.Procedural;
 using SurvivorSouls.Editor.World;
 using SurvivorSouls.Gameplay.Boss;
+using SurvivorSouls.Core;
 using SurvivorSouls.Gameplay.Chamber;
+using SurvivorSouls.Gameplay.Chests;
 using SurvivorSouls.Gameplay.Combat;
 using SurvivorSouls.Gameplay.Player;
 using SurvivorSouls.Gameplay.Progression;
+using SurvivorSouls.Gameplay.Skills;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.SceneManagement;
 
 namespace SurvivorSouls.Editor.Boss
 {
@@ -20,7 +24,9 @@ namespace SurvivorSouls.Editor.Boss
     /// (<see cref="BossHeartsBuilder"/>). KAN-61: the lane telegraph of the fan and the charge (<see cref="LineTelegraph"/>,
     /// 9 lanes of two flat quads) and the fan bolts (<see cref="BossProjectiles"/>, one script-driven particle system).
     /// Called by GameSceneBuilder.
-    /// Debug menus (Play mode): "Survivor Souls/Debug/Boss: Kill", "Boss: Half Health" (= phase 2), "Boss: Fan", "Boss: Charge".
+    /// KAN-62: <see cref="BossReward"/> (guaranteed Rare chest or skill pick after the victory beat) via <see cref="CreateReward"/>.
+    /// Debug menus (Play mode): "Survivor Souls/Debug/Boss: Kill", "Boss: Half Health" (= phase 2), "Boss: Health 25 %",
+    /// "Boss: Health 10 %", "Boss: Fan", "Boss: Charge", "Boss: Jump To Boss Chamber" (any Chamber; reloads the scene).
     /// </summary>
     public static class BossBuilder
     {
@@ -61,6 +67,20 @@ namespace SurvivorSouls.Editor.Boss
             so.ApplyModifiedPropertiesWithoutUndo();
             BossHeartsBuilder.Create(kit, root, fight, player); // healing hearts during the fight (KAN-60)
             return fight;
+        }
+
+        /// <summary>The guaranteed reward pick after the kill (KAN-62), on the "Boss" object.</summary>
+        public static BossReward CreateReward(BossFight fight, ChestDropper chests, SkillManager skills, LevelUpFlow flow, XpManager xp)
+        {
+            var reward = fight.gameObject.AddComponent<BossReward>();
+            var so = new SerializedObject(reward);
+            so.FindProperty("fight").objectReferenceValue = fight;
+            so.FindProperty("chests").objectReferenceValue = chests;
+            so.FindProperty("skills").objectReferenceValue = skills;
+            so.FindProperty("flow").objectReferenceValue = flow;
+            so.FindProperty("xp").objectReferenceValue = xp;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            return reward;
         }
 
         private static GroundTelegraph CreateTelegraph(GameArtKit kit, Transform parent)
@@ -289,11 +309,37 @@ namespace SurvivorSouls.Editor.Boss
         }
 
         [MenuItem("Survivor Souls/Debug/Boss: Half Health")]
-        private static void Half()
+        private static void Half() => SetHealth(0.5f);
+
+        [MenuItem("Survivor Souls/Debug/Boss: Health 25 %")]
+        private static void Quarter() => SetHealth(0.25f);
+
+        [MenuItem("Survivor Souls/Debug/Boss: Health 10 %")]
+        private static void Tenth() => SetHealth(0.1f);
+
+        /// <summary>Lowers the boss to <paramref name="share"/> of max health (as damage: phase 2 and the HUD react).</summary>
+        private static void SetHealth(float share)
         {
             var boss = BossFight.Active != null ? BossFight.Active.Boss : null;
-            if (boss != null && boss.Health > boss.MaxHealth * 0.5f) boss.TakeDamage(boss.Health - boss.MaxHealth * 0.5f, Vector3.zero);
+            if (boss != null && boss.Health > boss.MaxHealth * share) boss.TakeDamage(boss.Health - boss.MaxHealth * share, Vector3.zero);
         }
+
+        /// <summary>Reloads the Game scene as the next boss Chamber of this run (the first one after the last).</summary>
+        [MenuItem("Survivor Souls/Debug/Boss: Jump To Boss Chamber")]
+        private static void JumpToBoss()
+        {
+            var setup = Object.FindAnyObjectByType<ChamberSetup>();
+            var difficulty = setup != null ? setup.Difficulty : null;
+            int chamber = difficulty != null ? difficulty.NextBossChamber(RunState.Chamber) : 5;
+            RunState.JumpToChamber(chamber);
+            GamePause.Clear();
+            Time.timeScale = 1f;
+            SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+            Debug.Log($"[BossBuilder] Jump to boss Chamber {chamber}");
+        }
+
+        [MenuItem("Survivor Souls/Debug/Boss: Jump To Boss Chamber", true)]
+        private static bool InGameScene() => Application.isPlaying && Object.FindAnyObjectByType<ChamberSetup>() != null;
 
         [MenuItem("Survivor Souls/Debug/Boss: Fan")]
         private static void Fan() => BossFight.Active.ForceAttack(BossFight.Move.Fan);
@@ -303,6 +349,8 @@ namespace SurvivorSouls.Editor.Boss
 
         [MenuItem("Survivor Souls/Debug/Boss: Kill", true)]
         [MenuItem("Survivor Souls/Debug/Boss: Half Health", true)]
+        [MenuItem("Survivor Souls/Debug/Boss: Health 25 %", true)]
+        [MenuItem("Survivor Souls/Debug/Boss: Health 10 %", true)]
         [MenuItem("Survivor Souls/Debug/Boss: Fan", true)]
         [MenuItem("Survivor Souls/Debug/Boss: Charge", true)]
         private static bool BossAlive() =>

@@ -982,6 +982,73 @@
     margin: 0;
 }
 
+/* Boss banner (BossBannerHud, KAN-62). A dark smoky band across the lower middle: boss name in pale gold during the
+   intro, "GREAT FOE FELLED" in bright gold after the kill. Fade and the slow text swell are set in code. */
+.boss-banner {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 1060px;
+    padding: 34px 0 38px 0;
+    align-items: center;
+    background-color: rgba(6, 4, 4, 0.66);
+    border-top-width: 2px;
+    border-bottom-width: 2px;
+    border-color: rgba(232, 196, 120, 0.28);
+    opacity: 0;
+}
+
+.boss-banner__text {
+    font-size: 74px;
+    letter-spacing: 9px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    color: rgb(240, 222, 180);
+    -unity-text-outline-width: 3px;
+    -unity-text-outline-color: rgba(20, 8, 0, 0.92);
+    padding: 0;
+    margin: 0;
+}
+
+.boss-banner__rule {
+    width: 460px;
+    height: 3px;
+    margin: 12px 0 10px 0;
+    background-color: rgb(150, 30, 22);
+}
+
+.boss-banner__sub {
+    font-size: 34px;
+    letter-spacing: 6px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    color: var(--hud-ash);
+    -unity-text-outline-width: 2px;
+    -unity-text-outline-color: rgba(0, 0, 0, 0.85);
+    padding: 0;
+    margin: 0;
+}
+
+.boss-banner--victory {
+    border-color: rgba(232, 196, 120, 0.55);
+}
+
+.boss-banner--victory > .boss-banner__text {
+    font-size: 84px;
+    letter-spacing: 6px;
+    color: rgb(255, 214, 120);
+    -unity-text-outline-color: rgba(40, 18, 0, 0.95);
+}
+
+.boss-banner--victory > .boss-banner__rule {
+    background-color: var(--hud-gold);
+}
+
+.boss-banner--victory > .boss-banner__sub {
+    color: var(--hud-soul-glow);
+    -unity-text-outline-color: rgba(10, 30, 60, 0.95);
+}
+
 /* Boss health bar (BossHud, KAN-58). Wide crimson bar under the XP bar (the timer's place: boss Chambers have none).
    Name above in gold, title below in ash. Slides down and fades in when the boss rises (BossHud animates translate/opacity). */
 .hud-boss {

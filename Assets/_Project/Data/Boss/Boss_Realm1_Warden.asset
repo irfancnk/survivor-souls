@@ -19,6 +19,13 @@ MonoBehaviour:
   introDelay: 2
   spawnWarning: 1.2
   spawnDistance: 8
+  introTime: 2.4
+  introZoom: 1.35
+  victoryBeat: 1.8
+  victorySlowMo: 0.3
+  victorySlowMoTime: 0.8
+  rewardChoices: 3
+  rewardUpgrades: 2
   slamRange: 4
   slamReach: 1.6
   slamRadius: 3

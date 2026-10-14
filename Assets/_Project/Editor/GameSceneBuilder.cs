@@ -118,6 +118,8 @@ namespace SurvivorSouls.Editor
             SetRef(audio, "boss", boss); // boss groans + slam thud
             SetRef(audio, "hearts", hearts); // heal swell (KAN-60)
             SetRef(choice.gameObject.AddComponent<BossHud>(), "fight", boss); // boss bar in the timer's place
+            SetRef(choice.gameObject.AddComponent<BossBannerHud>(), "fight", boss); // name at the intro, "felled" at the kill (KAN-62)
+            BossBuilder.CreateReward(boss, chests, skills, progression.Flow, progression.Xp); // guaranteed reward pick (KAN-62)
 
             EditorSceneManager.SaveScene(scene, ScenePath);
             AddToBuild(ScenePath, index: 1);
