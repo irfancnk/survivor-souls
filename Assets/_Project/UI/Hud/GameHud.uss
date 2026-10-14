@@ -999,8 +999,8 @@
 }
 
 .boss-banner__text {
-    font-size: 74px;
-    letter-spacing: 9px;
+    font-size: 62px;
+    letter-spacing: 6px;
     -unity-font-style: bold;
     -unity-text-align: middle-center;
     color: rgb(240, 222, 180);
@@ -1034,8 +1034,8 @@
 }
 
 .boss-banner--victory > .boss-banner__text {
-    font-size: 84px;
-    letter-spacing: 6px;
+    font-size: 76px;
+    letter-spacing: 5px;
     color: rgb(255, 214, 120);
     -unity-text-outline-color: rgba(40, 18, 0, 0.95);
 }
