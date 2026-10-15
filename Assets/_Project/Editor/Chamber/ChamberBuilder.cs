@@ -149,10 +149,10 @@ namespace SurvivorSouls.Editor.Chamber
         }
 
         [MenuItem("Survivor Souls/Debug/Portal Timer To 10 s")]
-        private static void TimerTo10() => SurvivalTimer.Active?.SetRemaining(10f);
+        private static void TimerTo10() => SurvivorSouls.Dev.DevCheats.PortalTimerTo(10f); // KAN-87: shared with the touch panel
 
         [MenuItem("Survivor Souls/Debug/Open Portal Now")]
-        private static void OpenNow() => SurvivalTimer.Active?.Complete();
+        private static void OpenNow() => SurvivorSouls.Dev.DevCheats.OpenPortalNow();
 
         [MenuItem("Survivor Souls/Debug/Portal Timer To 10 s", true)]
         [MenuItem("Survivor Souls/Debug/Open Portal Now", true)]

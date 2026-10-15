@@ -901,11 +901,7 @@ namespace SurvivorSouls.Editor.Boss
         }
 
         [MenuItem("Survivor Souls/Debug/Boss: Kill")]
-        private static void Kill()
-        {
-            var boss = BossFight.Active != null ? BossFight.Active.Boss : null;
-            if (boss != null && boss.IsAlive) boss.TakeDamage(boss.Health + 1f, Vector3.zero);
-        }
+        private static void Kill() => SurvivorSouls.Dev.DevCheats.KillBoss(); // KAN-87: shared with the touch panel
 
         [MenuItem("Survivor Souls/Debug/Boss: Half Health")]
         private static void Half() => SetHealth(0.5f);
@@ -917,25 +913,11 @@ namespace SurvivorSouls.Editor.Boss
         private static void Tenth() => SetHealth(0.1f);
 
         /// <summary>Lowers the boss to <paramref name="share"/> of max health (as damage: phase 2 and the HUD react).</summary>
-        private static void SetHealth(float share)
-        {
-            var boss = BossFight.Active != null ? BossFight.Active.Boss : null;
-            if (boss != null && boss.Health > boss.MaxHealth * share) boss.TakeDamage(boss.Health - boss.MaxHealth * share, Vector3.zero);
-        }
+        private static void SetHealth(float share) => SurvivorSouls.Dev.DevCheats.SetBossHealth(share);
 
         /// <summary>Reloads the Game scene as the next boss Chamber of this run (the first one after the last).</summary>
         [MenuItem("Survivor Souls/Debug/Boss: Jump To Boss Chamber")]
-        private static void JumpToBoss()
-        {
-            var setup = Object.FindAnyObjectByType<ChamberSetup>();
-            var difficulty = setup != null ? setup.Difficulty : null;
-            int chamber = difficulty != null ? difficulty.NextBossChamber(RunState.Chamber) : 5;
-            RunState.JumpToChamber(chamber);
-            GamePause.Clear();
-            Time.timeScale = 1f;
-            SceneManager.LoadScene(SceneManager.GetActiveScene().name);
-            Debug.Log($"[BossBuilder] Jump to boss Chamber {chamber}");
-        }
+        private static void JumpToBoss() => SurvivorSouls.Dev.DevCheats.JumpToBossChamber(); // KAN-87: shared with the touch panel
 
         [MenuItem("Survivor Souls/Debug/Boss: Jump To Boss Chamber", true)]
         private static bool InGameScene() => Application.isPlaying && Object.FindAnyObjectByType<ChamberSetup>() != null;

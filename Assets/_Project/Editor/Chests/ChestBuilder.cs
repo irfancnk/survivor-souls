@@ -207,15 +207,7 @@ namespace SurvivorSouls.Editor.Chests
         private static void DropRare() => DropTier(ChestTier.Rare);
 
         /// <summary>A chest of <paramref name="tier"/> 2.5 m ahead of the Knight (KAN-75), counted as a skill chest.</summary>
-        public static ReliquaryChest DropTier(ChestTier tier)
-        {
-            var dropper = Object.FindAnyObjectByType<ChestDropper>();
-            var player = Object.FindAnyObjectByType<SurvivorSouls.Gameplay.Player.PlayerHealth>();
-            if (dropper == null || player == null) return null;
-            var chest = dropper.DropNow(player.transform.position + player.transform.forward * 2.5f, tier);
-            if (chest == null) Debug.Log("[Chests] Ground full (cap reached).");
-            return chest;
-        }
+        public static ReliquaryChest DropTier(ChestTier tier) => SurvivorSouls.Dev.DevCheats.DropChest(tier); // KAN-87: shared with the touch panel
 
         [MenuItem("Survivor Souls/Debug/Chest: Open Upgrade Screen")]
         private static void OpenUpgradeScreen()

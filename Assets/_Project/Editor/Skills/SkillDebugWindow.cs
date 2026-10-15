@@ -178,11 +178,7 @@ namespace SurvivorSouls.Editor.Skills
         }
 
         [MenuItem("Survivor Souls/Debug/Level Up Now")]
-        private static void LevelUpNow()
-        {
-            var xp = FindAnyObjectByType<XpManager>();
-            if (xp != null) xp.AddXp(xp.XpToNext - xp.Xp);
-        }
+        private static void LevelUpNow() => SurvivorSouls.Dev.DevCheats.LevelUpNow(); // KAN-87: shared with the touch panel
 
         private void OnEnable()
         {
