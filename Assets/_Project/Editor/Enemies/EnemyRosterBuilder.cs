@@ -285,7 +285,7 @@ namespace SurvivorSouls.Editor.Enemies
         }
 
         /// <summary>
-        /// Move (default, the walk clip), Attack (signature clip), Hit and Death (sped up to <see cref="HitPlayTime"/> /
+        /// Move (default, the walk clip), Attack (signature clip), Stand (walk clip frozen at its first frame), Hit and Death (sped up to <see cref="HitPlayTime"/> /
         /// <see cref="DeathPlayTime"/>), plus one state per clip under its own name (later attack patterns play them).
         /// Enemy cross-fades from code: no transitions, no parameters.
         /// </summary>
@@ -304,6 +304,7 @@ namespace SurvivorSouls.Editor.Enemies
             }
             machine.defaultState = Add("Move", clips[move]);
             Add("Attack", clips[spec.Attack]);
+            Add(Enemy.StandState, clips[move]).speed = 0f; // still pose: a boss recovers standing, not walking in place (KAN-162)
             if (clips.TryGetValue("Hit", out var hit)) Add("Hit", hit, HitPlayTime);
             Add("Death", clips["Death"], spec.Boss ? BossDeathPlayTime : DeathPlayTime);
             foreach (var pair in clips.Where(c => c.Key != "Hit" && c.Key != "Death" && c.Key != "Attack").OrderBy(c => c.Key))

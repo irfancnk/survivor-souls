@@ -596,5 +596,107 @@ namespace SurvivorSouls.Tests
             GamePause.Clear();
             Time.timeScale = 1f;
         }
+        /// <summary>
+        /// KAN-162: in the built Game scene the Butcher's legs stop when a dash ends: at the Charged event the body already
+        /// plays the Stand pose (open ground) or the Roar (crash stun), and the animator leaves the Charge run. Every attack of
+        /// its list recovers on Stand / Roar, never on its own move clip looping in place.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GameScene_Butcher_RecoversStanding_NotOnItsMoveClip()
+        {
+            TearDown(); // this test uses the real scene's objects
+
+            RunState.NewRun(TestRealm, 9003);
+            RunState.JumpToChamber(5);
+            SceneManager.LoadScene("Game");
+            yield return null;
+            yield return null;
+
+            var fight = BossFight.Active;
+            Assert.That(fight, Is.Not.Null);
+            float wait = fight.Data.IntroDelay + fight.Data.SpawnWarning + fight.Data.IntroTime + 6f;
+            while (fight.Current != BossFight.Stage.Fighting && wait > 0f)
+            {
+                wait -= Time.unscaledDeltaTime;
+                yield return null;
+            }
+            Assert.That(fight.Current, Is.EqualTo(BossFight.Stage.Fighting));
+            var knight = Object.FindAnyObjectByType<PlayerHealth>();
+            knight.Invulnerable = true;
+            // KAN-169: the Knight auto-shoots the minions and levels up; the level-up pause (time scale 0) froze the boss
+            // in its wind-up while this test counts unscaled time. No level-up or chest pick in this test.
+            var levelUp = Object.FindAnyObjectByType<LevelUpFlow>();
+            if (levelUp != null) levelUp.enabled = false;
+            GamePause.Clear();
+            var arena = BossArena.Active;
+            Assert.That(arena, Is.Not.Null);
+
+            int stand = Animator.StringToHash(Enemy.StandState), roar = Animator.StringToHash("Roar");
+            int charge = Animator.StringToHash("Charge");
+            int charged = 0, atEvent = 0;
+            fight.Charged += (end, dealt) =>
+            {
+                charged++;
+                atEvent = fight.Boss.AttackStateHash;
+            };
+
+            var attacks = fight.Attacks;
+            for (int i = 0; i < attacks.Length; i++)
+            {
+                int dir = 0;
+                float limit = 10f; // an automatic attack may be running: wait for the chase; a charge needs room
+                while (limit > 0f)
+                {
+                    if (fight.CurrentAttack == BossFight.Attack.Chase)
+                    {
+                        float angle = (dir++ % 8) * 45f;
+                        Vector3 d = Quaternion.Euler(0f, angle, 0f) * Vector3.forward;
+                        fight.Boss.transform.position = arena.Centre + d * 4f;
+                        knight.transform.position = arena.Centre - d * 4f;
+                        if (fight.ForceAttack(i)) break;
+                    }
+                    limit -= Time.unscaledDeltaTime;
+                    yield return null;
+                }
+                Assert.That(fight.CurrentAttackIndex, Is.EqualTo(i), $"{attacks[i]} began");
+                int before = charged;
+                limit = 12f;
+                while (fight.CurrentAttack != BossFight.Attack.Recover && limit > 0f)
+                {
+                    limit -= Time.unscaledDeltaTime;
+                    yield return null;
+                }
+                Assert.That(fight.CurrentAttack, Is.EqualTo(BossFight.Attack.Recover), $"{attacks[i]} recovers (paused {GamePause.IsPaused})");
+                int pose = fight.Boss.AttackStateHash;
+                bool crashed = attacks[i].type == BossFight.Move.Charge && fight.DashBlocked;
+                Assert.That(pose, Is.EqualTo(crashed ? roar : stand), $"{attacks[i]} recover pose (crash {crashed})");
+                if (attacks[i].type == BossFight.Move.Charge)
+                {
+                    Assert.That(charged, Is.GreaterThan(before), "Charged fired");
+                    Assert.That(atEvent, Is.Not.EqualTo(charge), "the run stops at the Charged event");
+                    Assert.That(atEvent, Is.EqualTo(crashed ? roar : stand));
+                }
+                yield return null; // the animator takes the cross-fade on its next update
+                var animator = fight.Boss.Animator;
+                int playing = animator.IsInTransition(0)
+                    ? animator.GetNextAnimatorStateInfo(0).shortNameHash
+                    : animator.GetCurrentAnimatorStateInfo(0).shortNameHash;
+                Assert.That(playing, Is.EqualTo(pose), $"{attacks[i]}: the animator goes to the recover pose");
+                limit = 12f;
+                while (fight.CurrentAttack != BossFight.Attack.Chase && limit > 0f)
+                {
+                    limit -= Time.unscaledDeltaTime;
+                    yield return null;
+                }
+                knight.Heal(1e6f);
+            }
+
+            fight.Boss.TakeDamage(fight.Boss.Health + 1f, Vector3.zero);
+            var empty = SceneManager.CreateScene("BossRecoverEmpty");
+            SceneManager.SetActiveScene(empty);
+            yield return SceneManager.UnloadSceneAsync("Game");
+            GamePause.Clear();
+            Time.timeScale = 1f;
+        }
     }
 }

@@ -349,13 +349,35 @@ namespace SurvivorSouls.Gameplay.Combat
                 hash = _defaultAttackHash;
                 if (!animator.HasState(0, hash)) return false;
             }
+            PlayActionState(hash);
+            return found;
+        }
+
+        /// <summary>
+        /// KAN-162: like <see cref="PlayAction"/>, but only when the controller has <paramref name="state"/> (no fallback to
+        /// the Attack state). A boss stands (<see cref="StandState"/>) or reels (Roar) while it recovers from an attack.
+        /// Returns false and changes nothing when the state is missing.
+        /// </summary>
+        public bool PlayPose(string state)
+        {
+            if (animator == null || !_synced || string.IsNullOrEmpty(state)) return false;
+            int hash = Animator.StringToHash(state);
+            if (!animator.HasState(0, hash)) return false;
+            PlayActionState(hash);
+            return true;
+        }
+
+        /// <summary>Still pose state (the walk clip at speed 0) that boss controllers carry for their recover (KAN-162).</summary>
+        public const string StandState = "Stand";
+
+        private void PlayActionState(int hash)
+        {
             _attackHash = hash;
             _hasAttack = true;
             _hitLeft = 0f;
             _attacking = true;
             _sinceSwitch = 0f;
             if (animator.isActiveAndEnabled) animator.CrossFadeInFixedTime(hash, AnimBlend, 0, 0f);
-            return found;
         }
 
         /// <summary>The attack state is the prefab's Attack state again (KAN-108).</summary>

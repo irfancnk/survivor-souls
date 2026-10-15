@@ -315,7 +315,7 @@ namespace SurvivorSouls.Editor.Combat
                     type.Runs ? runGait.Speed : shambleSpeed);
         }
 
-        /// <summary>Walk (default) + Attack. Enemy cross-fades between them from code: no transitions, no parameters.</summary>
+        /// <summary>Walk (default) + Attack + Stand (walk frozen, KAN-162). Enemy cross-fades between them from code: no transitions, no parameters.</summary>
         private static void BuildController(string path, AnimationClip walk, AnimationClip attack)
         {
             StableAssetWriter.Remember(path); // new fileIDs every rebuild: keep the old file when nothing changed (KAN-157)
@@ -326,6 +326,9 @@ namespace SurvivorSouls.Editor.Combat
             walkState.motion = walk;
             var attackState = machine.AddState("Attack");
             attackState.motion = attack;
+            var standState = machine.AddState(Enemy.StandState); // still pose: the Warden recovers standing (KAN-162)
+            standState.motion = walk;
+            standState.speed = 0f;
             machine.defaultState = walkState;
             EditorUtility.SetDirty(controller);
         }

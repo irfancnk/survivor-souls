@@ -15,7 +15,7 @@ In this project, "ticket" = a Jira issue in project **KAN**. The user often list
 | cloudId | `f42e9777-c58e-4cde-be15-667bf3390300` |
 | Project key | `KAN` (not SS) |
 | Assignee | user accountId `5b5579600d1f812c9a8c4ce2` |
-| Issue types | `Task` (default), `Subtask` (with `parent`), `Bug` only if the user says bug |
+| Issue types | `Task` (default), `Subtask` (with `parent`). KAN has **no `Bug` type**: for a bug use `Task`, summary `Bug: ...`, label `bug` |
 | Workflow | To Do (11) -> In Development (21) -> Deployed to Preprod (31) -> Deployed to Prod (41) -> Closed (51) |
 
 Use the Atlassian MCP tools: `searchJiraIssuesUsingJql`, `getJiraIssue` (view `evidence` for the description), `createJiraIssue`, `editJiraIssue`, `addOrEditJiraIssueComment`. Load them with ToolSearch first if they are deferred.
@@ -29,7 +29,7 @@ Use the Atlassian MCP tools: `searchJiraIssuesUsingJql`, `getJiraIssue` (view `e
    - Partial overlap: create the ticket and write the overlap in **Dependencies / related** so the implementer does not redo work.
 3. **Ground in the code.** Before writing, look at the real code and data the ticket touches (`Assets/_Project/Scripts`, `Assets/_Project/Data`, `STATE.md`). Name real classes, assets and current numbers ("skills have 3-6 levels today: Skill_DoubleShot has 3"). Say the root cause when it is visible (for example "the XP wisps are alpha-blended billboards, so they wash out on snow"). One quick search per ticket is enough; delegate to an Explore agent if many areas.
 4. **Write the ticket** with the template below. Use ASD-STE100 style: short sentences, active voice, one instruction per sentence. Use the game glossary.
-5. **Create** with `createJiraIssue`: `projectKey: "KAN"`, `issueType: "Task"`, `assignee` = user, `labels`, `priority`, markdown `description`. Create independent tickets in parallel.
+5. **Create** with `createJiraIssue`: `projectKey: "KAN"`, `issueType: "Task"`, `assignee` = user, `labels`, `priority`, markdown `description`. Create independent tickets in parallel. Tickets that name each other: create them first with "see sibling ticket" wording, then edit in the real keys (never guess the next key: other sessions create tickets too).
 6. **Report** a short table: key (as a link), summary, created / updated, priority, and one line on any decision you made for the user (open questions stay in the ticket).
 
 ## Ticket template
