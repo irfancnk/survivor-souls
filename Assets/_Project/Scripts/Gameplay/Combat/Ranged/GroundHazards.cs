@@ -4,8 +4,8 @@ using UnityEngine;
 
 namespace SurvivorSouls.Gameplay.Combat
 {
-    /// <summary>Look of a ground hazard (one particle system each). Later: toxic cloud (KAN-106).</summary>
-    public enum HazardKind { Fire, Acid }
+    /// <summary>Look of a ground hazard (one particle system each). Toxic: the Plague Bloater's cloud (KAN-106). New kinds go at the end.</summary>
+    public enum HazardKind { Fire, Acid, Toxic }
 
     /// <summary>One ground hazard: a circle that hurts (and maybe slows) the Knight while it stands inside.</summary>
     [Serializable]
@@ -24,7 +24,7 @@ namespace SurvivorSouls.Gameplay.Combat
     }
 
     /// <summary>
-    /// Ground hazards of enemy shots (KAN-105): burning patches of fire pots, acid puddles of bile globs, later toxic clouds.
+    /// Ground hazards of enemy shots (KAN-105): burning patches of fire pots, acid puddles of bile globs, toxic clouds of burst Plague Bloaters (KAN-106).
     /// No GameObject per hazard: a struct array (fixed capacity, swap-remove), drawn as flat ground billboards of ONE particle
     /// system per <see cref="HazardKind"/> (<see cref="ParticleSystem.SetParticles(ParticleSystem.Particle[], int)"/>), so
     /// any count costs one draw call per kind and no allocation.

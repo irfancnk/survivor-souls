@@ -8,6 +8,7 @@ namespace SurvivorSouls.Gameplay.Boss
     /// The hit flashes the disc bright, then it fades. Two flat quads (alpha blend, dark red reads on snow and rock),
     /// colour through one MaterialPropertyBlock, no allocation per frame. One per boss; reused for every attack.
     /// KAN-121: <see cref="ShowWave"/> shows the ring alone, bright, as a moving shockwave front (no disc).
+    /// KAN-106: <see cref="Tint"/> recolours one warning until it hides (pooled warnings go back to red).
     /// </summary>
     public sealed class GroundTelegraph : MonoBehaviour
     {
@@ -26,6 +27,7 @@ namespace SurvivorSouls.Gameplay.Boss
         [SerializeField, Min(0f)] private float lift = 0.05f;
 
         private MaterialPropertyBlock _mpb;
+        private Color _ring, _fill, _flashC; // colours in use: the serialized ones unless Tint set others (reset on Hide)
         private float _radius = 1f;
         private float _flash = -1f;
 
@@ -76,7 +78,7 @@ namespace SurvivorSouls.Gameplay.Boss
             _flash = -1f;
             IsShowing = true;
             Progress = 1f;
-            var c = flashColor;
+            var c = _flashC;
             c.a = Mathf.Lerp(1f, 0.35f, Mathf.Clamp01(fade));
             Paint(ring, c);
         }
@@ -96,10 +98,10 @@ namespace SurvivorSouls.Gameplay.Boss
             float eased = 1f - (1f - Progress) * (1f - Progress);
             if (fill != null) fill.transform.localScale = Vector3.one * (Mathf.Max(0.02f, eased) * _radius * 2f);
             float pulse = 0.75f + 0.25f * Mathf.Sin(Time.time * Mathf.Lerp(8f, 26f, Progress));
-            var r = ringColor;
+            var r = _ring;
             r.a *= pulse;
             Paint(ring, r);
-            var f = fillColor;
+            var f = _fill;
             f.a *= Mathf.Lerp(0.55f, 1f, Progress);
             Paint(fill, f);
         }
@@ -113,9 +115,23 @@ namespace SurvivorSouls.Gameplay.Boss
             if (fill != null) fill.transform.localScale = Vector3.one * (_radius * 2f);
         }
 
+        /// <summary>
+        /// KAN-106: other colours for this warning until it hides (the Plague Bloater's circle is toxic green). Call after
+        /// <see cref="Show"/>; <see cref="Hide"/> (also the end of the hit flash) goes back to the serialized red.
+        /// </summary>
+        public void Tint(Color ringTint, Color fillTint, Color flashTint)
+        {
+            _ring = ringTint;
+            _fill = fillTint;
+            _flashC = flashTint;
+        }
+
         /// <summary>Hides at once (attack cancelled, boss died).</summary>
         public void Hide()
         {
+            _ring = ringColor;
+            _fill = fillColor;
+            _flashC = flashColor;
             IsShowing = false;
             _flash = -1f;
             Progress = 0f;
@@ -130,9 +146,9 @@ namespace SurvivorSouls.Gameplay.Boss
             if (_flash < 0f) return;
             _flash += dt;
             float k = Mathf.Clamp01(_flash / flashTime);
-            var f = Color.Lerp(flashColor, new Color(flashColor.r, flashColor.g, flashColor.b, 0f), k);
+            var f = Color.Lerp(_flashC, new Color(_flashC.r, _flashC.g, _flashC.b, 0f), k);
             Paint(fill, f);
-            var r = ringColor;
+            var r = _ring;
             r.a *= 1f - k;
             Paint(ring, r);
             if (k >= 1f) Hide();

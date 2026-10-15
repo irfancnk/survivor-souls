@@ -408,6 +408,18 @@ namespace SurvivorSouls.Gameplay.Combat
             _burnLeft = Mathf.Max(_burnLeft, duration);
         }
 
+        /// <summary>
+        /// Dies by its own attack (KAN-106 Plague Bloater burst): plays the death and sinks like a kill, but raises no
+        /// <see cref="Damaged"/> event, so it drops no soul wisp and counts as no kill (the Knight did not kill it).
+        /// </summary>
+        public void Expire()
+        {
+            if (!IsAlive) return;
+            _health = 0f;
+            _burnLeft = 0f;
+            BeginDeath();
+        }
+
         /// <summary>Short Hit state on a direct hit, unless attacking, already flinching or flinched within <see cref="HitCooldown"/>.</summary>
         private void Flinch()
         {
