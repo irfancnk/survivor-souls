@@ -517,6 +517,7 @@
   - Clips: hand-keyed IK `Shoot` (1.0 s loop, release frame 19 = 0.63 s, string to the jaw, follow-through) replaces the Meshy Archery Shot; new `Idle` (2 s, bow upright). Meshy Walking / Running got rest keys for the new bones.
   - Checked with EEVEE renders (every clip, face close-ups, 55 deg game camera) and the Bestiary viewer v5. Details: `Docs/ENEMY_ROSTER.md` section 7.
   - Blender MCP add-on is not installed in Blender 5.2 (Blender Lab extensions repo); all work ran headless via CLI.
+  - Polish after the user's Legolas reference: side-on stance (hips / feet 82 deg off the shot line, chest 46 deg, head to the target), bow canted 18 deg, right hand curled into a fist in the mesh (no finger bones), old grip / arrow flakes cut from the bow hand. Release frame unchanged (19 = 0.63 s). Shoot rotates the hips inside the clip, so Idle / Run -> Shoot blends turn the body ~80 deg (expected).
 
 ## DECISIONS
 - Design language: Archero / Archero 2 (menus, loop, chests, daily/weekly quests, gear merge, talents, energy). Look: Dark Souls, realistic, not dismal. User decision 2026-10-11.
