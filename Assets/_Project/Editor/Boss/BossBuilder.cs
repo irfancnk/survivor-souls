@@ -411,9 +411,9 @@ namespace SurvivorSouls.Editor.Boss
         }
 
         /// <summary>
-        /// The Pyre Lord (KAN-109, Docs/ENEMY_ROSTER.md 3.13): 4.5 m roster body with baked lava glow, 9000 HP (Chamber 1
-        /// terms), a fire caster that keeps its distance. Phase 1: fireball fan (7 bolts over 70 deg) at range, fire nova (ring
-        /// of 16 with two gaps of two bolts) at mid range, flame slam up close (circle r 4 m round the body, leaves a burning
+        /// The Pyre Lord (KAN-109, Docs/ENEMY_ROSTER.md 3.13): 4.5 m roster body with baked lava glow, 8000 HP (Chamber 1
+        /// terms; doc 9000, but then a no-pick Knight needs over 4 min), a fire caster. Phase 1: fireball fan (7 bolts over
+        /// 70 deg) at range, fire nova (ring of 16 with two gaps of two bolts) at mid range, flame slam up close (circle r 4 m round the body, leaves a burning
         /// patch r 2.2 m for 3 s). Phase 2 (50 %): roar, then the fire spiral (2 arms, 3 s) and the meteor rain (6 circles,
         /// each leaves a small burning patch) join. Never overwritten: edit the asset.
         /// </summary>
@@ -457,8 +457,8 @@ namespace SurvivorSouls.Editor.Boss
                 return data;
             }
             EditorAssetUtil.EnsureFolder(DataDir);
-            // 9000 HP x Chamber 5 health (x1.6): a 10-pick Knight kills it in ~90 s (BossIntroTests balance check).
-            data = BossData.CreateWithAttacks(body, PyreLordAttacks(), health: 9000f, firstAttackDelay: 1.5f, introTime: 2.4f,
+            // 8000 HP x Chamber 5 health (x1.6): a 10-pick Knight kills it in ~73 s, no picks ~233 s (BossIntroTests balance check).
+            data = BossData.CreateWithAttacks(body, PyreLordAttacks(), health: 8000f, firstAttackDelay: 1.5f, introTime: 2.4f,
                 victoryBeat: 1.8f, roarClip: "Roar", phaseRoar: 1.2f, displayName: "THE PYRE LORD",
                 title: "Ember King of the Cinder Throne");
             AssetDatabase.CreateAsset(data, PyreLordDataPath);

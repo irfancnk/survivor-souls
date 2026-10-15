@@ -274,7 +274,8 @@ namespace SurvivorSouls.Editor.Enemies
             mat.SetColor("_EmissionColor", emission != null ? Color.white : Color.black);
             if (emission != null) mat.EnableKeyword("_EMISSION");
             else mat.DisableKeyword("_EMISSION");
-            mat.globalIlluminationFlags = emission != null ? MaterialGlobalIlluminationFlags.None : MaterialGlobalIlluminationFlags.EmissiveIsBlack;
+            // URP keeps _EMISSION only with an emissive GI flag (BaseShaderGUI: AnyEmissive); realtime = no bake cost (KAN-109).
+            mat.globalIlluminationFlags = emission != null ? MaterialGlobalIlluminationFlags.RealtimeEmissive : MaterialGlobalIlluminationFlags.EmissiveIsBlack;
             EditorUtility.SetDirty(mat);
             return mat;
         }

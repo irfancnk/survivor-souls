@@ -15,7 +15,7 @@ MonoBehaviour:
   displayName: THE PYRE LORD
   title: Ember King of the Cinder Throne
   prefab: {fileID: 6352928714259553214, guid: ea7895df042844377803699b786f6bf7, type: 3}
-  maxHealth: 9000
+  maxHealth: 8000
   introDelay: 2
   spawnWarning: 1.2
   spawnDistance: 8
