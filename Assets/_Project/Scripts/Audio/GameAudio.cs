@@ -186,6 +186,8 @@ namespace SurvivorSouls.Audio
                 boss.PhaseChanged += OnBossPhase;
                 boss.FanFired += OnBossFan;
                 boss.Charged += OnBossCharged;
+                boss.LaneStruck += OnBossLane;
+                boss.SpinHit += OnBossSpinHit;
                 if (boss.Projectiles != null) boss.Projectiles.Blocked += OnBoltBlocked;
             }
             if (hearts != null) hearts.PickedUp += OnHeartPickedUp;
@@ -237,6 +239,8 @@ namespace SurvivorSouls.Audio
                 boss.PhaseChanged -= OnBossPhase;
                 boss.FanFired -= OnBossFan;
                 boss.Charged -= OnBossCharged;
+                boss.LaneStruck -= OnBossLane;
+                boss.SpinHit -= OnBossSpinHit;
                 if (boss.Projectiles != null) boss.Projectiles.Blocked -= OnBoltBlocked;
             }
             if (hearts != null) hearts.PickedUp -= OnHeartPickedUp;
@@ -334,6 +338,8 @@ namespace SurvivorSouls.Audio
         private void OnBossPhase(int phase) => Play(deaths, bossGroanVolume, 0.02f, phaseRoarPitch);
         private void OnBossFan(Vector3 origin, int bolts) => Play(shots, fanVolume, 0.03f, fanPitch);
         private void OnBossCharged(Vector3 end, float dealt) => Play(impacts, slamVolume, 0.03f, slamPitch * 1.15f);
+        private void OnBossLane(Vector3 mid, float dealt) => Play(impacts, slamVolume, 0.03f, slamPitch * 1.08f);
+        private void OnBossSpinHit(Vector3 at, float dealt) => Play(impacts, slamVolume * 0.6f, 0.05f, slamPitch * 1.3f);
         private void OnBoltBlocked(Vector3 at) => Play(impacts, boltBlockVolume, 0.08f, boltBlockPitch);
         private void OnBossDefeated() => Play(deaths, bossGroanVolume, 0.02f, bossGroanPitch * 0.85f);
         private void OnHeartPickedUp(HealingHeart heart, float healed) => Play(heartHeals, heartHealVolume, 0.02f);

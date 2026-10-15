@@ -40,6 +40,12 @@ namespace SurvivorSouls.Gameplay.Boss
     /// guaranteed reward (<see cref="BossReward"/>).</item>
     /// </list>
     /// Everything runs on scaled time, so level-up cards and the Chamber fade-in pause it. On the "Boss" object (BossBuilder).
+    /// KAN-108: the attacks come from <see cref="BossData.Attacks"/> (<see cref="BossAttack"/> entries per phase; the Warden's
+    /// list is built from its old fields, so it plays as above). New types: <b>Lane</b> (cleaver chop, chain hook that drags
+    /// the Knight in), <b>Spin</b> (a damage circle that follows the Knight), multi-dash <b>Charge</b> with a stun when a dash
+    /// hits a pillar or the wall. Each attack plays its own animator state (<see cref="BossAttack.clip"/>); the intro and the
+    /// phase 2 roar play <see cref="BossData.RoarClip"/>. Which boss a boss Chamber gets: <see cref="bosses"/> (the first boss
+    /// Chamber of the Realm the first entry, the next the second, round), else <see cref="data"/>.
     /// </summary>
     public sealed class BossFight : MonoBehaviour
     {
@@ -61,6 +67,8 @@ namespace SurvivorSouls.Gameplay.Boss
             Recover = 2,
             /// <summary>The charge dash is moving the boss.</summary>
             Dashing = 3,
+            /// <summary>KAN-108: the spin circle is live and follows the Knight.</summary>
+            Spinning = 4,
         }
 
         /// <summary>The boss's attack patterns (KAN-22).</summary>
@@ -69,6 +77,10 @@ namespace SurvivorSouls.Gameplay.Boss
             Slam = 0,
             Fan = 1,
             Charge = 2,
+            /// <summary>KAN-108: a straight rectangle from the boss (cleaver chop; with pull, the chain hook).</summary>
+            Lane = 3,
+            /// <summary>KAN-108: a damage circle around the boss that follows the Knight for a while.</summary>
+            Spin = 4,
         }
 
         private const float SpawnClearRadius = 1.4f; // free ground the boss body needs
@@ -78,8 +90,17 @@ namespace SurvivorSouls.Gameplay.Boss
         private const float MinChargeLength = 2f;
         private const float BoltClearRadius = 0.15f; // = the bolt's block test
         private const float BoltProbeStep = 0.25f;
+        private const float LaneClearRadius = 0.3f; // a cleaver / chain: thin; pillars cut it
+        private const float LaneProbeStep = 0.25f;
+        private const float PullSpeed = 18f;        // m/s the hook drags the Knight
+        private const float PullGap = 0.8f;         // the hook stops this far outside the boss body
+        private const float RedashPause = 0.25f;    // multi-charge: seconds between a dash end and the next warning
+        private const float RoarCooldown = 0.3f;    // chase after the phase 2 roar before the next attack
+        private const int NeverUsed = 1000;         // "attacks since last use" of an attack never used yet
 
         [SerializeField] private BossData data;
+        [Tooltip("KAN-108: bosses of this Realm's boss Chambers in order (round). Empty = data above.")]
+        [SerializeField] private BossData[] bosses = new BossData[0];
         [Tooltip("Rules for boss Chambers: OpenCondition KillBoss (no clock).")]
         [SerializeField] private ChamberRules bossRules;
         [SerializeField] private SurvivalTimer timer;
@@ -103,7 +124,17 @@ namespace SurvivorSouls.Gameplay.Boss
         private Vector3 _attackOrigin, _attackDir;
         private float _dashLeft, _dashDealt;
         private bool _dashHit;
-        private Move _lastRanged = Move.Slam;
+        private BossAttack[] _attacks = new BossAttack[0];
+        private int[] _lastUsed = new int[0];
+        private int _picks;
+        private int _index = -1;          // the attack being warned / struck / recovered from
+        private BossAttack _attack;
+        private float _pendingCooldown;   // chase time after the current recovery
+        private int _dashesLeft;
+        private bool _dashBlocked;
+        private float _spinLeft, _spinHitWait, _spinDealt;
+        private float _pullLeft;
+        private Vector3 _pullDir;
         private readonly Vector3[] _fanDirs = new Vector3[LineTelegraph.MaxLanes];
         private PlayerMover _mover;
         private bool _knightHeld;
@@ -136,8 +167,28 @@ namespace SurvivorSouls.Gameplay.Boss
         public event Action<Vector3, Vector3, float> ChargeWarned;
         /// <summary>A charge dash ended: where the boss stopped, damage dealt to the Knight (0 = dodged).</summary>
         public event Action<Vector3, float> Charged;
+        /// <summary>KAN-108: a lane attack winds up: start, direction, length (after pillars), width.</summary>
+        public event Action<Vector3, Vector3, float, float> LaneWarned;
+        /// <summary>KAN-108: a lane attack struck: middle of the lane, damage dealt (0 = dodged).</summary>
+        public event Action<Vector3, float> LaneStruck;
+        /// <summary>KAN-108: the spin circle hit the Knight: where, damage dealt.</summary>
+        public event Action<Vector3, float> SpinHit;
+        /// <summary>KAN-108: an attack starts its wind-up (index into <see cref="Attacks"/>).</summary>
+        public event Action<int> AttackStarted;
 
         public BossData Data => data;
+        /// <summary>The attack list of the fight (KAN-108).</summary>
+        public BossAttack[] Attacks => _attacks;
+        /// <summary>Index of the attack being warned / struck / recovered from (-1 before the first).</summary>
+        public int CurrentAttackIndex => _index;
+        /// <summary>The attack being warned / struck / recovered from.</summary>
+        public BossAttack CurrentEntry => _attack;
+        /// <summary>Dashes left after the current one (multi-charge).</summary>
+        public int DashesLeft => _dashesLeft;
+        /// <summary>The last dash hit a pillar or the wall (the boss is stunned in its recovery).</summary>
+        public bool DashBlocked => _dashBlocked;
+        /// <summary>Seconds of the current recovery (stun included).</summary>
+        public float RecoverTime => _recover;
         public Stage Current { get; private set; } = Stage.Inactive;
         public Attack CurrentAttack { get; private set; } = Attack.Chase;
         /// <summary>The attack being warned / struck / recovered from (meaningless while chasing).</summary>
@@ -163,9 +214,10 @@ namespace SurvivorSouls.Gameplay.Boss
         /// <summary>Tests: wiring without the scene builder.</summary>
         public void Setup(BossData bossData, ChamberRules rules, SurvivalTimer survivalTimer, EnemySpawner enemySpawner,
             PlayerHealth playerHealth, SoulWispField soulField, GroundTelegraph groundTelegraph,
-            LineTelegraph laneTelegraph = null, BossProjectiles bolts = null)
+            LineTelegraph laneTelegraph = null, BossProjectiles bolts = null, BossData[] roster = null)
         {
             data = bossData;
+            bosses = roster ?? new BossData[0];
             bossRules = rules;
             timer = survivalTimer;
             spawner = enemySpawner;
@@ -194,7 +246,16 @@ namespace SurvivorSouls.Gameplay.Boss
         /// <summary>Starts the fight when <paramref name="plan"/> is a boss Chamber; otherwise stays inactive. Public for tests.</summary>
         public bool Begin(in ChamberPlan plan)
         {
-            if (plan.Type != ChamberType.Boss || data == null || data.Prefab == null || Current != Stage.Inactive) return false;
+            if (plan.Type != ChamberType.Boss || Current != Stage.Inactive) return false;
+            var pick = BossFor(plan.Chamber);
+            if (pick != null) data = pick;
+            if (data == null || data.Prefab == null) return false;
+            _attacks = data.Attacks;
+            _lastUsed = new int[_attacks.Length];
+            for (int i = 0; i < _lastUsed.Length; i++) _lastUsed[i] = -NeverUsed;
+            _failed = new int[_attacks.Length];
+            _picks = 0;
+            _index = -1;
             if (timer != null && bossRules != null) timer.UseRules(bossRules);
             if (spawner != null)
                 spawner.SetDifficulty(plan.CapMultiplier * data.HordeCap, plan.IntervalMultiplier * data.HordeInterval, plan.HealthMultiplier);
@@ -206,6 +267,25 @@ namespace SurvivorSouls.Gameplay.Boss
             SetStage(Stage.Waiting);
             return true;
         }
+
+        /// <summary>
+        /// Boss of boss Chamber <paramref name="chamber"/>: the n-th boss Chamber of the Realm (from the difficulty asset, else
+        /// every 5th) gets <see cref="bosses"/>[n mod count]. Null = no list (keep <see cref="data"/>).
+        /// </summary>
+        public BossData BossFor(int chamber)
+        {
+            if (bosses == null || bosses.Length == 0) return null;
+            var setup = FindAnyObjectByType<ChamberSetup>(); // once per boss Chamber
+            var difficulty = setup != null ? setup.Difficulty : null;
+            int ordinal = 0;
+            for (int c = 1; c < chamber; c++)
+                if (difficulty != null ? difficulty.TypeOf(c) == ChamberType.Boss : c % 5 == 0) ordinal++;
+            var pick = bosses[ordinal % bosses.Length];
+            return pick != null ? pick : null;
+        }
+
+        /// <summary>The boss list per boss Chamber (KAN-108).</summary>
+        public BossData[] Bosses => bosses;
 
         private void Update() => Tick(Time.deltaTime);
 
@@ -263,6 +343,7 @@ namespace SurvivorSouls.Gameplay.Boss
             }
             SetStage(Stage.Intro);
             if (player != null) FaceKnight(); // also halts the boss: it stands for its entrance
+            if (!string.IsNullOrEmpty(data.RoarClip)) _boss.PlayAction(data.RoarClip);
             HoldKnight(true);
             Spawned?.Invoke(_boss);
             IntroStarted?.Invoke(_boss);
@@ -271,7 +352,11 @@ namespace SurvivorSouls.Gameplay.Boss
         private void EndIntro()
         {
             HoldKnight(false);
-            if (_boss != null) _boss.Halted = false;
+            if (_boss != null)
+            {
+                _boss.Halted = false;
+                _boss.ResetAction();
+            }
             SetStage(Stage.Fighting);
             IntroEnded?.Invoke();
         }
@@ -306,67 +391,135 @@ namespace SurvivorSouls.Gameplay.Boss
                     }
                     _time += dt;
                     float progress = _time / _windUp;
-                    if (CurrentMove == Move.Slam)
+                    if (UsesCircle(CurrentMove))
                     {
                         if (telegraph != null) telegraph.SetProgress(progress);
                     }
                     else if (lines != null) lines.SetProgress(progress);
                     if (_time < _windUp) break;
-                    if (CurrentMove == Move.Slam) LandSlam();
-                    else if (CurrentMove == Move.Fan) ReleaseFan();
-                    else BeginDash();
+                    Release();
                     break;
                 case Attack.Dashing:
                     TickDash(dt);
                     break;
+                case Attack.Spinning:
+                    TickSpin(dt, playerDead);
+                    break;
                 case Attack.Recover:
                     _time += dt;
-                    if (_time >= _recover) EndAttack(CurrentMove == Move.Slam ? data.SlamCooldown
-                        : CurrentMove == Move.Fan ? data.FanCooldown : data.ChargeCooldown);
+                    TickPull(dt);
+                    if (_time < _recover) break;
+                    if (CurrentMove == Move.Charge && _dashesLeft > 0 && !playerDead && TryBeginCharge(_index, true)) break;
+                    EndAttack(_pendingCooldown);
                     break;
             }
         }
 
-        /// <summary>Slam up close; farther away the fan, and in phase 2 the charge (fan and charge take turns).</summary>
-        private void ChooseAttack(float distance)
+        private static bool UsesCircle(Move move) => move == Move.Slam || move == Move.Spin;
+
+        private void Release()
         {
-            if (distance <= data.SlamRange)
+            switch (CurrentMove)
             {
-                BeginSlam();
-                return;
+                case Move.Slam: LandSlam(); break;
+                case Move.Fan: ReleaseFan(); break;
+                case Move.Charge: BeginDash(); break;
+                case Move.Lane: StrikeLane(); break;
+                case Move.Spin: BeginSpin(); break;
             }
-            bool fan = CanFan(distance), charge = CanCharge(distance);
-            if (charge && (!fan || _lastRanged != Move.Charge) && TryBeginCharge()) return;
-            if (fan) BeginFan();
         }
 
-        private bool CanFan(float distance) =>
-            data.FanBolts > 0 && lines != null && projectiles != null && distance <= data.FanRange;
+        /// <summary>
+        /// Picks the next attack (KAN-108): entries on in this phase whose range holds the Knight and that can start; the
+        /// highest priority band wins; inside it the best weight x attacks-since-last-use (ties: list order). An attack that
+        /// cannot start (a charge with no room) drops out and the pick runs again. Nothing fits: the chase goes on.
+        /// </summary>
+        private void ChooseAttack(float distance)
+        {
+            for (int tries = 0; tries < _attacks.Length; tries++)
+            {
+                int best = -1, bestPriority = int.MinValue;
+                float bestScore = -1f;
+                for (int i = 0; i < _attacks.Length; i++)
+                {
+                    var a = _attacks[i];
+                    if (!a.InPhase(Phase) || !a.InRange(distance) || !CanUse(a) || _lastUsed[i] == FailedPick) continue;
+                    float score = a.weight * Mathf.Min(NeverUsed, _picks - _lastUsed[i]);
+                    if (a.priority < bestPriority || (a.priority == bestPriority && score <= bestScore)) continue;
+                    best = i;
+                    bestPriority = a.priority;
+                    bestScore = score;
+                }
+                if (best < 0) break;
+                if (Begin(best)) break;
+                _failed[best] = _lastUsed[best];
+                _lastUsed[best] = FailedPick; // skip it in this pick only
+            }
+            RestoreFailed();
+        }
 
-        private bool CanCharge(float distance) =>
-            Phase >= 2 && data.ChargeEnabled && lines != null
-            && distance >= data.ChargeMinRange && distance <= data.ChargeMaxRange;
+        private const int FailedPick = int.MinValue;
+        private int[] _failed = new int[0];
+
+        private void RestoreFailed()
+        {
+            for (int i = 0; i < _lastUsed.Length; i++)
+                if (_lastUsed[i] == FailedPick) _lastUsed[i] = _failed[i];
+        }
+
+        /// <summary>The scene has what the attack needs (lanes for lane attacks, bolts for the fan).</summary>
+        private bool CanUse(in BossAttack a)
+        {
+            switch (a.type)
+            {
+                case Move.Fan: return a.count > 0 && lines != null && projectiles != null;
+                case Move.Charge:
+                case Move.Lane: return lines != null;
+                default: return true;
+            }
+        }
+
+        /// <summary>Starts attack <paramref name="index"/> (its warning). False when it cannot (no room for a charge).</summary>
+        private bool Begin(int index)
+        {
+            var a = _attacks[index];
+            switch (a.type)
+            {
+                case Move.Slam: BeginSlam(index); break;
+                case Move.Fan: BeginFan(index); break;
+                case Move.Charge:
+                    if (!TryBeginCharge(index, false)) return false;
+                    break;
+                case Move.Lane: BeginLane(index); break;
+                case Move.Spin: BeginSpinWindUp(index); break;
+                default: return false;
+            }
+            return true;
+        }
 
         /// <summary>
-        /// Debug menu, dev screenshots and tests: starts <paramref name="move"/> now, whatever the distance and cooldown
-        /// (the charge still needs room). Only while fighting and chasing. Returns true when the attack began.
+        /// Debug menu, dev screenshots and tests: starts the first <paramref name="move"/> attack of this phase (else of any
+        /// phase) now, whatever the distance and cooldown (a charge still needs room). Only while fighting and chasing.
+        /// Returns true when the attack began.
         /// </summary>
         public bool ForceAttack(Move move)
         {
-            if (Current != Stage.Fighting || CurrentAttack != Attack.Chase || player == null || player.IsDead) return false;
-            if (_boss == null || !_boss.IsAlive) return false;
-            switch (move)
+            int any = -1;
+            for (int i = 0; i < _attacks.Length; i++)
             {
-                case Move.Slam:
-                    BeginSlam();
-                    return true;
-                case Move.Fan:
-                    if (data.FanBolts <= 0 || lines == null || projectiles == null) return false;
-                    BeginFan();
-                    return true;
-                default:
-                    return lines != null && TryBeginCharge();
+                if (_attacks[i].type != move) continue;
+                if (_attacks[i].InPhase(Phase)) return ForceAttack(i);
+                if (any < 0) any = i;
             }
+            return any >= 0 && ForceAttack(any);
+        }
+
+        /// <summary>Starts attack <paramref name="index"/> of <see cref="Attacks"/> now (see <see cref="ForceAttack(Move)"/>).</summary>
+        public bool ForceAttack(int index)
+        {
+            if (Current != Stage.Fighting || CurrentAttack != Attack.Chase || player == null || player.IsDead) return false;
+            if (_boss == null || !_boss.IsAlive || index < 0 || index >= _attacks.Length || !CanUse(_attacks[index])) return false;
+            return Begin(index);
         }
 
         /// <summary>Turns the boss to the Knight and stops its chase. Returns the ground direction.</summary>
@@ -381,44 +534,56 @@ namespace SurvivorSouls.Gameplay.Boss
             return dir;
         }
 
-        private void BeginWindUp(Move move, float baseTelegraph)
+        /// <summary>Common start of every attack: bookkeeping for the pick, the wind-up timer, the body's clip.</summary>
+        private void BeginWindUp(int index)
         {
-            CurrentMove = move;
+            _attack = _attacks[index];
+            if (_index != index || CurrentAttack == Attack.Chase) // a re-dash of a multi-charge is not a new pick
+            {
+                _lastUsed[index] = _picks++;
+                _dashesLeft = _attack.type == Move.Charge ? Mathf.Max(1, _attack.count) - 1 : 0;
+            }
+            _index = index;
+            CurrentMove = _attack.type;
             CurrentAttack = Attack.WindUp;
-            _windUp = data.TelegraphFor(baseTelegraph, Phase);
+            _windUp = data.TelegraphFor(_attack.Telegraph, Phase);
             _time = 0f;
+            _pullLeft = 0f;
+            _boss.PlayAction(_attack.clip);
+            AttackStarted?.Invoke(index);
         }
 
-        private void BeginSlam()
+        private void BeginSlam(int index)
         {
+            var a = _attacks[index];
             Vector3 from = _boss.transform.position;
             Vector3 dir = FaceKnight();
-            _slamCentre = new Vector3(from.x, player.transform.position.y, from.z) + dir * data.SlamReach;
-            if (telegraph != null) telegraph.Show(_slamCentre, data.SlamRadius);
-            BeginWindUp(Move.Slam, data.SlamTelegraph);
-            SlamWarned?.Invoke(_slamCentre, data.SlamRadius);
+            _slamCentre = new Vector3(from.x, player.transform.position.y, from.z) + dir * a.reach;
+            if (telegraph != null) telegraph.Show(_slamCentre, a.radius);
+            BeginWindUp(index);
+            SlamWarned?.Invoke(_slamCentre, a.radius);
         }
 
         private void LandSlam()
         {
             float dealt = 0f;
-            if (player != null && !player.IsDead && PlanarDistance(player.transform.position, _slamCentre) <= data.SlamRadius)
-                dealt = player.TakeDamage(data.SlamDamageFor(player.Max));
+            if (player != null && !player.IsDead && PlanarDistance(player.transform.position, _slamCentre) <= _attack.radius)
+                dealt = player.TakeDamage(data.DamageFor(_attack.damage, player.Max));
             if (telegraph != null) telegraph.Flash();
-            BeginRecover(data.SlamRecover);
+            BeginRecover(_attack.recover, _attack.cooldown);
             Slammed?.Invoke(_slamCentre, dealt);
         }
 
-        private void BeginFan()
+        private void BeginFan(int index)
         {
+            var a = _attacks[index];
             Vector3 from = _boss.transform.position;
             _attackDir = FaceKnight();
             _attackOrigin = new Vector3(from.x, player.transform.position.y, from.z);
-            lines.ShowFan(_attackOrigin, _attackDir, data.FanBolts, data.FanSpread, data.FanDistance, data.FanLaneWidth);
+            lines.ShowFan(_attackOrigin, _attackDir, a.count, a.spread, a.length, a.width);
             for (int i = 0; i < lines.LaneCount; i++) // each lane ends where its bolt will: the ring wall or a pillar (cover reads)
-                lines.SetLaneLength(i, FreeRun(_attackOrigin, lines.LaneDirection(i), data.FanDistance, BoltClearRadius, BoltProbeStep));
-            BeginWindUp(Move.Fan, data.FanTelegraph);
-            _lastRanged = Move.Fan;
+                lines.SetLaneLength(i, FreeRun(_attackOrigin, lines.LaneDirection(i), a.length, BoltClearRadius, BoltProbeStep));
+            BeginWindUp(index);
             FanWarned?.Invoke(_attackOrigin, _attackDir);
         }
 
@@ -426,28 +591,33 @@ namespace SurvivorSouls.Gameplay.Boss
         {
             int count = Mathf.Min(lines.LaneCount, _fanDirs.Length);
             for (int i = 0; i < count; i++) _fanDirs[i] = lines.LaneDirection(i);
-            int fired = projectiles.FireVolley(_attackOrigin, _fanDirs, count, data.FanSpeed, data.FanDistance,
-                data.FanDamageFor(player != null ? player.Max : 0f), data.FanHitRadius);
+            int fired = projectiles.FireVolley(_attackOrigin, _fanDirs, count, _attack.speed, _attack.length,
+                data.DamageFor(_attack.damage, player != null ? player.Max : 0f), _attack.radius);
             lines.Flash();
-            BeginRecover(data.FanRecover);
+            BeginRecover(_attack.recover, _attack.cooldown);
             FanFired?.Invoke(_attackOrigin, fired);
         }
 
-        /// <summary>Charge towards the Knight if the lane has room (it stops at pillars and the wall).</summary>
-        private bool TryBeginCharge()
+        /// <summary>
+        /// Charge towards the Knight if the lane has room (it stops at pillars and the wall). <paramref name="redash"/>: the
+        /// next dash of a multi-charge (same attack, warns again).
+        /// </summary>
+        private bool TryBeginCharge(int index, bool redash)
         {
+            var a = _attacks[index];
             Vector3 from = _boss.transform.position;
             Vector3 to = player.transform.position - from;
             to.y = 0f;
             Vector3 dir = to.sqrMagnitude > 0.0001f ? to.normalized : _boss.transform.forward;
-            float length = ChargeLength(from, dir, data.ChargeDistance);
+            float length = ChargeLength(from, dir, a.length);
             if (length < MinChargeLength) return false;
+            if (redash) _dashesLeft--;
             _attackDir = FaceKnight();
             _attackOrigin = new Vector3(from.x, player.transform.position.y, from.z);
             _dashLeft = length;
-            lines.ShowLine(_attackOrigin, _attackDir, length, data.ChargeWidth);
-            BeginWindUp(Move.Charge, data.ChargeTelegraph);
-            _lastRanged = Move.Charge;
+            _dashBlocked = length < a.length - ChargeProbeStep * 0.5f; // cut short: it will slam into a pillar or the wall
+            lines.ShowLine(_attackOrigin, _attackDir, length, a.width);
+            BeginWindUp(index);
             ChargeWarned?.Invoke(_attackOrigin, _attackDir, length);
             return true;
         }
@@ -455,6 +625,10 @@ namespace SurvivorSouls.Gameplay.Boss
         /// <summary>Free run from <paramref name="from"/> along <paramref name="dir"/>, up to <paramref name="max"/> m.</summary>
         public static float ChargeLength(Vector3 from, Vector3 dir, float max) =>
             FreeRun(from, dir, max, ChargeBodyRadius, ChargeProbeStep);
+
+        /// <summary>Length of a lane attack (chop, hook) from <paramref name="from"/>: pillars and the wall cut it.</summary>
+        public static float LaneLength(Vector3 from, Vector3 dir, float max) =>
+            FreeRun(from, dir, max, LaneClearRadius, LaneProbeStep);
 
         /// <summary>
         /// Free ground from <paramref name="from"/> along <paramref name="dir"/> for a body of <paramref name="radius"/>, probed in
@@ -486,33 +660,159 @@ namespace SurvivorSouls.Gameplay.Boss
         private void TickDash(float dt)
         {
             Vector3 from = _boss.transform.position;
-            float step = Mathf.Min(data.ChargeSpeed * dt, _dashLeft);
+            float step = Mathf.Min(_attack.speed * dt, _dashLeft);
             Vector3 next = from + _attackDir * step;
             _boss.transform.position = next;
             _dashLeft -= step;
             if (!_dashHit && player != null && !player.IsDead
-                && BossProjectiles.SegmentDistance(from, next, player.transform.position) <= data.ChargeWidth * 0.5f)
+                && BossProjectiles.SegmentDistance(from, next, player.transform.position) <= _attack.width * 0.5f)
             {
                 _dashHit = true;
-                _dashDealt = player.TakeDamage(data.ChargeDamageFor(player.Max));
+                _dashDealt = player.TakeDamage(data.DamageFor(_attack.damage, player.Max));
             }
             if (_dashLeft > 0.0001f) return;
-            BeginRecover(data.ChargeRecover);
+            if (_dashBlocked) _dashesLeft = 0; // crashed: stunned, the combo ends
+            float rest = _dashesLeft > 0 ? RedashPause : _attack.recover + (_dashBlocked ? _attack.stun : 0f);
+            BeginRecover(rest, _attack.cooldown);
             Charged?.Invoke(next, _dashDealt);
         }
 
-        private void BeginRecover(float seconds)
+        /// <summary>Lane attack (KAN-108): a rectangle from the boss towards the Knight; pillars and the wall shorten it.</summary>
+        private void BeginLane(int index)
+        {
+            var a = _attacks[index];
+            Vector3 from = _boss.transform.position;
+            _attackDir = FaceKnight();
+            _attackOrigin = new Vector3(from.x, player.transform.position.y, from.z);
+            _dashLeft = LaneLength(_attackOrigin, _attackDir, a.length); // the lane's length after pillars
+            lines.ShowLine(_attackOrigin, _attackDir, _dashLeft, a.width);
+            BeginWindUp(index);
+            LaneWarned?.Invoke(_attackOrigin, _attackDir, _dashLeft, a.width);
+        }
+
+        /// <summary>True when <paramref name="p"/> lies in the lane from <paramref name="origin"/> (length x width).</summary>
+        public static bool InLane(Vector3 origin, Vector3 dir, float length, float width, Vector3 p)
+        {
+            float dx = p.x - origin.x, dz = p.z - origin.z;
+            float along = dx * dir.x + dz * dir.z;
+            float side = Mathf.Abs(dx * dir.z - dz * dir.x);
+            return along >= 0f && along <= length && side <= width * 0.5f;
+        }
+
+        private void StrikeLane()
+        {
+            float dealt = 0f;
+            if (player != null && !player.IsDead && InLane(_attackOrigin, _attackDir, _dashLeft, _attack.width, player.transform.position))
+            {
+                dealt = player.TakeDamage(data.DamageFor(_attack.damage, player.Max));
+                if (_attack.pull > 0f)
+                {
+                    Vector3 to = _attackOrigin - player.transform.position;
+                    to.y = 0f;
+                    float room = to.magnitude - (_boss.HitRadius + PullGap);
+                    _pullLeft = Mathf.Clamp(_attack.pull, 0f, Mathf.Max(0f, room));
+                    _pullDir = to.sqrMagnitude > 0.0001f ? to.normalized : Vector3.zero;
+                }
+            }
+            if (lines != null) lines.Flash();
+            BeginRecover(_attack.recover, _attack.cooldown);
+            LaneStruck?.Invoke(_attackOrigin + _attackDir * (_dashLeft * 0.5f), dealt);
+        }
+
+        /// <summary>The chain hook drags the Knight in during the recovery (walls stop it; a dead Knight stays).</summary>
+        private void TickPull(float dt)
+        {
+            if (_pullLeft <= 0f) return;
+            if (player == null || player.IsDead)
+            {
+                _pullLeft = 0f;
+                return;
+            }
+            float step = Mathf.Min(PullSpeed * dt, _pullLeft);
+            _pullLeft -= step;
+            if (_mover == null) _mover = player.GetComponent<PlayerMover>();
+            if (_mover != null) _mover.Shove(_pullDir * step);
+            else player.transform.position += _pullDir * step;
+        }
+
+        /// <summary>Spin (KAN-108): the circle around the boss fills, then the boss whirls and follows the Knight.</summary>
+        private void BeginSpinWindUp(int index)
+        {
+            var a = _attacks[index];
+            FaceKnight();
+            Vector3 at = _boss.transform.position;
+            if (telegraph != null) telegraph.Show(new Vector3(at.x, player.transform.position.y, at.z), a.radius);
+            BeginWindUp(index);
+            SlamWarned?.Invoke(at, a.radius);
+        }
+
+        private void BeginSpin()
+        {
+            CurrentAttack = Attack.Spinning;
+            _spinLeft = _attack.duration;
+            _spinHitWait = 0f;
+            _spinDealt = 0f;
+            _time = 0f;
+        }
+
+        private void TickSpin(float dt, bool playerDead)
+        {
+            Vector3 pos = _boss.transform.position;
+            if (!playerDead)
+            {
+                Vector3 to = player.transform.position - pos;
+                to.y = 0f;
+                float d = to.magnitude;
+                if (d > 0.05f)
+                {
+                    Vector3 dir = to / d;
+                    Vector3 next = pos + dir * Mathf.Min(_attack.speed * dt, d);
+                    var walk = Enemy.Walkability;
+                    if (walk == null || !walk.IsBlocked(next, ChargeBodyRadius)) pos = next;
+                    _boss.transform.position = pos;
+                }
+            }
+            if (telegraph != null)
+            {
+                telegraph.MoveTo(new Vector3(pos.x, player != null ? player.transform.position.y : pos.y, pos.z));
+                telegraph.SetProgress(1f);
+            }
+            _spinHitWait -= dt;
+            if (!playerDead && _spinHitWait <= 0f && PlanarDistance(player.transform.position, pos) <= _attack.radius)
+            {
+                float dealt = player.TakeDamage(data.DamageFor(_attack.damage, player.Max));
+                _spinDealt += dealt;
+                _spinHitWait = Mathf.Max(0.1f, _attack.interval);
+                SpinHit?.Invoke(player.transform.position, dealt);
+            }
+            _spinLeft -= dt;
+            if (_spinLeft > 0f) return;
+            if (telegraph != null) telegraph.Flash();
+            BeginRecover(_attack.recover, _attack.cooldown);
+        }
+
+        /// <summary>Spin damage dealt in the current (or last) spin.</summary>
+        public float SpinDealt => _spinDealt;
+
+        private void BeginRecover(float seconds, float cooldown)
         {
             CurrentAttack = Attack.Recover;
             _recover = seconds;
+            _pendingCooldown = cooldown;
             _time = 0f;
         }
 
         private void EndAttack(float cooldown)
         {
-            if (_boss != null) _boss.Halted = false;
+            if (_boss != null)
+            {
+                _boss.Halted = false;
+                _boss.ResetAction();
+            }
             CurrentAttack = Attack.Chase;
             _cooldown = data.CooldownFor(cooldown, Phase);
+            _dashesLeft = 0;
+            _pullLeft = 0f;
             _time = 0f;
         }
 
@@ -526,6 +826,12 @@ namespace SurvivorSouls.Gameplay.Boss
         {
             Phase = 2;
             if (_boss != null) _boss.SpeedBoost = data.Phase2Speed;
+            if (data.PhaseRoar > 0f && Current == Stage.Fighting && CurrentAttack == Attack.Chase && player != null && !player.IsDead)
+            {
+                FaceKnight(); // stands and roars; the next attack waits
+                _boss.PlayAction(data.RoarClip);
+                BeginRecover(data.PhaseRoar, RoarCooldown);
+            }
             PhaseChanged?.Invoke(2);
         }
 
@@ -542,7 +848,8 @@ namespace SurvivorSouls.Gameplay.Boss
                 HoldKnight(false);
                 IntroEnded?.Invoke();
             }
-            if (CurrentAttack == Attack.WindUp) HideWarnings();
+            if (CurrentAttack == Attack.WindUp || CurrentAttack == Attack.Spinning) HideWarnings();
+            _pullLeft = 0f;
             if (projectiles != null) projectiles.Clear(); // the fight is over: no bolt lands after the kill
             CurrentAttack = Attack.Chase;
             _deathPoint = enemy.transform.position;

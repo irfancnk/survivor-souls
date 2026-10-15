@@ -60,6 +60,8 @@ namespace SurvivorSouls.Gameplay
             {
                 boss.Slammed += OnSlam;
                 boss.Charged += OnSlam; // the dash ends like a slam: shake, + haptic when it hit
+                boss.LaneStruck += OnSlam; // cleaver chop / chain hook (KAN-108)
+                boss.SpinHit += OnSpinHit;
                 boss.PhaseChanged += OnBossPhase;
                 boss.IntroStarted += OnBossIntro;
                 boss.IntroEnded += OnBossIntroEnded;
@@ -78,6 +80,8 @@ namespace SurvivorSouls.Gameplay
             {
                 boss.Slammed -= OnSlam;
                 boss.Charged -= OnSlam;
+                boss.LaneStruck -= OnSlam;
+                boss.SpinHit -= OnSpinHit;
                 boss.PhaseChanged -= OnBossPhase;
                 boss.IntroStarted -= OnBossIntro;
                 boss.IntroEnded -= OnBossIntroEnded;
@@ -162,6 +166,14 @@ namespace SurvivorSouls.Gameplay
         {
             if (dealt > 0f) Haptics.Light();
             if (followCamera != null) followCamera.Shake(dealt > 0f ? slamHitShake : slamShake, slamShakeTime);
+        }
+
+        /// <summary>A spin hit (KAN-108): light haptic, small shake (it can hit every 0.6 s, so no slam shake).</summary>
+        private void OnSpinHit(Vector3 at, float dealt)
+        {
+            if (dealt <= 0f) return;
+            Haptics.Light();
+            if (followCamera != null) followCamera.Shake(slamShake, slamShakeTime * 0.5f);
         }
 
         private void OnBossPhase(int phase)

@@ -55,6 +55,13 @@ namespace SurvivorSouls.Gameplay.Boss
             SetProgress(0f);
         }
 
+        /// <summary>Moves a showing warning (the Butcher's spin circle follows the boss, KAN-108). Keeps size and progress.</summary>
+        public void MoveTo(Vector3 centre)
+        {
+            if (!IsShowing) return;
+            transform.position = new Vector3(centre.x, centre.y + lift, centre.z);
+        }
+
         /// <summary>Wind-up 0..1: the disc grows to the ring and darkens; the ring pulses faster near the end.</summary>
         public void SetProgress(float progress)
         {

@@ -57,7 +57,9 @@ namespace SurvivorSouls.Dev
     /// <c>-ss-boss-stay</c> (KAN-62, with <c>-ss-boss 0</c>): the Knight stays where it was (victory beat, reward chest).
     /// <c>-ss-boss-attack fan|charge</c> (KAN-61, with <c>-ss-boss</c>): the Knight stands 8 m in front of the boss instead,
     /// and the boss starts that attack at once (charge: below the phase 2 share, e.g. <c>-ss-boss 0.4</c>, for the look of
-    /// phase 2; the debug start works in phase 1 too).
+    /// phase 2; the debug start works in phase 1 too). KAN-108: also <c>slam|lane|spin</c> (first attack of that type, this
+    /// phase first) or an index into the boss's attack list (e.g. <c>3</c> = the Butcher's chain hook); the Knight stands
+    /// inside that attack's range.
     /// <c>-ss-hearts &lt;n&gt;</c> (KAN-60, boss Chamber): drops n healing hearts ahead of the Knight right after load (cap
     /// permitting); each shows its ground glow for 1 s, then floats.
     /// Main menu (KAN-20): <c>-ss-realms</c> opens the Realm selection page, <c>-ss-realm &lt;id&gt;</c> also opens that
@@ -307,21 +309,47 @@ namespace SurvivorSouls.Dev
             }
             if (boss.Health > target) boss.TakeDamage(boss.Health - target, Vector3.zero, DamageKind.Burst);
             var b = boss.transform;
-            bool ranged = attack == "fan" || attack == "charge";
-            Teleport(b.position + b.forward * (ranged ? 8f : 2.6f));
+            int index = BossAttackIndex(fight, attack);
+            float distance = index >= 0 ? BossAttackDistance(fight.Attacks[index]) : 2.6f;
+            Teleport(b.position + b.forward * distance);
             Debug.Log($"[DevScreenshot] Boss {fight.Data.DisplayName} hp={boss.Health:F0}/{boss.MaxHealth:F0} phase={fight.Phase} at {b.position}");
-            if (!ranged) yield break;
-            var move = attack == "fan" ? SurvivorSouls.Gameplay.Boss.BossFight.Move.Fan : SurvivorSouls.Gameplay.Boss.BossFight.Move.Charge;
+            if (index < 0) yield break;
+            var entry = fight.Attacks[index];
             for (float t = 0f; t < 6f; t += Time.unscaledDeltaTime)
             {
                 yield return null;
-                if (fight.ForceAttack(move))
+                if (fight.ForceAttack(index))
                 {
-                    Debug.Log($"[DevScreenshot] Boss attack {move} started, wind-up {fight.WindUpTime:F2} s");
+                    Debug.Log($"[DevScreenshot] Boss attack {entry} ({entry.type}) started, wind-up {fight.WindUpTime:F2} s");
                     yield break;
                 }
             }
-            Debug.LogWarning($"[DevScreenshot] -ss-boss-attack: {move} did not start");
+            Debug.LogWarning($"[DevScreenshot] -ss-boss-attack: {entry} did not start");
+        }
+
+        /// <summary>-ss-boss-attack: a type name (first of that type, this phase first) or an index. -1 = none.</summary>
+        private static int BossAttackIndex(SurvivorSouls.Gameplay.Boss.BossFight fight, string attack)
+        {
+            if (string.IsNullOrEmpty(attack)) return -1;
+            var list = fight.Attacks;
+            if (int.TryParse(attack, NumberStyles.Integer, CultureInfo.InvariantCulture, out int i)) return i >= 0 && i < list.Length ? i : -1;
+            int any = -1;
+            for (int k = 0; k < list.Length; k++)
+            {
+                if (!string.Equals(list[k].type.ToString(), attack, StringComparison.OrdinalIgnoreCase)) continue;
+                if (list[k].InPhase(fight.Phase)) return k;
+                if (any < 0) any = k;
+            }
+            return any;
+        }
+
+        /// <summary>Where the Knight stands for the attack's look: inside its range (close for slam / spin / chop).</summary>
+        private static float BossAttackDistance(in SurvivorSouls.Gameplay.Boss.BossAttack a)
+        {
+            float want = a.type == SurvivorSouls.Gameplay.Boss.BossFight.Move.Slam || a.type == SurvivorSouls.Gameplay.Boss.BossFight.Move.Spin ? 2.6f
+                : a.type == SurvivorSouls.Gameplay.Boss.BossFight.Move.Lane ? Mathf.Max(3.5f, (a.minRange + a.maxRange) * 0.5f)
+                : 8f;
+            return Mathf.Clamp(want, a.minRange + 0.3f, Mathf.Max(a.minRange + 0.3f, a.maxRange - 0.3f));
         }
 
         /// <summary>Starts the portal exit as if the Knight walked into the arch 1.5 m ahead (KAN-40).</summary>

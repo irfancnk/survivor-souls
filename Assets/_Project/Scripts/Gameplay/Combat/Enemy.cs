@@ -162,6 +162,7 @@ namespace SurvivorSouls.Gameplay.Combat
         private float _animCheck;    // seconds to the next animator state check
         private int _walkHash;
         private int _attackHash;
+        private int _defaultAttackHash; // the prefab's Attack state; boss patterns swap _attackHash (KAN-108)
         private int _hitHash;
         private int _deathHash;
         private bool _hasHit;
@@ -306,7 +307,7 @@ namespace SurvivorSouls.Gameplay.Combat
         {
             if (animator == null) return;
             _walkHash = Animator.StringToHash(walkState);
-            _attackHash = Animator.StringToHash(attackState);
+            _attackHash = _defaultAttackHash = Animator.StringToHash(attackState);
             _hitHash = Animator.StringToHash(hitState);
             _deathHash = Animator.StringToHash(deathState);
             _synced = animRefSpeed > 0f && animator.HasState(0, _walkHash);
@@ -323,6 +324,36 @@ namespace SurvivorSouls.Gameplay.Combat
             animator.speed = UnityEngine.Random.Range(0.9f, 1.1f);
             animator.Play(0, 0, UnityEngine.Random.value);
         }
+
+        /// <summary>
+        /// Boss patterns (KAN-108): the attack state becomes <paramref name="state"/> (e.g. "Chop", "Spin", "Roar") and plays
+        /// from its start now; the enemy keeps it while <see cref="Halted"/>. Empty or a state the controller lacks = the
+        /// prefab's Attack state. Returns true when the wanted state plays. <see cref="ResetAction"/> goes back.
+        /// </summary>
+        public bool PlayAction(string state)
+        {
+            if (animator == null || !_synced) return false;
+            int hash = string.IsNullOrEmpty(state) ? _defaultAttackHash : Animator.StringToHash(state);
+            bool found = animator.HasState(0, hash);
+            if (!found)
+            {
+                hash = _defaultAttackHash;
+                if (!animator.HasState(0, hash)) return false;
+            }
+            _attackHash = hash;
+            _hasAttack = true;
+            _hitLeft = 0f;
+            _attacking = true;
+            _sinceSwitch = 0f;
+            if (animator.isActiveAndEnabled) animator.CrossFadeInFixedTime(hash, AnimBlend, 0, 0f);
+            return found;
+        }
+
+        /// <summary>The attack state is the prefab's Attack state again (KAN-108).</summary>
+        public void ResetAction() => _attackHash = _defaultAttackHash;
+
+        /// <summary>The animator state the enemy plays when it attacks (KAN-108 tests).</summary>
+        public int AttackStateHash => _attackHash;
 
         /// <summary>Walk clip playback rate that makes the feet cover <paramref name="groundSpeed"/> m/s.</summary>
         public float WalkRate(float groundSpeed) =>

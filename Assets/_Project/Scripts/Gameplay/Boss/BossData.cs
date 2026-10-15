@@ -1,3 +1,4 @@
+using System;
 using SurvivorSouls.Gameplay.Combat;
 using UnityEngine;
 
@@ -12,6 +13,9 @@ namespace SurvivorSouls.Gameplay.Boss
     /// overwrites it (it only fills an empty prefab slot). Hearts have their own asset (<see cref="HeartRules"/>).
     /// KAN-62: intro (Knight held, camera pulled out), victory beat (slow motion, then reward + portal) and the guaranteed
     /// reward pick. <see cref="Create"/> has no intro and no beat (tests of the fight itself).
+    /// KAN-108: the fight runs a list of attacks (<see cref="Attacks"/>, <see cref="BossAttack"/> entries per phase). A boss
+    /// with an empty list (the Drowned Warden asset) gets the list built from its slam / fan / charge fields above, so its
+    /// fight plays as before. New bosses (The Butcher of Ashgrave) fill the list; the slam / fan / charge fields are unused.
     /// </summary>
     [CreateAssetMenu(menuName = "Survivor Souls/Boss Data", fileName = "Boss")]
     public sealed class BossData : ScriptableObject
@@ -54,6 +58,14 @@ namespace SurvivorSouls.Gameplay.Boss
         [SerializeField, Range(1, 4)] private int rewardChoices = 3;
         [Tooltip("Levels the reward chest's pick adds to the chosen skill.")]
         [SerializeField, Range(1, 3)] private int rewardUpgrades = 2;
+
+        [Header("Attack list (KAN-108)")]
+        [Tooltip("Attacks of this boss. Empty = built from the slam / fan / charge fields below (the Warden).")]
+        [SerializeField] private BossAttack[] attacks = new BossAttack[0];
+        [Tooltip("Animator state of the body during the intro and the phase 2 roar. Empty or missing = its Attack state.")]
+        [SerializeField] private string roarClip = "";
+        [Tooltip("Seconds the boss stands and roars when phase 2 starts (when it is not mid-attack). 0 = no roar.")]
+        [SerializeField, Min(0f)] private float phaseRoar;
 
         [Header("Slam")]
         [Tooltip("The slam starts when the Knight is this close to the boss (m).")]
@@ -178,10 +190,44 @@ namespace SurvivorSouls.Gameplay.Boss
         public float Phase2Cooldown => phase2Cooldown;
         public float Phase2Telegraph => phase2Telegraph;
         public float Phase2Speed => phase2Speed;
+        public string RoarClip => roarClip;
+        public float PhaseRoar => phaseRoar;
+        public float MaxHitShare => maxHitShare;
         public int RewardXp => rewardXp;
         public int RewardWisps => rewardWisps;
         public float HordeCap => hordeCap;
         public float HordeInterval => hordeInterval;
+
+        [NonSerialized] private BossAttack[] _legacy;
+
+        /// <summary>
+        /// The attack list the fight runs: <see cref="attacks"/>, or (when empty) the Warden list from the slam / fan /
+        /// charge fields: slam up close (priority 1), fan farther, charge in phase 2 (charge weight 2: it goes first, then
+        /// fan and charge take turns, as in KAN-61).
+        /// </summary>
+        public BossAttack[] Attacks => attacks != null && attacks.Length > 0 ? attacks : _legacy ??= LegacyAttacks();
+
+        /// <summary>True when the list comes from the asset (not built from the Warden fields).</summary>
+        public bool HasAttackList => attacks != null && attacks.Length > 0;
+
+        private BossAttack[] LegacyAttacks()
+        {
+            var list = new System.Collections.Generic.List<BossAttack>(3)
+            {
+                BossAttack.Slam("Slam", BossPhases.Both, slamRange, slamRadius, slamReach, slamTelegraph, slamDamage,
+                    slamRecover, slamCooldown),
+            };
+            if (fanBolts > 0)
+                list.Add(BossAttack.Fan("Fan", BossPhases.Both, fanRange, fanBolts, fanSpread, fanTelegraph, fanSpeed, fanDistance,
+                    fanLaneWidth, fanHitRadius, fanDamage, fanRecover, fanCooldown));
+            if (chargeEnabled)
+                list.Add(BossAttack.Charge("Charge", BossPhases.Phase2, chargeMinRange, chargeMaxRange, chargeTelegraph, chargeSpeed,
+                    chargeDistance, chargeWidth, chargeDamage, chargeRecover, chargeCooldown, weight: 2f));
+            return list.ToArray();
+        }
+
+        /// <summary>Damage of a hit worth <paramref name="share"/> of max health, capped at the max-hit share.</summary>
+        public float DamageFor(float share, float playerMax) => HitFor(share, playerMax);
 
         /// <summary>Slam damage for a Knight with <paramref name="playerMax"/> health, capped at <see cref="maxHitShare"/>.</summary>
         public float SlamDamageFor(float playerMax) => HitFor(slamDamage, playerMax);
@@ -237,6 +283,25 @@ namespace SurvivorSouls.Gameplay.Boss
             data.phase2At = phase2At;
             data.introTime = introTime;
             data.victoryBeat = victoryBeat;
+            return data;
+        }
+
+        /// <summary>
+        /// Tests and the builder (KAN-108): a boss that runs <paramref name="attackList"/>. No intro and no beat unless asked.
+        /// </summary>
+        public static BossData CreateWithAttacks(Enemy body, BossAttack[] attackList, float health = 3200f, float introDelay = 2f,
+            float spawnWarning = 1.2f, float firstAttackDelay = 1.5f, float maxHitShare = 0.35f, float phase2At = 0.5f,
+            float introTime = 0f, float victoryBeat = 0f, string roarClip = "", float phaseRoar = 0f, int rewardXp = 600,
+            int rewardWisps = 6, string displayName = null, string title = null)
+        {
+            var data = Create(body, health, introDelay, spawnWarning, maxHitShare: maxHitShare, rewardXp: rewardXp,
+                rewardWisps: rewardWisps, firstSlamDelay: firstAttackDelay, phase2At: phase2At, introTime: introTime,
+                victoryBeat: victoryBeat);
+            data.attacks = attackList ?? new BossAttack[0];
+            data.roarClip = roarClip ?? "";
+            data.phaseRoar = phaseRoar;
+            if (displayName != null) data.displayName = displayName;
+            if (title != null) data.title = title;
             return data;
         }
     }

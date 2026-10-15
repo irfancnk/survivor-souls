@@ -43,6 +43,18 @@ namespace SurvivorSouls.Gameplay.Player
 
         public void SetJoystick(FloatingJoystick value) => joystick = value;
 
+        /// <summary>
+        /// Moves the Knight by <paramref name="offset"/> through the CharacterController (walls and pillars stop it): the
+        /// Butcher's chain hook pulls it (KAN-108).
+        /// </summary>
+        public void Shove(Vector3 offset)
+        {
+            if (_controller == null) _controller = GetComponent<CharacterController>();
+            offset.y = 0f;
+            if (_controller != null && _controller.enabled) _controller.Move(offset);
+            else transform.position += offset;
+        }
+
         private void Awake()
         {
             _controller = GetComponent<CharacterController>();
