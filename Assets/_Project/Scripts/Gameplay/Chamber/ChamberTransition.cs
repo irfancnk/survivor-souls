@@ -130,7 +130,7 @@ namespace SurvivorSouls.Gameplay.Chamber
         /// </summary>
         public void BeginChamber(RunSnapshot carry)
         {
-            RunProgress.RecordChamberStart(RunState.Realm, RunState.Chamber);
+            if (RunProgress.Recording) RunProgress.RecordChamberStart(RunState.Realm, RunState.Chamber);
             if (carry == null) return;
             Apply(carry, xp, skills, health, healOnArrive, counters);
             Current = Phase.Arriving;
@@ -238,7 +238,7 @@ namespace SurvivorSouls.Gameplay.Chamber
         private void ClearRealm()
         {
             ClearedRun = Capture(xp, skills, health, counters);
-            RunProgress.MarkCompleted(RunState.Realm);
+            if (RunProgress.Recording) RunProgress.MarkCompleted(RunState.Realm); // Test Mode: no fake completed flag
             RunState.EndRealm();
             SetPhase(Phase.Cleared);
             if (!_pauseHeld)

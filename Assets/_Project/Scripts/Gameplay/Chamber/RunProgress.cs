@@ -1,3 +1,4 @@
+using SurvivorSouls.Core;
 using UnityEngine;
 
 namespace SurvivorSouls.Gameplay.Chamber
@@ -19,6 +20,7 @@ namespace SurvivorSouls.Gameplay.Chamber
     /// of every Chamber (<see cref="ChamberTransition"/>). PlayerPrefs, like <see cref="Core.GameSettings"/>. A run cannot
     /// be resumed after an app kill (out of scope): only the numbers are kept.
     /// Lock rule: Realm 1 is always open; Realm N opens when Realm N-1 is completed. Realm ids run 1, 2, 3, ...
+    /// Test Mode (KAN-144, <see cref="TestMode.IsOn"/>) opens every Realm without writing anything here.
     /// </summary>
     public static class RunProgress
     {
@@ -40,8 +42,11 @@ namespace SurvivorSouls.Gameplay.Chamber
         /// <summary>The last Chamber of <paramref name="realm"/> was cleared at least once.</summary>
         public static bool IsCompleted(int realm) => PlayerPrefs.GetInt(CompletedKey(realm), 0) != 0;
 
-        /// <summary>Realm 1 always; any other Realm once the one before it is completed.</summary>
-        public static bool IsUnlocked(int realm) => realm <= 1 || IsCompleted(realm - 1);
+        /// <summary>Realm 1 always; any other Realm once the one before it is completed; every Realm in Test Mode (KAN-144).</summary>
+        public static bool IsUnlocked(int realm) => TestMode.IsOn || realm <= 1 || IsCompleted(realm - 1);
+
+        /// <summary>Runs write progress (best Chamber, completed). False in Test Mode: the real save stays as it was (KAN-144).</summary>
+        public static bool Recording => !TestMode.IsOn;
 
         /// <summary>Locked, unlocked or completed (a completed Realm is always open).</summary>
         public static RealmState StateOf(int realm) =>

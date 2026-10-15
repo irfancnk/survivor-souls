@@ -14,6 +14,7 @@ namespace SurvivorSouls.Core
         private const string KeyVibration = "settings.vibration";
         private const string KeyHighFrameRate = "settings.highFrameRate";
         private const string KeyReloadRing = "settings.reloadRing";
+        public const string KeyTestMode = "settings.testMode";
 
         public static event Action Changed;
 
@@ -47,6 +48,17 @@ namespace SurvivorSouls.Core
         {
             get => PlayerPrefs.GetInt(KeyReloadRing, 1) == 1;
             set => SetInt(KeyReloadRing, value ? 1 : 0);
+        }
+
+        /// <summary>
+        /// Playtest Test Mode (KAN-144): every Realm open, any start Chamber, Souls topped up once. Off by default.
+        /// Read it through <see cref="Core.TestMode.IsOn"/>; turn it on with <see cref="Core.TestMode.SetOn"/> (that also
+        /// does the one-time Souls grant).
+        /// </summary>
+        public static bool TestMode
+        {
+            get => PlayerPrefs.GetInt(KeyTestMode, 0) == 1;
+            set => SetInt(KeyTestMode, value ? 1 : 0);
         }
 
         public static void Apply()
