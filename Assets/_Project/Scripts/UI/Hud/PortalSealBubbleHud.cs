@@ -257,9 +257,13 @@ namespace SurvivorSouls.UI.Hud
         {
             if (_age < 0f || _bubble == null) return;
             var table = Lines;
-            // The seal broke (portal opening) or the tile was pooled away: fade out now.
-            if (_gate == null || !_gate.isActiveAndEnabled || _gate.State != PortalState.Locked)
-                if (_age < _hideAt) _age = _hideAt;
+            // The tile was pooled away or destroyed: gone at once. The seal broke (portal opening): fade out now.
+            if (_gate == null || !_gate.isActiveAndEnabled)
+            {
+                HideNow();
+                return;
+            }
+            if (_gate.State != PortalState.Locked && _age < _hideAt) _age = _hideAt;
             _age += dt;
             if (_age >= _life)
             {
@@ -328,6 +332,7 @@ namespace SurvivorSouls.UI.Hud
         private void HideNow()
         {
             _age = -1f;
+            _gate = null;
             Alpha = 0f;
             if (_bubble == null) return;
             _bubble.style.display = DisplayStyle.None;

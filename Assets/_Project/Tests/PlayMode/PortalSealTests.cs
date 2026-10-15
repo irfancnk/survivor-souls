@@ -152,7 +152,12 @@ namespace SurvivorSouls.Tests
             Assert.That(timer, Is.Not.Null);
             timer.SetRemaining(452f);
 
-            var gate = NearestGate(player.GetComponent<ObjectiveArrow>().Target);
+            // The exit tile is pooled: stream it in first (stand off the zone), then walk up.
+            Vector3 exit = player.GetComponent<ObjectiveArrow>().Target;
+            Teleport(player, exit + new Vector3(0f, 0f, -10f));
+            for (float t = 0f; t < 0.5f; t += Time.unscaledDeltaTime) yield return null;
+            Assert.That(_touched, Is.Zero, "10 m off the gate: outside the seal zone");
+            var gate = NearestGate(exit);
             Assert.That(gate, Is.Not.Null, "exit portal streamed in");
             Assert.That(gate.State, Is.EqualTo(PortalState.Locked));
             Vector3 front = gate.TriggerPosition + new Vector3(0f, 0f, -2f);
