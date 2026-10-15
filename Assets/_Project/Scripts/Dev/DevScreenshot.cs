@@ -494,7 +494,10 @@ namespace SurvivorSouls.Dev
             }
         }
 
-        /// <summary>Puts <paramref name="count"/> enemies round the player, types picked like the last wave phase.</summary>
+        /// <summary>
+        /// Puts <paramref name="count"/> enemies round the player, types picked like the last wave phase in this Chamber
+        /// (KAN-112: Chamber gates and the shooter cap apply).
+        /// </summary>
         private static void PlaceHorde(int count)
         {
             var spawner = FindAnyObjectByType<EnemySpawner>();
@@ -506,7 +509,7 @@ namespace SurvivorSouls.Dev
             {
                 float a = i * 2.39996f;
                 float r = 4f + 7f * Mathf.Sqrt((i + 0.5f) / count);
-                var prefab = EnemyWaveTable.PickEnemy(phase, UnityEngine.Random.value);
+                var prefab = PickLike(spawner, waves, phase);
                 if (prefab != null) spawner.SpawnAt(prefab, player.transform.position + new Vector3(Mathf.Cos(a) * r, 0f, Mathf.Sin(a) * r));
             }
         }
@@ -616,6 +619,13 @@ namespace SurvivorSouls.Dev
         }
 
         /// <summary>Tops the field up to <paramref name="count"/> enemies once a second (off-screen spawn points).</summary>
+        /// <summary>KAN-112: a wave pick as the spawner makes it (this Chamber's open entries, shooters under the cap).</summary>
+        private static Enemy PickLike(EnemySpawner spawner, EnemyWaveTable waves, in EnemyWaveTable.Phase phase)
+        {
+            bool shooters = spawner.ShootersInUse < waves.MaxShootersOf(spawner.MaxAliveOf(phase));
+            return EnemyWaveTable.PickEnemy(phase, UnityEngine.Random.value, spawner.Chamber, shooters);
+        }
+
         private static IEnumerator HoldHorde(int count)
         {
             var spawner = FindAnyObjectByType<EnemySpawner>();
@@ -626,7 +636,7 @@ namespace SurvivorSouls.Dev
             {
                 for (int i = Enemy.Active.Count; i < count; i++)
                 {
-                    var prefab = EnemyWaveTable.PickEnemy(phase, UnityEngine.Random.value);
+                    var prefab = PickLike(spawner, waves, phase);
                     if (prefab == null || !spawner.TryFindSpawnPoint(out var pos)) break;
                     spawner.SpawnAt(prefab, pos);
                 }
