@@ -97,7 +97,7 @@ namespace SurvivorSouls.UI.Hud
             if (counters != null)
             {
                 counters.BankToWallet(); // the counters bank on RealmCleared too; whichever handler runs first banks once
-                WalletText = PlayerHealthHud.WalletLine(run.Souls, SoulWallet.Balance);
+                WalletText = PlayerHealthHud.WalletLine(run.Souls, SoulWallet.Balance, counters.BonusGems);
             }
             if (_screen == null) return;
             var root = _document.rootVisualElement;

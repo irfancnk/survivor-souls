@@ -16,6 +16,7 @@ namespace SurvivorSouls.Gameplay.Chamber
     /// Run end (KAN-96): the souls are banked into the persistent <see cref="SoulWallet"/> once per run, when the Knight
     /// dies, when the Realm is cleared, or when the player leaves the run to the menu (<see cref="BankToWallet"/>). A portal
     /// to the next Chamber is not a run end: the numbers ride in the snapshot and are banked later.
+    /// The first run that ends this way also grants the one-time first-run Ember Shard bonus (KAN-97, <see cref="GemWallet"/>).
     /// </summary>
     public sealed class RunCounters : MonoBehaviour
     {
@@ -24,11 +25,15 @@ namespace SurvivorSouls.Gameplay.Chamber
         [SerializeField] private PlayerHealth health;
         [Tooltip("Realm cleared banks the run's souls (KAN-96). Null = only the other run ends bank.")]
         [SerializeField] private ChamberTransition transition;
+        [Tooltip("First-run Ember Shard bonus amount (KAN-97). Null = no bonus.")]
+        [SerializeField] private GemRewardConfig gems;
 
         public int Kills { get; private set; }
         public int Souls { get; private set; }
         /// <summary>Souls this component put in the wallet (0 until the run ends here).</summary>
         public int BankedSouls { get; private set; }
+        /// <summary>First-run bonus shards granted at this run's end (0 when it was not the first run, KAN-97).</summary>
+        public int BonusGems { get; private set; }
 
         /// <summary>The run's souls went into the wallet: amount banked, new wallet balance.</summary>
         public event Action<int, int> Banked;
@@ -40,6 +45,9 @@ namespace SurvivorSouls.Gameplay.Chamber
             souls = soulField;
             if (isActiveAndEnabled && souls != null) souls.Collected += OnCollected;
         }
+
+        /// <summary>Tests: the bonus amounts (null = no first-run bonus).</summary>
+        public void SetupGems(GemRewardConfig gemRewards) => gems = gemRewards;
 
         /// <summary>Tests: the run ends that bank on their own (death, Realm cleared).</summary>
         public void SetupRunEnds(PlayerHealth playerHealth, ChamberTransition chamberTransition)
@@ -82,12 +90,15 @@ namespace SurvivorSouls.Gameplay.Chamber
         /// <summary>
         /// Run end: adds <see cref="Souls"/> to the <see cref="SoulWallet"/> once per run (<see cref="RunState.TryMarkSoulsBanked"/>).
         /// Safe to call from every run-end path; later calls return 0 and change nothing. Returns the souls banked.
+        /// The first run ever also gets the first-run shard bonus (<see cref="BonusGems"/>).
         /// </summary>
         public int BankToWallet()
         {
             if (!RunState.TryMarkSoulsBanked()) return 0;
             BankedSouls = Souls;
             int balance = SoulWallet.Earn(Souls);
+            BonusGems = 0;
+            if (gems != null && GemWallet.TryGrantBonus(GemBonus.FirstRun, gems.FirstRunBonus)) BonusGems = gems.FirstRunBonus;
             Banked?.Invoke(Souls, balance);
             return Souls;
         }

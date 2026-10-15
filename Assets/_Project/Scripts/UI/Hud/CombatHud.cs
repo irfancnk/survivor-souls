@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using System;
+using SurvivorSouls.Gameplay.Chests;
 using SurvivorSouls.Gameplay.Combat;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -9,7 +11,7 @@ namespace SurvivorSouls.UI.Hud
     /// World-anchored combat UI on the HUD document: a thin health bar over every wounded living enemy (KAN-30: a fresh
     /// horde shows no bars, which keeps the screen readable and the per-frame UI work small) and a
     /// floating "-N" number per hit (health actually deducted; red on the killing blow, gold "N!" on a crit, small orange for
-    /// fire ticks, pale blue for soul bursts).
+    /// fire ticks, pale blue for soul bursts), and "+N SHARDS" in ember red over a Rare chest that gave Ember Shards (KAN-97).
     /// Elements are pooled and placed each frame from world positions (after the camera moved).
     /// Looks live in GameHud.uss (combat-* classes).
     /// </summary>
@@ -25,13 +27,16 @@ namespace SurvivorSouls.UI.Hud
         private const string NumberCritClass = "combat-number--crit";
         private const string NumberBurnClass = "combat-number--burn";
         private const string NumberBurstClass = "combat-number--burst";
+        private const string NumberGemsClass = "combat-number--gems";
 
         [SerializeField] private Camera worldCamera;
+        [Tooltip("Rare chest shard pops (KAN-97). Null = none.")]
+        [SerializeField] private ChestRewards chestRewards;
         [SerializeField, Min(0.1f)] private float numberLifetime = 0.85f;
         [SerializeField] private float numberRise = 0.9f; // metres over its lifetime
 
         private sealed class Bar { public VisualElement Root, Fill; }
-        private struct Number { public Label Label; public Vector3 World; public float Age; }
+        private struct Number { public Label Label; public Vector3 World; public float Age; public float Life; }
 
         private UIDocument _document;
         private VisualElement _layer;
@@ -40,6 +45,7 @@ namespace SurvivorSouls.UI.Hud
         private readonly List<Enemy> _stale = new List<Enemy>();
         private readonly List<Number> _numbers = new List<Number>();
         private readonly Stack<Label> _freeLabels = new Stack<Label>();
+        private Action<Vector3, int> _onGems;
 
         private void Awake() => _document = GetComponent<UIDocument>();
 
@@ -49,11 +55,14 @@ namespace SurvivorSouls.UI.Hud
             _layer.AddToClassList(LayerClass);
             _document.rootVisualElement.Insert(0, _layer); // under joystick and buttons
             Enemy.Damaged += OnDamaged;
+            _onGems ??= OnGemsFound;
+            if (chestRewards != null) chestRewards.GemsFound += _onGems;
         }
 
         private void OnDisable()
         {
             Enemy.Damaged -= OnDamaged;
+            if (chestRewards != null) chestRewards.GemsFound -= _onGems;
             _layer?.RemoveFromHierarchy();
             _bars.Clear();
             _freeBars.Clear();
@@ -71,9 +80,24 @@ namespace SurvivorSouls.UI.Hud
             label.EnableInClassList(NumberCritClass, crit);
             label.EnableInClassList(NumberBurnClass, kind == DamageKind.Burn);
             label.EnableInClassList(NumberBurstClass, kind == DamageKind.Burst);
+            label.EnableInClassList(NumberGemsClass, false);
             label.style.display = DisplayStyle.Flex;
-            Vector3 jitter = new Vector3(Random.Range(-0.25f, 0.25f), 0f, 0f);
-            _numbers.Add(new Number { Label = label, World = enemy.BarAnchor + Vector3.up * 0.15f + jitter, Age = 0f });
+            Vector3 jitter = new Vector3(UnityEngine.Random.Range(-0.25f, 0.25f), 0f, 0f);
+            _numbers.Add(new Number { Label = label, World = enemy.BarAnchor + Vector3.up * 0.15f + jitter, Age = 0f, Life = numberLifetime });
+        }
+
+        /// <summary>"+N SHARDS" over the chest, held 2.5x as long as a hit number (KAN-97).</summary>
+        private void OnGemsFound(Vector3 at, int amount)
+        {
+            var label = _freeLabels.Count > 0 ? _freeLabels.Pop() : NewLabel();
+            label.text = "+" + amount + " SHARDS";
+            label.EnableInClassList(NumberKillClass, false);
+            label.EnableInClassList(NumberCritClass, false);
+            label.EnableInClassList(NumberBurnClass, false);
+            label.EnableInClassList(NumberBurstClass, false);
+            label.EnableInClassList(NumberGemsClass, true);
+            label.style.display = DisplayStyle.Flex;
+            _numbers.Add(new Number { Label = label, World = at + Vector3.up * 1.4f, Age = 0f, Life = numberLifetime * 2.5f });
         }
 
         private Label NewLabel()
@@ -137,7 +161,7 @@ namespace SurvivorSouls.UI.Hud
             {
                 var n = _numbers[i];
                 n.Age += dt;
-                float t = n.Age / numberLifetime;
+                float t = n.Age / n.Life;
                 if (t >= 1f)
                 {
                     n.Label.style.display = DisplayStyle.None;

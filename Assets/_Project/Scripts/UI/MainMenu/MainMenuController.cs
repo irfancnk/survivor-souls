@@ -32,10 +32,13 @@ namespace SurvivorSouls.UI.MainMenu
         private const string CloseName = "btn-settings-close";
         private const string HiddenClass = "ss-hidden";
         private const string WalletName = "lbl-wallet-souls";
+        private const string GemsName = "lbl-wallet-gems";
 
         [SerializeField, Min(0.5f)] private float toastSeconds = 2f;
         [Tooltip("Realms on the selection page (Data/Realms/RealmCatalog.asset). Null = PLAY starts Realm 1.")]
         [SerializeField] private RealmCatalog realms;
+        [Tooltip("Welcome bonus amount (KAN-97). Null = no welcome bonus.")]
+        [SerializeField] private GemRewardConfig gems;
 
         private UIDocument _document;
         private SafeAreaPadding _safeArea;
@@ -43,6 +46,7 @@ namespace SurvivorSouls.UI.MainMenu
         private VisualElement _overlay;
         private Label _toast;
         private Label _wallet;
+        private Label _gems;
         private Button _play;
         private IVisualElementScheduledItem _toastHide;
         private RealmSelectScreen _realmSelect;
@@ -52,7 +56,11 @@ namespace SurvivorSouls.UI.MainMenu
         public RealmSelectScreen RealmSelect => _realmSelect;
 
         /// <summary>Wiring for tests and code-built menus (call before the object is enabled).</summary>
-        public void Setup(RealmCatalog catalog) => realms = catalog;
+        public void Setup(RealmCatalog catalog, GemRewardConfig gemRewards = null)
+        {
+            realms = catalog;
+            gems = gemRewards;
+        }
 
         private void Awake()
         {
@@ -71,6 +79,9 @@ namespace SurvivorSouls.UI.MainMenu
             _wallet = root.Q<Label>(WalletName);
             ShowWallet(SoulWallet.Balance);
             SoulWallet.Changed += ShowWallet;
+            _gems = root.Q<Label>(GemsName);
+            ShowGems(GemWallet.Balance);
+            GemWallet.Changed += ShowGems;
 
             _play = root.Q<Button>(PlayName);
             _play.clicked += OnPlay;
@@ -91,7 +102,11 @@ namespace SurvivorSouls.UI.MainMenu
             _play.Focus();
         }
 
-        private void OnDisable() => SoulWallet.Changed -= ShowWallet;
+        private void OnDisable()
+        {
+            SoulWallet.Changed -= ShowWallet;
+            GemWallet.Changed -= ShowGems;
+        }
 
         /// <summary>Souls held, top right (KAN-96).</summary>
         private void ShowWallet(int balance)
@@ -99,8 +114,17 @@ namespace SurvivorSouls.UI.MainMenu
             if (_wallet != null) _wallet.text = PlayerHealthHud.FormatCount(balance);
         }
 
+        /// <summary>Ember Shards held, under the Souls pill (KAN-97).</summary>
+        private void ShowGems(int balance)
+        {
+            if (_gems != null) _gems.text = PlayerHealthHud.FormatCount(balance);
+        }
+
         private void Start()
         {
+            // First menu ever (KAN-97): one-time welcome shards, said in the toast. The pill updates through Changed.
+            if (gems != null && GemWallet.TryGrantBonus(GemBonus.Welcome, gems.WelcomeBonus))
+                ShowToast($"Welcome, Ashen One. +{gems.WelcomeBonus} Ember Shards.", 4f);
             // Back from a cleared Realm (KAN-47): open on the Realm page, where the new unlock shows.
             if (RunState.TakeOpenRealms()) OpenRealms();
         }
@@ -213,14 +237,14 @@ namespace SurvivorSouls.UI.MainMenu
             reloadRing.RegisterValueChangedCallback(e => GameSettings.ReloadRing = e.newValue);
         }
 
-        private void ShowToast(string message)
+        private void ShowToast(string message, float seconds = 0f)
         {
             _toast.text = message;
             _toast.RemoveFromClassList(HiddenClass);
             _toastHide?.Pause();
             _toastHide = _toast.schedule
                 .Execute(() => _toast.AddToClassList(HiddenClass))
-                .StartingIn((long)(toastSeconds * 1000f));
+                .StartingIn((long)((seconds > 0f ? seconds : toastSeconds) * 1000f));
         }
     }
 }

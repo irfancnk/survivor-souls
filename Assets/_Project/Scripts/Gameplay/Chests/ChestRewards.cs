@@ -15,6 +15,8 @@ namespace SurvivorSouls.Gameplay.Chests
     /// (now, or when the queued chest's turn comes) or the queue is full: heal <see cref="ChestDropConfig.FallbackHeal"/> of
     /// max health and pop <see cref="ChestDropConfig.FallbackXp"/> XP as soul wisps out of the chest. Light haptic when the
     /// Knight walks into a chest.
+    /// Ember Shards (KAN-97): an opened Rare chest also rolls <see cref="GemRewardConfig.RollRareChest"/> and puts the shards
+    /// straight into the <see cref="GemWallet"/> (persistent at once, not banked at run end), <see cref="GemsFound"/> pops them.
     /// </summary>
     public sealed class ChestRewards : MonoBehaviour
     {
@@ -23,21 +25,27 @@ namespace SurvivorSouls.Gameplay.Chests
         [SerializeField] private SkillManager skills;
         [SerializeField] private PlayerHealth player;
         [SerializeField] private SoulWispField souls;
+        [Tooltip("Rare chest shard chance + amount (KAN-97). Null = chests give no shards.")]
+        [SerializeField] private GemRewardConfig gems;
 
         /// <summary>A chest's offer went to the upgrade queue.</summary>
         public event Action<UpgradeOffer> Queued;
         /// <summary>Fallback reward given at this point (heal + wisps).</summary>
         public event Action<Vector3> FallbackGiven;
+        /// <summary>A Rare chest gave Ember Shards: where, how many (KAN-97).</summary>
+        public event Action<Vector3, int> GemsFound;
 
         private Action<ReliquaryChest> _onOpened, _onOpenStarted;
         private Action<UpgradeOffer> _onEmpty;
 
         public int QueuedCount { get; private set; }
         public int FallbackCount { get; private set; }
+        /// <summary>Shards chests gave since this component woke.</summary>
+        public int GemsGiven { get; private set; }
 
         /// <summary>Wiring for code-built objects and tests.</summary>
         public void Setup(ChestDropper chestDropper, LevelUpFlow levelUpFlow, SkillManager skillManager, PlayerHealth knight,
-            SoulWispField soulField)
+            SoulWispField soulField, GemRewardConfig gemRewards = null)
         {
             bool wasEnabled = isActiveAndEnabled;
             if (wasEnabled) OnDisable();
@@ -46,6 +54,7 @@ namespace SurvivorSouls.Gameplay.Chests
             skills = skillManager;
             player = knight;
             souls = soulField;
+            gems = gemRewards;
             if (wasEnabled) OnEnable();
         }
 
@@ -76,6 +85,7 @@ namespace SurvivorSouls.Gameplay.Chests
 
         private void OnOpened(ReliquaryChest chest)
         {
+            if (chest.Tier == ChestTier.Rare) GiveChestGems(chest.transform.position, UnityEngine.Random.value, UnityEngine.Random.value);
             var offer = new UpgradeOffer(chest.Choices, chest.Upgrades, chest.Tier == ChestTier.Rare);
             if (skills != null && flow != null && skills.HasUpgradableSkill() && flow.EnqueueUpgrade(offer))
             {
@@ -88,6 +98,20 @@ namespace SurvivorSouls.Gameplay.Chests
 
         private void OnUpgradeEmpty(UpgradeOffer offer) =>
             GiveFallback(player != null ? player.transform.position : transform.position);
+
+        /// <summary>
+        /// Rare chest shard roll (two uniform rolls in [0, 1), see <see cref="GemRewardConfig.RollRareChest"/>): earns the
+        /// shards and fires <see cref="GemsFound"/>. Returns the shards given (0 on a miss or without a config).
+        /// </summary>
+        public int GiveChestGems(Vector3 at, float chanceRoll, float amountRoll)
+        {
+            int amount = gems != null ? gems.RollRareChest(chanceRoll, amountRoll) : 0;
+            if (amount <= 0) return 0;
+            GemWallet.Earn(amount);
+            GemsGiven += amount;
+            GemsFound?.Invoke(at, amount);
+            return amount;
+        }
 
         /// <summary>Heal share of max health + XP wisps around <paramref name="at"/>. Nothing for a dead Knight.</summary>
         public void GiveFallback(Vector3 at)

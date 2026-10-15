@@ -49,11 +49,18 @@
     align-items: center;
 }
 
-/* Souls held (KAN-96): pill in the top-right corner, same soul gem as the in-game HUD counter. */
-.ss-wallet {
+/* Wallet pills in the top-right corner: Souls (KAN-96), Ember Shards under it (KAN-97). */
+.ss-wallets {
     position: absolute;
     top: 48px;
     right: 40px;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+/* Souls held (KAN-96): same soul gem as the in-game HUD counter. */
+.ss-wallet {
+    margin-bottom: 14px;
     flex-direction: row;
     align-items: center;
     padding: 8px 26px 8px 18px;
@@ -79,6 +86,20 @@
     font-size: 38px;
     -unity-font-style: bold;
     color: rgb(226, 244, 255);
+}
+
+/* Ember Shards (gems, KAN-97): ember-red pill and gem. */
+.ss-wallet--gems {
+    border-color: rgba(255, 120, 84, 0.5);
+}
+
+.ss-wallet__gem--ember {
+    border-color: rgb(255, 214, 170);
+    background-color: rgb(232, 84, 52);
+}
+
+.ss-wallet__value--gems {
+    color: rgb(255, 222, 196);
 }
 
 .ss-title-block {

@@ -6,10 +6,16 @@
     <ui:VisualElement name="shade-bottom" class="ss-shade ss-shade--bottom" picking-mode="Ignore" />
 
     <ui:VisualElement name="safe-root" class="ss-root" picking-mode="Ignore">
-        <!-- Souls held (SoulWallet, KAN-96): top right. Placeholder until the KAN-56 currency bar. -->
-        <ui:VisualElement name="wallet" class="ss-wallet" picking-mode="Ignore">
-            <ui:VisualElement class="ss-wallet__gem" picking-mode="Ignore" />
-            <ui:Label name="lbl-wallet-souls" text="0" class="ss-wallet__value" picking-mode="Ignore" />
+        <!-- Souls held (SoulWallet, KAN-96) and Ember Shards held (GemWallet, KAN-97): top right. Placeholder until the KAN-56 currency bar. -->
+        <ui:VisualElement name="wallets" class="ss-wallets" picking-mode="Ignore">
+            <ui:VisualElement name="wallet" class="ss-wallet" picking-mode="Ignore">
+                <ui:VisualElement class="ss-wallet__gem" picking-mode="Ignore" />
+                <ui:Label name="lbl-wallet-souls" text="0" class="ss-wallet__value" picking-mode="Ignore" />
+            </ui:VisualElement>
+            <ui:VisualElement name="wallet-gems" class="ss-wallet ss-wallet--gems" picking-mode="Ignore">
+                <ui:VisualElement class="ss-wallet__gem ss-wallet__gem--ember" picking-mode="Ignore" />
+                <ui:Label name="lbl-wallet-gems" text="0" class="ss-wallet__value ss-wallet__value--gems" picking-mode="Ignore" />
+            </ui:VisualElement>
         </ui:VisualElement>
         <ui:VisualElement class="ss-title-block" picking-mode="Ignore">
             <ui:Label text="SURVIVOR" class="ss-title ss-title--top" />

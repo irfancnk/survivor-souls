@@ -73,6 +73,7 @@ namespace SurvivorSouls.Dev
     /// Realm's detail sheet. With either, the saved progress of Realms 1-3 is wiped first (repeatable shots); then
     /// <c>-ss-best &lt;realm&gt;:&lt;chamber&gt;</c> records a best Chamber and <c>-ss-cleared &lt;realm&gt;</c> marks a Realm completed.
     /// <c>-ss-wallet &lt;n&gt;</c> (KAN-96) sets the saved Souls wallet to n before the first scene wakes.
+    /// <c>-ss-gems &lt;n&gt;</c> (KAN-97) sets the Ember Shards wallet to n and clears the granted bonuses (welcome toast shows).
     /// <c>-ss-enemy &lt;Id&gt;[+Id...][,count[,radius]]</c> (KAN-104; radius KAN-106) places count (default 3) enemies of each roster type (e.g.
     /// GraveyardLaborer, prefab <c>Enemy_&lt;Id&gt;</c>) in an arc ~5 m ahead of the Knight after load and turns the crossbow off,
     /// so they walk in and attack. Only types the scene's wave table or the spawner's extra types (KAN-105 ranged zombies)
@@ -180,6 +181,12 @@ namespace SurvivorSouls.Dev
             {
                 SurvivorSouls.Core.SoulWallet.Clear();
                 SurvivorSouls.Core.SoulWallet.Earn(wallet);
+            }
+            // Ember Shards (KAN-97): balance n and no bonus granted yet, so the menu shows the welcome toast once.
+            if (int.TryParse(GetArg("-ss-gems"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int gems))
+            {
+                SurvivorSouls.Core.GemWallet.ResetAll();
+                SurvivorSouls.Core.GemWallet.Earn(gems);
             }
 
             // Before any scene wakes: ChamberSetup reads the run in Awake (KAN-46).

@@ -913,6 +913,14 @@
     font-size: 42px;
 }
 
+/* Ember Shards from a Rare chest (KAN-97): wide ember-red label over the chest. */
+.combat-number--gems {
+    width: 400px;
+    margin-left: -200px;
+    color: rgb(255, 120, 84);
+    font-size: 50px;
+}
+
 /* Chamber survival countdown (TimerHud, KAN-39): pill under the XP bar. Scale set in code during the final pulse. */
 .hud-timer {
     align-self: center;

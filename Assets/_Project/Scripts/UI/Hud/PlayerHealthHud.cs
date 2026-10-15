@@ -192,7 +192,8 @@ namespace SurvivorSouls.UI.Hud
         {
             var root = _document.rootVisualElement;
             counters?.BankToWallet(); // already banked at the moment of death; this only covers a scene without that hook
-            SetText(root, WalletName, WalletLine(counters != null ? counters.Souls : 0, SoulWallet.Balance));
+            SetText(root, WalletName, WalletLine(counters != null ? counters.Souls : 0, SoulWallet.Balance,
+                counters != null ? counters.BonusGems : 0));
             SetText(root, SoulsName, FormatCount(counters != null ? counters.Souls : 0));
             SetText(root, KillsName, FormatCount(counters != null ? counters.Kills : 0));
             SetText(root, ChamberName, ChamberTransitionHud.Roman(RunState.Chamber));
@@ -210,6 +211,13 @@ namespace SurvivorSouls.UI.Hud
 
         /// <summary>Death / victory screen wallet line (KAN-96): "+1,240 BANKED · 12,480 SOULS HELD".</summary>
         public static string WalletLine(int banked, int balance) => $"+{FormatCount(banked)} BANKED · {FormatCount(balance)} SOULS HELD";
+
+        /// <summary>
+        /// Wallet line plus, when the run gave the first-run bonus (KAN-97), a second line "+25 EMBER SHARDS · FIRST RUN BONUS".
+        /// </summary>
+        public static string WalletLine(int banked, int balance, int bonusGems) => bonusGems > 0
+            ? WalletLine(banked, balance) + $"\n+{FormatCount(bonusGems)} EMBER SHARDS · FIRST RUN BONUS"
+            : WalletLine(banked, balance);
 
         /// <summary>Death / victory screen number: digits with thousands separators ("12,480"), never negative.</summary>
         public static string FormatCount(int n) => Mathf.Max(0, n).ToString("N0", CultureInfo.InvariantCulture);
