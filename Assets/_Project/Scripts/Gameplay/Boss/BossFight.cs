@@ -951,7 +951,7 @@ namespace SurvivorSouls.Gameplay.Boss
             if (_dashLeft > 0.0001f) return;
             if (_dashBlocked) _dashesLeft = 0; // crashed: stunned, the combo ends
             float rest = _dashesLeft > 0 ? RedashPause : _attack.recover + (_dashBlocked ? _attack.stun : 0f);
-            BeginRecover(rest, _attack.cooldown);
+            BeginRecover(rest, _attack.cooldown, _dashBlocked ? RecoverPose.Stunned : RecoverPose.Stand); // legs stop at once
             Charged?.Invoke(next, _dashDealt);
         }
 
@@ -1714,12 +1714,30 @@ namespace SurvivorSouls.Gameplay.Boss
             return n;
         }
 
-        private void BeginRecover(float seconds, float cooldown)
+        /// <summary>
+        /// What the body plays while it recovers (KAN-162): it stands still (<see cref="Enemy.StandState"/>), reels after a
+        /// crash (<see cref="StunnedState"/>, else the Roar clip, else it stands), or keeps its clip (the phase 2 roar).
+        /// Without this the move clip (the Charge run, the Chop swing) looped in place for the whole recover.
+        /// </summary>
+        private enum RecoverPose
+        {
+            Stand,
+            Stunned,
+            Keep,
+        }
+
+        /// <summary>Animator state a boss plays while stunned after a crash, when its controller has one (KAN-162).</summary>
+        public const string StunnedState = "Stunned";
+
+        private void BeginRecover(float seconds, float cooldown, RecoverPose pose = RecoverPose.Stand)
         {
             CurrentAttack = Attack.Recover;
             _recover = seconds;
             _pendingCooldown = cooldown;
             _time = 0f;
+            if (_boss == null || pose == RecoverPose.Keep) return;
+            if (pose == RecoverPose.Stunned && (_boss.PlayPose(StunnedState) || _boss.PlayPose(data.RoarClip))) return;
+            _boss.PlayPose(Enemy.StandState);
         }
 
         private void EndAttack(float cooldown)
@@ -1754,7 +1772,7 @@ namespace SurvivorSouls.Gameplay.Boss
             {
                 FaceKnight(); // stands and roars; the next attack waits
                 _boss.PlayAction(data.RoarClip);
-                BeginRecover(data.PhaseRoar, RoarCooldown);
+                BeginRecover(data.PhaseRoar, RoarCooldown, RecoverPose.Keep);
             }
             PhaseChanged?.Invoke(2);
         }
