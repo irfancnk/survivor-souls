@@ -39,6 +39,7 @@ namespace SurvivorSouls.Tests
         private const string WardenPath = "Assets/_Project/Data/Boss/Boss_Realm1_Warden.asset";
         private const string ButcherPath = "Assets/_Project/Data/Boss/Boss_Realm1_Butcher.asset"; // the shipped Realm 1 boss (KAN-108)
         private const string PyreLordPath = "Assets/_Project/Data/Boss/Boss_PyreLord.asset"; // Realm 2 candidate (KAN-109)
+        private const string ColossusPath = "Assets/_Project/Data/Boss/Boss_RottingColossus.asset"; // fight library (KAN-110)
         private const string DifficultyPath = "Assets/_Project/Data/Chamber/ChamberDifficulty_Realm1.asset";
 
         private readonly List<Object> _objects = new List<Object>();
@@ -505,6 +506,7 @@ namespace SurvivorSouls.Tests
         [TestCase(WardenPath)]
         [TestCase(ButcherPath)]
         [TestCase(PyreLordPath)]
+        [TestCase(ColossusPath)]
         public void Balance_TenPickBuild_KillsTheBossIn60To90Seconds(string path)
         {
             var warden = UnityEditor.AssetDatabase.LoadAssetAtPath<BossData>(path);
