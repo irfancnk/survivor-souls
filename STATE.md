@@ -512,6 +512,12 @@
   - Verified: compile 0 errors / 0 warnings, MainMenu scene rebuild (generated fileID churn committed), mac dev build + 7 screenshot runs without exceptions, iOS dev export + xcodebuild + install + launch on iPhone 14 Pro Max OK.
   - Limits: sandbox only, every build: a pack "purchase" gives free shards until a real provider replaces the mock (must happen before any store release). No server receipt validation, no restore purchases, prices are fixed USD text (real stores give localized prices). Delivered transaction ids are kept in memory only (per page). Shard spends give Souls only (no chests with gear / continue yet: KAN-139 gear, revive later).
 
+- 2026-10-15: Shadow Ranger rebuilt in Blender after user review (Meshy shoot clip wrong hand direction, tangled strings, bad face). User session, no game code. Build script `Tools/Meshy/build_shadow_ranger.py` (headless; source `rigged_meshy.glb`), work file `~/survivor-souls-assets/models/shadow_ranger/ShadowRanger.blend` (opened in the user's Blender).
+  - Cut the fused Meshy bow + string + arrow (the preview was a drawn-bow pose), merged the triangle soup + smooth normals (looks far less faceted), hood shadow painted into the face texture + dark ranger cowl (Head). New recurve bow (LeftHand), string on new bone `BowString`, arrow on new bone `Arrow` (rests in the quiver). Rig now 26 bones.
+  - Clips: hand-keyed IK `Shoot` (1.0 s loop, release frame 19 = 0.63 s, string to the jaw, follow-through) replaces the Meshy Archery Shot; new `Idle` (2 s, bow upright). Meshy Walking / Running got rest keys for the new bones.
+  - Checked with EEVEE renders (every clip, face close-ups, 55 deg game camera) and the Bestiary viewer v5. Details: `Docs/ENEMY_ROSTER.md` section 7.
+  - Blender MCP add-on is not installed in Blender 5.2 (Blender Lab extensions repo); all work ran headless via CLI.
+
 ## DECISIONS
 - Design language: Archero / Archero 2 (menus, loop, chests, daily/weekly quests, gear merge, talents, energy). Look: Dark Souls, realistic, not dismal. User decision 2026-10-11.
 - Naming map: energy=Estus, gold=Souls, gems=Ember Shards, chests=Reliquaries, daily=Oaths, weekly=Pilgrimage, chapter=Realm, room=Chamber. See GAME_PLAN sec 2.
