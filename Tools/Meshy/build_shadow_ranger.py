@@ -384,6 +384,9 @@ if STAGE != "A":
     HEAD = [("neck", 21), ("Head", 25)]                               # face fully to the target
     CANT = 18                                                         # bow top limb leans to the archer's right
 
+    HAND_OFF = Vector((-0.015, 0.055, -0.015))   # wrist behind the pinch point (fingers on the string)
+    BACK_OFF = Vector((-0.06, 0.12, -0.02))      # follow-through: hand opens back past the jaw, close to the body
+
     def base_aim(breath=0.0):
         reset_pose()
         twist([("Hips", HIPS)]); twist(TORSO); twist(HEAD)
@@ -404,12 +407,17 @@ if STAGE != "A":
 
     def pose_bow_arm(wrist, drop=0.0):
         Sh = joint("LeftArm")
-        two_bone("LeftArm", "LeftForeArm", "LeftHand", wrist + Vector((0, 0, -drop)), Sh + Vector((0.35, 0.05, -0.30)))
+        if drop:
+            # lower the arm by swinging it round the shoulder (keeps the arm long, the bow stays clear of the body)
+            v = wrist - Sh
+            axis = v.cross(Vector((0, 0, 1))).normalized()
+            wrist = Sh + Matrix.Rotation(-drop / max(v.length, 1e-6), 3, axis) @ v
+        two_bone("LeftArm", "LeftForeArm", "LeftHand", wrist, Sh + Vector((0.35, 0.05, -0.30)))
 
     def pose_draw_arm(wrist, point_at=None, palm_in=False, raise_elbow=1.0):   # palm down: the top camera sees the back of the hand
         Sh = joint("RightArm")
         # elbow low and out at the ready (forearm clears the cowl), high behind the shoulder at full draw
-        pole = Vector((-0.40, 0.05, -0.30)).lerp(Vector((-0.30, 0.45, 0.10)), max(0.0, min(1.0, raise_elbow)))
+        pole = Vector((-0.35, 0.05, -0.30)).lerp(Vector((-0.22, 0.45, 0.04)), max(0.0, min(1.0, raise_elbow)))
         two_bone("RightArm", "RightForeArm", "RightHand", wrist, Sh + pole)
         if point_at is not None:
             # fingers (hand bone Y) along the string pull line; then roll the palm to face the archer's cheek (+X)
@@ -450,7 +458,60 @@ if STAGE != "A":
     _hit = min(_hits, key=lambda h: h.x) if _hits else None
     _anc = Vector(((_hit.x if _hit else _hc.x - 0.13) - 0.035, _hc.y - 0.03, _hc.z))
     ANCHOR_LOCAL = (AW @ PB["Head"].matrix).inverted() @ _anc
-    print(f"B2 anchor {tuple(round(x, 3) for x in _anc)}  (hood surface x {(_hit.x if _hit else float('nan')):.3f})")
+    print(f"B2 outer anchor {tuple(round(x, 3) for x in _anc)}  (hood surface x {(_hit.x if _hit else float('nan')):.3f})")
+
+    # chin anchor (user review 4: the draw hand sat too far out): search a grid round the chin, keep the point closest
+    # to "just under and beside the chin" whose full draw + follow-through put no arm vertex inside head / hood / cowl
+    _gi = {g.name: g.index for g in body.vertex_groups}
+    def _w(v, names): return sum(g.weight for g in v.groups if g.group in [_gi[n] for n in names if n in _gi])
+    _hv = {v.index for v in body.data.vertices if _w(v, ("Head", "neck", "head_end", "headfront")) > 0.5}
+    _head_faces = [p.index for p in body.data.polygons if all(i in _hv for i in p.vertices)]
+    _rarm = [v.index for v in body.data.vertices if _w(v, ("RightHand", "RightForeArm", "RightArm")) > 0.5]
+    _maskobj = bpy.data.objects["ShadowRanger_Mask"]
+
+    def clip_count():
+        dg = bpy.context.evaluated_depsgraph_get()
+        eb = body.evaluated_get(dg); m = eb.to_mesh(); bmw = body.matrix_world
+        P = [bmw @ v.co for v in m.vertices]
+        tris = [tuple(m.polygons[i].vertices) for i in _head_faces]
+        em = _maskobj.evaluated_get(dg); mm = em.to_mesh(); off = len(P)
+        P2 = P + [_maskobj.matrix_world @ v.co for v in mm.vertices]
+        tris += [tuple(off + i for i in p.vertices) for p in mm.polygons]
+        bvh = BVHTree.FromPolygons(P2, tris)
+        n = 0
+        for i in _rarm:
+            loc, nrm, idx, d = bvh.find_nearest(P[i], 0.06)
+            if loc is not None and (P[i] - loc).dot(nrm) < -0.003:
+                n += 1
+        eb.to_mesh_clear(); em.to_mesh_clear()
+        return n
+
+    def eval_anchor(anc):
+        global ANCHOR_LOCAL
+        ANCHOR_LOCAL = (AW @ PB["Head"].matrix).inverted() @ anc
+        a, d, w = base_aim(); pose_bow_arm(w)
+        pose_draw_arm(a + HAND_OFF, a + d * 0.10, raise_elbow=1.0)
+        c1 = clip_count()
+        b = a + BACK_OFF
+        pose_draw_arm(b, b + d * 0.10 + Vector((0, 0, -0.03)), raise_elbow=1.0)
+        return c1 + clip_count()
+
+    _a, _d, _w = base_aim()
+    CHIN = joint("Head") + Vector((0, -0.06, 0.0))
+    IDEAL = CHIN + Vector((-0.045, 0.0, -0.015))
+    _best = None
+    for dx in (-0.035, -0.05, -0.065, -0.08, -0.095, -0.11):
+        for dy in (-0.02, 0.0, 0.02):
+            for dz in (-0.045, -0.03, -0.015, 0.0, 0.015):
+                cand = CHIN + Vector((dx, dy, dz))
+                c = eval_anchor(cand)
+                score = (c, (cand - IDEAL).length)
+                if _best is None or score < _best[0]:
+                    _best = (score, cand)
+    ANCHOR_LOCAL = None
+    _a, _d, _w = base_aim()
+    ANCHOR_LOCAL = (AW @ PB["Head"].matrix).inverted() @ _best[1]
+    print(f"B2 chin anchor {tuple(round(x, 3) for x in _best[1])}  clip {_best[0][0]}  off ideal {_best[0][1] * 100:.1f} cm")
     anchor0, aimdir0, wrist0 = base_aim()
     pose_bow_arm(wrist0)
     upd()
@@ -553,7 +614,7 @@ if STAGE != "A":
         """Bow arm low at the side, grip at hip height, bow upright leaning forward, string facing back."""
         across, upv, fwdv = chest_axes()
         Sh = joint("LeftArm")
-        target = Sh - upv * 0.33 + fwdv * (0.09 + swing) + across * 0.075
+        target = Sh - upv * 0.30 + fwdv * (0.11 + swing) + across * 0.16
         two_bone("LeftArm", "LeftForeArm", "LeftHand", target, Sh + across * 0.30 - fwdv * 0.30)
         a = math.radians(lean_deg + swing * 60)
         orient_bow(upv * math.cos(a) + fwdv * math.sin(a), -fwdv * math.cos(a) + upv * math.sin(a))
@@ -644,7 +705,7 @@ if STAGE != "A":
             draw = None
         # raise-and-draw: bow arm starts 10 cm low at the ready (the reaching draw arm passes under the jaw, not along the
         # hood), rises into line during the draw, lowers again for the next arrow after the follow-through
-        SET_DROP = 0.16
+        SET_DROP = 0.08
         if f <= 4:
             drop = SET_DROP
         elif f <= 14:
@@ -665,7 +726,7 @@ if STAGE != "A":
         if draw is not None:
             pinch_anchor = anchor + Vector((0, 0, -drop))
             pinch = pinch_brace.lerp(pinch_anchor, min(draw, 1.0)) + aimdir * -0.02 * max(draw - 1.0, 0) / 0.03
-            hand_w = pinch + Vector((-0.03, 0.055, -0.012))
+            hand_w = pinch + HAND_OFF
             string_w = pinch
             point_at = pinch + aimdir * 0.10
             raise_elbow = smooth(min(1.0, max(draw, 0.0)) ** 0.7)
@@ -673,11 +734,11 @@ if STAGE != "A":
         else:
             k = (f - 19) / 11.0
             # follow-through: hand flies back past the ear, then returns to the string
-            back_pt = anchor + Vector((-0.10, 0.13, 0.015))           # opens back and out, away from the hood
+            back_pt = anchor + BACK_OFF
             if k < 0.35:
-                hand_w = (anchor + Vector((-0.03, 0.055, -0.012))).lerp(back_pt, smooth(k / 0.35))
+                hand_w = (anchor + HAND_OFF).lerp(back_pt, smooth(k / 0.35))
             else:
-                hand_w = back_pt.lerp(pinch_brace + Vector((-0.03, 0.055, -0.012)), smooth((k - 0.35) / 0.65))
+                hand_w = back_pt.lerp(pinch_brace + HAND_OFF, smooth((k - 0.35) / 0.65))
             string_w = None
             point_at = hand_w + aimdir * 0.10 + Vector((0, 0, -0.03))
             raise_elbow = 1.0 - smooth(max(0.0, (k - 0.35) / 0.65))
