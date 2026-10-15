@@ -19,6 +19,9 @@ namespace SurvivorSouls.Core
         /// <summary>Seconds since the scene loaded (game time).</summary>
         public readonly float Time;
         public readonly Vector3 Position;
+        /// <summary>Game version and build number of the player that tracked it (KAN-142, <see cref="BuildInfo"/>).</summary>
+        public readonly string Version;
+        public readonly int Build;
 
         public TelemetryEvent(string name, string subject, int from, int to, string source, float time, Vector3 position)
         {
@@ -29,6 +32,9 @@ namespace SurvivorSouls.Core
             Source = source;
             Time = time;
             Position = position;
+            BuildInfo build = BuildInfo.Current;
+            Version = build.version;
+            Build = build.build;
         }
 
         public override string ToString() =>

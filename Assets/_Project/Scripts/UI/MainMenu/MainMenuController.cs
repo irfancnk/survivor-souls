@@ -27,7 +27,8 @@ namespace SurvivorSouls.UI.MainMenu
         private const string PlayName = "btn-play";
         private const string SettingsName = "btn-settings";
         private const string QuitName = "btn-quit";
-        private const string VersionName = "lbl-version";
+        public const string VersionName = "lbl-version";
+        public const string SettingsVersionName = "lbl-settings-version";
         private const string ToastName = "lbl-toast";
         private const string OverlayName = "settings-overlay";
         private const string MusicName = "sld-music";
@@ -127,7 +128,11 @@ namespace SurvivorSouls.UI.MainMenu
             _safeArea = new SafeAreaPadding(root.Q(SafeRootName));
             _overlay = root.Q(OverlayName);
             _toast = root.Q<Label>(ToastName);
-            root.Q<Label>(VersionName).text = $"v{Application.version}";
+            // Version from VERSION.json, stamped at build time (KAN-142); dev builds add the commit.
+            string version = BuildInfo.DisplayLabel;
+            root.Q<Label>(VersionName).text = version;
+            var settingsVersion = root.Q<Label>(SettingsVersionName);
+            if (settingsVersion != null) settingsVersion.text = version;
             _wallet = root.Q<Label>(WalletName);
             int recovered = SoulWallet.RestorePending(); // souls of a run the OS killed in the background (KAN-101)
             ShowWallet(SoulWallet.Balance);

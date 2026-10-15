@@ -34,7 +34,7 @@ namespace SurvivorSouls.Editor
                 options = BuildOptions.Development,
             };
             BuildReport report = null;
-            WithQualityLevelOnStandalone(MobileQuality, () => report = BuildPipeline.BuildPlayer(options));
+            WithQualityLevelOnStandalone(MobileQuality, () => report = Build(options));
             Debug.Log($"[DevBuildTools] {report.summary.result} errors={report.summary.totalErrors} -> {options.locationPathName}");
             EditorApplication.Exit(report.summary.result == BuildResult.Succeeded ? 0 : 1);
         }
@@ -130,7 +130,7 @@ namespace SurvivorSouls.Editor
                 options = dev ? BuildOptions.Development : BuildOptions.None,
                 extraScriptingDefines = defines,
             };
-            BuildReport report = BuildPipeline.BuildPlayer(options);
+            BuildReport report = Build(options);
             Debug.Log($"[DevBuildTools] iOS {report.summary.result} errors={report.summary.totalErrors} defines=[{string.Join(",", defines)}] -> {outDir}");
             EditorApplication.Exit(report.summary.result == BuildResult.Succeeded ? 0 : 1);
         }
@@ -154,7 +154,7 @@ namespace SurvivorSouls.Editor
                 options = dev ? BuildOptions.Development : BuildOptions.None,
                 extraScriptingDefines = defines,
             };
-            BuildReport report = BuildPipeline.BuildPlayer(options);
+            BuildReport report = Build(options);
             Debug.Log($"[DevBuildTools] Android {report.summary.result} errors={report.summary.totalErrors} defines=[{string.Join(",", defines)}] -> {outPath}");
             EditorApplication.Exit(report.summary.result == BuildResult.Succeeded ? 0 : 1);
         }
@@ -184,6 +184,22 @@ namespace SurvivorSouls.Editor
                 defines = null;
                 EditorApplication.Exit(1);
                 return false;
+            }
+        }
+
+        /// <summary>
+        /// BuildPipeline.BuildPlayer + version stamp cleanup (KAN-142): <see cref="Platform.VersionStamp"/> stamps in its
+        /// preprocess step and restores in postprocess, which a failed build never reaches.
+        /// </summary>
+        private static BuildReport Build(BuildPlayerOptions options)
+        {
+            try
+            {
+                return BuildPipeline.BuildPlayer(options);
+            }
+            finally
+            {
+                Platform.VersionStamp.Restore();
             }
         }
 

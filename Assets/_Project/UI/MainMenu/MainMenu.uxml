@@ -61,6 +61,8 @@
             <ui:Toggle name="tgl-reload-ring" label="Reload Ring" class="ss-field" />
             <!-- KAN-144: dev builds always; other builds after 7 taps on the title (TestModeReveal). -->
             <ui:Toggle name="tgl-test-mode" label="Test Mode" class="ss-field ss-field--test ss-hidden" />
+            <!-- KAN-142: version + build (dev builds add the commit), so a bug report names its build. -->
+            <ui:Label name="lbl-settings-version" text="v0.0.0" class="ss-version ss-version--settings" picking-mode="Ignore" />
             <ui:Button name="btn-settings-close" text="BACK" class="ss-button ss-button--primary ss-button--modal" />
         </ui:VisualElement>
     </ui:VisualElement>
