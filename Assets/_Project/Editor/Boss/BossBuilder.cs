@@ -38,6 +38,8 @@ namespace SurvivorSouls.Editor.Boss
     /// KAN-109: The Pyre Lord asset (<see cref="PyreLordDataPath"/>, never overwritten) sits in the fight's library: not in
     /// Realm 1's rotation, picked by the dev flag <c>-ss-boss-type PyreLord</c> or the menu "Boss: Next Fight Pyre Lord";
     /// a Realm 2 boss once KAN-57 lands. Its slam and meteors leave burning patches (shared ground hazard pool, fire look).
+    /// KAN-110: The Rotting Colossus asset (<see cref="ColossusDataPath"/>, never overwritten) joins the library the same way:
+    /// <c>-ss-boss-type RottingColossus</c> or the menu "Boss: Next Fight Rotting Colossus".
     /// </summary>
     public static class BossBuilder
     {
@@ -45,6 +47,7 @@ namespace SurvivorSouls.Editor.Boss
         public const string BossDataPath = DataDir + "/Boss_Realm1_Warden.asset";
         public const string ButcherDataPath = DataDir + "/Boss_Realm1_Butcher.asset";
         public const string PyreLordDataPath = DataDir + "/Boss_PyreLord.asset";
+        public const string ColossusDataPath = DataDir + "/Boss_RottingColossus.asset";
         public const string BossRulesPath = "Assets/_Project/Data/Chamber/ChamberRules_Boss.asset";
         private const string ArtDir = "Assets/_Project/Art/Boss";
         private const string RingTexturePath = ArtDir + "/T_TelegraphRing.png";
@@ -67,6 +70,7 @@ namespace SurvivorSouls.Editor.Boss
             var data = LoadOrCreateData();
             var butcher = LoadOrCreateButcher();
             var pyreLord = LoadOrCreatePyreLord();
+            var colossus = LoadOrCreateColossus();
             var rules = LoadOrCreateRules();
             var root = new GameObject("Boss");
             var telegraph = CreateTelegraph(kit, root.transform);
@@ -89,8 +93,9 @@ namespace SurvivorSouls.Editor.Boss
             list.arraySize = 1;
             list.GetArrayElementAtIndex(0).objectReferenceValue = butcher; // Realm 1 boss Chambers (KAN-108)
             var library = so.FindProperty("library");
-            library.arraySize = 1;
+            library.arraySize = 2;
             library.GetArrayElementAtIndex(0).objectReferenceValue = pyreLord; // KAN-109: -ss-boss-type PyreLord, Realm 2 later
+            library.GetArrayElementAtIndex(1).objectReferenceValue = colossus; // KAN-110: -ss-boss-type RottingColossus
             so.ApplyModifiedPropertiesWithoutUndo();
             BossHeartsBuilder.Create(kit, root, fight, player); // healing hearts during the fight (KAN-60)
             return fight;
@@ -466,6 +471,74 @@ namespace SurvivorSouls.Editor.Boss
             return data;
         }
 
+        /// <summary>
+        /// The Rotting Colossus (KAN-110, Docs/ENEMY_ROSTER.md 3.14): 5.0 m roster body (the biggest), 8200 HP (Chamber 1
+        /// terms; doc 11000, but then a no-pick Knight needs over 4 min, so it gets the most HP the balance rule allows), the
+        /// slowest boss (1.2 m/s). Phase 1: double slam up close (two shockwave rings, warning circle r 5.5 m), grab at mid
+        /// range (1.2 s lane 7 x 1.4 m; a hit deals 20 % and drags the Knight in to the body), corpse boulder at range
+        /// (landing circle r 2.5 m, rubble r 0.9 m for 8 s that blocks the ground and boss bolts). Phase 2 (50 %): roar, then
+        /// the roar summons 4 Frenzied Ghouls (only the missing ones come) and the boulders come 3 in a row. Never
+        /// overwritten: edit the asset.
+        /// </summary>
+        public static BossAttack[] ColossusAttacks()
+        {
+            var slam = BossAttack.Sample(BossFight.Move.Shockwave);
+            slam.priority = 1; // up close the slam goes first
+            slam.clip = "Slam";
+            var boulder = BossAttack.Sample(BossFight.Move.Lobbed);
+            boulder.minRange = 5f; // a thrower at range; up close it slams or grabs
+            boulder.phases = BossPhases.Phase1;
+            boulder.clip = "Throw";
+            var volley = boulder;
+            volley.label = "Boulder Volley";
+            volley.phases = BossPhases.Phase2;
+            volley.count = 3;
+            volley.interval = 0.7f;
+            volley.cooldown = 3.6f;
+            volley.weight = 1.5f;
+            var summon = BossAttack.Sample(BossFight.Move.Summon);
+            summon.clip = "Roar";
+            return new[]
+            {
+                slam,
+                BossAttack.Lane("Grab", BossPhases.Both, 2.5f, 7f, length: 7f, width: 1.4f, telegraph: 1.2f, damage: 0.2f,
+                    recover: 0.9f, cooldown: 2.8f, pull: 7f, weight: 1.5f, clip: "Grab"),
+                boulder,
+                volley,
+                summon,
+            };
+        }
+
+        private static BossData LoadOrCreateColossus()
+        {
+            var body = EnemyRosterBuilder.LoadPrefab("RottingColossus");
+            if (body == null) throw new System.InvalidOperationException("Boss body missing: Enemy_RottingColossus (EnemyRosterBuilder)");
+            var data = AssetDatabase.LoadAssetAtPath<BossData>(ColossusDataPath);
+            if (data != null)
+            {
+                if (data.Prefab == null)
+                {
+                    var so = new SerializedObject(data);
+                    so.FindProperty("prefab").objectReferenceValue = body;
+                    so.ApplyModifiedPropertiesWithoutUndo();
+                    EditorUtility.SetDirty(data);
+                }
+                AssetDatabase.ForceReserializeAssets(new[] { ColossusDataPath });
+                return data;
+            }
+            EditorAssetUtil.EnsureFolder(DataDir);
+            // 8200 HP x Chamber 5 health (x1.6): a 10-pick Knight kills it in ~75 s, no picks ~239 s (BossIntroTests balance check).
+            data = BossData.CreateWithAttacks(body, ColossusAttacks(), health: 8200f, firstAttackDelay: 1.5f, introTime: 2.6f,
+                victoryBeat: 1.8f, roarClip: "Roar", phaseRoar: 1.4f, displayName: "THE ROTTING COLOSSUS",
+                title: "Carrion Giant of the Barrow Fields");
+            var zoom = new SerializedObject(data);
+            zoom.FindProperty("introZoom").floatValue = 1.5f; // the 5 m body: pull out further than the 4.2-4.5 m bosses
+            zoom.ApplyModifiedPropertiesWithoutUndo();
+            AssetDatabase.CreateAsset(data, ColossusDataPath);
+            AssetDatabase.SaveAssets();
+            return data;
+        }
+
         private static ChamberRules LoadOrCreateRules()
         {
             var rules = AssetDatabase.LoadAssetAtPath<ChamberRules>(BossRulesPath);
@@ -573,6 +646,14 @@ namespace SurvivorSouls.Editor.Boss
         private static void NextPyreLord()
         {
             BossFight.ForcedBoss = BossFight.ForcedBoss == "PyreLord" ? null : "PyreLord";
+            Debug.Log($"[BossBuilder] forced boss: {BossFight.ForcedBoss ?? "none (Realm list)"}");
+        }
+
+        /// <summary>KAN-110: the next boss Chamber (this run, after a jump or a portal) gets The Rotting Colossus. Play mode only.</summary>
+        [MenuItem("Survivor Souls/Debug/Boss: Next Fight Rotting Colossus")]
+        private static void NextColossus()
+        {
+            BossFight.ForcedBoss = BossFight.ForcedBoss == "RottingColossus" ? null : "RottingColossus";
             Debug.Log($"[BossBuilder] forced boss: {BossFight.ForcedBoss ?? "none (Realm list)"}");
         }
 
