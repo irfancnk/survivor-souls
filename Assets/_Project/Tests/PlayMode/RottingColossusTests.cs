@@ -502,10 +502,8 @@ namespace SurvivorSouls.Tests
 
             var fight = BossFight.Active;
             Assert.That(fight, Is.Not.Null);
-            Assert.That(System.Array.Exists(fight.Library, d => d != null && d.name == "Boss_RottingColossus"), Is.True,
-                "in the library");
-            Assert.That(System.Array.Exists(fight.Bosses, d => d != null && d.name == "Boss_RottingColossus"), Is.False,
-                "not in Realm 1's rotation");
+            Assert.That(System.Array.IndexOf(fight.Bosses, fight.Data), Is.EqualTo(1),
+                "KAN-112: Realm 1's second boss (Chamber 10)");
             Assert.That(fight.Data.DisplayName, Is.EqualTo("THE ROTTING COLOSSUS"));
             Assert.That(fight.Data.Prefab.name, Is.EqualTo("Enemy_RottingColossus"));
 
