@@ -65,8 +65,9 @@ namespace SurvivorSouls.Editor.Boss
             heartMat.SetTexture("_EmissionMap", gradient);
             heartMat.SetColor("_EmissionColor", new Color(1f, 0.36f, 0.1f));
             heartMat.EnableKeyword("_EMISSION");
-            heartMat.globalIlluminationFlags = MaterialGlobalIlluminationFlags.None;
-            EditorUtility.SetDirty(heartMat);
+            // URP keeps _EMISSION only with an emissive GI flag; None lost the glow on validation. Realtime = no bake cost (KAN-158).
+            heartMat.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
+            EditorAssetUtil.ValidateSimpleLit(heartMat); // emission set after SimpleLitMaterial: validate again (KAN-158)
             var glowMat = EditorAssetUtil.ParticleMaterial(ArtDir + "/M_FX_HeartGlow.mat", kit.SoftDot, additive: false);
             var mesh = EditorAssetUtil.LoadOrCreateMesh(ArtDir + "/Mesh_Heart.asset");
             WriteHeart(mesh);

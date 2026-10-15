@@ -311,7 +311,8 @@ namespace SurvivorSouls.Editor.Combat
             BuildController(RunnerControllerPath, run, attack);
             var texture = AssetDatabase.LoadAssetAtPath<Texture2D>(ZombieTexturePath);
             foreach (var type in new[] { Shambler, Runner, Brute, Warden })
-                BuildZombie(kit, model, type, EditorAssetUtil.SimpleLitMaterial(type.Material, texture, type.Tint, smoothness: 0.15f),
+                BuildZombie(kit, model, type, EditorAssetUtil.SimpleLitMaterial(type.Material, texture, type.Tint, smoothness: 0.15f,
+                    specular: false), // characters: no highlight, like the roster (KAN-158)
                     type.Runs ? runGait.Speed : shambleSpeed);
         }
 
