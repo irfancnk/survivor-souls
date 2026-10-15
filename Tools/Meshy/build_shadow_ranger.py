@@ -388,7 +388,10 @@ if STAGE != "A":
         reset_pose()
         twist([("Hips", HIPS)]); twist(TORSO); twist(HEAD)
         tilt("Spine", -3 + breath)               # chest up a little, breathing
-        anchor = joint("Head") + Vector((-0.045, -0.05, 0.025))       # right jaw corner under the hood
+        if ANCHOR_LOCAL is not None:             # cheek anchor just outside the hood (found by raycast, head space)
+            anchor = (AW @ PB["Head"].matrix) @ ANCHOR_LOCAL
+        else:
+            anchor = joint("Head") + Vector((-0.045, -0.05, 0.025))
         # arrow line: from the anchor straight at the target, slightly up
         aimdir = Vector((0, -1, 0.03)).normalized()
         # bow wrist: on a line parallel to the arrow, 3 cm left / 4 cm low of it, at 97 % arm reach
@@ -403,9 +406,11 @@ if STAGE != "A":
         Sh = joint("LeftArm")
         two_bone("LeftArm", "LeftForeArm", "LeftHand", wrist + Vector((0, 0, -drop)), Sh + Vector((0.35, 0.05, -0.30)))
 
-    def pose_draw_arm(wrist, point_at=None, palm_in=False):   # palm down: the top-down game camera sees the back of the hand
+    def pose_draw_arm(wrist, point_at=None, palm_in=False, raise_elbow=1.0):   # palm down: the top camera sees the back of the hand
         Sh = joint("RightArm")
-        two_bone("RightArm", "RightForeArm", "RightHand", wrist, Sh + Vector((-0.30, 0.45, 0.10)))
+        # elbow low and out at the ready (forearm clears the cowl), high behind the shoulder at full draw
+        pole = Vector((-0.40, 0.05, -0.30)).lerp(Vector((-0.30, 0.45, 0.10)), max(0.0, min(1.0, raise_elbow)))
+        two_bone("RightArm", "RightForeArm", "RightHand", wrist, Sh + pole)
         if point_at is not None:
             # fingers (hand bone Y) along the string pull line; then roll the palm to face the archer's cheek (+X)
             pb = PB["RightHand"]; upd()
@@ -424,6 +429,28 @@ if STAGE != "A":
             T = bestN.to_4x4(); T.translation = M.translation
             pb.matrix = T; upd()
 
+    # anchor: ray from the archer's right side onto the hood / cowl surface at mouth height, then 3.5 cm out,
+    # so the draw hand, forearm and follow-through stay outside the head (they sank 5.9 cm into the hood before)
+    ANCHOR_LOCAL = None
+    _a0, _d0, _w0 = base_aim()
+    pose_bow_arm(_w0); upd()
+    _dg = bpy.context.evaluated_depsgraph_get()
+    _parts = [body, bpy.data.objects["ShadowRanger_Mask"]]
+    _P, _F = [], []
+    for _o in _parts:
+        _m = _o.evaluated_get(_dg).to_mesh(); _off = len(_P)
+        _P += [_o.matrix_world @ v.co for v in _m.vertices]; _F += [tuple(_off + i for i in p.vertices) for p in _m.polygons]
+        _o.evaluated_get(_dg).to_mesh_clear()
+    _bvh = BVHTree.FromPolygons(_P, _F)
+    _hc = joint("Head") + Vector((0, 0, 0.05))                     # mouth height
+    # fan of rays across the head depth (front to back), keep the outermost surface on the right side
+    _hits = [_bvh.ray_cast(_hc + Vector((-0.6, dy, dz)), Vector((1, 0, 0)), 1.0)[0]
+             for dy in (-0.08, -0.05, -0.02, 0.01, 0.04, 0.07, 0.10) for dz in (-0.02, 0.0, 0.02)]
+    _hits = [h for h in _hits if h is not None and abs(h.x - _hc.x) < 0.25]
+    _hit = min(_hits, key=lambda h: h.x) if _hits else None
+    _anc = Vector(((_hit.x if _hit else _hc.x - 0.13) - 0.035, _hc.y - 0.03, _hc.z))
+    ANCHOR_LOCAL = (AW @ PB["Head"].matrix).inverted() @ _anc
+    print(f"B2 anchor {tuple(round(x, 3) for x in _anc)}  (hood surface x {(_hit.x if _hit else float('nan')):.3f})")
     anchor0, aimdir0, wrist0 = base_aim()
     pose_bow_arm(wrist0)
     upd()
@@ -505,6 +532,31 @@ if STAGE != "A":
     tips_rest = [to_rest @ t for t in tips]
     # bow "up" (bottom tip -> top tip) in LeftHand bone space, for posing the hand by the bow
     BOW_UP_BONE = (hand_rest.to_3x3().normalized().inverted() @ (tips_rest[1] - tips_rest[0]).normalized()).normalized()
+    _back_rest = (to_rest.to_3x3().normalized() @ back).normalized()           # grip -> string side, rest world
+    BOW_BACK_BONE = (hand_rest.to_3x3().normalized().inverted() @ _back_rest).normalized()
+
+    def _frame(u, b):
+        u = u.normalized(); b = (b - u * b.dot(u)).normalized()
+        return Matrix((u, b, u.cross(b))).transposed()
+
+    def orient_bow(up_w, back_w):                 # turn the bow hand so the bow points up_w with the string to back_w
+        hw = (AW @ PB["LeftHand"].matrix).to_3x3().normalized()
+        cur = _frame(hw @ BOW_UP_BONE, hw @ BOW_BACK_BONE)
+        rot_world("LeftHand", _frame(up_w, back_w) @ cur.transposed())
+
+    def chest_axes():
+        across = (joint("LeftArm") - joint("RightArm")).normalized()
+        upv = (joint("neck") - joint("Spine02")); upv = (upv - across * upv.dot(across)).normalized()
+        return across, upv, across.cross(upv)        # left, up, forward
+
+    def carry_bow(swing=0.0, lean_deg=30):
+        """Bow arm low at the side, grip at hip height, bow upright leaning forward, string facing back."""
+        across, upv, fwdv = chest_axes()
+        Sh = joint("LeftArm")
+        target = Sh - upv * 0.33 + fwdv * (0.09 + swing) + across * 0.075
+        two_bone("LeftArm", "LeftForeArm", "LeftHand", target, Sh + across * 0.30 - fwdv * 0.30)
+        a = math.radians(lean_deg + swing * 60)
+        orient_bow(upv * math.cos(a) + fwdv * math.sin(a), -fwdv * math.cos(a) + upv * math.sin(a))
     brace_rest = to_rest @ (grip + back * BRACE)
     bpy.ops.object.mode_set(mode='OBJECT')
     bpy.ops.object.select_all(action='DESELECT'); arm.select_set(True); bpy.context.view_layer.objects.active = arm
@@ -590,9 +642,18 @@ if STAGE != "A":
             draw = 1.0 + 0.03 * smooth((f - 14) / 5)             # last few mm of expansion before the release
         else:
             draw = None
-        drop = 0.0
-        if 19 < f <= 25:
-            drop = 0.035 * math.sin((f - 19) / 6 * math.pi)       # bow arm reacts to the shot
+        # raise-and-draw: bow arm starts 10 cm low at the ready (the reaching draw arm passes under the jaw, not along the
+        # hood), rises into line during the draw, lowers again for the next arrow after the follow-through
+        SET_DROP = 0.16
+        if f <= 4:
+            drop = SET_DROP
+        elif f <= 14:
+            drop = SET_DROP * (1 - smooth((f - 4) / 10))
+        elif f <= 19:
+            drop = 0.0
+        else:
+            drop = 0.035 * math.sin(min(f - 19, 6) / 6 * math.pi) if f <= 25 else 0.0     # bow arm reacts to the shot
+            drop += SET_DROP * smooth(max(0.0, (f - 22) / 8))
         pose_bow_arm(wrist, drop)
         rot_world("LeftHand", Matrix.Rotation(math.radians(CANT), 3, aimdir))
         upd()
@@ -602,23 +663,26 @@ if STAGE != "A":
         pinch_brace = brace_now
         pinch_anchor = anchor
         if draw is not None:
+            pinch_anchor = anchor + Vector((0, 0, -drop))
             pinch = pinch_brace.lerp(pinch_anchor, min(draw, 1.0)) + aimdir * -0.02 * max(draw - 1.0, 0) / 0.03
-            hand_w = pinch + Vector((-0.02, 0.055, -0.01))
+            hand_w = pinch + Vector((-0.03, 0.055, -0.012))
             string_w = pinch
             point_at = pinch + aimdir * 0.10
+            raise_elbow = smooth(min(1.0, max(draw, 0.0)) ** 0.7)
             arrow_on = True
         else:
             k = (f - 19) / 11.0
             # follow-through: hand flies back past the ear, then returns to the string
-            back_pt = anchor + Vector((-0.06, 0.12, 0.03))
+            back_pt = anchor + Vector((-0.10, 0.13, 0.015))           # opens back and out, away from the hood
             if k < 0.35:
-                hand_w = (anchor + Vector((-0.02, 0.055, -0.01))).lerp(back_pt, smooth(k / 0.35))
+                hand_w = (anchor + Vector((-0.03, 0.055, -0.012))).lerp(back_pt, smooth(k / 0.35))
             else:
-                hand_w = back_pt.lerp(pinch_brace + Vector((-0.02, 0.055, -0.01)), smooth((k - 0.35) / 0.65))
+                hand_w = back_pt.lerp(pinch_brace + Vector((-0.03, 0.055, -0.012)), smooth((k - 0.35) / 0.65))
             string_w = None
             point_at = hand_w + aimdir * 0.10 + Vector((0, 0, -0.03))
+            raise_elbow = 1.0 - smooth(max(0.0, (k - 0.35) / 0.65))
             arrow_on = f >= 27                                    # next arrow nocked again at the end of the loop
-        pose_draw_arm(hand_w, point_at)
+        pose_draw_arm(hand_w, point_at, raise_elbow=raise_elbow)
         if string_w is not None:
             place_bone_world("BowString", string_w, (AW.to_3x3() @ (arm.data.bones["BowString"].matrix_local.to_3x3() @ Vector((0, 1, 0)))).normalized())
         if arrow_on:
@@ -645,38 +709,67 @@ if STAGE != "A":
         reset_pose()
         twist([("Spine02", -4), ("Spine01", -5), ("Spine", -5)]); twist([("neck", 6), ("Head", 7)])
         tilt("Spine", -1.2 * b); tilt("Spine01", -0.6 * b); tilt("Head", 0.8 * b)
-        Sh = joint("LeftArm")
-        two_bone("LeftArm", "LeftForeArm", "LeftHand", Sh + Vector((0.12, -0.18, -0.34 + 0.004 * b)), Sh + Vector((0.35, 0.25, -0.1)))
-        # carry the bow upright, top limb a little forward
-        hw = (AW @ PB["LeftHand"].matrix).to_3x3().normalized()
-        cur_up = (hw @ BOW_UP_BONE).normalized()
-        rot_world("LeftHand", cur_up.rotation_difference(Vector((0.05, -0.35, 1)).normalized()).to_matrix())
+        carry_bow(0.004 * b, lean_deg=18)
         Sr = joint("RightArm")
         two_bone("RightArm", "RightForeArm", "RightHand", Sr + Vector((-0.10, -0.06, -0.40 + 0.004 * b)), Sr + Vector((-0.35, 0.3, -0.1)))
         key_all(f)
     act2.use_fake_user = True
     print("B5 Idle keyed")
 
-    # ---------------- B6 bring in the Meshy Walking / Running clips for the work file
+    # ---------------- B6 Meshy Walking / Running rebaked: Meshy legs, torso, head and right arm; my bow-carry left arm
+    # (the Meshy run pumps the left arm up to the face, so the rigid bow swung flat and looked held by the string)
     for clip in ("Walking", "Running"):
         before = set(bpy.data.actions); keep = set(bpy.data.objects)
         bpy.ops.import_scene.gltf(filepath=os.path.join(JOB, f"meshy_anim_{clip}.glb"))
         for o in [o for o in bpy.data.objects if o not in keep]:
             bpy.data.objects.remove(o, do_unlink=True)
         new = [a for a in bpy.data.actions if a not in before]
-        if new:
-            new[0].name = clip; new[0].use_fake_user = True
-            for a in new[1:]:
-                bpy.data.actions.remove(a)
-            # the Meshy clip has no channels for Arrow / BowString: key them at rest so no player keeps a stale pose
-            ad = arm.animation_data; ad.action = new[0]
-            if hasattr(ad, "action_slot") and new[0].slots:
-                ad.action_slot = new[0].slots[0]
-            f0, f1 = (int(x) for x in new[0].frame_range)
-            for nm in ("Arrow", "BowString"):
-                pb = PB[nm]; pb.location = (0, 0, 0); pb.rotation_quaternion = (1, 0, 0, 0)
-                for fr in (f0, f1):
-                    pb.keyframe_insert("rotation_quaternion", frame=fr); pb.keyframe_insert("location", frame=fr)
+        src = new[0]
+        for a2 in new[1:]:
+            bpy.data.actions.remove(a2)
+        src.name = f"meshy_{clip}"
+        bpy.context.view_layer.objects.active = arm
+        bpy.ops.object.mode_set(mode='POSE')
+        f0, f1 = (int(x) for x in src.frame_range)
+        dst = bpy.data.actions.new(clip)
+        ad = arm.animation_data
+        ad.action = None
+        # read the Meshy keys straight from the F-curves (assigning the imported action did not drive the rig: slots)
+        try:
+            src_fc = list(src.layers[0].strips[0].channelbag(src.slots[0]).fcurves)
+        except Exception:
+            src_fc = list(src.fcurves)
+
+        def apply_src(fr):
+            reset_pose()
+            for fc in src_fc:
+                dp = fc.data_path
+                if not dp.startswith('pose.bones["'):
+                    continue
+                bn = dp.split('"')[1]; prop = dp.rsplit('.', 1)[1]
+                if bn not in PB or prop not in ("location", "rotation_quaternion"):
+                    continue
+                getattr(PB[bn], prop)[fc.array_index] = fc.evaluate(fr)
+            upd()
+        # stride phase from the Meshy left wrist (forward offset in chest space), damped to a small swing
+        swings = []
+        for f in range(f0, f1 + 1):
+            apply_src(f)
+            across, upv, fwdv = chest_axes()
+            swings.append((joint("LeftHand") - joint("LeftArm")).dot(fwdv))
+        mean = sum(swings) / len(swings); amp = max(1e-6, max(abs(x - mean) for x in swings))
+        span = 0.05 if clip == "Running" else 0.035
+        ad.action = dst
+        for i, f in enumerate(range(f0, f1 + 1)):
+            apply_src(f)
+            PB["Arrow"].location = (0, 0, 0); PB["Arrow"].rotation_quaternion = (1, 0, 0, 0)
+            PB["BowString"].location = (0, 0, 0); PB["BowString"].rotation_quaternion = (1, 0, 0, 0)
+            upd()
+            carry_bow((swings[i] - mean) / amp * span, lean_deg=34 if clip == "Running" else 26)
+            key_all(f)
+        dst.use_fake_user = True
+        bpy.data.actions.remove(src)
+        print(f"B6 {clip} rebaked, {f1 - f0 + 1} frames, {len(src_fc)} source curves, swing amp {amp:.3f} m")
     bpy.context.view_layer.objects.active = arm
     bpy.ops.object.mode_set(mode='POSE')
     reset_pose()
@@ -698,12 +791,21 @@ if STAGE != "A":
             o.select_set(True)
         bpy.ops.export_scene.gltf(filepath=os.path.join(JOB, "rigged.glb"), export_format='GLB', use_selection=True,
                                   export_animations=False, export_skins=True)
+        # one NLA track per clip (exporting the active action sampled a frozen pose for the rebaked walk / run:
+        # the armature kept another action's slot during export)
+        ad = arm.animation_data
         for clip in ("Shoot", "Idle", "Walking", "Running"):
-            arm.animation_data.action = bpy.data.actions[clip]
-            if hasattr(arm.animation_data, "action_slot") and bpy.data.actions[clip].slots:
-                arm.animation_data.action_slot = bpy.data.actions[clip].slots[0]
+            ad.action = None
+            for tr in list(ad.nla_tracks):
+                ad.nla_tracks.remove(tr)
+            act = bpy.data.actions[clip]
+            tr = ad.nla_tracks.new(); tr.name = clip
+            st = tr.strips.new(clip, int(act.frame_range[0]), act)
+            if hasattr(st, "action_slot") and act.slots:
+                st.action_slot = act.slots[0]
             bpy.ops.object.select_all(action='DESELECT'); arm.select_set(True)
             bpy.ops.export_scene.gltf(filepath=os.path.join(JOB, f"anim_{clip}.glb"), export_format='GLB', use_selection=True,
-                                      export_animations=True, export_animation_mode='ACTIVE_ACTIONS', export_skins=True,
+                                      export_animations=True, export_animation_mode='NLA_TRACKS', export_skins=True,
                                       export_force_sampling=True)
+            ad.nla_tracks.remove(tr)
         print("EXPORTED")
