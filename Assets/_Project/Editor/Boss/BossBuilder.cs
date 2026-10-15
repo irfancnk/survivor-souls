@@ -31,6 +31,9 @@ namespace SurvivorSouls.Editor.Boss
     /// Debug menus (Play mode): "Survivor Souls/Debug/Boss: Kill", "Boss: Half Health" (= phase 2), "Boss: Health 25 %",
     /// "Boss: Health 10 %", "Boss: Fan", "Boss: Charge", "Boss: Jump To Boss Chamber" (any Chamber; reloads the scene).
     /// KAN-116: "Boss: Nova", "Boss: Spiral", "Boss: Rain" (a boss without that type gets the sample entry first); bolt pool 64.
+    /// KAN-119: the boulder pool of the lobbed attack ("Boss/Boulders": <see cref="BoulderCount"/> lumpy stone bodies, one
+    /// shared mesh + the Realm snow-cap props material, a capsule collider each for the rubble); menus "Boss: Lobbed",
+    /// "Boss: Summon", "Boss: Teleport" (same sample rule).
     /// </summary>
     public static class BossBuilder
     {
@@ -49,6 +52,10 @@ namespace SurvivorSouls.Editor.Boss
         private const int BoltTextureSize = 64;
         private const int BoltCapacity = 64; // KAN-116: a 2-arm spiral keeps ~40 bolts in the air
         private const int TextureSize = 256;
+        /// <summary>KAN-119: boulders in the pool (a 3-boulder volley plus rubble of the last throws, 8 s each).</summary>
+        public const int BoulderCount = 6;
+        private const string BoulderMeshPath = ArtDir + "/Mesh_BossBoulder.asset";
+        private const string BoulderMaterialPath = "Assets/_Project/Art/Materials/Realm1/M_SnowProps.mat";
 
         public static BossFight Create(GameArtKit kit, PlayerHealth player, SurvivalTimer timer, EnemySpawner spawner, SoulWispField souls)
         {
@@ -59,6 +66,7 @@ namespace SurvivorSouls.Editor.Boss
             var telegraph = CreateTelegraph(kit, root.transform);
             var lines = CreateLanes(kit, root.transform);
             var bolts = CreateBolts(root.transform, player);
+            var boulders = CreateBoulders(kit, root.transform, player);
             var fight = root.AddComponent<BossFight>();
             var so = new SerializedObject(fight);
             so.FindProperty("data").objectReferenceValue = data;
@@ -70,6 +78,7 @@ namespace SurvivorSouls.Editor.Boss
             so.FindProperty("telegraph").objectReferenceValue = telegraph;
             so.FindProperty("lines").objectReferenceValue = lines;
             so.FindProperty("projectiles").objectReferenceValue = bolts;
+            so.FindProperty("boulders").objectReferenceValue = boulders;
             var list = so.FindProperty("bosses");
             list.arraySize = 1;
             list.GetArrayElementAtIndex(0).objectReferenceValue = butcher; // Realm 1 boss Chambers (KAN-108)
@@ -187,6 +196,45 @@ namespace SurvivorSouls.Editor.Boss
             so.FindProperty("capacity").intValue = BoltCapacity;
             so.ApplyModifiedPropertiesWithoutUndo();
             return bolts;
+        }
+
+        /// <summary>
+        /// KAN-119: the lobbed attack's boulders. One unit-radius lumpy stone mesh (scaled to the rubble radius at the throw),
+        /// <see cref="BoulderCount"/> bodies, each with a capsule collider (off while flying) so rubble blocks the Knight.
+        /// </summary>
+        private static BossBoulders CreateBoulders(GameArtKit kit, Transform parent, PlayerHealth player)
+        {
+            var mb = new MeshBuilder();
+            ShoreKit.Boulder(mb, new Vector3(0f, -0.25f, 0f), new System.Random(119), 1f);
+            var mesh = EditorAssetUtil.LoadOrCreateMesh(BoulderMeshPath);
+            mb.WriteTo(mesh);
+            mesh.RecalculateBounds();
+            EditorUtility.SetDirty(mesh);
+            var mat = AssetDatabase.LoadAssetAtPath<Material>(BoulderMaterialPath);
+            if (mat == null) mat = kit.Palette;
+            var go = new GameObject("Boulders");
+            go.transform.SetParent(parent, false);
+            var bodies = new Transform[BoulderCount];
+            for (int i = 0; i < BoulderCount; i++)
+            {
+                var body = new GameObject("Boulder " + i);
+                body.transform.SetParent(go.transform, false);
+                body.AddComponent<MeshFilter>().sharedMesh = mesh;
+                PropKit.SetupRenderer(body.AddComponent<MeshRenderer>(), mat);
+                var solid = body.AddComponent<CapsuleCollider>();
+                solid.radius = 1f;
+                solid.height = 3f;
+                solid.center = new Vector3(0f, 0.5f, 0f);
+                solid.enabled = false;
+                body.SetActive(false);
+                bodies[i] = body.transform;
+            }
+            var boulders = go.AddComponent<BossBoulders>();
+            var so = new SerializedObject(boulders);
+            so.FindProperty("player").objectReferenceValue = player;
+            SetArray(so.FindProperty("bodies"), bodies);
+            so.ApplyModifiedPropertiesWithoutUndo();
+            return boulders;
         }
 
         private static MeshRenderer Flat(string name, Transform parent, Mesh quad, Material mat)
@@ -427,6 +475,15 @@ namespace SurvivorSouls.Editor.Boss
         [MenuItem("Survivor Souls/Debug/Boss: Rain")]
         private static void Rain() => ForceOrSample(BossFight.Move.Rain);
 
+        [MenuItem("Survivor Souls/Debug/Boss: Lobbed")]
+        private static void Lobbed() => ForceOrSample(BossFight.Move.Lobbed);
+
+        [MenuItem("Survivor Souls/Debug/Boss: Summon")]
+        private static void Summon() => ForceOrSample(BossFight.Move.Summon);
+
+        [MenuItem("Survivor Souls/Debug/Boss: Teleport")]
+        private static void TeleportMenu() => ForceOrSample(BossFight.Move.Teleport);
+
         /// <summary>KAN-116: starts the boss's <paramref name="move"/> attack; a boss without one gets the sample entry first.</summary>
         private static void ForceOrSample(BossFight.Move move)
         {
@@ -458,6 +515,9 @@ namespace SurvivorSouls.Editor.Boss
         [MenuItem("Survivor Souls/Debug/Boss: Nova", true)]
         [MenuItem("Survivor Souls/Debug/Boss: Spiral", true)]
         [MenuItem("Survivor Souls/Debug/Boss: Rain", true)]
+        [MenuItem("Survivor Souls/Debug/Boss: Lobbed", true)]
+        [MenuItem("Survivor Souls/Debug/Boss: Summon", true)]
+        [MenuItem("Survivor Souls/Debug/Boss: Teleport", true)]
         [MenuItem("Survivor Souls/Debug/Boss: Print Attacks", true)]
         [MenuItem("Survivor Souls/Debug/Boss: Half Health", true)]
         [MenuItem("Survivor Souls/Debug/Boss: Health 25 %", true)]

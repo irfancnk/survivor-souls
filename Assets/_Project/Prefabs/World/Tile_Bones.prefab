@@ -29,9 +29,9 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 4939425323198875057}
   - {fileID: 4278349891450567743}
-  - {fileID: 1379843084993832254}
+  - {fileID: 7787764797692249213}
+  - {fileID: 1550983200032131600}
   m_Father: {fileID: 6473224725304295925}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &3037105372047927003
@@ -94,7 +94,7 @@ Transform:
   m_GameObject: {fileID: 4212044893170921424}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: -0.07378229, z: 0, w: 0.9972744}
-  m_LocalPosition: {x: -1.2791629, y: 0.75, z: -0.6190413}
+  m_LocalPosition: {x: -3.8508549, y: 0.75, z: -1.0016634}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -211,7 +211,7 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
---- !u!1 &6151272146196021108
+--- !u!1 &5945887139643893787
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -219,8 +219,8 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 4939425323198875057}
-  - component: {fileID: 9158253440501320051}
+  - component: {fileID: 7787764797692249213}
+  - component: {fileID: 724245507133157721}
   m_Layer: 0
   m_Name: Block
   m_TagString: Untagged
@@ -228,28 +228,28 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &4939425323198875057
+--- !u!4 &7787764797692249213
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6151272146196021108}
+  m_GameObject: {fileID: 5945887139643893787}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: -0.07378229, z: 0, w: 0.9972744}
-  m_LocalPosition: {x: -3.8508549, y: 0.75, z: -1.0016634}
+  m_LocalPosition: {x: -1.2791629, y: 0.75, z: -0.6190413}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 5242562051933693655}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &9158253440501320051
+--- !u!65 &724245507133157721
 BoxCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6151272146196021108}
+  m_GameObject: {fileID: 5945887139643893787}
   m_Material: {fileID: 0}
   m_IncludeLayers:
     serializedVersion: 2
@@ -264,7 +264,7 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 0.4, y: 1.5, z: 4}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!1 &6218666843008038521
+--- !u!1 &7470491511216601622
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -272,8 +272,8 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 1379843084993832254}
-  - component: {fileID: 2413967968733480164}
+  - component: {fileID: 1550983200032131600}
+  - component: {fileID: 4687975796493330779}
   m_Layer: 0
   m_Name: Block
   m_TagString: Untagged
@@ -281,13 +281,13 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &1379843084993832254
+--- !u!4 &1550983200032131600
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6218666843008038521}
+  m_GameObject: {fileID: 7470491511216601622}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 3.6, y: 0.4, z: 2.9632847}
@@ -296,13 +296,13 @@ Transform:
   m_Children: []
   m_Father: {fileID: 5242562051933693655}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &2413967968733480164
+--- !u!65 &4687975796493330779
 BoxCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6218666843008038521}
+  m_GameObject: {fileID: 7470491511216601622}
   m_Material: {fileID: 0}
   m_IncludeLayers:
     serializedVersion: 2
