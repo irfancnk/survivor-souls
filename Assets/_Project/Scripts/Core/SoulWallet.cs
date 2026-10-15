@@ -16,6 +16,8 @@ namespace SurvivorSouls.Core
     {
         public const string KeyBalance = "wallet.souls";
         public const string KeyCheck = "wallet.souls.check";
+        private const uint Salt = 0x5EED50F1u;
+        private static readonly CheckedPrefInt Store = new CheckedPrefInt(KeyBalance, Salt);
 
         /// <summary>New balance after every earn, spend or clear.</summary>
         public static event Action<int> Changed;
@@ -28,11 +30,10 @@ namespace SurvivorSouls.Core
         {
             get
             {
-                if (!PlayerPrefs.HasKey(KeyBalance)) return 0;
-                int value = PlayerPrefs.GetInt(KeyBalance, 0);
-                if (value >= 0 && PlayerPrefs.GetInt(KeyCheck, 0) == Checksum(value)) return value;
+                int value = Store.Read(0, out bool tampered);
+                if (!tampered) return value;
                 TamperDetected = true;
-                Debug.LogWarning($"[SoulWallet] Saved balance {value} fails its checksum: reset to 0.");
+                Debug.LogWarning($"[SoulWallet] Saved balance {PlayerPrefs.GetInt(KeyBalance, 0)} fails its checksum: reset to 0.");
                 Write(0);
                 return 0;
             }
@@ -73,31 +74,9 @@ namespace SurvivorSouls.Core
             Changed?.Invoke(0);
         }
 
-        /// <summary>
-        /// Checksum of a balance: FNV-1a over the value bytes with a fixed salt. Stable across runs and platforms (no
-        /// <c>GetHashCode</c>). Public for tests.
-        /// </summary>
-        public static int Checksum(int value)
-        {
-            unchecked
-            {
-                const uint salt = 0x5EED50F1u;
-                uint hash = 2166136261u;
-                uint v = (uint)value ^ salt;
-                for (int i = 0; i < 4; i++)
-                {
-                    hash ^= (v >> (i * 8)) & 0xFFu;
-                    hash *= 16777619u;
-                }
-                return (int)hash;
-            }
-        }
+        /// <summary>Checksum of a balance (<see cref="CheckedPrefInt.Checksum"/> with the Souls salt). Public for tests.</summary>
+        public static int Checksum(int value) => CheckedPrefInt.Checksum(value, Salt);
 
-        private static void Write(int value)
-        {
-            PlayerPrefs.SetInt(KeyBalance, value);
-            PlayerPrefs.SetInt(KeyCheck, Checksum(value));
-            PlayerPrefs.Save();
-        }
+        private static void Write(int value) => Store.Write(value);
     }
 }
