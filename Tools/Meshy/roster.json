@@ -17,21 +17,6 @@
    "tris": 4000
   },
   {
-   "slug": "fallen-militiaman",
-   "name": "FallenMilitiaman",
-   "kind": "zombie",
-   "height": 1.78,
-   "ref": "fallen-militiaman",
-   "texture": "Pale grey undead skin, blue-grey padded gambeson, brown leather bracers and boots, mud and old blood stains, non-graphic decay.",
-   "anims": {
-    "Shamble": 113,
-    "Attack": 198,
-    "Hit": 178,
-    "Death": 187
-   },
-   "tris": 4000
-  },
-  {
    "slug": "rusted-watchman",
    "name": "RustedWatchman",
    "kind": "zombie",
@@ -43,21 +28,6 @@
     "Attack": 219,
     "Hit": 179,
     "Death": 184
-   },
-   "tris": 4000
-  },
-  {
-   "slug": "gravebound-knight",
-   "name": "GraveboundKnight",
-   "kind": "zombie",
-   "height": 1.85,
-   "ref": "gravebound-knight",
-   "texture": "Corroded dark steel plate armour with rust, chainmail, torn oxblood tabard with faded gold sigil, pale undead face, glowing pale eyes.",
-   "anims": {
-    "Walk": 119,
-    "Attack": 92,
-    "Hit": 178,
-    "Death": 190
    },
    "tris": 4000
   },
@@ -77,21 +47,6 @@
    "ver": 3,
    "tris": 4000,
    "pose": "auto"
-  },
-  {
-   "slug": "bone-archer",
-   "name": "BoneArcher",
-   "kind": "zombie",
-   "height": 1.78,
-   "prompt": "Undead skeleton archer, lean skeletal body with scraps of dried flesh, tattered dark hooded cloak, leather quiver of black arrows on its back, holding a weathered longbow in its left hand, cold blue glowing eye sockets.",
-   "texture": "Aged yellow-white bone, scraps of dried brown flesh, tattered charcoal hooded cloak, dark leather quiver and straps, weathered wooden longbow, cold blue eye glow.",
-   "anims": {
-    "Walk": -2,
-    "Shoot": 224,
-    "Hit": 178,
-    "Death": 183
-   },
-   "tris": 4000
   },
   {
    "slug": "pyre-thrower",

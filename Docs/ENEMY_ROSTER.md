@@ -1,6 +1,6 @@
 # Enemy and Boss Roster (Meshy batch 2026-10-15)
 
-15 new rigged and animated characters: 11 zombies and 4 bosses. Models only: no game code uses them yet. Jira tickets carry the implementation (epic "New zombie and boss roster").
+15 rigged and animated characters were made: 11 zombies and 4 bosses. KAN-128 (2026-10-15, user decision) cut 3 zombies: Fallen Militiaman, Gravebound Knight and Bone Archer. 12 stay in the game: 8 zombies and 4 bosses. Row and section numbers below are kept as they were (2, 4 and 6 are gone), so references like `ENEMY_ROSTER.md 3.15` in the code stay valid. Jira tickets carry the implementation (KAN-103).
 
 ## 1. Asset facts (all characters)
 
@@ -19,11 +19,8 @@
 | # | Character | Kind | Height | Tris | Clips (Meshy action id) | Folder |
 |---|---|---|---|---|---|---|
 | 1 | Graveyard Laborer | zombie | 1.72 m | 4007 | Attack (97), Death (189), Hit (178), Running (rig), Shamble (123), Walking (rig) | `Assets/_Project/Art/Characters/Enemies/GraveyardLaborer` |
-| 2 | Fallen Militiaman | zombie | 1.78 m | 4063 | Attack (198), Death (187), Hit (178), Running (rig), Shamble (113), Walking (rig) | `Assets/_Project/Art/Characters/Enemies/FallenMilitiaman` |
 | 3 | Rusted Watchman | zombie | 1.8 m | 4024 | Attack (219), Death (184), Hit (179), Running (rig), Shamble (123), Walking (rig) | `Assets/_Project/Art/Characters/Enemies/RustedWatchman` |
-| 4 | Gravebound Knight | zombie | 1.85 m | 4069 | Attack (92), Death (190), Hit (178), Running (rig), Walk (119), Walking (rig) | `Assets/_Project/Art/Characters/Enemies/GraveboundKnight` |
 | 5 | Plague Bloater | zombie | 1.8 m | 4037 | Burst (386), Death (189), Hit (178), Running (rig), Walk (119), Walking (rig) | `Assets/_Project/Art/Characters/Enemies/PlagueBloater` |
-| 6 | Bone Archer | zombie | 1.78 m | 3944 | Death (183), Hit (178), Running (rig), Shoot (224), Walking (rig) | `Assets/_Project/Art/Characters/Enemies/BoneArcher` |
 | 7 | Pyre Thrower | zombie | 1.75 m | 4046 | Death (189), Hit (178), Running (rig), Throw (239), Walk (123), Walking (rig) | `Assets/_Project/Art/Characters/Enemies/PyreThrower` |
 | 8 | Bile Spitter | zombie | 1.7 m | 4157 | Death (187), Hit (178), Running (rig), Spit (386), Walk (123), Walking (rig) | `Assets/_Project/Art/Characters/Enemies/BileSpitter` |
 | 9 | Frenzied Ghoul | zombie | 1.7 m | 4138 | Death (184), Hit (178), Leap (86), Running (rig), Sprint (16), Walking (rig) | `Assets/_Project/Art/Characters/Enemies/FrenziedGhoul` |
@@ -47,26 +44,12 @@ Numbers are first guesses in Chamber 1 terms (same units as `CombatBuilder.Zombi
 - Stats: HP 100, speed 1.75 m/s, 12 dps, XP 5.
 - Pose sheet: `Docs/enemies/GraveyardLaborer.png`. Meshy tasks: generate `01a13caf-39af-7627-9e9e-63e48f685d80`, remesh `01a13cb4-aec0-770c-9d4f-66221e113fb2`, rigging `01a13cb6-a5e2-74a8-97aa-545fd64f3aa8`.
 
-### 2. Fallen Militiaman (`FallenMilitiaman`)
-
-- Role: Melee tier 2.
-- Attack: Melee punch combo on contact. A bit tougher than the Laborer.
-- Stats: HP 140, speed 1.8 m/s, 14 dps, XP 6.
-- Pose sheet: `Docs/enemies/FallenMilitiaman.png`. Meshy tasks: generate `01a13caf-3fb4-7589-b033-eaaff6cff6c5`, remesh `01a13cb4-b3cb-708a-a40b-e0e47ad94625`, rigging `01a13cb6-ae24-727f-b046-2ac3db471941`.
-
 ### 3. Rusted Watchman (`RustedWatchman`)
 
-- Role: Melee tier 3 (armoured).
+- Role: Melee tier 2 (armoured). Takes the wave shares of the cut Militiaman and Gravebound Knight (KAN-128); the elite melee role is the Grave Brute's.
 - Attack: Melee overhead swing. Armour: takes 25 % less damage from the front cone (90 deg).
 - Stats: HP 200, speed 1.6 m/s, 16 dps, XP 8.
 - Pose sheet: `Docs/enemies/RustedWatchman.png`. Meshy tasks: generate `01a13caf-4547-7267-8476-df33009f9839`, remesh `01a13cb4-b965-702d-9483-1b994d806bdd`, rigging `01a13cb7-1e42-76fb-8817-b0591ebf1471`.
-
-### 4. Gravebound Knight (`GraveboundKnight`)
-
-- Role: Melee tier 4 / elite, mini boss candidate (KAN-23).
-- Attack: Two-hit combo with a lunge (1.5 m dash, 0.6 s ground warning). Knockback x0.3.
-- Stats: HP 420, speed 1.5 m/s, 22 dps, XP 20.
-- Pose sheet: `Docs/enemies/GraveboundKnight.png`. Meshy tasks: generate `01a13caf-4a11-75c9-beee-9293365aadc8`, remesh `01a13cb5-1275-70ef-8356-0d58bc601fad`, rigging `01a13cb7-5dc2-70d7-87b4-e1f900b3f0c3`.
 
 ### 5. Plague Bloater (`PlagueBloater`)
 
@@ -74,13 +57,6 @@ Numbers are first guesses in Chamber 1 terms (same units as `CombatBuilder.Zombi
 - Attack: Walks to the Knight. In 2 m range: 1.0 s swell + green ground circle (r 2.8 m), then it bursts: 25 % max HP damage in the circle and a toxic cloud (r 2.2 m, 6 s, 15 dps). A kill by bolts bursts it too, so other zombies can be caught.
 - Stats: HP 180, speed 1.2 m/s, XP 8.
 - Pose sheet: `Docs/enemies/PlagueBloater.png`. Meshy tasks: preview `01a13cb4-b1b8-76e8-809e-926ec2048849`, refine `01a13cb7-72b7-76a1-89bc-ec438b22c35e`, remesh `01a13cb8-8401-70c8-baef-0d1d3997542c`, rigging `01a13cba-3a18-747a-94ac-9f77bb5fde15`.
-
-### 6. Bone Archer (`BoneArcher`)
-
-- Role: Ranged sniper.
-- Attack: Keeps 7-9 m distance (backs off when the Knight comes near). Aim 0.8 s with a thin red line, then one fast arrow (14 m/s, 10 % max HP). Every 3rd volley: 3-arrow fan (30 deg). Arrows stop on pillars/walls. No bow in the mesh: attach a simple bow prop to the left hand.
-- Stats: HP 80, speed 2.0 m/s, XP 7.
-- Pose sheet: `Docs/enemies/BoneArcher.png`. Meshy tasks: preview `01a13caf-56e9-766c-8b34-4d4698bd87d1`, refine `01a13cb5-1daf-7721-97e2-b6e09263140e`, remesh `01a13cb6-750c-7613-b69d-c97d1f667869`, rigging `01a13cb8-7a7e-75cc-99c7-dd8776b2bb30`.
 
 ### 7. Pyre Thrower (`PyreThrower`)
 
@@ -144,19 +120,17 @@ Numbers are first guesses in Chamber 1 terms (same units as `CombatBuilder.Zombi
 ### 15. The Bone Matriarch (`BoneMatriarch`)
 
 - Role: Boss (bullet-hell sorceress).
-- Attack: Floats, never melee. (a) homing skull orbs, 3 at a time, slow turn rate; (b) ring of 24 teal orbs with 3 gaps; (c) summon 3 Bone Archers. Phase 2: (d) cross beams, 4 rotating lanes (line telegraphs) for 4 s; (e) teleport to a random arena point every 8 s. Low HP, hard to reach.
+- Attack: Floats, never melee. (a) homing skull orbs, 3 at a time, slow turn rate; (b) ring of 24 teal orbs with 3 gaps; (c) summon 4 Graveyard Laborers (the doc first said 3 Bone Archers; cut, KAN-128). Phase 2: (d) cross beams, 4 rotating lanes (line telegraphs) for 4 s; (e) teleport to a random arena point every 8 s. Low HP, hard to reach.
 - Stats: HP 7000, height 4.0 m.
 - Status: in the game since KAN-111 (fight library, not in Realm 1's rotation: `-ss-boss-type BoneMatriarch`; summons 4 Graveyard Laborers instead of the cut Bone Archers (KAN-128); never melees, holds 6-9 m, hovers; teleport every 8 s in phase 2; numbers in `Assets/_Project/Data/Boss/Boss_BoneMatriarch.asset`, see STATE.md).
 - Pose sheet: `Docs/enemies/BoneMatriarch.png`. Meshy tasks: preview `01a13cb4-6919-763c-8ed7-914f787963ef`, refine `01a13cb6-1405-7211-9c12-7f5fc0416fcf`, remesh `01a13cb7-6925-73f9-aea7-ac1b08c860ce`, rigging `01a13cb9-14f4-70c5-9d1b-34ab390ab543`.
 
 ## 4. Known asset issues
 
-- Hooded look repeats (Bone Archer, Pyre Thrower, Hexbound Shaman, Butcher). Textures differ (bone / ember / violet / black), but add a colour rim or emissive accent so they read apart at the gameplay camera.
-- Bone Archer has no bow in the mesh (hands empty). Attach a bow prop to `LeftHand`.
+- Hooded look repeats (Pyre Thrower, Hexbound Shaman, Butcher). Textures differ (bone / ember / violet / black), but add a colour rim or emissive accent so they read apart at the gameplay camera.
 - The Butcher came out as a hooded skeleton executioner with a cleaver-axe, not a fat butcher. The Rotting Colossus came out as a horned demon brute, not a corpse golem. Both read as big bosses; names kept.
-- A few triangles stretch from the hands in some clips (Militiaman / Knight Attack, Knight Walk): auto-rig weight noise. Fix in Blender, or hide it with attack VFX if it shows in game.
 - Plague Bloater arms clip into the belly in `Burst`.
-- Graveyard Laborer, Fallen Militiaman, Rusted Watchman and Gravebound Knight are the four reference sheets (common-enemy tiers) made 3D.
+- Graveyard Laborer and Rusted Watchman are two of the four reference sheets (common-enemy tiers) made 3D. The other two (Fallen Militiaman, Gravebound Knight) and the Bone Archer were cut (KAN-128): art, prefabs, pose sheets and wave slots are gone; the raw Meshy jobs stay in `~/survivor-souls-assets/meshy_jobs` (outside git).
 
 ## 5. Rebuild
 

@@ -6,14 +6,13 @@ des = json.load(open(S + '/design.json'))
 tot = 0
 for sp in glob.glob(os.path.expanduser('~/survivor-souls-assets/meshy_jobs/*enemy-*/job_state.json')):
     tot += sum(v or 0 for v in json.load(open(sp)).get('credits', {}).values())
-order = ['graveyard-laborer', 'fallen-militiaman', 'rusted-watchman', 'gravebound-knight', 'plague-bloater',
-         'bone-archer', 'pyre-thrower', 'bile-spitter', 'frenzied-ghoul', 'grave-brute', 'hexbound-shaman',
+order = ['graveyard-laborer', 'rusted-watchman', 'plague-bloater', 'pyre-thrower', 'bile-spitter', 'frenzied-ghoul', 'grave-brute', 'hexbound-shaman',
          'ashgrave-butcher', 'pyre-lord', 'rotting-colossus', 'bone-matriarch']
 L = []
 A = L.append
 A('# Enemy and Boss Roster (Meshy batch 2026-10-15)')
 A('')
-A('15 new rigged and animated characters: 11 zombies and 4 bosses. Models only: no game code uses them yet. Jira tickets carry the implementation (epic "New zombie and boss roster").')
+A('12 rigged and animated characters: 8 zombies and 4 bosses (15 made; KAN-128 cut the Fallen Militiaman, Gravebound Knight and Bone Archer). Jira tickets carry the implementation (epic "New zombie and boss roster").')
 A('')
 A('## 1. Asset facts (all characters)')
 A('')
@@ -55,12 +54,10 @@ for i, s in enumerate(order, 1):
     A('')
 A('## 4. Known asset issues')
 A('')
-A('- Hooded look repeats (Bone Archer, Pyre Thrower, Hexbound Shaman, Butcher). Textures differ (bone / ember / violet / black), but add a colour rim or emissive accent so they read apart at the gameplay camera.')
-A('- Bone Archer has no bow in the mesh (hands empty). Attach a bow prop to `LeftHand`.')
+A('- Hooded look repeats (Pyre Thrower, Hexbound Shaman, Butcher). Textures differ (bone / ember / violet / black), but add a colour rim or emissive accent so they read apart at the gameplay camera.')
 A('- The Butcher came out as a hooded skeleton executioner with a cleaver-axe, not a fat butcher. The Rotting Colossus came out as a horned demon brute, not a corpse golem. Both read as big bosses; names kept.')
-A('- A few triangles stretch from the hands in some clips (Militiaman / Knight Attack, Knight Walk): auto-rig weight noise. Fix in Blender, or hide it with attack VFX if it shows in game.')
 A('- Plague Bloater arms clip into the belly in `Burst`.')
-A('- Graveyard Laborer, Fallen Militiaman, Rusted Watchman and Gravebound Knight are the four reference sheets (common-enemy tiers) made 3D.')
+A('- Graveyard Laborer and Rusted Watchman are two of the four reference sheets (common-enemy tiers) made 3D. The other two (Fallen Militiaman, Gravebound Knight) and the Bone Archer were cut (KAN-128).')
 A('')
 A('## 5. Rebuild')
 A('')
