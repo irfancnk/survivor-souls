@@ -127,6 +127,8 @@ namespace SurvivorSouls.Gameplay.Combat
         public const float BackOffSpeed = 0.8f;
         /// <summary>A holding ranged enemy settles this far (share of the band width) round the band middle before it stops.</summary>
         private const float SettleShare = 0.25f;
+        /// <summary>A view-capped hold band never comes closer than this (m) or gets narrower than <see cref="MinBandWidth"/>.</summary>
+        public const float MinHoldDistance = 3.5f, MinBandWidth = 1.5f;
 
         private Transform _target;
         private Action<Enemy> _release;
@@ -218,6 +220,22 @@ namespace SurvivorSouls.Gameplay.Combat
         public bool IsHolding => _holding;
         /// <summary>Ranged: the line of fire is blocked (pillar, wall); walk in until it is clear. Cleared on spawn.</summary>
         public bool NeedsClearShot { get; set; }
+        /// <summary>
+        /// Ranged: ground distance (m) from the Knight to the screen edge in this enemy's direction, minus a margin (set by
+        /// <see cref="RangedAttack"/>). Caps the hold band, so a shooter never holds or fires from off screen (the portrait
+        /// view is only ~11 m wide). +inf = no camera (tests). Reset on spawn.
+        /// </summary>
+        public float ViewReach { get; set; } = float.PositiveInfinity;
+        /// <summary>Hold band after the <see cref="ViewReach"/> cap: (min, max) in m.</summary>
+        public Vector2 EffectiveBand
+        {
+            get
+            {
+                float max = Mathf.Max(MinHoldDistance + MinBandWidth, Mathf.Min(holdMax, ViewReach));
+                float min = Mathf.Clamp(Mathf.Min(holdMin, max - MinBandWidth), MinHoldDistance, max);
+                return new Vector2(min, max);
+            }
+        }
         /// <summary>Tests and tools: sets the hold band (0 / 0 = melee chaser).</summary>
         public void SetHoldBand(float min, float max)
         {
@@ -267,6 +285,7 @@ namespace SurvivorSouls.Gameplay.Combat
             _hitCooldown = 0f;
             Halted = false;
             NeedsClearShot = false;
+            ViewReach = float.PositiveInfinity;
             _holding = false;
             _sinceSwitch = MinStateHold;
             _animCheck = UnityEngine.Random.value * AnimCheckInterval;
@@ -427,15 +446,17 @@ namespace SurvivorSouls.Gameplay.Combat
         }
 
         /// <summary>
-        /// Ranged movement (KAN-105). Holding: stand and face the Knight while it stays inside the band and the shot is clear.
+        /// Ranged movement (KAN-105). Holding: stand and face the Knight while it stays inside the band (capped to the view,
+        /// <see cref="EffectiveBand"/>) and the shot is clear.
         /// Moving: walk in (farther than the band middle, or no clear shot) or back off (closer), steered round walls, until
         /// the distance settles near the band middle. Returns the planar velocity.
         /// </summary>
         private Vector3 KeepDistance(Vector3 pos, Vector3 toTarget, float dist, float dt)
         {
-            float mid = (holdMin + holdMax) * 0.5f;
-            float settle = Mathf.Max(0.3f, (holdMax - holdMin) * SettleShare);
-            if (_holding) _holding = !NeedsClearShot && dist >= holdMin && dist <= holdMax;
+            Vector2 band = EffectiveBand;
+            float mid = (band.x + band.y) * 0.5f;
+            float settle = Mathf.Max(0.3f, (band.y - band.x) * SettleShare);
+            if (_holding) _holding = !NeedsClearShot && dist >= band.x && dist <= band.y;
             else _holding = !NeedsClearShot && Mathf.Abs(dist - mid) <= settle;
 
             Vector3 face = toTarget;

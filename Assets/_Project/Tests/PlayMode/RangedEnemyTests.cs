@@ -161,10 +161,21 @@ namespace SurvivorSouls.Tests
             yield return WaitHolding(archer, 8f);
             Assert.That(Planar(archer.transform.position, _knight.transform.position), Is.InRange(7f, 9f));
 
+            archer.ViewReach = 6f; // the screen edge is 6 m away in this direction: the band shrinks to stay on screen
+            Assert.That(archer.EffectiveBand, Is.EqualTo(new Vector2(4.5f, 6f)));
+            yield return new WaitForSeconds(0.3f);
+            yield return WaitHolding(archer, 6f);
+            Assert.That(Planar(archer.transform.position, _knight.transform.position), Is.InRange(4.5f, 6f), "holds on screen");
+            archer.ViewReach = 1f; // never closer than the floor
+            Assert.That(archer.EffectiveBand, Is.EqualTo(new Vector2(Enemy.MinHoldDistance, Enemy.MinHoldDistance + Enemy.MinBandWidth)));
+            archer.ViewReach = float.PositiveInfinity;
+
+            yield return WaitHolding(archer, 6f);
+            float before = Planar(archer.transform.position, _knight.transform.position);
             archer.NeedsClearShot = true; // a pillar in the way: walk in again
             yield return new WaitForSeconds(0.4f);
             Assert.That(archer.IsHolding, Is.False);
-            Assert.That(Planar(archer.transform.position, _knight.transform.position), Is.LessThan(8.2f));
+            Assert.That(Planar(archer.transform.position, _knight.transform.position), Is.LessThan(before - 0.3f), "walks in");
         }
 
         private static IEnumerator WaitHolding(Enemy enemy, float limit)

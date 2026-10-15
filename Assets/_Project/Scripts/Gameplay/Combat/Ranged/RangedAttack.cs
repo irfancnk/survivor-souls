@@ -19,7 +19,8 @@ namespace SurvivorSouls.Gameplay.Combat
     /// </list>
     /// The volley pattern cycles (<see cref="Settings.pattern"/>: 1, 1, 3 = every third volley is a fan / spread). A kill or
     /// a dead Knight cancels the wind-up and hides its warnings; shots already in the air fly on.
-    /// Line-of-fire check (time sliced): a pillar between shooter and Knight sets <see cref="Enemy.NeedsClearShot"/>.
+    /// Line-of-fire check (time sliced): a pillar between shooter and Knight sets <see cref="Enemy.NeedsClearShot"/>. View
+    /// check (same slice): <see cref="Enemy.ViewReach"/> caps the hold band to the screen, so nothing fires from off screen.
     /// </summary>
     [RequireComponent(typeof(Enemy))]
     public sealed class RangedAttack : MonoBehaviour
@@ -205,14 +206,43 @@ namespace SurvivorSouls.Gameplay.Combat
             return shots != null ? shots.Player : null;
         }
 
-        /// <summary>Straight shooters: is the way from the chest to the Knight free of pillars and walls? Time sliced.</summary>
+        /// <summary>
+        /// Time sliced: the view reach in this enemy's direction (caps its hold band, so it shoots from on screen) and, for
+        /// straight shooters, whether the way from the chest to the Knight is free of pillars and walls.
+        /// </summary>
         private void CheckSight(PlayerHealth knight, float dt)
         {
-            if (!settings.needsLineOfFire) return;
             _sight -= dt;
             if (_sight > 0f) return;
             _sight += SightInterval;
-            Enemy.NeedsClearShot = !ClearShot(transform.position, knight.transform.position);
+            Vector3 k = knight.transform.position;
+            Enemy.ViewReach = ViewReach(k, transform.position - k);
+            if (settings.needsLineOfFire) Enemy.NeedsClearShot = !ClearShot(transform.position, k);
+        }
+
+        /// <summary>Ground margin (m) between a holding shooter and the screen edge (its body and the HUD stay clear).</summary>
+        public const float ViewMargin = 1.4f;
+        private static Camera _camera;
+        private static ScreenFootprint _view;
+        private static int _viewFrame = -1;
+
+        /// <summary>
+        /// Ground distance from <paramref name="knight"/> along <paramref name="direction"/> to the edge of what the main
+        /// camera sees, minus <see cref="ViewMargin"/>. One footprint per frame for all shooters; +inf without a camera.
+        /// </summary>
+        public static float ViewReach(Vector3 knight, Vector3 direction)
+        {
+            if (_camera == null || !_camera.isActiveAndEnabled) _camera = Camera.main;
+            if (_camera == null) return float.PositiveInfinity;
+            if (_viewFrame != Time.frameCount)
+            {
+                _viewFrame = Time.frameCount;
+                _view = ScreenFootprint.Of(_camera, 0f, 120f);
+            }
+            var d = new Vector2(direction.x, direction.z);
+            if (d.sqrMagnitude < 1e-6f) return float.PositiveInfinity;
+            float exit = _view.ExitDistance(new Vector2(knight.x, knight.z), d.normalized);
+            return exit > 0f ? exit - ViewMargin : float.PositiveInfinity;
         }
 
         /// <summary>True when nothing blocks a shot from <paramref name="from"/> to <paramref name="to"/> (planar, <see cref="Enemy.Walkability"/>).</summary>
