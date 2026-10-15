@@ -50,7 +50,11 @@ namespace SurvivorSouls.Gameplay.Chamber
                 ? difficulty.Plan(realm, chamber, runSeed)
                 : ChamberPlan.Plain(realm, chamber, ChamberDifficulty.MixSeed(runSeed, realm, chamber));
             if (world != null) world.UseSeed(plan.LayoutSeed);
-            if (spawner != null) spawner.SetDifficulty(plan.CapMultiplier, plan.IntervalMultiplier, plan.HealthMultiplier);
+            if (spawner != null)
+            {
+                spawner.SetDifficulty(plan.CapMultiplier, plan.IntervalMultiplier, plan.HealthMultiplier);
+                spawner.SetChamber(plan.Chamber); // KAN-112: wave entries open by Chamber
+            }
             if (arena != null)
             {
                 if (plan.Type == ChamberType.Boss) arena.Enter();

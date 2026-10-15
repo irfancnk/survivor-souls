@@ -9,6 +9,9 @@ namespace SurvivorSouls.Gameplay.Combat
     /// A phase spawns small groups every <see cref="Phase.spawnInterval"/> seconds while fewer than
     /// <see cref="Phase.maxAlive"/> enemies are up, plus an optional bigger burst every <see cref="Phase.burstInterval"/>
     /// seconds (KAN-30 sets the horde numbers). The enemy type of each spawn is a weighted pick from the phase's list.
+    /// KAN-112: an entry joins from <see cref="EnemyEntry.fromChamber"/> of the Realm on (earlier Chambers pick as if it
+    /// were not there), and shooters (types that keep their distance, <see cref="Enemy.KeepsDistance"/>) are capped to
+    /// <see cref="MaxShootersOf"/> alive at once so the screen never fills with shots.
     /// </summary>
     [CreateAssetMenu(menuName = "Survivor Souls/Enemy Wave Table", fileName = "EnemyWaves")]
     public sealed class EnemyWaveTable : ScriptableObject
@@ -18,6 +21,11 @@ namespace SurvivorSouls.Gameplay.Combat
         {
             public Enemy prefab;
             [Min(0f)] public float weight;
+            [Tooltip("KAN-112: first Chamber of the Realm this entry spawns in. 0 or 1 = every Chamber.")]
+            [Min(0)] public int fromChamber;
+
+            /// <summary>The entry can spawn in <paramref name="chamber"/>.</summary>
+            public bool OpenIn(int chamber) => fromChamber <= 1 || chamber >= fromChamber;
         }
 
         [Serializable]
@@ -45,12 +53,24 @@ namespace SurvivorSouls.Gameplay.Combat
         [SerializeField, Min(0f)] private float firstSpawnDelay = 1f;
         [Tooltip("Minimum enemies made per type before play starts (see PrewarmFor), so the run never instantiates mid-fight.")]
         [SerializeField, Min(0)] private int prewarmPerType = 8;
+        [Tooltip("KAN-112: most shooters (ranged zombies, casters) alive at once, as a share of the phase cap after Chamber scaling.")]
+        [SerializeField, Range(0f, 1f)] private float maxShooterShare = 0.2f;
+        [Tooltip("KAN-112: most shooters alive at once, whatever the cap. 0 = no shooters.")]
+        [SerializeField, Min(0)] private int maxShooters = 6;
         [SerializeField] private Phase[] phases = new Phase[0];
 
         public float FirstSpawnDelay => firstSpawnDelay;
+        public float MaxShooterShare => maxShooterShare;
+        public int MaxShooters => maxShooters;
         public int PrewarmPerType => prewarmPerType;
         public int PhaseCount => phases?.Length ?? 0;
         public Phase GetPhase(int index) => phases[index];
+
+        /// <summary>Shooters allowed alive at once in a phase whose scaled cap is <paramref name="maxAlive"/>.</summary>
+        public int MaxShootersOf(int maxAlive) => Mathf.Min(maxShooters, Mathf.FloorToInt(maxAlive * maxShooterShare + 0.001f));
+
+        /// <summary>Shooter type (KAN-112): keeps a distance band instead of chasing (ranged zombies, the Shaman).</summary>
+        public static bool IsShooter(Enemy prefab) => prefab != null && prefab.KeepsDistance;
 
         /// <summary>Index of the phase active at <paramref name="time"/> seconds into the run; -1 when there is none.</summary>
         public int PhaseAt(float time)
@@ -68,7 +88,7 @@ namespace SurvivorSouls.Gameplay.Combat
         /// KAN-106 / KAN-118: the old limit was the cap itself, but bodies still falling and sinking (~1.6 s) are out of the
         /// pool too, so a type that fills a phase (Laborers in the first 45 s) ran its pool empty when the next phase started.
         /// </summary>
-        public int PrewarmFor(Enemy prefab)
+        public int PrewarmFor(Enemy prefab, int chamber = int.MaxValue)
         {
             int count = 0;
             for (int i = 0; i < PhaseCount; i++)
@@ -78,7 +98,7 @@ namespace SurvivorSouls.Gameplay.Combat
                 float total = 0f, mine = 0f;
                 foreach (var e in phase.enemies)
                 {
-                    if (e.prefab == null) continue;
+                    if (e.prefab == null || !e.OpenIn(chamber)) continue; // KAN-112: shares as this Chamber picks them
                     total += e.weight;
                     if (e.prefab == prefab) mine += e.weight;
                 }
@@ -89,19 +109,23 @@ namespace SurvivorSouls.Gameplay.Combat
             return Mathf.Max(count, prewarmPerType);
         }
 
-        /// <summary>Weighted enemy pick from a phase; <paramref name="roll"/> in [0, 1). Null when the phase has no usable entry.</summary>
-        public static Enemy PickEnemy(in Phase phase, float roll)
+        /// <summary>
+        /// Weighted enemy pick from a phase; <paramref name="roll"/> in [0, 1). KAN-112: only entries open in
+        /// <paramref name="chamber"/>, and no shooter when <paramref name="shooters"/> is false (cap reached). Null when the
+        /// phase has no usable entry.
+        /// </summary>
+        public static Enemy PickEnemy(in Phase phase, float roll, int chamber = int.MaxValue, bool shooters = true)
         {
             if (phase.enemies == null) return null;
             float total = 0f;
             foreach (var e in phase.enemies)
-                if (e.prefab != null) total += e.weight;
+                if (Usable(e, chamber, shooters)) total += e.weight;
             if (total <= 0f) return null;
             float r = roll * total;
             Enemy last = null;
             foreach (var e in phase.enemies)
             {
-                if (e.prefab == null || e.weight <= 0f) continue;
+                if (!Usable(e, chamber, shooters) || e.weight <= 0f) continue;
                 last = e.prefab;
                 if (r < e.weight) return e.prefab;
                 r -= e.weight;
@@ -109,12 +133,22 @@ namespace SurvivorSouls.Gameplay.Combat
             return last;
         }
 
+        private static bool Usable(in EnemyEntry e, int chamber, bool shooters) =>
+            e.prefab != null && e.OpenIn(chamber) && (shooters || !IsShooter(e.prefab));
+
         /// <summary>Editor builder / tests: sets the whole table.</summary>
         public void Configure(float firstDelay, int prewarm, Phase[] newPhases)
         {
             firstSpawnDelay = firstDelay;
             prewarmPerType = prewarm;
             phases = newPhases;
+        }
+
+        /// <summary>Editor builder / tests: the shooter cap (KAN-112).</summary>
+        public void SetShooterCap(float share, int most)
+        {
+            maxShooterShare = Mathf.Clamp01(share);
+            maxShooters = Mathf.Max(0, most);
         }
     }
 }

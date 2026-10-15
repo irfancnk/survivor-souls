@@ -111,8 +111,8 @@ namespace SurvivorSouls.Gameplay.Combat
         private const float IdleBias = 0.35f;  // standing still: keep a little of the last heading's preference
 
         [SerializeField] private EnemyWaveTable waves;
-        [Tooltip("Types not in the wave table that must be in the build: dev spawns, the ranged zombies until their spawn " +
-                 "tables (KAN-105 / KAN-112), later boss summons. Pooled at start (extraPrewarm each).")]
+        [Tooltip("Types that must be in the build whatever the Chamber: dev spawns of any roster zombie and boss summons, " +
+                 "also wave types not open in this Chamber yet (KAN-112). Pooled at start (extraPrewarm each).")]
         [SerializeField] private Enemy[] extraTypes = new Enemy[0];
         [SerializeField, Min(0)] private int extraPrewarm = 3;
         [SerializeField] private Transform player;
@@ -141,6 +141,7 @@ namespace SurvivorSouls.Gameplay.Combat
         private float _headingBias;
         private bool _started;
         private float _capMul = 1f, _intervalMul = 1f, _healthMul = 1f;
+        private int _chamber = 1; // KAN-112: Chamber of the Realm, gates wave entries
         private float _dynamicMul = 1f;
         private HordeScaling _scaling;
 
@@ -160,6 +161,8 @@ namespace SurvivorSouls.Gameplay.Combat
         public float CapMultiplier => _capMul;
         public float IntervalMultiplier => _intervalMul;
         public float HealthMultiplier => _healthMul;
+        /// <summary>Chamber of the Realm the wave entries are gated by (KAN-112). 1 until <see cref="SetChamber"/>.</summary>
+        public int Chamber => _chamber;
         /// <summary>Power x time health factor of regular spawns (KAN-92, <see cref="HordeScaling"/>). 1 = none.</summary>
         public float DynamicHealthMultiplier => _dynamicMul;
         /// <summary>Max health factor a regular zombie spawns with now: Chamber x dynamic.</summary>
@@ -175,6 +178,24 @@ namespace SurvivorSouls.Gameplay.Combat
             _capMul = Mathf.Max(0.1f, cap);
             _intervalMul = Mathf.Max(0.05f, interval);
             _healthMul = Mathf.Max(0.01f, health);
+        }
+
+        /// <summary>
+        /// Chamber of the Realm (KAN-112): wave entries with a later <see cref="EnemyWaveTable.EnemyEntry.fromChamber"/>
+        /// do not spawn. Set by <see cref="Chamber.ChamberSetup"/> before <c>Start</c>, so the prewarm skips closed types.
+        /// </summary>
+        public void SetChamber(int chamber) => _chamber = Mathf.Max(1, chamber);
+
+        /// <summary>Spawned shooters alive or dying now (KAN-112 cap; see <see cref="EnemyWaveTable.IsShooter"/>).</summary>
+        public int ShootersInUse
+        {
+            get
+            {
+                int n = 0;
+                for (int i = 0; i < _live.Count; i++)
+                    if (_live[i] != null && _live[i].KeepsDistance && !_live[i].IsBoss) n++;
+                return n;
+            }
         }
 
         /// <summary>
@@ -310,9 +331,10 @@ namespace SurvivorSouls.Gameplay.Combat
             if (_pending <= 0 || _phase < 0) return;
             var phase = waves.GetPhase(_phase);
             int maxAlive = MaxAliveOf(phase);
+            int shooters = ShootersInUse, maxShooters = waves.MaxShootersOf(maxAlive);
             for (int i = 0; i < rules.maxSpawnsPerFrame && _pending > 0 && _live.Count < maxAlive; i++)
             {
-                var prefab = EnemyWaveTable.PickEnemy(phase, Random.value);
+                var prefab = EnemyWaveTable.PickEnemy(phase, Random.value, _chamber, shooters < maxShooters);
                 if (prefab == null)
                 {
                     _pending = 0;
@@ -324,6 +346,7 @@ namespace SurvivorSouls.Gameplay.Combat
                     return;
                 }
                 SpawnAt(prefab, pos);
+                if (EnemyWaveTable.IsShooter(prefab)) shooters++;
                 _pending--;
             }
         }
@@ -604,8 +627,8 @@ namespace SurvivorSouls.Gameplay.Combat
                 if (entries == null) continue;
                 foreach (var entry in entries)
                 {
-                    if (entry.prefab == null || _pools.ContainsKey(entry.prefab)) continue;
-                    int count = Mathf.CeilToInt(waves.PrewarmFor(entry.prefab) * _capMul); // bigger Chamber caps (KAN-46)
+                    if (entry.prefab == null || !entry.OpenIn(_chamber) || _pools.ContainsKey(entry.prefab)) continue; // KAN-112
+                    int count = Mathf.CeilToInt(waves.PrewarmFor(entry.prefab, _chamber) * _capMul); // bigger Chamber caps (KAN-46)
                     var pool = _pools[entry.prefab] = new Stack<Enemy>(count);
                     for (int k = 0; k < count; k++) pool.Push(Create(entry.prefab));
                 }
