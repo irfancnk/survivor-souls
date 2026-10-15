@@ -32,6 +32,8 @@ namespace SurvivorSouls.Editor.Audio
             public AudioClip[] ReelTicks, ReelStops;
             /// <summary>Boss charge (KAN-168): heavy foot-scrape at the warning, dash whoosh + clank + grunt, stop thud, wall crash.</summary>
             public AudioClip[] ChargeScrapes, ChargeDashes, ChargeStops, ChargeCrashes;
+            /// <summary>Knight walks up to the sealed portal (KAN-49): muted low stone thud.</summary>
+            public AudioClip[] PortalSeals;
             /// <summary>Boss charge wind-up growl (KAN-168): seamless loop, pitch raised with the lane fill at runtime.</summary>
             public AudioClip ChargeRumble;
             public AudioClip Ambience, PortalHum;
@@ -80,6 +82,7 @@ namespace SurvivorSouls.Editor.Audio
             };
             set.Ambience = Save("amb_shore_wind_surf_loop", AmbienceRate, ShoreAmbience(AmbienceRate, 24f, 9), ambience: true);
             set.PortalHum = Save("amb_portal_hum_loop", AmbienceRate, PortalHum(AmbienceRate, 4f, 13), ambience: true);
+            set.PortalSeals = Many("sfx_portal_sealed", 1, PortalSealThud); // KAN-49
             set.ChargeRumble = Save("amb_charge_rumble_loop", AmbienceRate, ChargeRumble(AmbienceRate, 2f, 17), ambience: false);
             return set;
         }
@@ -630,6 +633,21 @@ namespace SurvivorSouls.Editor.Audio
             for (int i = 0; i < 4; i++)
                 Click(b, 0.03f + (float)rng.NextDouble() * 0.2f, 0.005f, 0.14f, 3000f, rng);
             return Normalize(b, 0.85f);
+        }
+
+        /// <summary>
+        /// Knight walks up to the sealed portal (KAN-49, ~0.7 s): a muted, low stone thud with a little grit and a faint
+        /// low rune hum under it. Quiet and dull on purpose: "not yet", not an alarm.
+        /// </summary>
+        private static float[] PortalSealThud(int seed)
+        {
+            var rng = new System.Random(seed * 5003);
+            var b = new float[(int)(Rate * 0.7f)];
+            Sweep(b, 0f, 0.42f, 74f, 44f, 0.9f, 9f, 2);                // deep stone thud
+            NoiseBurst(b, 0f, 0.12f, 0.4f, 45f, 300f, 20f, rng);        // muffled body
+            NoiseBurst(b, 0.01f, 0.22f, 0.08f, 600f, 2000f, 14f, rng);  // grit
+            Sweep(b, 0.03f, 0.6f, 196f, 188f, 0.1f, 4.5f, 1);           // faint rune hum
+            return Normalize(b, 0.8f);
         }
 
         /// <summary>

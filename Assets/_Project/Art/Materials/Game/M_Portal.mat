@@ -27,6 +27,7 @@ Material:
     m_Floats:
     - _Aspect: 0.62857145
     - _Open: 0
+    - _Pulse: 0
     - _Spin: 1.6
     - _Twist: 5.5
     m_Colors:

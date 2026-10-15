@@ -73,6 +73,9 @@ namespace SurvivorSouls.Audio
         [SerializeField] private AudioClip[] portalEnters;
         [Tooltip("New Chamber begins after a portal: one bell toll under the title card (KAN-40).")]
         [SerializeField] private AudioClip[] chamberArrives;
+        [Tooltip("Knight walks up to the sealed portal: muted low stone thud (KAN-49).")]
+        [SerializeField] private AudioClip[] portalSealed;
+        [SerializeField, Range(0f, 1f)] private float portalSealedVolume = 0.45f;
         [SerializeField] private AudioClip ambience;
 
         [Header("Mix")]
@@ -160,6 +163,7 @@ namespace SurvivorSouls.Audio
                 shooter.FollowUpFired += OnFollowUpFired;
             }
             Bolt.Hit += OnHit;
+            PortalGate.SealTouched += OnPortalSealed; // KAN-49
             Enemy.Damaged += OnDamaged;
             if (playerHealth != null)
             {
@@ -215,6 +219,7 @@ namespace SurvivorSouls.Audio
                 shooter.FollowUpFired -= OnFollowUpFired;
             }
             Bolt.Hit -= OnHit;
+            PortalGate.SealTouched -= OnPortalSealed; // KAN-49
             Enemy.Damaged -= OnDamaged;
             if (playerHealth != null)
             {
@@ -356,6 +361,8 @@ namespace SurvivorSouls.Audio
         private void OnPortalEntered() => Play(portalEnters, portalEnterVolume, 0f);
 
         private void OnChamberArrived(int chamber) => Play(chamberArrives, chamberArriveVolume, 0f);
+
+        private void OnPortalSealed(PortalGate gate) => Play(portalSealed, portalSealedVolume, 0.04f);
 
         /// <summary>End of Realm (KAN-47): the portal horn a little lower, under the Chamber toll.</summary>
         private void OnRealmCleared(SurvivorSouls.Gameplay.Chamber.RunSnapshot run)

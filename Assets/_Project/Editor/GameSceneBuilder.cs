@@ -288,6 +288,7 @@ namespace SurvivorSouls.Editor
             SetClips(so.FindProperty("portalOpens"), sfx.PortalOpens);
             SetClips(so.FindProperty("portalEnters"), sfx.PortalEnters);
             SetClips(so.FindProperty("chamberArrives"), sfx.ChamberArrives);
+            SetClips(so.FindProperty("portalSealed"), sfx.PortalSeals); // sealed-portal thud (KAN-49)
             SetClips(so.FindProperty("soulChimes"), sfx.SoulChimes);
             SetClips(so.FindProperty("levelUps"), sfx.LevelUps);
             SetClips(so.FindProperty("shots"), sfx.Shots);
@@ -386,6 +387,10 @@ namespace SurvivorSouls.Editor
             var gateArrowTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(GateArrowTexturePath);
             if (gateArrowTexture == null) throw new System.InvalidOperationException($"Gate arrow sprite missing: {GateArrowTexturePath}");
             SetRef(gateArrow, "arrowTexture", gateArrowTexture);
+            var sealBubble = go.AddComponent<PortalSealBubbleHud>(); // "The gate is sealed. Endure 07:32 more." over a locked portal (KAN-49)
+            SetRef(sealBubble, "timer", timer);
+            SetRef(sealBubble, "worldCamera", camera);
+            SetRef(sealBubble, "lines", PortalSealLinesAsset.LoadOrCreate());
             SetRef(go.AddComponent<ChamberTransitionHud>(), "transition", transition); // white fade + "CHAMBER II" card (KAN-40)
             var victory = go.AddComponent<RealmVictoryHud>(); // "REALM CLEARED" after the last Chamber's portal (KAN-47)
             SetRef(victory, "transition", transition);

@@ -7,6 +7,7 @@
 //              fresnel-like rim along the arch edge.
 // Shape: rounded rectangle (superellipse) filling the quad; the stone frame hides its corners. Premultiplied alpha.
 // UV: (0,0) bottom-left of the arch opening. _Aspect = quad width / height keeps the swirl round.
+// _Pulse (0..1, KAN-49): the Knight touched the sealed portal: lock rune, cracks and the five rim runes flare, then fade.
 Shader "SurvivorSouls/Portal"
 {
     Properties
@@ -27,6 +28,7 @@ Shader "SurvivorSouls/Portal"
 
         [Header(Driven by PortalGate.cs)]
         _Open ("Open", Range(0, 1)) = 0
+        _Pulse ("Seal Pulse", Range(0, 1)) = 0
     }
 
     SubShader
@@ -59,6 +61,7 @@ Shader "SurvivorSouls/Portal"
                 float _Spin;
                 float _Aspect;
                 float _Open;
+                float _Pulse;
             CBUFFER_END
 
             struct Attributes
@@ -136,18 +139,22 @@ Shader "SurvivorSouls/Portal"
                 rune = max(rune, (1.0 - smoothstep(0.02, 0.032, abs(q.y + 0.04))) * step(abs(q.x), 0.18));
                 rune *= (1.0 - spread);
 
+                float sealPulse = saturate(_Pulse) * (1.0 - spread); // KAN-49 seal touch flare (locked only)
+
                 // Rim runes: five dots along the arch, lit one by one in the first half of the sequence.
                 float runes = 0.0;
                 [unroll] for (int k = 0; k < 5; k++)
                 {
                     float ang = lerp(-2.4, 2.4, k / 4.0) + 1.5708; // left foot -> top -> right foot
                     float2 rp = float2(cos(ang) * 0.82, sin(ang) * 0.82);
-                    float lit = smoothstep(k * 0.1, k * 0.1 + 0.08, open);
+                    float lit = max(smoothstep(k * 0.1, k * 0.1 + 0.08, open), sealPulse * 0.8);
                     runes += (1.0 - smoothstep(0.035, 0.06, length(p - rp))) * lit;
                 }
 
                 half3 film = _SealColor.rgb + crackRgb * crack * pulse + _CrackColor.rgb * rune * pulse;
                 half filmA = saturate(_SealColor.a + crack * pulse * 0.4);
+                film += (_RuneColor.rgb * rune * 1.8 + crackRgb * crack * 0.9) * sealPulse;
+                filmA = saturate(filmA + crack * sealPulse * 0.3);
 
                 // ---- Open swirl
                 float twist = _Twist * (1.0 - r) - t * _Spin;

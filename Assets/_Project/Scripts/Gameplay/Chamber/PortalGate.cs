@@ -25,11 +25,15 @@ namespace SurvivorSouls.Gameplay.Chamber
     /// is enabled after the timer finished is Open at once (no sequence replay far from the player).
     /// Visuals: one quad with the Portal shader (per-frame values in one MaterialPropertyBlock), two additive glow quads,
     /// small particle systems, no light, no grab pass. No allocation per frame.
+    /// KAN-49: while Locked, a Knight who walks into the seal zone in front of the arch (<see cref="PortalSealTrigger"/>)
+    /// raises <see cref="SealTouched"/> (HUD bubble with the time left, thud, haptic) and the seal answers with a short
+    /// rune pulse (lock rune + rim runes flare, a puff of embers, the red ground pool swells).
     /// </summary>
     public sealed class PortalGate : MonoBehaviour
     {
         private static readonly int OpenId = Shader.PropertyToID("_Open");
         private static readonly int AlphaId = Shader.PropertyToID("_Alpha");
+        private static readonly int PulseId = Shader.PropertyToID("_Pulse");
 
         [Header("Parts")]
         [SerializeField] private Renderer surface;
@@ -55,14 +59,31 @@ namespace SurvivorSouls.Gameplay.Chamber
         [SerializeField, Min(0)] private int burstCount = 48;
         [SerializeField, Range(0f, 1f)] private float humVolume = 0.55f;
 
+        [Header("Seal touch (KAN-49)")]
+        [Tooltip("Ground radius (m) around the trigger point that counts as touching the sealed portal.")]
+        [SerializeField, Min(0.5f)] private float sealRadius = 2.75f;
+        [Tooltip("Extra radius (m) the Knight must walk out before the zone re-arms (no flicker at the border).")]
+        [SerializeField, Min(0f)] private float sealExitMargin = 0.75f;
+        [Tooltip("An entry sooner than this (s) after the last touch is ignored until the Knight leaves again.")]
+        [SerializeField, Min(0f)] private float sealInterval = 1.5f;
+        [SerializeField, Min(0.05f)] private float sealPulseTime = 0.7f;
+        [SerializeField, Min(0)] private int sealEmbers = 16;
+        [Tooltip("Local height (m) above the trigger point where the HUD bubble's tail points (just over the lintel).")]
+        [SerializeField] private float bubbleHeight = 4.4f;
+
         private MaterialPropertyBlock _mpb;
         private float _progress;
         private bool _burst;
         private bool _entered;
         private float _drawnOpen = -1f;
+        private readonly PortalSealTrigger _seal = new PortalSealTrigger();
+        private float _sealPulse, _drawnPulse = -1f;
 
         /// <summary>The player walked into an open portal. Raised once per portal opening.</summary>
         public static event Action<PortalGate> PlayerEntered;
+
+        /// <summary>KAN-49: the Knight walked up to this portal while it is sealed. Raised on enter (see <see cref="PortalSealTrigger"/>).</summary>
+        public static event Action<PortalGate> SealTouched;
 
         public event Action<PortalState> StateChanged;
 
@@ -72,6 +93,13 @@ namespace SurvivorSouls.Gameplay.Chamber
         /// <summary>Whether the arch blocks walking (locked / opening).</summary>
         public bool Blocks => blocker != null && blocker.enabled;
         public Vector3 TriggerPosition => transform.TransformPoint(triggerPoint);
+        /// <summary>World point over the arch the seal bubble points at (KAN-49).</summary>
+        public Vector3 BubbleAnchor => transform.TransformPoint(triggerPoint + Vector3.up * bubbleHeight);
+        /// <summary>Tests: the Knight is in the seal zone (with hysteresis).</summary>
+        public bool InSealZone => _seal.Inside;
+        /// <summary>Tests: seal rune pulse, 1 on touch, fades to 0.</summary>
+        public float SealPulse => _sealPulse;
+        public float SealRadius => sealRadius;
 
         /// <summary>Tests and tools: wires the parts without the builder.</summary>
         public void Setup(Renderer surfaceRenderer, Collider blockerCollider, Vector3 localTrigger, float radius)
@@ -91,6 +119,8 @@ namespace SurvivorSouls.Gameplay.Chamber
             var timer = SurvivalTimer.Active;
             _entered = false;
             _burst = false;
+            _seal.Reset();
+            _sealPulse = 0f;
             if (timer != null && timer.IsFinished) SetState(PortalState.Open, 1f);
             else SetState(PortalState.Locked, 0f);
         }
@@ -105,6 +135,7 @@ namespace SurvivorSouls.Gameplay.Chamber
             {
                 case PortalState.Locked:
                     if (timer != null && timer.IsFinished) BeginOpening();
+                    else TickSeal(timer, dt);
                     break;
                 case PortalState.Opening:
                     float length = timer != null ? timer.OpenSequence : 2f;
@@ -136,6 +167,29 @@ namespace SurvivorSouls.Gameplay.Chamber
             SetState(PortalState.Opening, 0f);
         }
 
+        /// <summary>
+        /// KAN-49 seal zone: armed while the Knight lives (a survive clock that still runs, or a boss Chamber's sealed gate).
+        /// </summary>
+        private void TickSeal(SurvivalTimer timer, float dt)
+        {
+            if (_sealPulse > 0f) _sealPulse = Mathf.Max(0f, _sealPulse - dt / sealPulseTime);
+            if (timer == null || timer.Player == null) return;
+            _seal.EnterRadius = sealRadius;
+            _seal.ExitRadius = sealRadius + sealExitMargin;
+            _seal.MinInterval = sealInterval;
+            bool armed = timer.IsRunning || (!timer.UsesTimer && !timer.IsFinished);
+            Vector3 d = timer.Player.position - TriggerPosition;
+            d.y = 0f;
+            if (_seal.Step(d.sqrMagnitude, dt, armed)) TouchSeal();
+        }
+
+        private void TouchSeal()
+        {
+            _sealPulse = 1f;
+            if (lockedFx != null && sealEmbers > 0) lockedFx.Emit(sealEmbers);
+            SealTouched?.Invoke(this);
+        }
+
         private bool Inside(Vector3 position)
         {
             Vector3 d = position - TriggerPosition;
@@ -148,6 +202,11 @@ namespace SurvivorSouls.Gameplay.Chamber
             bool changed = state != State;
             State = state;
             _progress = progress;
+            if (state != PortalState.Locked)
+            {
+                _seal.Reset();
+                _sealPulse = 0f;
+            }
             if (blocker != null) blocker.enabled = state != PortalState.Open;
             switch (state)
             {
@@ -183,18 +242,21 @@ namespace SurvivorSouls.Gameplay.Chamber
         {
             float open = _progress;
             if (hum != null) hum.volume = humVolume * GameSettings.SfxVolume * Mathf.Clamp01((open - 0.3f) / 0.7f);
-            if (Mathf.Approximately(open, _drawnOpen)) return;
+            if (Mathf.Approximately(open, _drawnOpen) && Mathf.Approximately(_sealPulse, _drawnPulse)) return;
             _drawnOpen = open;
+            _drawnPulse = _sealPulse;
             _mpb ??= new MaterialPropertyBlock();
+            float pulse = _sealPulse * _sealPulse * (3f - 2f * _sealPulse); // smooth fall-off
             if (surface != null)
             {
                 surface.GetPropertyBlock(_mpb);
                 _mpb.SetFloat(OpenId, open);
+                _mpb.SetFloat(PulseId, pulse);
                 surface.SetPropertyBlock(_mpb);
             }
             float glow = Mathf.Clamp01((open - burstAt) / (1f - burstAt));
             SetAlpha(beam, glow);
-            SetAlpha(groundGlow, Mathf.Max(0.15f, glow)); // a faint red pool even when locked
+            SetAlpha(groundGlow, Mathf.Min(1f, Mathf.Max(0.15f, glow) + 0.45f * pulse)); // a faint red pool even when locked; swells on a seal touch
         }
 
         private void SetAlpha(Renderer r, float alpha)
@@ -216,6 +278,10 @@ namespace SurvivorSouls.Gameplay.Chamber
         }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        private static void ResetStatics() => PlayerEntered = null;
+        private static void ResetStatics()
+        {
+            PlayerEntered = null;
+            SealTouched = null;
+        }
     }
 }

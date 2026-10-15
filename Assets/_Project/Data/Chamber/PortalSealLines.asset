@@ -1,0 +1,40 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: edb31531930674e53afc89e3a5782175, type: 3}
+  m_Name: PortalSealLines
+  m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.UI.Hud.PortalSealLines
+  timed:
+  - header: The gate is sealed.
+    prefix: 'Endure '
+    suffix: ' more.'
+  - header: The seal holds.
+    prefix: 
+    suffix: ' remains.'
+  - header: Not yet, wanderer.
+    prefix: 
+    suffix: .
+  - header: The flame within sleeps.
+    prefix: 'It wakes in '
+    suffix: .
+  - header: Cold stone answers not.
+    prefix: 'Survive '
+    suffix: ' longer.'
+  boss:
+  - header: The seal is bound to its keeper.
+    prefix: Slay the guardian.
+    suffix: 
+  - header: Not while the keeper draws breath.
+    prefix: Fell the guardian.
+    suffix: 
+  visibleSeconds: 2.5
+  fadeIn: 0.15
+  fadeOut: 0.3
