@@ -194,7 +194,17 @@ namespace SurvivorSouls.Gameplay.Combat
         /// <summary>Max alive of <paramref name="phase"/> after Chamber scaling.</summary>
         public int MaxAliveOf(in EnemyWaveTable.Phase phase) => Mathf.RoundToInt(phase.maxAlive * _capMul);
 
+        /// <summary>The scene's spawner (casters raise their dead through it, KAN-107). Set while enabled.</summary>
+        public static EnemySpawner Current { get; private set; }
+
         private void Awake() => _releaseAction = Release;
+
+        private void OnEnable() => Current = this;
+
+        private void OnDisable()
+        {
+            if (Current == this) Current = null;
+        }
 
         private void Start() => Begin();
 

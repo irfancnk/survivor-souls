@@ -6,7 +6,7 @@ using UnityEngine;
 namespace SurvivorSouls.Gameplay.Combat
 {
     /// <summary>Look (and particle system) of an enemy shot. Index into <see cref="EnemyProjectiles"/> looks.</summary>
-    public enum ShotKind { Arrow, FirePot, AcidGlob }
+    public enum ShotKind { Arrow, FirePot, AcidGlob, SoulOrb } // SoulOrb: Hexbound Shaman ring (KAN-107); new kinds at the end
 
     /// <summary>
     /// Shots of the ranged zombies (KAN-105), shared by every shooter in the scene and reused by later casters and bosses.

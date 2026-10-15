@@ -63,6 +63,8 @@ namespace SurvivorSouls.Dev
     /// (<c>BossAttack.Sample</c>, Pyre Lord numbers) added to its fight for the shot.
     /// KAN-119: also <c>lobbed|summon|teleport</c> (samples: Rotting Colossus boulder / ghoul summon, Bone Matriarch teleport).
     /// KAN-121: also <c>shockwave|homing|beams</c> (samples: Rotting Colossus double slam, Bone Matriarch skulls / cross beams).
+    /// <c>-ss-shaman-cast orbs|hex|raise[,&lt;s&gt;]</c> (KAN-107, with <c>-ss-enemy HexboundShaman,...</c>): every Shaman starts
+    /// that cast that many seconds after load (default 1.2; hex falls back to raise without zombies in reach).
     /// <c>-ss-hearts &lt;n&gt;</c> (KAN-60, boss Chamber): drops n healing hearts ahead of the Knight right after load (cap
     /// permitting); each shows its ground glow for 1 s, then floats.
     /// Main menu (KAN-20): <c>-ss-realms</c> opens the Realm selection page, <c>-ss-realm &lt;id&gt;</c> also opens that
@@ -101,6 +103,7 @@ namespace SurvivorSouls.Dev
         private float _hordePower;
         private bool _hordeTiers;
         private string _enemy;
+        private string _shamanCast;
         private int _hold;
         private bool _immortal;
         private bool _bossStay;
@@ -154,6 +157,7 @@ namespace SurvivorSouls.Dev
             shot._hordePower = float.TryParse(GetArg("-ss-horde-power"), NumberStyles.Float, CultureInfo.InvariantCulture, out float hp) ? hp : 0f;
             shot._hordeTiers = Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-horde-tiers") >= 0;
             shot._enemy = GetArg("-ss-enemy");
+            shot._shamanCast = GetArg("-ss-shaman-cast");
             shot._hold = int.TryParse(GetArg("-ss-hold"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int hold) ? hold : 0;
             shot._immortal = Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-immortal") >= 0;
             shot._timer = GetArg("-ss-timer");
@@ -214,6 +218,7 @@ namespace SurvivorSouls.Dev
             if (_horde > 0) PlaceHorde(_horde);
             if (_hordeTiers) PlaceTierLineup();
             if (!string.IsNullOrEmpty(_enemy)) PlaceEnemyType(_enemy);
+            if (!string.IsNullOrEmpty(_shamanCast)) StartCoroutine(ShamanCast(_shamanCast));
             if (_hold > 0) StartCoroutine(HoldHorde(_hold));
             if (!string.IsNullOrEmpty(_skills)) GrantSkills(_skills);
             if (_powerCurve) PrintPowerCurve();
@@ -580,6 +585,30 @@ namespace SurvivorSouls.Dev
                 }
                 Debug.Log($"[DevScreenshot] enemy {prefab.name} x{count}: height {prefab.Height:F2} m, hit radius {prefab.HitRadius:F2} m");
             }
+        }
+
+        /// <summary>-ss-shaman-cast: waits, then every Hexbound Shaman starts that cast (KAN-107).</summary>
+        private static IEnumerator ShamanCast(string arg)
+        {
+            string[] parts = arg.Split(',');
+            float at = parts.Length > 1 && float.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out float a) ? a : 1.2f;
+            var cast = parts[0] switch
+            {
+                "orbs" => HexShaman.Cast.Orbs,
+                "hex" => HexShaman.Cast.Hex,
+                "raise" => HexShaman.Cast.Raise,
+                _ => HexShaman.Cast.None,
+            };
+            if (cast == HexShaman.Cast.None)
+            {
+                Debug.LogWarning($"[DevScreenshot] -ss-shaman-cast: unknown cast '{parts[0]}'");
+                yield break;
+            }
+            yield return new WaitForSeconds(at);
+            int started = 0;
+            foreach (var s in HexShaman.Active)
+                if (s.ForceCast(cast)) started++;
+            Debug.Log($"[DevScreenshot] -ss-shaman-cast {cast}: {started} of {HexShaman.Active.Count} Shamans started");
         }
 
         /// <summary>Tops the field up to <paramref name="count"/> enemies once a second (off-screen spawn points).</summary>

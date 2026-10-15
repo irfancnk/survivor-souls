@@ -104,6 +104,7 @@ namespace SurvivorSouls.Gameplay.Combat
         private const float SinkTime = 0.7f;
         private const float BurnTickInterval = 0.5f;
         private static readonly Color BurnTint = new Color(1.9f, 0.85f, 0.35f);
+        private static readonly Color HexTint = new Color(1.35f, 0.62f, 1.9f); // KAN-107 Hexbound Shaman buff (violet)
         private const float BodyRadius = 0.35f;     // ground footprint for wall tests
         private const float ProbeDistance = 0.9f;   // look-ahead for steering
         private const float DetourStep = 35f;       // degrees per detour try
@@ -143,6 +144,8 @@ namespace SurvivorSouls.Gameplay.Combat
         private float _burnLeft;
         private float _burnTick;
         private float _burnPhase; // per enemy, so a burning crowd does not pulse in sync
+        private float _hexLeft;
+        private float _hexBoost = 1f;
         private Color _tint = Color.clear;
         private Color _calmTint = Color.white; // base tint x danger tier colour (KAN-92)
         private Material[] _sourceMaterials;   // the body's own materials (tier step 0)
@@ -197,6 +200,10 @@ namespace SurvivorSouls.Gameplay.Combat
         public float MoveSpeed => moveSpeed * _speedMul * SpeedBoost;
         /// <summary>Extra walk speed factor set by an attack pattern (KAN-61 boss phase 2). Reset to 1 on spawn.</summary>
         public float SpeedBoost { get; set; } = 1f;
+        /// <summary>True while a Hexbound Shaman buff runs (KAN-107): faster, violet tint.</summary>
+        public bool IsHexed => _hexLeft > 0f && IsAlive;
+        /// <summary>Seconds of hex buff left (0 = none).</summary>
+        public float HexLeft => IsHexed ? _hexLeft : 0f;
         /// <summary>This spawn's root scale (type scale x random spread).</summary>
         public float Scale => _scale;
         public float AnimRefSpeed => animRefSpeed;
@@ -279,6 +286,8 @@ namespace SurvivorSouls.Gameplay.Combat
             _steerTimer = UnityEngine.Random.value * SteerInterval; // staggered: probes spread over the frames
             _speedMul = 1f + UnityEngine.Random.Range(-speedJitter, speedJitter);
             SpeedBoost = 1f;
+            _hexLeft = 0f;
+            _hexBoost = 1f;
             _scale = bodyScale * (1f + UnityEngine.Random.Range(-scaleJitter, scaleJitter));
             _groundSpeed = MoveSpeed;
             _attacking = false;
@@ -406,6 +415,20 @@ namespace SurvivorSouls.Gameplay.Combat
             if (_burnLeft <= 0f) _burnTick = BurnTickInterval; // first tick after one interval
             _burnDps = _burnLeft > 0f ? Mathf.Max(_burnDps, dps) : dps;
             _burnLeft = Mathf.Max(_burnLeft, duration);
+        }
+
+        /// <summary>
+        /// Hexbound Shaman buff (KAN-107): <see cref="SpeedBoost"/> = <paramref name="boost"/> and a violet tint for
+        /// <paramref name="duration"/> s. A new hex refreshes the time and keeps the stronger boost (no stacking). Bosses
+        /// (their own phase speed) and dead enemies ignore it. Returns true when the hex took.
+        /// </summary>
+        public bool ApplyHex(float boost, float duration)
+        {
+            if (!IsAlive || isBoss || boost <= 0f || duration <= 0f) return false;
+            _hexBoost = _hexLeft > 0f ? Mathf.Max(_hexBoost, boost) : boost;
+            _hexLeft = Mathf.Max(_hexLeft, duration);
+            SpeedBoost = _hexBoost;
+            return true;
         }
 
         /// <summary>
@@ -667,6 +690,7 @@ namespace SurvivorSouls.Gameplay.Combat
         public void TickStatus(float dt)
         {
             UpdateBurn(dt);
+            UpdateHex(dt);
             UpdateTint(dt);
         }
 
@@ -681,14 +705,29 @@ namespace SurvivorSouls.Gameplay.Combat
             TakeDamage(_burnDps * BurnTickInterval, Vector3.zero, DamageKind.Burn);
         }
 
-        /// <summary>White hit flash over an ember glow while burning (pulsing), else the base tint.</summary>
+        private void UpdateHex(float dt)
+        {
+            if (_hexLeft <= 0f) return;
+            _hexLeft -= dt;
+            if (_hexLeft > 0f && IsAlive) return;
+            _hexLeft = 0f;
+            _hexBoost = 1f;
+            SpeedBoost = 1f;
+        }
+
+        /// <summary>White hit flash over an ember glow while burning (pulsing), a violet glow while hexed, else the base tint.</summary>
         private void UpdateTint(float dt)
         {
             Color c = _calmTint;
+            if (_hexLeft > 0f)
+            {
+                float pulse = 0.6f + 0.2f * Mathf.Sin(Time.time * 7f + _burnPhase);
+                c = Color.Lerp(_calmTint, HexTint, pulse * Mathf.Clamp01(_hexLeft / 0.3f));
+            }
             if (_burnLeft > 0f)
             {
                 float pulse = 0.55f + 0.25f * Mathf.Sin(Time.time * 11f + _burnPhase);
-                c = Color.Lerp(_calmTint, BurnTint, pulse * Mathf.Clamp01(_burnLeft / 0.3f));
+                c = Color.Lerp(c, BurnTint, pulse * Mathf.Clamp01(_burnLeft / 0.3f));
             }
             if (_flash > 0f)
             {
