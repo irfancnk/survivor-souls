@@ -19,7 +19,7 @@ namespace SurvivorSouls.Editor.Audio
 
         public sealed class Set
         {
-            public AudioClip[] Shots, Impacts, Deaths, Footsteps, HitMarkers, KillMarkers, SoulChimes, LevelUps, BoonPicks, PortalOpens, PortalEnters, ChamberArrives;
+            public AudioClip[] Shots, Impacts, Deaths, HitMarkers, KillMarkers, SoulChimes, LevelUps, BoonPicks, PortalOpens, PortalEnters, ChamberArrives;
             /// <summary>Reliquary chest lands (KAN-73) and opens.</summary>
             public AudioClip[] ChestDrops, ChestOpens;
             /// <summary>Owned skill levelled up, played when the HUD slot glows after the pause (KAN-74).</summary>
@@ -52,7 +52,6 @@ namespace SurvivorSouls.Editor.Audio
                 Shots = Many("sfx_crossbow_shot", 3, CrossbowShot),
                 Impacts = Many("sfx_bolt_impact", 3, BoltImpact),
                 Deaths = Many("sfx_hollow_death", 2, HollowDeath),
-                Footsteps = Many("sfx_footstep_snow", 4, Footstep),
                 HitMarkers = Many("sfx_hitmarker_tick", 2, HitMarkerTick),
                 KillMarkers = Many("sfx_killmarker", 1, KillMarker),
                 SoulChimes = Many("sfx_soul_chime", 2, SoulChime),
@@ -148,25 +147,6 @@ namespace SurvivorSouls.Editor.Audio
             NoiseBurst(b, 0.72f, 0.25f, 0.5f, 90f, 500f, 18f, rng);
             NoiseBurst(b, 0.76f, 0.2f, 0.15f, 2200f, 5000f, 20f, rng);       // armour rattle
             return Normalize(b, 0.85f);
-        }
-
-        /// <summary>Armoured step in snow: muffled thud, a train of tiny crunch clicks (packed snow), faint metal clink.</summary>
-        private static float[] Footstep(int seed)
-        {
-            var rng = new System.Random(seed * 401);
-            var b = new float[(int)(Rate * 0.3f)];
-            float v = 1f + (float)(rng.NextDouble() - 0.5) * 0.2f;
-            Sweep(b, 0f, 0.12f, 90f * v, 55f * v, 0.6f, 30f, 1);
-            NoiseBurst(b, 0f, 0.08f, 0.35f, 120f, 500f, 34f, rng);
-            int crunches = 9 + rng.Next(6);
-            for (int i = 0; i < crunches; i++)
-            {
-                float t = 0.005f + (float)Math.Pow(rng.NextDouble(), 1.6) * 0.17f;
-                Click(b, t, 0.012f, 0.18f + (float)rng.NextDouble() * 0.2f, 1800f + (float)rng.NextDouble() * 2500f, rng);
-            }
-            NoiseBurst(b, 0.01f, 0.18f, 0.12f, 1500f, 4500f, 16f, rng);
-            Sweep(b, 0.012f, 0.12f, 2350f * v, 2300f * v, 0.04f, 40f, 2);
-            return Normalize(b, 0.8f);
         }
 
         /// <summary>Hit marker confirm (KAN-13): dry, bright, very short metallic tick. Sits on top of the bolt impact.</summary>

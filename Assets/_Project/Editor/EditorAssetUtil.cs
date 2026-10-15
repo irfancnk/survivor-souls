@@ -1,4 +1,6 @@
+using System;
 using System.IO;
+using System.Reflection;
 using UnityEditor;
 using UnityEditor.Rendering.Universal.ShaderGUI;
 using UnityEngine;
@@ -12,6 +14,7 @@ namespace SurvivorSouls.Editor
         public const string SimpleLit = "Universal Render Pipeline/Simple Lit";
         public const string Unlit = "Universal Render Pipeline/Unlit";
         public const string ParticlesUnlit = "Universal Render Pipeline/Particles/Unlit";
+        public const string Lit = "Universal Render Pipeline/Lit";
 
         public static void EnsureFolder(string path)
         {
@@ -81,7 +84,9 @@ namespace SurvivorSouls.Editor
         }
 
         /// <summary>
-        /// Same pass as the URP inspector of the material's shader (Simple Lit, Unlit, Particles/Unlit). Other shaders: no change.
+        /// Same pass as the URP inspector of the material's shader (Simple Lit, Unlit, Particles/Unlit, Lit). Other shaders: no
+        /// change. The SurvivorSouls/* shaders have no CustomEditor and no keyword drawer, so the editor runs no pass on them
+        /// (KAN-178; <c>MaterialValidationTests</c> fails if one gets one).
         /// A new material is written unvalidated; the next editor / test session validated it and the .mat changed in git (KAN-158).
         /// </summary>
         public static void ValidateLikeInspector(Material mat)
@@ -91,9 +96,26 @@ namespace SurvivorSouls.Editor
                 case SimpleLit: BaseShaderGUI.SetMaterialKeywords(mat, SimpleLitGUI.SetMaterialKeywords); break;
                 case Unlit: BaseShaderGUI.SetMaterialKeywords(mat); break;
                 case ParticlesUnlit: BaseShaderGUI.SetMaterialKeywords(mat, null, ParticleGUI.SetMaterialKeywords); break;
+                case Lit: BaseShaderGUI.SetMaterialKeywords(mat, LitGUI.SetMaterialKeywords, LitDetailKeywords); break; // KAN-178
                 default: return;
             }
             EditorUtility.SetDirty(mat);
+        }
+
+        // URP LitShader.ValidateMaterial also runs LitDetailGUI.SetMaterialKeywords (detail map keywords), but that class is
+        // internal to the URP editor assembly, so it is found once by reflection. Throws if a URP update moves it (KAN-178).
+        private static Action<Material> _litDetailKeywords;
+
+        private static void LitDetailKeywords(Material mat)
+        {
+            if (_litDetailKeywords == null)
+            {
+                var method = typeof(LitGUI).Assembly.GetType("UnityEditor.Rendering.Universal.ShaderGUI.LitDetailGUI")
+                    ?.GetMethod("SetMaterialKeywords", BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(Material) }, null);
+                if (method == null) throw new InvalidOperationException("URP LitDetailGUI.SetMaterialKeywords(Material) not found");
+                _litDetailKeywords = (Action<Material>)Delegate.CreateDelegate(typeof(Action<Material>), method);
+            }
+            _litDetailKeywords(mat);
         }
 
         /// <summary>Alpha-blended material (shadow blobs, floor decals). Unlit or Simple Lit.</summary>
