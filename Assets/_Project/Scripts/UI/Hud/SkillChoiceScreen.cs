@@ -262,7 +262,7 @@ namespace SurvivorSouls.UI.Hud
         private static void BuildDecor(Card card)
         {
             card.Reel = card.Icon?.parent?.Q(className: ReelClass); // re-enable: reuse the reel parts made before
-            card.ReelName = card.Name?.Q<Label>(className: ReelNameClass);
+            card.ReelName = card.Root.Q<Label>(className: ReelNameClass);
             if (card.Icon?.parent != null && card.Reel == null)
             {
                 card.Reel = new VisualElement { pickingMode = PickingMode.Ignore };
@@ -273,9 +273,10 @@ namespace SurvivorSouls.UI.Hud
             if (card.Name != null && card.ReelName == null)
             {
                 // Over the real name (which keeps the card's layout while hidden): one line, so the card never resizes.
+                // A sibling, not a child: a Label with children loses its text measure (height 0).
                 card.ReelName = new Label { pickingMode = PickingMode.Ignore };
                 card.ReelName.AddToClassList(ReelNameClass);
-                card.Name.Add(card.ReelName);
+                card.Root.Insert(card.Root.IndexOf(card.Name) + 1, card.ReelName);
             }
             if (card.Marks != null)
                 while (card.Marks.childCount < MaxMarks)
@@ -521,8 +522,10 @@ namespace SurvivorSouls.UI.Hud
                     card.Reel.style.translate = new Translate(0f, (frac - 1f) * ReelSlot);
                     card.Reel.style.scale = new Scale(new Vector3(1f, stretch, 1f));
                 }
-                if (card.ReelName != null)
+                if (card.ReelName != null && card.Name != null)
                 {
+                    // Absolute in the card: follow the hidden real name's slot (top is measured inside the top border).
+                    card.ReelName.style.top = card.Name.layout.y - card.Root.resolvedStyle.borderTopWidth;
                     card.ReelName.style.translate = new Translate(0f, frac * 22f);
                     card.ReelName.style.opacity = 1f - 0.6f * frac;
                 }

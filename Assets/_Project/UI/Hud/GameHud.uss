@@ -837,7 +837,8 @@
     visibility: hidden;
 }
 
-/* The real name keeps its place (and the card height) but is see-through; the reel name runs over it on one line. */
+/* The real name keeps its place (and the card height) but is see-through; the reel name (absolute in the card, top set
+   in code to the name's slot) runs over it on one line. */
 .skill-card--rolling .skill-card__name {
     color: rgba(0, 0, 0, 0);
     -unity-text-outline-color: rgba(0, 0, 0, 0);
@@ -845,8 +846,8 @@
 
 .skill-card__reel-name {
     position: absolute;
-    left: -24px;
-    right: -24px;
+    left: 0;
+    right: 0;
     top: 0;
     display: none;
     font-size: 38px;
