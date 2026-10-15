@@ -479,6 +479,12 @@
   - Verified: compile 0 errors / 0 new warnings, MainMenu + Game scene rebuild (tile prefab churn committed, Art controller / material churn not), mac dev build + 4 screenshot runs without exceptions, iOS export (`-ss-dev`) + xcodebuild + install + launch on iPhone 14 Pro Max OK.
   - Limits: stat bonuses only, no "starting skill" nodes yet (follow-up ticket). Rows are centred, the link line does not point to the exact parent node. No refund / respec for players (debug only). Balance numbers are first guesses (KAN-53 / KAN-113 phone balance passes).
 
+- 2026-10-15: 3 flying pets from Meshy, assets only, no game code (user session, branch `claude/meshy-ai-api-access-e2c7c1`). Cinder Seraph (epic, 0.9 m, 5.2k tris, emissive), Gargoyle Familiar (rare, 0.8 m, 4.2k), Lantern Sprite (normal, 0.6 m, 3.1k) in `Art/Characters/Pets/<Name>/`. Clips: Hover (Meshy idle), Cast, rig Walking / Running.
+  - Winged humanoids on purpose: the Meshy auto-rig is humanoid only (a dragon / bird would not rig). Wings are skinned to the torso, no flap. Show them floating at ~0.95 m with a bob.
+  - Design (attacks, numbers): `Docs/ENEMY_ROSTER.md` section 6. Pose sheets `Docs/enemies/<Name>.png`. No Unity batch import this time (same pipeline as KAN-102; first import makes the .meta files).
+  - Bestiary viewer (private artifact https://claude.ai/artifact/7JYHNDzN7Qo2ffoBLNxrW5): Pets group with in-game rarity colours, KAN-128 cuts shown struck out. Source `Tools/Meshy/bestiary/` (template + data), models baked by `Tools/Meshy/to_web.py` and shipped as glTF JSON (the artifact host serves no .glb; the page decodes the base64 buffer itself because the frame blocks `data:` fetches).
+  - Cost 138 Meshy credits; balance 38.
+
 ## DECISIONS
 - Design language: Archero / Archero 2 (menus, loop, chests, daily/weekly quests, gear merge, talents, energy). Look: Dark Souls, realistic, not dismal. User decision 2026-10-11.
 - Naming map: energy=Estus, gold=Souls, gems=Ember Shards, chests=Reliquaries, daily=Oaths, weekly=Pilgrimage, chapter=Realm, room=Chamber. See GAME_PLAN sec 2.

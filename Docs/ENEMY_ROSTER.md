@@ -139,3 +139,36 @@ Realm 1 wave table `Assets/_Project/Data/Combat/EnemyWaves_Realm1.asset`, entry 
 ## 5. Rebuild
 
 Scripts in `Tools/Meshy/`: `roster.json` (prompts, heights, tris, action ids), `design.json` (section 3 text), `run_meshy.py` (resumable Meshy CLI driver; `UNTIL=preview` stops for a review), `to_unity.py` (Blender: GLB -> SK / A FBX + textures), `render_check.py` + `sheet.py` (pose sheets), `install.py` (export all into the repo), `make_doc.py` (this file). Needs a Meshy CLI 0.4.0 login (`npm exec --package=meshy-cli@0.4.0 -- meshy auth status`) and Blender 5.2. Scripts read `~/survivor-souls-assets` (Mac paths).
+
+## 6. Pets (Meshy batch 2026-10-15, assets only)
+
+Three flying familiars that fight for the Knight. Winged humanoid bodies on purpose: the Meshy auto-rig only rigs humanoids, so a dragon or bird would have no animation. The wings move with the body but do not flap (no wing bones). Show them floating at about shoulder height (0.95 m) with a small bob, as in the Bestiary viewer. No game code uses them yet.
+
+| Rarity | Pet | Height | Tris | Clips (Meshy action id) | Folder |
+|---|---|---|---|---|---|
+| epic | Cinder Seraph | 0.9 m | 5197 | Cast (129), Hover (243), Running (rig), Walking (rig) | `Assets/_Project/Art/Characters/Pets/CinderSeraph` |
+| rare | Gargoyle Familiar | 0.8 m | 4154 | Cast (125), Hover (244), Running (rig), Walking (rig) | `Assets/_Project/Art/Characters/Pets/GargoyleFamiliar` |
+| normal | Lantern Sprite | 0.6 m | 3087 | Cast (130), Hover (245), Running (rig), Walking (rig) | `Assets/_Project/Art/Characters/Pets/LanternSprite` |
+
+### Cinder Seraph (epic)
+
+- Role: Epic pet (fire, homing).
+- Attack: Floats over the Knight's right shoulder. Every 1.2 s fires 2 homing ember bolts at the nearest enemy (turn rate capped, 9 m/s). Every 6 s a burst of 8 embers in a ring around the Knight that sets enemies on fire (uses the Burn status of the Ember Bolts skill). Fires while the Knight moves.
+- Stats: Bolt 45 % of the Knight's bolt damage, ring 30 % + burn 2 s, range 10 m.
+- Pose sheet: `Docs/enemies/CinderSeraph.png`. Meshy tasks: preview `01a13f32-7b5b-714e-b2ec-30120e34fc16`, refine `01a13f33-67f9-7537-ac12-985a648a429e`, remesh `01a13f34-c520-735a-88b9-e18b6577cef4`, rigging `01a13f36-6dbb-735a-9c76-5fea3b1fedc6`.
+
+### Gargoyle Familiar (rare)
+
+- Role: Rare pet (stone, pierce).
+- Attack: Hovers behind the Knight. Every 1.5 s throws a stone shard that pierces up to 2 enemies. Every 10 s it dives on the densest group in 6 m and slams (small stun 0.5 s, knockback), then flies back.
+- Stats: Shard 40 % of the Knight's bolt damage, pierce 2, slam 60 % + stun 0.5 s, range 9 m.
+- Pose sheet: `Docs/enemies/GargoyleFamiliar.png`. Meshy tasks: preview `01a13f33-6859-72e3-b881-6bc32825b65c`, refine `01a13f34-7331-7738-8834-33fc8d7966f0`, remesh `01a13f35-8180-76cb-b393-f0f0efb05d80`, rigging `01a13f37-2df9-735c-848f-1a20a88f13c5`.
+
+### Lantern Sprite (normal)
+
+- Role: Normal pet (light, support).
+- Attack: Bobs beside the Knight. Every 1.8 s shoots a slow light mote at the nearest enemy. Its lantern also pulls in XP wisps from 1.5 m further away.
+- Stats: Mote 30 % of the Knight's bolt damage, range 8 m, +1.5 m pickup radius.
+- Pose sheet: `Docs/enemies/LanternSprite.png`. Meshy tasks: preview `01a13f33-6bc2-7589-943f-294c14bf7e08`, refine `01a13f34-743b-72cf-9f39-9a012912a421`, remesh `01a13f35-817f-714f-8f71-0e41123ab538`, rigging `01a13f37-2cfc-7635-85c9-0d7162961b90`.
+
+Pet cost: 138 Meshy credits (balance after: 38). Files follow section 1 (SK / A / T naming, Generic rig, 24 bones, root scale 0.01). Not yet imported in a Unity batch run: the first import makes the .meta files.

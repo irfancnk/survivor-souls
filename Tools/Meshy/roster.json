@@ -193,6 +193,48 @@
     "Death": 190
    },
    "tris": 12000
+  },
+  {
+   "slug": "cinder-seraph",
+   "name": "CinderSeraph",
+   "kind": "pet",
+   "rarity": "epic",
+   "height": 0.9,
+   "tris": 5000,
+   "prompt": "Small mythical fire seraph familiar, childlike angelic spirit with a body of cracked black obsidian glowing with molten orange veins, two pairs of large feathered wings made of flame raised high behind the back and separate from the arms, floating ember halo above the head, flowing burning cloth wrap at the waist, bare glowing hands, serene masked face.",
+   "texture": "Black obsidian skin with bright molten orange and gold cracks, flame wings fading from white-gold to deep orange and red, glowing ember halo, scorched dark red cloth wrap, strong emissive glow.",
+   "anims": {
+    "Hover": 243,
+    "Cast": 129
+   }
+  },
+  {
+   "slug": "gargoyle-familiar",
+   "name": "GargoyleFamiliar",
+   "kind": "pet",
+   "rarity": "rare",
+   "height": 0.8,
+   "tris": 4000,
+   "prompt": "Small stone gargoyle familiar, gothic cathedral gargoyle creature standing upright, grey weathered stone body with moss, curled ram horns, big bat wings spread high behind the back and separate from the arms, pointed ears, clawed hands and feet, long tail, glowing blue rune eyes and a glowing blue rune on the chest.",
+   "texture": "Weathered grey granite with cracks, green moss and lichen patches, darker stone horns and claws, glowing pale blue runes on chest and eyes, leathery stone wings.",
+   "anims": {
+    "Hover": 244,
+    "Cast": 125
+   }
+  },
+  {
+   "slug": "lantern-sprite",
+   "name": "LanternSprite",
+   "kind": "pet",
+   "rarity": "normal",
+   "height": 0.6,
+   "tris": 3000,
+   "prompt": "Tiny fey lantern sprite familiar, slender pale-skinned forest fairy with large translucent moth wings raised high behind the back and separate from the arms, hooded mossy leaf cloak, pointed ears, holding a small glowing brass lantern in one hand, bare feet, gentle glowing eyes.",
+   "texture": "Pale bluish skin, dusty silver-green moth wings with eye spots, dark moss-green leaf cloak, warm glowing brass lantern with golden light, soft golden eye glow.",
+   "anims": {
+    "Hover": 245,
+    "Cast": 130
+   }
   }
  ]
 }

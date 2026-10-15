@@ -14,7 +14,7 @@ for sp in glob.glob(os.path.expanduser("~/survivor-souls-assets/meshy_jobs/*/job
         continue
     j = roster[slug]
     name = j["name"]
-    sub = "Bosses" if j["kind"] == "boss" else "Enemies"
+    sub = {"boss": "Bosses", "pet": "Pets"}.get(j["kind"], "Enemies")
     out = os.path.join(repo, "Assets/_Project/Art/Characters", sub, name)
     os.makedirs(out, exist_ok=True)
     proj = st["project_dir"]

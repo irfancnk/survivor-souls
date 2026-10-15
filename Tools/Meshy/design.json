@@ -1,38 +1,92 @@
 {
- "graveyard-laborer": {"title": "Graveyard Laborer", "role": "Melee tier 1 (replaces the base Shambler look)",
-   "attack": "Melee claw swipe on contact. Same AI as today's Shambler.",
-   "stats": "HP 100, speed 1.75 m/s, 12 dps, XP 5"},
- "rusted-watchman": {"title": "Rusted Watchman", "role": "Melee tier 3 (armoured)",
-   "attack": "Melee overhead swing. Armour: takes 25 % less damage from the front cone (90 deg).",
-   "stats": "HP 200, speed 1.6 m/s, 16 dps, XP 8"},
- "plague-bloater": {"title": "Plague Bloater", "role": "Suicide bomber / area denial",
-   "attack": "Walks to the Knight. In 2 m range: 1.0 s swell + green ground circle (r 2.8 m), then it bursts: 25 % max HP damage in the circle and a toxic cloud (r 2.2 m, 6 s, 15 dps). A kill by bolts bursts it too, so other zombies can be caught.",
-   "stats": "HP 180, speed 1.2 m/s, XP 8"},
- "pyre-thrower": {"title": "Pyre Thrower", "role": "Ranged artillery (lobbed fireballs)",
-   "attack": "At 6-10 m: throws a fire pot in an arc (1.1 s flight) to where the Knight will be (lead aim). Landing circle (r 1.6 m) shows on the ground during the flight. Impact 12 % max HP + burning ground patch 3 s (8 dps). Pattern: single, single, then a 3-pot spread.",
-   "stats": "HP 110, speed 1.6 m/s, XP 8"},
- "bile-spitter": {"title": "Bile Spitter", "role": "Ranged area denial",
-   "attack": "At 5-8 m: 0.7 s wind-up (throat glows), spits a slow acid glob (7 m/s) that leaves an acid puddle (r 1.4 m, 5 s, 12 dps, slows the Knight 30 %). Max 3 puddles per spitter.",
-   "stats": "HP 90, speed 1.7 m/s, XP 7"},
- "frenzied-ghoul": {"title": "Frenzied Ghoul", "role": "Fast flanker / leaper",
-   "attack": "Sprints (4.2 m/s, faster than the horde, slower than the Knight 5 m/s). At 4-6 m: crouch 0.5 s + red lane, then leaps 5 m (hit 10 % max HP). After the leap it is stunned 0.8 s (punish window).",
-   "stats": "HP 60, speed 4.2 m/s, XP 6"},
- "grave-brute": {"title": "Grave Brute", "role": "Heavy elite (replaces the scaled-up Brute look)",
-   "attack": "Ground slam: 0.9 s wind-up, then an expanding shockwave ring (inner r 0 to outer r 4.5 m over 0.6 s, ring width 0.8 m) the Knight must dash through or outrun. 18 % max HP. Knockback immune.",
-   "stats": "HP 520, speed 1.25 m/s, 26 dps contact, XP 25 (elite)"},
- "hexbound-shaman": {"title": "Hexbound Shaman", "role": "Support caster + bullet pattern",
-   "attack": "Keeps 8-11 m. Cast A (every 5 s): ring of 8 violet soul orbs fired outwards (slow, 5 m/s, gaps between orbs). Cast B (every 12 s): buffs zombies in 6 m (+30 % speed, violet tint, 5 s) or raises 2 Laborers. Teleports 6 m away when the Knight gets within 3 m (cooldown 6 s).",
-   "stats": "HP 130, speed 1.5 m/s, XP 12"},
- "pyre-lord": {"title": "The Pyre Lord", "role": "Boss (fire caster), Realm 2 candidate",
-   "attack": "Phase 1: (a) fireball fan, 7 bolts in a 70 deg cone; (b) fire nova, ring of 16 fireballs from the body; (c) slam with a flame circle (r 4 m). Phase 2 (50 % HP): (d) rotating spiral, 2 arms of fireballs for 3 s (bullet hell, gaps to walk through); (e) meteor rain, 6 ground circles near the Knight, 1.0 s warning each. Every telegraph >= 0.6 s (BossData.MinTelegraph).",
-   "stats": "HP 9000 (Chamber 1 terms), height 4.5 m"},
- "rotting-colossus": {"title": "The Rotting Colossus", "role": "Boss (heavy bruiser + thrower)",
-   "attack": "Phase 1: (a) double ground slam, two shockwave rings; (b) corpse boulder throw, lobbed, landing circle r 2.5 m, leaves a rubble obstacle 8 s; (c) grab: 1.2 s reach lane, a hit pulls the Knight in and deals 20 %. Phase 2: (d) roar summons 4 Frenzied Ghouls; (e) 3 boulders in a row. Slowest boss, biggest body.",
-   "stats": "HP 11000, height 5.0 m"},
- "bone-matriarch": {"title": "The Bone Matriarch", "role": "Boss (bullet-hell sorceress)",
-   "attack": "Floats, never melee. (a) homing skull orbs, 3 at a time, slow turn rate; (b) ring of 24 teal orbs with 3 gaps; (c) summon 3 Bone Archers. Phase 2: (d) cross beams, 4 rotating lanes (line telegraphs) for 4 s; (e) teleport to a random arena point every 8 s. Low HP, hard to reach.",
-   "stats": "HP 7000, height 4.0 m"},
- "ashgrave-butcher": {"title": "The Butcher of Ashgrave", "role": "Boss (aggressive melee + charges)",
-   "attack": "Phase 1: (a) cleaver chop, long lane 6 m x 1.6 m; (b) charge dash (reuse KAN-61 charge) with a 1 s stun on a pillar hit; (c) cleaver spin, 2.5 s whirl that follows the Knight slowly (r 3 m). Phase 2: (d) chain hook throw, lane 10 m, pulls the Knight 4 m; (e) triple charge. Uses the existing BossFight slam / fan / charge code most directly: good first boss to port.",
-   "stats": "HP 8000, height 4.2 m"}
+ "graveyard-laborer": {
+  "title": "Graveyard Laborer",
+  "role": "Melee tier 1 (replaces the base Shambler look)",
+  "attack": "Melee claw swipe on contact. Same AI as today's Shambler.",
+  "stats": "HP 100, speed 1.75 m/s, 12 dps, XP 5"
+ },
+ "rusted-watchman": {
+  "title": "Rusted Watchman",
+  "role": "Melee tier 3 (armoured)",
+  "attack": "Melee overhead swing. Armour: takes 25 % less damage from the front cone (90 deg).",
+  "stats": "HP 200, speed 1.6 m/s, 16 dps, XP 8"
+ },
+ "plague-bloater": {
+  "title": "Plague Bloater",
+  "role": "Suicide bomber / area denial",
+  "attack": "Walks to the Knight. In 2 m range: 1.0 s swell + green ground circle (r 2.8 m), then it bursts: 25 % max HP damage in the circle and a toxic cloud (r 2.2 m, 6 s, 15 dps). A kill by bolts bursts it too, so other zombies can be caught.",
+  "stats": "HP 180, speed 1.2 m/s, XP 8"
+ },
+ "pyre-thrower": {
+  "title": "Pyre Thrower",
+  "role": "Ranged artillery (lobbed fireballs)",
+  "attack": "At 6-10 m: throws a fire pot in an arc (1.1 s flight) to where the Knight will be (lead aim). Landing circle (r 1.6 m) shows on the ground during the flight. Impact 12 % max HP + burning ground patch 3 s (8 dps). Pattern: single, single, then a 3-pot spread.",
+  "stats": "HP 110, speed 1.6 m/s, XP 8"
+ },
+ "bile-spitter": {
+  "title": "Bile Spitter",
+  "role": "Ranged area denial",
+  "attack": "At 5-8 m: 0.7 s wind-up (throat glows), spits a slow acid glob (7 m/s) that leaves an acid puddle (r 1.4 m, 5 s, 12 dps, slows the Knight 30 %). Max 3 puddles per spitter.",
+  "stats": "HP 90, speed 1.7 m/s, XP 7"
+ },
+ "frenzied-ghoul": {
+  "title": "Frenzied Ghoul",
+  "role": "Fast flanker / leaper",
+  "attack": "Sprints (4.2 m/s, faster than the horde, slower than the Knight 5 m/s). At 4-6 m: crouch 0.5 s + red lane, then leaps 5 m (hit 10 % max HP). After the leap it is stunned 0.8 s (punish window).",
+  "stats": "HP 60, speed 4.2 m/s, XP 6"
+ },
+ "grave-brute": {
+  "title": "Grave Brute",
+  "role": "Heavy elite (replaces the scaled-up Brute look)",
+  "attack": "Ground slam: 0.9 s wind-up, then an expanding shockwave ring (inner r 0 to outer r 4.5 m over 0.6 s, ring width 0.8 m) the Knight must dash through or outrun. 18 % max HP. Knockback immune.",
+  "stats": "HP 520, speed 1.25 m/s, 26 dps contact, XP 25 (elite)"
+ },
+ "hexbound-shaman": {
+  "title": "Hexbound Shaman",
+  "role": "Support caster + bullet pattern",
+  "attack": "Keeps 8-11 m. Cast A (every 5 s): ring of 8 violet soul orbs fired outwards (slow, 5 m/s, gaps between orbs). Cast B (every 12 s): buffs zombies in 6 m (+30 % speed, violet tint, 5 s) or raises 2 Laborers. Teleports 6 m away when the Knight gets within 3 m (cooldown 6 s).",
+  "stats": "HP 130, speed 1.5 m/s, XP 12"
+ },
+ "pyre-lord": {
+  "title": "The Pyre Lord",
+  "role": "Boss (fire caster), Realm 2 candidate",
+  "attack": "Phase 1: (a) fireball fan, 7 bolts in a 70 deg cone; (b) fire nova, ring of 16 fireballs from the body; (c) slam with a flame circle (r 4 m). Phase 2 (50 % HP): (d) rotating spiral, 2 arms of fireballs for 3 s (bullet hell, gaps to walk through); (e) meteor rain, 6 ground circles near the Knight, 1.0 s warning each. Every telegraph >= 0.6 s (BossData.MinTelegraph).",
+  "stats": "HP 9000 (Chamber 1 terms), height 4.5 m"
+ },
+ "rotting-colossus": {
+  "title": "The Rotting Colossus",
+  "role": "Boss (heavy bruiser + thrower)",
+  "attack": "Phase 1: (a) double ground slam, two shockwave rings; (b) corpse boulder throw, lobbed, landing circle r 2.5 m, leaves a rubble obstacle 8 s; (c) grab: 1.2 s reach lane, a hit pulls the Knight in and deals 20 %. Phase 2: (d) roar summons 4 Frenzied Ghouls; (e) 3 boulders in a row. Slowest boss, biggest body.",
+  "stats": "HP 11000, height 5.0 m"
+ },
+ "bone-matriarch": {
+  "title": "The Bone Matriarch",
+  "role": "Boss (bullet-hell sorceress)",
+  "attack": "Floats, never melee. (a) homing skull orbs, 3 at a time, slow turn rate; (b) ring of 24 teal orbs with 3 gaps; (c) summon 3 Bone Archers. Phase 2: (d) cross beams, 4 rotating lanes (line telegraphs) for 4 s; (e) teleport to a random arena point every 8 s. Low HP, hard to reach.",
+  "stats": "HP 7000, height 4.0 m"
+ },
+ "ashgrave-butcher": {
+  "title": "The Butcher of Ashgrave",
+  "role": "Boss (aggressive melee + charges)",
+  "attack": "Phase 1: (a) cleaver chop, long lane 6 m x 1.6 m; (b) charge dash (reuse KAN-61 charge) with a 1 s stun on a pillar hit; (c) cleaver spin, 2.5 s whirl that follows the Knight slowly (r 3 m). Phase 2: (d) chain hook throw, lane 10 m, pulls the Knight 4 m; (e) triple charge. Uses the existing BossFight slam / fan / charge code most directly: good first boss to port.",
+  "stats": "HP 8000, height 4.2 m"
+ },
+ "cinder-seraph": {
+  "title": "Cinder Seraph",
+  "role": "Epic pet (fire, homing)",
+  "attack": "Floats over the Knight's right shoulder. Every 1.2 s fires 2 homing ember bolts at the nearest enemy (turn rate capped, 9 m/s). Every 6 s a burst of 8 embers in a ring around the Knight that sets enemies on fire (uses the Burn status of the Ember Bolts skill). Fires while the Knight moves.",
+  "stats": "Bolt 45 % of the Knight's bolt damage, ring 30 % + burn 2 s, range 10 m"
+ },
+ "gargoyle-familiar": {
+  "title": "Gargoyle Familiar",
+  "role": "Rare pet (stone, pierce)",
+  "attack": "Hovers behind the Knight. Every 1.5 s throws a stone shard that pierces up to 2 enemies. Every 10 s it dives on the densest group in 6 m and slams (small stun 0.5 s, knockback), then flies back.",
+  "stats": "Shard 40 % of the Knight's bolt damage, pierce 2, slam 60 % + stun 0.5 s, range 9 m"
+ },
+ "lantern-sprite": {
+  "title": "Lantern Sprite",
+  "role": "Normal pet (light, support)",
+  "attack": "Bobs beside the Knight. Every 1.8 s shoots a slow light mote at the nearest enemy. Its lantern also pulls in XP wisps from 1.5 m further away.",
+  "stats": "Mote 30 % of the Knight's bolt damage, range 8 m, +1.5 m pickup radius"
+ }
 }

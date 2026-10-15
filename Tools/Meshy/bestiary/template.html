@@ -1,0 +1,417 @@
+<title>Survivor Souls Bestiary</title>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Spectral:ital,wght@0,400;0,500;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: codex rail (creatures) | lit stage (3D) | folio (lore, clips, numbers). Stacks to stage-first on phones.
+   One look on purpose: a candle-lit vault. Dark only. */
+:root {
+  color-scheme: dark;
+  --vault: #14110e;      /* page ground, warm soot */
+  --slab: #1d1915;       /* rail + folio panels */
+  --slab-hi: #27211b;    /* hover / selected rows */
+  --rule: #3a3128;       /* hairlines */
+  --bone: #e6dac2;       /* main text */
+  --ash: #a3978343;      /* faint fill */
+  --ash-fg: #a39783;     /* secondary text */
+  --ember: #d9a441;      /* accent: souls gold */
+  --ember-dim: #8a6a2e;
+  --blood: #b5523c;      /* boss mark */
+  --r-normal: #96928a;   /* rarity rims, same as the in-game skill cards (GameHud.uss) */
+  --r-rare: #5696ec;
+  --r-epic: #a660ec;
+  --f-display: "Cinzel", "Trajan Pro", Georgia, serif;
+  --f-body: "Spectral", Georgia, "Times New Roman", serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+html, body { height: 100%; }
+[hidden] { display: none !important; }
+body { background: var(--vault); color: var(--bone); font-family: var(--f-body); font-size: 15px; line-height: 1.5; }
+.app { height: 100%; display: grid; grid-template-columns: 250px minmax(0, 1fr) 360px; grid-template-rows: auto minmax(0, 1fr); }
+header.top { grid-column: 1 / -1; display: flex; align-items: baseline; gap: 16px; padding: 14px 20px 12px; border-bottom: 1px solid var(--rule); }
+header.top h1 { margin: 0; font-family: var(--f-display); font-weight: 700; font-size: 20px; letter-spacing: .14em; text-transform: uppercase; }
+header.top h1 span { color: var(--ember); }
+header.top p { margin: 0; color: var(--ash-fg); font-size: 13px; font-style: italic; }
+header.top .keys { margin-left: auto; font-family: var(--f-mono); font-size: 11px; color: var(--ash-fg); white-space: nowrap; }
+
+/* rail */
+nav.rail { background: var(--slab); border-right: 1px solid var(--rule); overflow-y: auto; padding-block: 8px 20px; }
+.rail h2 { font-family: var(--f-display); font-size: 11px; letter-spacing: .22em; text-transform: uppercase; color: var(--ash-fg); margin: 14px 18px 6px; font-weight: 500; display: flex; justify-content: space-between; }
+.rail h2 em { font-style: normal; font-family: var(--f-mono); letter-spacing: 0; }
+.rail button { all: unset; box-sizing: border-box; cursor: pointer; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 2px 8px; width: 100%; padding: 8px 18px; border-left: 2px solid transparent; }
+.rail button:hover { background: var(--slab-hi); }
+.rail button:focus-visible { outline: 1px solid var(--ember); outline-offset: -1px; }
+.rail button[aria-current="true"] { background: var(--slab-hi); border-left-color: var(--ember); }
+.rail .nm { font-family: var(--f-display); font-size: 13.5px; letter-spacing: .04em; }
+.rail button[aria-current="true"] .nm { color: var(--ember); }
+.rail .ht { font-family: var(--f-mono); font-size: 11px; color: var(--ash-fg); font-variant-numeric: tabular-nums; }
+.rail .bar { grid-column: 1 / -1; height: 2px; background: var(--rule); position: relative; }
+.rail .bar i { position: absolute; inset: 0 auto 0 0; background: var(--ember-dim); }
+.rail .boss .bar i { background: var(--blood); }
+.rail .pet .bar i { background: var(--rc, var(--r-normal)); }
+.rail .rar { grid-column: 1 / -1; font-family: var(--f-mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--rc); }
+.rail button.cut .nm, .rail button.cut .ht { opacity: .45; text-decoration: line-through; text-decoration-color: var(--ash-fg); }
+.rail .cutTag { grid-column: 1 / -1; font-family: var(--f-mono); font-size: 10px; color: var(--ash-fg); letter-spacing: .1em; text-transform: uppercase; }
+[data-r="epic"] { --rc: var(--r-epic); } [data-r="rare"] { --rc: var(--r-rare); } [data-r="normal"] { --rc: var(--r-normal); }
+
+/* stage */
+main.stage { position: relative; min-height: 0; overflow: hidden; background: radial-gradient(ellipse at 50% 78%, #2a2118 0%, var(--vault) 62%); }
+main.stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.overlay { position: absolute; left: 18px; top: 14px; right: 18px; display: flex; justify-content: space-between; gap: 12px; pointer-events: none; }
+.overlay .tag { font-family: var(--f-mono); font-size: 11px; color: var(--ash-fg); letter-spacing: .04em; }
+.overlay .tag b { color: var(--bone); font-weight: 500; }
+.scale-note { position: absolute; left: 18px; bottom: 74px; font-family: var(--f-mono); font-size: 11px; color: var(--ash-fg); pointer-events: none; }
+.loading { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--f-display); letter-spacing: .3em; font-size: 12px; color: var(--ash-fg); text-transform: uppercase; pointer-events: none; }
+.transport { position: absolute; left: 18px; right: 18px; bottom: 16px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 12px; align-items: center; padding: 8px 12px; background: color-mix(in srgb, var(--vault) 82%, transparent); border: 1px solid var(--rule); backdrop-filter: blur(6px); }
+.transport button { all: unset; cursor: pointer; width: 30px; height: 30px; display: grid; place-items: center; color: var(--ember); border: 1px solid var(--rule); }
+.transport button:focus-visible, .transport input:focus-visible, .transport select:focus-visible { outline: 1px solid var(--ember); }
+.transport svg { width: 12px; height: 12px; fill: currentColor; }
+.transport input[type=range] { width: 100%; accent-color: var(--ember); }
+.transport .t { font-family: var(--f-mono); font-size: 11px; color: var(--ash-fg); font-variant-numeric: tabular-nums; min-width: 86px; text-align: right; }
+.transport select { background: var(--slab); color: var(--bone); border: 1px solid var(--rule); font-family: var(--f-mono); font-size: 11px; padding: 4px 6px; }
+.toggles { position: absolute; right: 18px; bottom: 74px; display: flex; gap: 6px; }
+.toggles label { font-family: var(--f-mono); font-size: 11px; color: var(--ash-fg); display: flex; gap: 6px; align-items: center; padding: 4px 8px; border: 1px solid var(--rule); background: color-mix(in srgb, var(--vault) 82%, transparent); cursor: pointer; }
+.toggles input { accent-color: var(--ember); margin: 0; }
+
+/* folio */
+aside.folio { background: var(--slab); border-left: 1px solid var(--rule); overflow-y: auto; padding: 20px 22px 28px; display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.kind { font-family: var(--f-display); font-size: 11px; letter-spacing: .26em; text-transform: uppercase; color: var(--ember); }
+.kind.boss { color: var(--blood); }
+.kind.pet { color: var(--rc); }
+.cutNote { font-size: 13px; color: var(--bone); border: 1px solid var(--rule); padding: 8px 10px; }
+.folio h2 { margin: 4px 0 0; font-family: var(--f-display); font-weight: 700; font-size: 26px; line-height: 1.15; letter-spacing: .03em; text-wrap: balance; }
+.role { margin: 6px 0 0; color: var(--ash-fg); font-style: italic; }
+.folio h3 { margin: 0 0 8px; font-family: var(--f-display); font-size: 11px; letter-spacing: .22em; text-transform: uppercase; color: var(--ash-fg); font-weight: 500; }
+.clips { display: flex; flex-wrap: wrap; gap: 6px; }
+.clips button { all: unset; cursor: pointer; padding: 6px 10px; border: 1px solid var(--rule); font-family: var(--f-mono); font-size: 12px; color: var(--bone); display: inline-flex; gap: 8px; align-items: baseline; }
+.clips button small { color: var(--ash-fg); font-size: 10.5px; }
+.clips button:hover { border-color: var(--ember-dim); }
+.clips button:focus-visible { outline: 1px solid var(--ember); }
+.clips button[aria-pressed="true"] { border-color: var(--ember); color: var(--ember); background: color-mix(in srgb, var(--ember) 9%, transparent); }
+.clips button kbd { font-family: var(--f-mono); font-size: 10px; color: var(--ash-fg); }
+.attack { margin: 0; max-width: 62ch; }
+dl.nums { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0; font-size: 13px; }
+dl.nums dt { font-family: var(--f-mono); font-size: 11px; color: var(--ash-fg); text-transform: uppercase; letter-spacing: .06em; padding-top: 2px; }
+dl.nums dd { margin: 0; font-variant-numeric: tabular-nums; min-width: 0; overflow-wrap: anywhere; }
+dl.nums code { font-family: var(--f-mono); font-size: 11.5px; color: var(--bone); }
+.note { font-size: 12px; color: var(--ash-fg); border-top: 1px solid var(--rule); padding-top: 12px; }
+
+@media (max-width: 1100px) { .app { grid-template-columns: 220px minmax(0, 1fr); } aside.folio { grid-column: 1 / -1; border-left: 0; border-top: 1px solid var(--rule); } .app { grid-template-rows: auto minmax(420px, 62vh) auto; height: auto; } }
+@media (max-width: 720px) {
+  .app { display: flex; flex-direction: column; height: auto; }
+  header.top { flex-wrap: wrap; padding-inline: 16px; } header.top .keys { display: none; }
+  nav.rail { order: 3; border-right: 0; border-top: 1px solid var(--rule); max-height: none; }
+  main.stage { order: 1; height: 68vh; min-height: 380px; }
+  aside.folio { order: 2; padding-inline: 16px; }
+  .transport { left: 12px; right: 12px; grid-template-columns: auto minmax(0, 1fr) auto; } .transport .t { display: none; }
+  .toggles { right: 12px; } .scale-note { left: 12px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="app">
+  <header class="top">
+    <h1>Survivor <span>Souls</span> Bestiary</h1>
+    <p>Three flying pets and fifteen foes from the Meshy batches of 15 Oct 2026, rigged and animated.</p>
+    <span class="keys">↑ ↓ creature · 1–8 clip · space pause</span>
+  </header>
+  <nav class="rail" id="rail" aria-label="Creatures"></nav>
+  <main class="stage" id="stage">
+    <div class="overlay"><span class="tag" id="tagL"></span><span class="tag" id="tagR"></span></div>
+    <div class="loading" id="loading">Summoning…</div>
+    <div class="scale-note" id="scaleNote">Ghost = the Knight, 1.75 m · rings every 1 m</div>
+    <div class="toggles">
+      <label for="ghost"><input type="checkbox" id="ghost" checked>Knight</label>
+      <label for="spin"><input type="checkbox" id="spin">Turn</label>
+    </div>
+    <div class="transport">
+      <button id="play" aria-label="Pause"><svg viewBox="0 0 12 12" id="playIcon"><rect x="2" y="1" width="3" height="10"/><rect x="7" y="1" width="3" height="10"/></svg></button>
+      <input type="range" id="scrub" min="0" max="1000" value="0" aria-label="Clip time">
+      <span class="t" id="time">0.00 / 0.00 s</span>
+      <select id="speed" aria-label="Playback speed"><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="1.5">1.5×</option></select>
+    </div>
+  </main>
+  <aside class="folio" id="folio" aria-live="polite"></aside>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script id="data" type="application/json">__DATA__</script>
+<script type="module">
+import * as THREE from "three";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+const DATA = JSON.parse(document.getElementById("data").textContent);
+const KNIGHT = 1.75;
+const PET_LIFT = 0.95; // pets fly at the Knight's shoulder
+let baseY = 0;
+const $ = (id) => document.getElementById(id);
+const stage = $("stage");
+const store = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} } };
+
+/* --- clip ordering: signature moves first, rig defaults last --- */
+const LATE = ["Hit", "Death", "Walk", "Shamble", "Sprint", "Walking", "Running"];
+const rank = (c) => { const i = LATE.indexOf(c); return i < 0 ? -1 : i; };
+const clipOrder = (d) => Object.keys(d.clips).sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
+const clipLabel = { Walking: "Walk (rig)", Running: "Run (rig)" };
+
+/* --- rail --- */
+const rail = $("rail");
+for (const [kind, label] of [["pet", "Pets"], ["boss", "Bosses"], ["zombie", "Zombies"]]) {
+  const list = DATA.filter((d) => d.kind === kind);
+  const h = document.createElement("h2"); h.innerHTML = `${label}<em>${list.length}</em>`; rail.append(h);
+  for (const d of list) {
+    const b = document.createElement("button");
+    b.className = kind + (d.cut ? " cut" : ""); b.dataset.id = d.id; if (d.rarity) b.dataset.r = d.rarity;
+    b.innerHTML = `<span class="nm">${d.title}</span><span class="ht">${d.h.toFixed(2)} m</span><span class="bar"><i style="width:${Math.min(100, (d.h / 5) * 100)}%"></i></span>${d.rarity ? `<span class="rar">${d.rarity}</span>` : ""}${d.cut ? `<span class="cutTag">Cut · KAN-128</span>` : ""}`;
+    b.addEventListener("click", () => select(d.id));
+    rail.append(b);
+  }
+}
+const ORDER = [...rail.querySelectorAll("button")].map((b) => b.dataset.id);
+
+/* --- three --- */
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.35;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+stage.prepend(renderer.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(32, 1, 0.05, 200);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.maxPolarAngle = Math.PI * 0.495; controls.enablePan = false;
+
+scene.add(new THREE.HemisphereLight(0xcfc2a8, 0x1a120c, 0.55));
+const key = new THREE.DirectionalLight(0xffe2b0, 2.4); key.position.set(3, 7, 4); key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048); key.shadow.bias = -0.0005; scene.add(key);
+const rim = new THREE.DirectionalLight(0x8fa6c8, 1.3); rim.position.set(-4, 4, -5); scene.add(rim);
+const fire = new THREE.PointLight(0xff8a3a, 6, 9, 1.6); fire.position.set(-1.6, 0.6, 1.4); scene.add(fire);
+
+const floor = new THREE.Mesh(new THREE.CircleGeometry(14, 64), new THREE.MeshStandardMaterial({ color: 0x1f1913, roughness: 0.95 }));
+floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+const rings = new THREE.Group(); scene.add(rings);
+for (let r = 1; r <= 8; r++) {
+  const g = new THREE.RingGeometry(r - 0.006, r + 0.006, 96);
+  const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: r % 5 === 0 ? 0x8a6a2e : 0x3a3128, transparent: true, opacity: 0.8 }));
+  m.rotation.x = -Math.PI / 2; m.position.y = 0.002; rings.add(m);
+}
+
+/* Knight ghost: a simple standing figure, 1.75 m */
+const ghost = new THREE.Group();
+const gm = new THREE.MeshStandardMaterial({ color: 0xd9a441, transparent: true, opacity: 0.18, roughness: 0.6, emissive: 0x3a2a10, depthWrite: false });
+const part = (geo, x, y, z, rz = 0) => { const m = new THREE.Mesh(geo, gm); m.position.set(x, y, z); m.rotation.z = rz; ghost.add(m); };
+part(new THREE.CapsuleGeometry(0.075, 0.72, 4, 10), -0.1, 0.43, 0);
+part(new THREE.CapsuleGeometry(0.075, 0.72, 4, 10), 0.1, 0.43, 0);
+part(new THREE.CapsuleGeometry(0.19, 0.42, 4, 12), 0, 1.13, 0);
+part(new THREE.SphereGeometry(0.12, 16, 12), 0, 1.62, 0);
+part(new THREE.CapsuleGeometry(0.06, 0.55, 4, 10), -0.3, 1.08, 0, 0.18);
+part(new THREE.CapsuleGeometry(0.06, 0.55, 4, 10), 0.3, 1.08, 0, -0.18);
+const gtop = new THREE.Mesh(new THREE.RingGeometry(0.16, 0.19, 32), new THREE.MeshBasicMaterial({ color: 0xd9a441, transparent: true, opacity: 0.5 }));
+gtop.rotation.x = -Math.PI / 2; gtop.position.y = 0.003; ghost.add(gtop);
+scene.add(ghost);
+
+/* --- state --- */
+const loader = new GLTFLoader();
+const cache = new Map();
+let current = null, mixer = null, action = null, clipName = null, paused = false, model = null, turning = false;
+const clock = new THREE.Clock();
+
+function resize() {
+  const w = stage.clientWidth, h = stage.clientHeight;
+  renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(stage);
+
+function lockRoot(clip) {
+  // keep the creature on its spot: freeze Hips X/Z at the first key (root motion off, as in Unity)
+  for (const t of clip.tracks) {
+    if (/Hips\.position$/.test(t.name)) {
+      const v = t.values, x0 = v[0], z0 = v[2];
+      for (let i = 0; i < v.length; i += 3) { v[i] = x0; v[i + 2] = z0; }
+    }
+  }
+  return clip;
+}
+
+// Models ship as glTF JSON with the binary buffer as base64 (the host serves no .glb).
+// The page frame blocks fetch() of data: URIs, so decode the buffer here and hand the loader an in-memory GLB.
+function toGlb(json) {
+  const uri = json.buffers[0].uri;
+  const bin = Uint8Array.from(atob(uri.slice(uri.indexOf(",") + 1)), (c) => c.charCodeAt(0));
+  delete json.buffers[0].uri;
+  let js = new TextEncoder().encode(JSON.stringify(json));
+  const jsPad = (4 - (js.length % 4)) % 4, binPad = (4 - (bin.length % 4)) % 4;
+  const total = 12 + 8 + js.length + jsPad + 8 + bin.length + binPad;
+  const out = new Uint8Array(total), dv = new DataView(out.buffer);
+  dv.setUint32(0, 0x46546c67, true); dv.setUint32(4, 2, true); dv.setUint32(8, total, true);
+  dv.setUint32(12, js.length + jsPad, true); dv.setUint32(16, 0x4e4f534a, true);
+  out.set(js, 20); out.fill(0x20, 20 + js.length, 20 + js.length + jsPad);
+  let o = 20 + js.length + jsPad;
+  dv.setUint32(o, bin.length + binPad, true); dv.setUint32(o + 4, 0x004e4942, true);
+  out.set(bin, o + 8);
+  return out.buffer;
+}
+
+async function loadModel(d) {
+  if (cache.has(d.id)) return cache.get(d.id);
+  const p = (async () => {
+    const r = await fetch(`models/${d.id}.json`);
+    if (!r.ok) throw new Error(`HTTP ${r.status} for ${d.id}`);
+    const g = await loader.parseAsync(toGlb(await r.json()), "");
+    g.scene.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; if (o.material) o.material.envMapIntensity = 0.6; } });
+    g.animations.forEach(lockRoot);
+    return g;
+  })();
+  cache.set(d.id, p);
+  p.catch((e) => { cache.delete(d.id); console.error("model load failed", d.id, e); });
+  return p;
+}
+
+function frame(d) {
+  const h = d.h;
+  const lift = d.kind === "pet" ? PET_LIFT : 0;
+  const tall = Math.max(h + lift, KNIGHT);
+  if (lift) {
+    // pets: frame the pet itself (the Knight ghost stays half in view for scale)
+    const view = h * 1.25 + 0.5;
+    const dist = (view * 0.7) / Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+    controls.target.set(0, lift + h * 0.5, 0);
+    camera.position.set(dist * 0.42, lift + h * 0.62, dist * 0.9);
+    controls.minDistance = view * 0.6; controls.maxDistance = dist * 3.5;
+    ghost.position.set(-1.05, 0, -0.9);
+  } else {
+    const dist = (tall * 0.78) / Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) + 0.8;
+    controls.target.set(0, tall * 0.47, 0);
+    camera.position.set(dist * 0.5, tall * 0.55, dist * 0.87);
+    controls.minDistance = tall * 0.8; controls.maxDistance = dist * 2.2;
+    ghost.position.set(-(Math.max(0.55, h * 0.32) + 0.35), 0, 0.15);
+  }
+  key.shadow.camera.left = key.shadow.camera.bottom = -tall * 1.2;
+  key.shadow.camera.right = key.shadow.camera.top = tall * 1.2;
+  key.shadow.camera.updateProjectionMatrix();
+  controls.update();
+}
+
+async function select(id, clip) {
+  const d = DATA.find((x) => x.id === id); if (!d) return;
+  current = d; store.set("bestiary.id", id);
+  for (const b of rail.querySelectorAll("button")) b.setAttribute("aria-current", String(b.dataset.id === id));
+  renderFolio(d);
+  $("loading").hidden = false; $("loading").textContent = "Summoning…";
+  let err = "";
+  const g = await loadModel(d).catch((e) => { err = String((e && e.message) || e); return null; });
+  if (current !== d) return;
+  $("loading").hidden = true;
+  if (!g) { $("loading").hidden = false; $("loading").textContent = "Model failed to load (" + err.slice(0, 80) + "). Pick it again."; return; }
+  if (model) scene.remove(model);
+  model = g.scene; baseY = d.kind === "pet" ? PET_LIFT : 0; model.position.set(0, baseY, 0); model.rotation.y = 0; scene.add(model);
+  mixer = new THREE.AnimationMixer(model);
+  frame(d);
+  const order = clipOrder(d);
+  playClip(clip && order.includes(clip) ? clip : order[0], g);
+}
+
+function playClip(name, g) {
+  g = g || null;
+  const d = current;
+  loadModel(d).then((gl) => {
+    const clip = gl.animations.find((a) => a.name === name); if (!clip) return;
+    const next = mixer.clipAction(clip);
+    const once = name === "Death";
+    next.setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat, Infinity); next.clampWhenFinished = once;
+    next.reset().play();
+    if (action && action !== next) action.crossFadeTo(next, 0.25, false);
+    action = next; clipName = name;
+    setPaused(false);
+    for (const b of document.querySelectorAll(".clips button")) b.setAttribute("aria-pressed", String(b.dataset.clip === name));
+    updateTags();
+  });
+}
+
+function updateTags() {
+  const d = current; if (!d) return;
+  const ratio = d.h / KNIGHT;
+  $("tagL").innerHTML = `<b>${d.h.toFixed(2)} m</b> · ${ratio.toFixed(2)}× Knight · ${d.tris.toLocaleString("en")} tris`;
+  const a = d.clips[clipName];
+  $("tagR").innerHTML = a ? `<b>${clipLabel[clipName] || clipName}</b> · ${a.action != null ? "Meshy action " + a.action : "rig default"}` : "";
+}
+
+function renderFolio(d) {
+  const order = clipOrder(d);
+  const folio = $("folio");
+  folio.innerHTML = `
+    <div ${d.rarity ? `data-r="${d.rarity}"` : ""}><div class="kind ${d.kind}">${d.kind === "boss" ? "Boss" : d.kind === "pet" ? d.rarity + " pet" : "Zombie"}</div>
+      <h2>${d.title}</h2><p class="role">${d.role}</p></div>
+    <section><h3>Animations</h3><div class="clips">${order.map((c, i) =>
+      `<button data-clip="${c}" aria-pressed="false"><kbd>${i + 1}</kbd>${clipLabel[c] || c}<small>${d.clips[c].sec.toFixed(1)} s</small></button>`).join("")}</div></section>
+    <section><h3>${d.kind === "pet" ? "How it helps" : "How it fights"}</h3><p class="attack">${d.attack}</p></section>
+    <section><h3>Ledger</h3><dl class="nums">
+      <dt>Height</dt><dd>${d.h.toFixed(2)} m (${(d.h / KNIGHT).toFixed(2)}× the Knight)</dd>
+      <dt>Mesh</dt><dd>${d.tris.toLocaleString("en")} triangles, 24 bones</dd>
+      <dt>Stats</dt><dd>${d.stats}</dd>
+      <dt>Unity</dt><dd><code>${d.folder.replace("Assets/_Project/Art/Characters/", "Art/Characters/")}</code></dd>
+    </dl></section>
+    ${d.cut ? `<p class="cutNote">Cut from the game on 15 Oct 2026. KAN-128 removes it from the waves, code and asset folders.</p>` : ""}${d.kind === "pet" ? `<p class="cutNote">Pets have no game code yet. They float at shoulder height here; the wings move with the body but do not flap (the Meshy rig has no wing bones).</p>` : ""}<p class="note">First-guess numbers from Docs/ENEMY_ROSTER.md. Gameplay is not built yet (KAN-103). Walk and run marked “rig” are Meshy defaults; root motion is frozen here as in Unity.</p>`;
+  for (const b of folio.querySelectorAll(".clips button")) b.addEventListener("click", () => playClip(b.dataset.clip));
+}
+
+/* --- transport --- */
+function setPaused(p) {
+  paused = p; if (action) action.paused = p;
+  $("play").setAttribute("aria-label", p ? "Play" : "Pause");
+  $("playIcon").innerHTML = p ? '<path d="M2 1 L11 6 L2 11 Z"/>' : '<rect x="2" y="1" width="3" height="10"/><rect x="7" y="1" width="3" height="10"/>';
+}
+$("play").addEventListener("click", () => setPaused(!paused));
+$("speed").addEventListener("change", (e) => { if (mixer) mixer.timeScale = +e.target.value; });
+let scrubbing = false;
+$("scrub").addEventListener("input", (e) => {
+  if (!action) return; scrubbing = true; setPaused(true);
+  action.time = (e.target.value / 1000) * action.getClip().duration; mixer.update(0);
+});
+$("scrub").addEventListener("change", () => { scrubbing = false; });
+$("ghost").addEventListener("change", (e) => { ghost.visible = e.target.checked; $("scaleNote").hidden = !e.target.checked; });
+$("spin").addEventListener("change", (e) => { turning = e.target.checked; });
+
+addEventListener("keydown", (e) => {
+  if (e.target.closest("input, select")) return;
+  const i = ORDER.indexOf(current?.id);
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); select(ORDER[(i + (e.key === "ArrowDown" ? 1 : ORDER.length - 1)) % ORDER.length]); }
+  else if (e.key === " ") { e.preventDefault(); setPaused(!paused); }
+  else if (/^[1-9]$/.test(e.key) && current) { const c = clipOrder(current)[+e.key - 1]; if (c) playClip(c); }
+});
+
+/* --- loop --- */
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(clock.getDelta(), 0.05);
+  if (mixer) {
+    mixer.timeScale = +$("speed").value;
+    mixer.update(paused ? 0 : dt);
+    if (action && !scrubbing) {
+      const dur = action.getClip().duration;
+      $("scrub").value = Math.round(((action.time % dur) / dur) * 1000);
+      $("time").textContent = `${(action.time % dur).toFixed(2)} / ${dur.toFixed(2)} s`;
+    }
+  }
+  if (model && turning && !reduce) model.rotation.y += dt * 0.5;
+  if (model && baseY > 0) model.position.y = baseY + (reduce ? 0 : Math.sin(performance.now() / 420) * 0.06);
+  fire.intensity = 6 + (reduce ? 0 : Math.sin(performance.now() / 130) * 0.8 + Math.sin(performance.now() / 47) * 0.4);
+  controls.update();
+  renderer.render(scene, camera);
+});
+
+resize();
+const hashId = location.hash.slice(1);
+select(ORDER.includes(hashId) ? hashId : (ORDER.includes(store.get("bestiary.id")) ? store.get("bestiary.id") : "PyreLord"));
+// warm the cache for the neighbours so ↑/↓ feels instant
+setTimeout(() => ORDER.slice(0, 4).forEach((id) => loadModel(DATA.find((d) => d.id === id)).catch(() => {})), 1500);
+</script>
