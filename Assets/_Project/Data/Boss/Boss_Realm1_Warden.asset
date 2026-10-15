@@ -26,6 +26,9 @@ MonoBehaviour:
   victorySlowMoTime: 0.8
   rewardChoices: 3
   rewardUpgrades: 2
+  attacks: []
+  roarClip: 
+  phaseRoar: 0
   slamRange: 4
   slamReach: 1.6
   slamRadius: 3

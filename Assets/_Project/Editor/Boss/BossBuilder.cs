@@ -1,4 +1,5 @@
 using SurvivorSouls.Editor.Combat;
+using SurvivorSouls.Editor.Enemies;
 using SurvivorSouls.Editor.Procedural;
 using SurvivorSouls.Editor.World;
 using SurvivorSouls.Gameplay.Boss;
@@ -25,6 +26,8 @@ namespace SurvivorSouls.Editor.Boss
     /// 9 lanes of two flat quads) and the fan bolts (<see cref="BossProjectiles"/>, one script-driven particle system).
     /// Called by GameSceneBuilder.
     /// KAN-62: <see cref="BossReward"/> (guaranteed Rare chest or skill pick after the victory beat) via <see cref="CreateReward"/>.
+    /// KAN-108: The Butcher of Ashgrave asset (<see cref="ButcherDataPath"/>, attack list, never overwritten) is the Realm 1
+    /// boss of every boss Chamber (<see cref="BossFight"/>'s boss list); the Warden asset stays as the old reference fight.
     /// Debug menus (Play mode): "Survivor Souls/Debug/Boss: Kill", "Boss: Half Health" (= phase 2), "Boss: Health 25 %",
     /// "Boss: Health 10 %", "Boss: Fan", "Boss: Charge", "Boss: Jump To Boss Chamber" (any Chamber; reloads the scene).
     /// </summary>
@@ -32,6 +35,7 @@ namespace SurvivorSouls.Editor.Boss
     {
         private const string DataDir = "Assets/_Project/Data/Boss";
         public const string BossDataPath = DataDir + "/Boss_Realm1_Warden.asset";
+        public const string ButcherDataPath = DataDir + "/Boss_Realm1_Butcher.asset";
         public const string BossRulesPath = "Assets/_Project/Data/Chamber/ChamberRules_Boss.asset";
         private const string ArtDir = "Assets/_Project/Art/Boss";
         private const string RingTexturePath = ArtDir + "/T_TelegraphRing.png";
@@ -48,6 +52,7 @@ namespace SurvivorSouls.Editor.Boss
         public static BossFight Create(GameArtKit kit, PlayerHealth player, SurvivalTimer timer, EnemySpawner spawner, SoulWispField souls)
         {
             var data = LoadOrCreateData();
+            var butcher = LoadOrCreateButcher();
             var rules = LoadOrCreateRules();
             var root = new GameObject("Boss");
             var telegraph = CreateTelegraph(kit, root.transform);
@@ -64,6 +69,9 @@ namespace SurvivorSouls.Editor.Boss
             so.FindProperty("telegraph").objectReferenceValue = telegraph;
             so.FindProperty("lines").objectReferenceValue = lines;
             so.FindProperty("projectiles").objectReferenceValue = bolts;
+            var list = so.FindProperty("bosses");
+            list.arraySize = 1;
+            list.GetArrayElementAtIndex(0).objectReferenceValue = butcher; // Realm 1 boss Chambers (KAN-108)
             so.ApplyModifiedPropertiesWithoutUndo();
             BossHeartsBuilder.Create(kit, root, fight, player); // healing hearts during the fight (KAN-60)
             return fight;
@@ -297,6 +305,53 @@ namespace SurvivorSouls.Editor.Boss
             return data;
         }
 
+        /// <summary>
+        /// The Butcher of Ashgrave (KAN-108, Docs/ENEMY_ROSTER.md 3.12): 4.2 m roster body, 8000 HP (Chamber 1 terms).
+        /// Phase 1: cleaver chop (lane 6 x 1.6 m) and cleaver spin (r 3 m, 2.5 s, follows slowly) up close, a charge dash
+        /// farther away (1 s stun when it hits a pillar or the wall). Phase 2 (50 %): roar, then chain hook (lane 10 m,
+        /// drags the Knight 4 m) and a triple charge replace the single dash. Never overwritten: edit the asset.
+        /// </summary>
+        public static BossAttack[] ButcherAttacks() => new[]
+        {
+            BossAttack.Lane("Cleaver Chop", BossPhases.Both, 0f, 5.5f, length: 6f, width: 1.6f, telegraph: 0.9f, damage: 0.22f,
+                recover: 0.8f, cooldown: 2.6f, priority: 1, weight: 2f, clip: "Chop"),
+            BossAttack.Spin("Cleaver Spin", BossPhases.Both, 4.5f, radius: 3f, telegraph: 0.9f, duration: 2.5f, speed: 1.6f,
+                interval: 0.6f, damage: 0.08f, recover: 1f, cooldown: 3.2f, priority: 1, clip: "Spin"),
+            BossAttack.Charge("Charge", BossPhases.Phase1, 4.5f, 13f, telegraph: 0.9f, speed: 15f, distance: 11f, width: 2.6f,
+                damage: 0.2f, recover: 0.8f, cooldown: 3.4f, stun: 1f, clip: "Charge"),
+            BossAttack.Lane("Chain Hook", BossPhases.Phase2, 5f, 10f, length: 10f, width: 1f, telegraph: 0.8f, damage: 0.1f,
+                recover: 0.7f, cooldown: 2.4f, pull: 4f, clip: "Chop"),
+            BossAttack.Charge("Triple Charge", BossPhases.Phase2, 4.5f, 14f, telegraph: 0.75f, speed: 16f, distance: 10f,
+                width: 2.6f, damage: 0.18f, recover: 1f, cooldown: 3.6f, dashes: 3, stun: 1f, weight: 2f, clip: "Charge"),
+        };
+
+        private static BossData LoadOrCreateButcher()
+        {
+            var body = EnemyRosterBuilder.LoadPrefab("AshgraveButcher");
+            if (body == null) throw new System.InvalidOperationException("Boss body missing: Enemy_AshgraveButcher (EnemyRosterBuilder)");
+            var data = AssetDatabase.LoadAssetAtPath<BossData>(ButcherDataPath);
+            if (data != null)
+            {
+                if (data.Prefab == null)
+                {
+                    var so = new SerializedObject(data);
+                    so.FindProperty("prefab").objectReferenceValue = body;
+                    so.ApplyModifiedPropertiesWithoutUndo();
+                    EditorUtility.SetDirty(data);
+                }
+                AssetDatabase.ForceReserializeAssets(new[] { ButcherDataPath });
+                return data;
+            }
+            EditorAssetUtil.EnsureFolder(DataDir);
+            // 8000 HP x Chamber 5 health (x1.6): a 10-pick Knight kills it in ~80 s (BossIntroTests balance check).
+            data = BossData.CreateWithAttacks(body, ButcherAttacks(), health: 8000f, firstAttackDelay: 1.5f, introTime: 2.4f,
+                victoryBeat: 1.8f, roarClip: "Roar", phaseRoar: 1.2f, displayName: "THE BUTCHER OF ASHGRAVE",
+                title: "Headsman of the Ashen Gallows");
+            AssetDatabase.CreateAsset(data, ButcherDataPath);
+            AssetDatabase.SaveAssets();
+            return data;
+        }
+
         private static ChamberRules LoadOrCreateRules()
         {
             var rules = AssetDatabase.LoadAssetAtPath<ChamberRules>(BossRulesPath);
@@ -353,7 +408,34 @@ namespace SurvivorSouls.Editor.Boss
         [MenuItem("Survivor Souls/Debug/Boss: Charge")]
         private static void Charge() => BossFight.Active.ForceAttack(BossFight.Move.Charge);
 
+        [MenuItem("Survivor Souls/Debug/Boss: Slam")]
+        private static void Slam() => BossFight.Active.ForceAttack(BossFight.Move.Slam);
+
+        [MenuItem("Survivor Souls/Debug/Boss: Lane (Chop / Hook)")]
+        private static void Lane() => BossFight.Active.ForceAttack(BossFight.Move.Lane);
+
+        [MenuItem("Survivor Souls/Debug/Boss: Spin")]
+        private static void Spin() => BossFight.Active.ForceAttack(BossFight.Move.Spin);
+
+        [MenuItem("Survivor Souls/Debug/Boss: Print Attacks")]
+        private static void PrintAttacks()
+        {
+            var fight = BossFight.Active;
+            var sb = new System.Text.StringBuilder($"[BossBuilder] {fight.Data.DisplayName} phase {fight.Phase}:\n");
+            for (int i = 0; i < fight.Attacks.Length; i++)
+            {
+                var a = fight.Attacks[i];
+                sb.AppendLine($"  {i} {a} {a.type} {a.phases} prio {a.priority} w {a.weight} range {a.minRange}-{a.maxRange} " +
+                              $"warn {a.Telegraph} dmg {a.damage} clip {a.clip}");
+            }
+            Debug.Log(sb.ToString());
+        }
+
         [MenuItem("Survivor Souls/Debug/Boss: Kill", true)]
+        [MenuItem("Survivor Souls/Debug/Boss: Slam", true)]
+        [MenuItem("Survivor Souls/Debug/Boss: Lane (Chop / Hook)", true)]
+        [MenuItem("Survivor Souls/Debug/Boss: Spin", true)]
+        [MenuItem("Survivor Souls/Debug/Boss: Print Attacks", true)]
         [MenuItem("Survivor Souls/Debug/Boss: Half Health", true)]
         [MenuItem("Survivor Souls/Debug/Boss: Health 25 %", true)]
         [MenuItem("Survivor Souls/Debug/Boss: Health 10 %", true)]
