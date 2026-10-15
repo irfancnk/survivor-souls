@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: befccdb7b149b4d7991de19bc34f0227, type: 3}
+  m_Name: SoulNode_stride
+  m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Meta.SoulTreeNode
+  id: stride
+  displayName: Pilgrim's Stride
+  description: Long roads made your step light.
+  effectLabel: move speed
+  icon: {fileID: 2800000, guid: 2dba2fcdc84f84b32a3bca6b4044c48b, type: 3}
+  accent: {r: 0.78, g: 0.25, b: 0.24, a: 1}
+  tier: 1
+  maxLevel: 3
+  baseCost: 400
+  costGrowth: 1.5
+  modifiers:
+  - stat: 2
+    kind: 1
+    value: 0.03
+  requires:
+  - node: {fileID: 11400000, guid: bc059bd31d734472a8efdb830d505bbe, type: 2}
+    level: 2

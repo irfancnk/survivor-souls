@@ -78,7 +78,11 @@ namespace SurvivorSouls.Editor
             var joystick = new GameObject("Input").AddComponent<FloatingJoystick>();
             var player = (GameObject)PrefabUtility.InstantiatePrefab(archerPrefab);
             player.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity); // centre of the spawn tile
-            player.AddComponent<PlayerStats>(); // skills write here; mover, shooter, health and pickup read from it
+            var stats = player.AddComponent<PlayerStats>(); // skills write here; mover, shooter, health and pickup read from it
+            // Bought soul tree levels as permanent stat sources before anything reads the stats (KAN-98)
+            var treeBonuses = player.AddComponent<SurvivorSouls.Gameplay.Meta.SoulTreeBonuses>();
+            SetRef(treeBonuses, "tree", Economy.EconomyBuilder.LoadOrCreateSoulTree());
+            SetRef(treeBonuses, "stats", stats);
             SetRef(player.GetComponent<PlayerMover>(), "joystick", joystick);
             var world = WorldBuilder.Build(kit, realm, player.transform, player.GetComponent<PlayerMover>(), sfx.PortalHum);
             var combat = CombatBuilder.Load();
