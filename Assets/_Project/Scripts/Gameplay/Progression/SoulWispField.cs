@@ -15,13 +15,21 @@ namespace SurvivorSouls.Gameplay.Progression
     /// flash, a light haptic tap (rate limited), and <see cref="Collected"/> (sound, HUD). Wisps left alone for
     /// <see cref="driftAfter"/> seconds drift to the player, so XP is never lost.
     /// <para>
-    /// Performance: no GameObject per wisp. All wisps are structs in one fixed array (swap-remove, capacity set at load),
-    /// drawn as billboards of ONE particle system (<see cref="ParticleSystem.SetParticles(ParticleSystem.Particle[], int)"/>
-    /// each frame, one shared alpha-blended material) plus ONE additive mote system for trails and absorb flashes.
-    /// Two draw calls for any number of wisps, no lights, no shadows, no allocations after Awake. When the array is full
-    /// a new drop merges its XP into the oldest wisp (it grows to the matching tier) instead of being dropped.
+    /// Look (KAN-34): an opaque, shiny gold orb (the KAN-21 pale see-through billboard washed out on the snow). The body
+    /// is a low-poly sphere drawn as mesh particles with the <c>SurvivorSouls/XpOrb</c> shader (gold, hotspot, rim,
+    /// moving shine sweep, thin dark silhouette edge for white snow); a soft additive halo sits behind it; resting orbs
+    /// flash a small white sparkle every 1-2 s.
     /// </para>
-    /// Size and colour come from <see cref="tiers"/> by XP value: small (normal enemy), elite, golden boss orb.
+    /// <para>
+    /// Performance: no GameObject per wisp. All wisps are structs in one fixed array (swap-remove, capacity set at load),
+    /// drawn by ONE body particle system (opaque mesh particles, <see cref="ParticleSystem.SetParticles(ParticleSystem.Particle[], int)"/>
+    /// each frame), ONE halo particle system (additive billboards, same call) and ONE additive mote system for trails,
+    /// sparkles and absorb flashes (halos and motes share one material). Three draw calls for any number of wisps, no
+    /// lights, no shadows, no allocations after Awake. When the array is full a new drop merges its XP into the oldest
+    /// wisp (it grows to the matching tier) instead of being dropped.
+    /// </para>
+    /// Size and colour come from <see cref="tiers"/> by XP value: small (normal enemy), elite, boss orb; all gold, bigger
+    /// halo for more XP.
     /// </summary>
     [DefaultExecutionOrder(100)] // after PlayerMover: wisps chase this frame's player position
     public sealed class SoulWispField : MonoBehaviour
@@ -31,12 +39,16 @@ namespace SurvivorSouls.Gameplay.Progression
         {
             [Tooltip("Smallest XP value drawn with this tier. Keep tiers sorted by this, ascending.")]
             public int minXp;
-            [Tooltip("Billboard diameter (m).")]
+            [Tooltip("Orb diameter (m).")]
             public float size;
-            [Tooltip("Tint of the wisp texture (white core, pale shell, deeper rim).")]
+            [Tooltip("Gold tint of the orb body (alpha unused: the shader gets the shine phase there).")]
             public Color body;
             [Tooltip("Colour of the trailing motes and the absorb flash.")]
             public Color mote;
+            [Tooltip("Additive halo behind the orb (alpha = strength).")]
+            public Color halo;
+            [Tooltip("Halo diameter as a multiple of the orb diameter.")]
+            public float haloScale;
         }
 
         private enum State : byte { Pop, Rest, Drift, Magnet }
@@ -53,12 +65,15 @@ namespace SurvivorSouls.Gameplay.Progression
             public float Speed;
             public float Phase;
             public float MoteDebt;
+            public float SparkleIn;
         }
 
         [SerializeField] private XpManager xp;
         [SerializeField] private SoulCollector collector;
-        [Tooltip("Wisp bodies: emission off, driven by SetParticles. Its maxParticles must be >= capacity.")]
+        [Tooltip("Orb bodies (opaque mesh particles): emission off, driven by SetParticles. Its maxParticles must be >= capacity.")]
         [SerializeField] private ParticleSystem bodies;
+        [Tooltip("Halos behind the orbs (additive billboards): emission off, driven by SetParticles. Optional.")]
+        [SerializeField] private ParticleSystem halos;
         [Tooltip("Trail motes and absorb flashes: emission off, fed by Emit.")]
         [SerializeField] private ParticleSystem motes;
         [Tooltip("Wisps alive at once. Further drops merge into the oldest wisp.")]
@@ -69,9 +84,13 @@ namespace SurvivorSouls.Gameplay.Progression
         [SerializeField, Min(0f)] private float mergeRadius = 1.6f;
         [SerializeField] private Tier[] tiers =
         {
-            new Tier { minXp = 0, size = 0.42f, body = new Color(0.8f, 0.92f, 1f, 0.95f), mote = new Color(0.62f, 0.84f, 1f, 0.8f) },
-            new Tier { minXp = 25, size = 0.62f, body = new Color(0.66f, 0.96f, 1f, 1f), mote = new Color(0.5f, 0.92f, 1f, 0.9f) },
-            new Tier { minXp = 100, size = 0.95f, body = new Color(1f, 0.84f, 0.42f, 1f), mote = new Color(1f, 0.74f, 0.3f, 0.9f) },
+            // Warm gold #FFC93C; the elite pile is a paler, brighter gold, the boss orb a deep gold with the biggest halo.
+            new Tier { minXp = 0, size = 0.46f, body = new Color(1f, 0.79f, 0.24f, 1f), mote = new Color(1f, 0.84f, 0.4f, 0.85f),
+                halo = new Color(1f, 0.72f, 0.22f, 0.3f), haloScale = 2.3f },
+            new Tier { minXp = 25, size = 0.6f, body = new Color(1f, 0.86f, 0.42f, 1f), mote = new Color(1f, 0.9f, 0.52f, 0.9f),
+                halo = new Color(1f, 0.78f, 0.32f, 0.4f), haloScale = 2.6f },
+            new Tier { minXp = 100, size = 0.85f, body = new Color(1f, 0.7f, 0.14f, 1f), mote = new Color(1f, 0.78f, 0.3f, 0.95f),
+                halo = new Color(1f, 0.62f, 0.14f, 0.55f), haloScale = 3f },
         };
 
         [Header("Pop (drop from the body)")]
@@ -86,10 +105,15 @@ namespace SurvivorSouls.Gameplay.Progression
         [SerializeField, Min(0.01f)] private float growTime = 0.15f;
 
         [Header("Rest")]
-        [SerializeField, Min(0f)] private float bobHeight = 0.07f;
+        [SerializeField, Min(0f)] private float bobHeight = 0.09f;
         [SerializeField, Min(0f)] private float bobHz = 0.7f;
+        [Tooltip("Size pulse of the halo (the opaque orb keeps a calmer share of it).")]
         [SerializeField, Range(0f, 0.5f)] private float pulseAmount = 0.12f;
         [SerializeField, Min(0f)] private float pulseHz = 1.6f;
+        [Tooltip("Seconds between two sparkle flashes of a resting orb (random in this range).")]
+        [SerializeField] private Vector2 sparkleInterval = new Vector2(1f, 2f);
+        [Tooltip("Sparkle flash diameter as a multiple of the orb diameter.")]
+        [SerializeField, Min(0f)] private float sparkleSize = 0.9f;
 
         [Header("Magnet (inside the pickup radius)")]
         [Tooltip("A popping wisp can be grabbed only after this many seconds (the drop reads first).")]
@@ -121,7 +145,7 @@ namespace SurvivorSouls.Gameplay.Progression
         [SerializeField] private Vector2 moteSize = new Vector2(0.04f, 0.08f);
         [Tooltip("Upper bound of motes emitted in one frame for all wisps (no spike with 50+ wisps).")]
         [SerializeField, Min(1)] private int maxMotesPerFrame = 24;
-        [SerializeField, Min(0)] private int absorbSparks = 6;
+        [SerializeField, Min(0)] private int absorbSparks = 8;
         [Tooltip("Minimum seconds (unscaled) between two pickup haptic taps: a stream of wisps is a soft patter, not a buzz.")]
         [SerializeField, Min(0f)] private float hapticInterval = 0.12f;
 
@@ -130,6 +154,7 @@ namespace SurvivorSouls.Gameplay.Progression
 
         private Wisp[] _wisps;
         private ParticleSystem.Particle[] _particles;
+        private ParticleSystem.Particle[] _haloParticles;
         private ParticleSystem.EmitParams _emit;
         private int _count;
         private int _moteCursor;
@@ -151,18 +176,20 @@ namespace SurvivorSouls.Gameplay.Progression
             if (_wisps != null && _wisps.Length == capacity) return;
             _wisps = new Wisp[capacity];
             _particles = new ParticleSystem.Particle[capacity];
+            _haloParticles = new ParticleSystem.Particle[capacity];
             _count = 0;
         }
 
         /// <summary>Wiring for code-built objects and tests.</summary>
         public void Setup(XpManager xpManager, SoulCollector soulCollector, int wispCapacity = 128,
-            ParticleSystem bodySystem = null, ParticleSystem moteSystem = null)
+            ParticleSystem bodySystem = null, ParticleSystem moteSystem = null, ParticleSystem haloSystem = null)
         {
             xp = xpManager;
             collector = soulCollector;
             capacity = Mathf.Max(1, wispCapacity);
             bodies = bodySystem;
             motes = moteSystem;
+            halos = haloSystem;
             Allocate();
         }
 
@@ -170,6 +197,7 @@ namespace SurvivorSouls.Gameplay.Progression
         {
             Enemy.Damaged += OnEnemyDamaged;
             if (bodies != null) bodies.Play();
+            if (halos != null) halos.Play();
         }
 
         private void OnDisable() => Enemy.Damaged -= OnEnemyDamaged;
@@ -201,6 +229,7 @@ namespace SurvivorSouls.Gameplay.Progression
                 Tier = TierOf(xpValue),
                 State = State.Pop,
                 Phase = Random.value * 10f,
+                SparkleIn = Random.Range(sparkleInterval.x, sparkleInterval.y),
             };
         }
 
@@ -215,6 +244,8 @@ namespace SurvivorSouls.Gameplay.Progression
 
         internal int TierAt(int index) => _wisps[index].Tier;
         internal int XpAt(int index) => _wisps[index].Xp;
+        internal Tier TierStyle(int tier) => tiers[tier];
+        internal int TierCount => tiers.Length;
 
         /// <summary>Adds the XP to the nearest resting wisp within <see cref="mergeRadius"/> (planar). False when there is none.</summary>
         private bool MergeIntoNearby(Vector3 position, int xpValue)
@@ -409,6 +440,19 @@ namespace SurvivorSouls.Gameplay.Progression
                     motes.Emit(_emit, 1);
                 }
                 if (budget == 0) w.MoteDebt = Mathf.Min(w.MoteDebt, 1f); // no burst of saved-up motes later
+
+                // Sparkle: a short white star flash on the lit upper side of a resting orb, every 1-2 s.
+                if (w.State == State.Magnet || w.State == State.Pop) continue;
+                w.SparkleIn -= dt;
+                if (w.SparkleIn > 0f || budget == 0) continue;
+                budget--;
+                w.SparkleIn = Random.Range(sparkleInterval.x, sparkleInterval.y);
+                _emit.position = w.Position + new Vector3(-0.18f, 0.32f, -0.12f) * tier.size;
+                _emit.velocity = Vector3.zero;
+                _emit.startColor = Color.white;
+                _emit.startSize = tier.size * sparkleSize;
+                _emit.startLifetime = 0.22f;
+                motes.Emit(_emit, 1);
             }
             _moteCursor++;
         }
@@ -442,23 +486,37 @@ namespace SurvivorSouls.Gameplay.Progression
                 ref readonly var w = ref _wisps[i];
                 ref readonly var tier = ref tiers[w.Tier];
                 Vector3 pos = w.Position;
-                float size = tier.size * Mathf.Lerp(0.3f, 1f, Mathf.Clamp01(w.Age / growTime))
-                    * (1f + pulseAmount * Mathf.Sin((t * pulseHz + w.Phase) * TwoPi));
+                float pulse = Mathf.Sin((t * pulseHz + w.Phase) * TwoPi);
+                float size = tier.size * Mathf.Lerp(0.3f, 1f, Mathf.Clamp01(w.Age / growTime));
                 if (w.State == State.Rest || w.State == State.Drift)
                     pos.y += bobHeight * Mathf.Sin((t * bobHz + w.Phase * 0.37f) * TwoPi);
                 else if (w.State == State.Magnet)
                     size *= Mathf.Lerp(0.55f, 1f, Mathf.Clamp01((target - pos).magnitude / 1.5f)); // shrinks into the Knight
 
+                // Body: opaque gold mesh orb. Colour alpha carries the shine phase so orbs do not flash in sync.
+                Color body = tier.body;
+                body.a = w.Phase * 0.1f % 1f;
                 ref var p = ref _particles[i];
                 p.position = pos;
                 p.velocity = Vector3.zero;
                 p.rotation = 0f;
-                p.startSize = size;
-                p.startColor = tier.body;
+                p.startSize = size * (1f + pulseAmount * 0.25f * pulse);
+                p.startColor = body;
                 p.startLifetime = 1000f; // never expires on its own: this script owns the lifetime
                 p.remainingLifetime = 1000f;
+
+                if (halos == null) continue;
+                ref var h = ref _haloParticles[i];
+                h.position = pos;
+                h.velocity = Vector3.zero;
+                h.rotation = 0f;
+                h.startSize = size * tier.haloScale * (1f + pulseAmount * pulse);
+                h.startColor = tier.halo;
+                h.startLifetime = 1000f;
+                h.remainingLifetime = 1000f;
             }
             bodies.SetParticles(_particles, _count);
+            if (halos != null) halos.SetParticles(_haloParticles, _count);
         }
     }
 }
