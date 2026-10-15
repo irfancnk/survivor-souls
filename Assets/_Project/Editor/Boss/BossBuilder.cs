@@ -33,7 +33,8 @@ namespace SurvivorSouls.Editor.Boss
     /// KAN-116: "Boss: Nova", "Boss: Spiral", "Boss: Rain" (a boss without that type gets the sample entry first); bolt pool 64.
     /// KAN-119: the boulder pool of the lobbed attack ("Boss/Boulders": <see cref="BoulderCount"/> lumpy stone bodies, one
     /// shared mesh + the Realm snow-cap props material, a capsule collider each for the rubble); menus "Boss: Lobbed",
-    /// "Boss: Summon", "Boss: Teleport" (same sample rule).
+    /// "Boss: Summon", "Boss: Teleport" (same sample rule). KAN-121: menus "Boss: Shockwave", "Boss: Homing", "Boss: Beams"
+    /// (same sample rule; the rings use the shared circle pool, the orbs the bolt pool, the beams the lane telegraph).
     /// </summary>
     public static class BossBuilder
     {
@@ -484,6 +485,15 @@ namespace SurvivorSouls.Editor.Boss
         [MenuItem("Survivor Souls/Debug/Boss: Teleport")]
         private static void TeleportMenu() => ForceOrSample(BossFight.Move.Teleport);
 
+        [MenuItem("Survivor Souls/Debug/Boss: Shockwave")]
+        private static void Shockwave() => ForceOrSample(BossFight.Move.Shockwave);
+
+        [MenuItem("Survivor Souls/Debug/Boss: Homing")]
+        private static void Homing() => ForceOrSample(BossFight.Move.Homing);
+
+        [MenuItem("Survivor Souls/Debug/Boss: Beams")]
+        private static void Beams() => ForceOrSample(BossFight.Move.Beams);
+
         /// <summary>KAN-116: starts the boss's <paramref name="move"/> attack; a boss without one gets the sample entry first.</summary>
         private static void ForceOrSample(BossFight.Move move)
         {
@@ -518,6 +528,9 @@ namespace SurvivorSouls.Editor.Boss
         [MenuItem("Survivor Souls/Debug/Boss: Lobbed", true)]
         [MenuItem("Survivor Souls/Debug/Boss: Summon", true)]
         [MenuItem("Survivor Souls/Debug/Boss: Teleport", true)]
+        [MenuItem("Survivor Souls/Debug/Boss: Shockwave", true)]
+        [MenuItem("Survivor Souls/Debug/Boss: Homing", true)]
+        [MenuItem("Survivor Souls/Debug/Boss: Beams", true)]
         [MenuItem("Survivor Souls/Debug/Boss: Print Attacks", true)]
         [MenuItem("Survivor Souls/Debug/Boss: Half Health", true)]
         [MenuItem("Survivor Souls/Debug/Boss: Health 25 %", true)]

@@ -51,6 +51,7 @@ MonoBehaviour:
     stun: 0
     gaps: 0
     obstacle: 0
+    turn: 0
     summon: 
     clip: Chop
   - label: Cleaver Spin
@@ -77,6 +78,7 @@ MonoBehaviour:
     stun: 0
     gaps: 0
     obstacle: 0
+    turn: 0
     summon: 
     clip: Spin
   - label: Charge
@@ -103,6 +105,7 @@ MonoBehaviour:
     stun: 1
     gaps: 0
     obstacle: 0
+    turn: 0
     summon: 
     clip: Charge
   - label: Chain Hook
@@ -129,6 +132,7 @@ MonoBehaviour:
     stun: 0
     gaps: 0
     obstacle: 0
+    turn: 0
     summon: 
     clip: Chop
   - label: Triple Charge
@@ -155,6 +159,7 @@ MonoBehaviour:
     stun: 1
     gaps: 0
     obstacle: 0
+    turn: 0
     summon: 
     clip: Charge
   roarClip: Roar
