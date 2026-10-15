@@ -12,12 +12,12 @@ using UnityEngine.Rendering;
 namespace SurvivorSouls.Editor.Enemies
 {
     /// <summary>
-    /// KAN-104: turns the 15 Meshy enemies of KAN-102 (Docs/ENEMY_ROSTER.md) into game prefabs. Per character:
+    /// KAN-104: turns the Meshy enemies of KAN-102 (Docs/ENEMY_ROSTER.md; 12 since KAN-128 cut three) into game prefabs. Per character:
     /// import settings (Generic rig, no materials, Mesh LODs on the skinned mesh, looping locomotion clips, long action clips
     /// cut to their strike), one URP Simple Lit material (base colour + normal map + emission where the texture glows), one
     /// AnimatorController (Move, Attack, Hit, Death + one state per clip) and one <c>Prefabs/Enemies/Enemy_&lt;Id&gt;.prefab</c>
     /// with the <see cref="Enemy"/> component (height and hit radius measured on the real mesh, walk clip ground speed
-    /// measured on its rig). <see cref="AddMeleeTiers"/> puts the four melee tiers into the wave table.
+    /// measured on its rig). <see cref="AddMeleeTiers"/> puts the melee tiers into the wave table.
     /// The clips bind to paths that start at <c>Hips</c> (the A_ files have no rig node), so the Animator sits on the
     /// <c>&lt;Id&gt;_Rig</c> node and the skinned mesh moves under it (the Animator culls by the renderers below it).
     /// Called by GameSceneBuilder after CombatBuilder; re-run is safe. Trim ranges already set in an importer are kept.
@@ -74,18 +74,16 @@ namespace SurvivorSouls.Editor.Enemies
         }
 
         /// <summary>
-        /// Melee tiers 1-4 (the four reference sheets) first: they join the waves. Specials melee on contact (8 dps) on top
+        /// Melee tiers first: they join the waves (KAN-128 cut the Fallen Militiaman, the Gravebound Knight and the Bone
+        /// Archer; their art, prefabs and wave slots are gone). Specials melee on contact (8 dps) on top
         /// of their own attacks (ranged KAN-105, Bloater / Ghoul / Brute KAN-106, Shaman KAN-107); their Attack state is their
         /// signature clip.
         /// </summary>
         public static readonly Spec[] Roster =
         {
             Zombie("GraveyardLaborer", "Shamble", "Attack", 100f, 1.75f, 12f, 5),
-            Zombie("FallenMilitiaman", "Shamble", "Attack", 140f, 1.8f, 14f, 6),
             Zombie("RustedWatchman", "Shamble", "Attack", 200f, 1.6f, 16f, 8),
-            Zombie("GraveboundKnight", "Walk", "Attack", 420f, 1.5f, 22f, 20, knock: 0.3f),
             Zombie("PlagueBloater", "Walk", "Burst", 180f, 1.2f, 8f, 8),
-            Zombie("BoneArcher", "Walking", "Shoot", 80f, 2.0f, 8f, 7),
             Zombie("PyreThrower", "Walk", "Throw", 110f, 1.6f, 8f, 8),
             Zombie("BileSpitter", "Walk", "Spit", 90f, 1.7f, 8f, 7),
             Zombie("FrenziedGhoul", "Sprint", "Leap", 60f, 4.2f, 8f, 6),
@@ -97,8 +95,8 @@ namespace SurvivorSouls.Editor.Enemies
             Boss("BoneMatriarch", "Walking", "CastOrbs", 7000f, 1.3f),
         };
 
-        /// <summary>The four melee tiers (wave table order): Laborer, Militiaman, Watchman, Gravebound Knight.</summary>
-        public static readonly string[] MeleeTiers = { "GraveyardLaborer", "FallenMilitiaman", "RustedWatchman", "GraveboundKnight" };
+        /// <summary>The melee tiers (wave table order): Graveyard Laborer, Rusted Watchman. The elite melee role is the Grave Brute's.</summary>
+        public static readonly string[] MeleeTiers = { "GraveyardLaborer", "RustedWatchman" };
 
         public static Spec Find(string id) => Roster.First(s => s.Id == id);
 
@@ -409,7 +407,7 @@ namespace SurvivorSouls.Editor.Enemies
                 so.FindProperty("knockbackScale").floatValue = spec.Knockback;
                 so.FindProperty("deathHold").floatValue = spec.Boss ? BossDeathPlayTime : DeathPlayTime;
                 so.ApplyModifiedPropertiesWithoutUndo();
-                RangedEnemyBuilder.ConfigurePrefab(root, enemy, spec.Id, kit.Palette); // hold band + attack + bow (KAN-105)
+                RangedEnemyBuilder.ConfigurePrefab(root, enemy, spec.Id); // hold band + attack (KAN-105)
                 SpecialMeleeBuilder.ConfigurePrefab(root, spec.Id); // burst / leap / slam (KAN-106)
                 ShamanBuilder.ConfigurePrefab(root, enemy, spec.Id); // hold band + orb ring / hex / raise / blink (KAN-107)
                 SurvivorSouls.Editor.Boss.BossBuilder.ConfigurePrefab(root, enemy, spec.Id); // Bone Matriarch: no contact, hold band, hover (KAN-111)
@@ -451,20 +449,21 @@ namespace SurvivorSouls.Editor.Enemies
         // ------------------------------------------------------------ Waves
 
         /// <summary>
-        /// Share of the old Shambler weight that each melee tier takes, per wave phase (Laborer, Militiaman, Watchman,
-        /// Gravebound Knight). Later phases are tougher; phases past the list use the last row.
+        /// Share of the old Shambler weight that each melee tier takes, per wave phase (Laborer, Watchman). Later phases are
+        /// tougher; phases past the list use the last row. KAN-128: the cut Militiaman share (140 HP) went 0.6 / 0.4 to the
+        /// Laborer / Watchman (same mean health), the cut Gravebound Knight share went to the Watchman.
         /// </summary>
         public static readonly float[][] TierShares =
         {
-            new[] { 0.85f, 0.15f, 0f, 0f },
-            new[] { 0.63f, 0.27f, 0.07f, 0.03f },
-            new[] { 0.5f, 0.28f, 0.16f, 0.06f },
-            new[] { 0.42f, 0.27f, 0.21f, 0.1f },
+            new[] { 0.94f, 0.06f },
+            new[] { 0.792f, 0.208f },
+            new[] { 0.668f, 0.332f },
+            new[] { 0.582f, 0.418f },
         };
 
         /// <summary>
         /// One-time move of the wave table to the melee tiers (KAN-104): every Shambler entry (<paramref name="shambler"/>)
-        /// is split into the four tiers by <see cref="TierShares"/>; Runners and Brutes stay. Runs only while no tier is in
+        /// is split into the melee tiers by <see cref="TierShares"/>; Runners and Brutes stay. Runs only while no tier is in
         /// the table, so later designer edits are kept. Returns true when it changed the table.
         /// </summary>
         public static bool AddMeleeTiers(EnemyWaveTable table, Enemy shambler)
@@ -491,7 +490,7 @@ namespace SurvivorSouls.Editor.Enemies
             }
             table.Configure(table.FirstSpawnDelay, table.PrewarmPerType, phases);
             EditorUtility.SetDirty(table);
-            Debug.Log("[EnemyRosterBuilder] wave table: Shambler entries split into the 4 melee tiers");
+            Debug.Log("[EnemyRosterBuilder] wave table: Shambler entries split into the melee tiers");
             return true;
         }
     }

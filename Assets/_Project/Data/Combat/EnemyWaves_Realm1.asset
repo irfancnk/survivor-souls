@@ -23,9 +23,9 @@ MonoBehaviour:
     burstSize: 5
     enemies:
     - prefab: {fileID: 5335434802141488015, guid: 64dd4dfba50f345cea746a72f7dd7708, type: 3}
-      weight: 0.85
-    - prefab: {fileID: 930168159101518784, guid: af2c5159d69c74cb4be70dd38984a958, type: 3}
-      weight: 0.15
+      weight: 0.94
+    - prefab: {fileID: 3682811672515521020, guid: 57f8490f179ba4061acd1f827691a040, type: 3}
+      weight: 0.06
   - startTime: 45
     maxAlive: 24
     spawnInterval: 1
@@ -34,13 +34,9 @@ MonoBehaviour:
     burstSize: 7
     enemies:
     - prefab: {fileID: 5335434802141488015, guid: 64dd4dfba50f345cea746a72f7dd7708, type: 3}
-      weight: 0.517
-    - prefab: {fileID: 930168159101518784, guid: af2c5159d69c74cb4be70dd38984a958, type: 3}
-      weight: 0.221
+      weight: 0.65
     - prefab: {fileID: 3682811672515521020, guid: 57f8490f179ba4061acd1f827691a040, type: 3}
-      weight: 0.057
-    - prefab: {fileID: 2526840468297592189, guid: db043460c979f4e318175b45f32b4cee, type: 3}
-      weight: 0.025
+      weight: 0.17
     - prefab: {fileID: 77487197354657862, guid: b05691b72fc1d44249bfd634c3b97071, type: 3}
       weight: 0.14
     - prefab: {fileID: 8924236305345745035, guid: 7fb54dcda50fd44a3b5f03756d4e0bcd, type: 3}
@@ -57,13 +53,9 @@ MonoBehaviour:
     burstSize: 9
     enemies:
     - prefab: {fileID: 5335434802141488015, guid: 64dd4dfba50f345cea746a72f7dd7708, type: 3}
-      weight: 0.36
-    - prefab: {fileID: 930168159101518784, guid: af2c5159d69c74cb4be70dd38984a958, type: 3}
-      weight: 0.202
+      weight: 0.481
     - prefab: {fileID: 3682811672515521020, guid: 57f8490f179ba4061acd1f827691a040, type: 3}
-      weight: 0.115
-    - prefab: {fileID: 2526840468297592189, guid: db043460c979f4e318175b45f32b4cee, type: 3}
-      weight: 0.043
+      weight: 0.239
     - prefab: {fileID: 77487197354657862, guid: b05691b72fc1d44249bfd634c3b97071, type: 3}
       weight: 0.18
     - prefab: {fileID: 8924236305345745035, guid: 7fb54dcda50fd44a3b5f03756d4e0bcd, type: 3}
@@ -80,13 +72,9 @@ MonoBehaviour:
     burstSize: 12
     enemies:
     - prefab: {fileID: 5335434802141488015, guid: 64dd4dfba50f345cea746a72f7dd7708, type: 3}
-      weight: 0.277
-    - prefab: {fileID: 930168159101518784, guid: af2c5159d69c74cb4be70dd38984a958, type: 3}
-      weight: 0.178
+      weight: 0.384
     - prefab: {fileID: 3682811672515521020, guid: 57f8490f179ba4061acd1f827691a040, type: 3}
-      weight: 0.139
-    - prefab: {fileID: 2526840468297592189, guid: db043460c979f4e318175b45f32b4cee, type: 3}
-      weight: 0.066
+      weight: 0.276
     - prefab: {fileID: 77487197354657862, guid: b05691b72fc1d44249bfd634c3b97071, type: 3}
       weight: 0.2
     - prefab: {fileID: 8924236305345745035, guid: 7fb54dcda50fd44a3b5f03756d4e0bcd, type: 3}

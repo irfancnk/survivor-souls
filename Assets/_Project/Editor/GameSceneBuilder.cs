@@ -195,7 +195,7 @@ namespace SurvivorSouls.Editor
 
             var spawner = new GameObject("Enemies").AddComponent<EnemySpawner>();
             var waves = CombatBuilder.LoadOrCreateWaves(enemy);
-            EnemyRosterBuilder.AddMeleeTiers(waves, enemy); // one-time: Shambler slots -> the 4 melee tiers (KAN-104)
+            EnemyRosterBuilder.AddMeleeTiers(waves, enemy); // one-time: Shambler slots -> the melee tiers (KAN-104, KAN-128)
             SpecialMeleeBuilder.AddToWaves(waves); // one-time: Grave Brute for the old Brute, Bloater + Ghoul from 45 s (KAN-106)
             SetRef(spawner, "waves", waves);
             SetRef(spawner, "player", player.transform);

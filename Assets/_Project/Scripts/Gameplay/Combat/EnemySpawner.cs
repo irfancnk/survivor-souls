@@ -329,7 +329,7 @@ namespace SurvivorSouls.Gameplay.Combat
         }
 
         /// <summary>
-        /// Enemy type by prefab name (e.g. <c>Enemy_BoneArcher</c>): the wave table first, then <see cref="ExtraTypes"/>.
+        /// Enemy type by prefab name (e.g. <c>Enemy_PyreThrower</c>): the wave table first, then <see cref="ExtraTypes"/>.
         /// Null when the scene has no such type. Dev tools; allocates nothing.
         /// </summary>
         public Enemy FindType(string prefabName)

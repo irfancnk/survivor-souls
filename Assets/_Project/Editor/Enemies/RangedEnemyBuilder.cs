@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Linq;
 using SurvivorSouls.Editor.Boss;
 using SurvivorSouls.Editor.Procedural;
@@ -15,17 +14,16 @@ namespace SurvivorSouls.Editor.Enemies
     /// <summary>
     /// KAN-105: ranged zombies. Prefab side (<see cref="ConfigurePrefab"/>, called by <see cref="EnemyRosterBuilder"/> before it
     /// saves a prefab): hold band on <see cref="Enemy"/>, the <see cref="RangedAttack"/> numbers of Docs/ENEMY_ROSTER.md
-    /// sections 3.6-3.8 and a bone bow in the Bone Archer's left hand (the Meshy mesh has none). Scene side
+    /// sections 3.7-3.8 (KAN-128 cut the Bone Archer and its bow). Scene side
     /// (<see cref="CreateScene"/>, called by GameSceneBuilder): the "Enemy Shots" object with the shared shot pool
     /// (<see cref="EnemyProjectiles"/>, one particle system per <see cref="ShotKind"/>), hazard pool (<see cref="GroundHazards"/>,
     /// one flat particle system per <see cref="HazardKind"/>) and warning pool (<see cref="EnemyTelegraphs"/>: boss lanes and
     /// circles). Textures are procedural (Art/EnemyFX).
-    /// Debug menus (Play mode): "Survivor Souls/Debug/Ranged: Spawn Bone Archer / Pyre Thrower / Bile Spitter" (near the Knight).
+    /// Debug menus (Play mode): "Survivor Souls/Debug/Ranged: Spawn Pyre Thrower / Bile Spitter" (near the Knight).
     /// </summary>
     public static class RangedEnemyBuilder
     {
         public const string FxDir = "Assets/_Project/Art/EnemyFX";
-        private const string BowMeshPath = FxDir + "/SM_BoneBow.asset";
         private const int ShotCapacity = 48;
         private const int HazardCapacity = 24;
         private const int LaneWarnings = 8;
@@ -36,12 +34,6 @@ namespace SurvivorSouls.Editor.Enemies
         /// <summary>The ranged types (Docs/ENEMY_ROSTER.md 3.6-3.8): hold band (m) and attack. First guesses in Chamber 1 terms.</summary>
         public static readonly (string id, float holdMin, float holdMax, RangedAttack.Settings attack)[] Specs =
         {
-            ("BoneArcher", 7f, 9f, new RangedAttack.Settings
-            {
-                kind = ShotKind.Arrow, lobbed = false,
-                windUp = 0.8f, lockShare = 0.35f, cooldown = 2.2f, pattern = new[] { 1, 1, 3 }, spread = 30f,
-                speed = 14f, range = 14f, damageShare = 0.1f, hitRadius = 0.45f, laneWidth = 0.3f, needsLineOfFire = true,
-            }),
             ("PyreThrower", 6f, 10f, new RangedAttack.Settings
             {
                 kind = ShotKind.FirePot, lobbed = true,
@@ -65,8 +57,8 @@ namespace SurvivorSouls.Editor.Enemies
 
         // ------------------------------------------------------------ Prefab
 
-        /// <summary>Hold band + <see cref="RangedAttack"/> (+ bow) on a roster prefab root before it is saved. No-op for melee types.</summary>
-        public static void ConfigurePrefab(GameObject root, Enemy enemy, string id, Material palette)
+        /// <summary>Hold band + <see cref="RangedAttack"/> on a roster prefab root before it is saved. No-op for melee types.</summary>
+        public static void ConfigurePrefab(GameObject root, Enemy enemy, string id)
         {
             int index = System.Array.FindIndex(Specs, s => s.id == id);
             if (index < 0) return;
@@ -77,47 +69,6 @@ namespace SurvivorSouls.Editor.Enemies
             so.ApplyModifiedPropertiesWithoutUndo();
             var attack = root.AddComponent<RangedAttack>();
             attack.Configure(spec.attack);
-            if (id == "BoneArcher") AttachBow(root, palette);
-        }
-
-        /// <summary>
-        /// Bone bow (one mesh, palette material) under the left hand bone. Scaled against the rig's centimetre scale; held
-        /// upright with the belly forward in the bind pose, so the Shoot clip raises it at the Knight.
-        /// </summary>
-        private static void AttachBow(GameObject root, Material palette)
-        {
-            var hand = root.GetComponentsInChildren<Transform>(true).FirstOrDefault(t => t.name == "LeftHand")
-                       ?? throw new System.InvalidOperationException("BoneArcher: LeftHand bone missing");
-            var bow = new GameObject("Bow");
-            bow.transform.SetParent(hand, false);
-            float s = 1f / Mathf.Max(0.0001f, hand.lossyScale.x);
-            bow.transform.localScale = Vector3.one * s;
-            bow.transform.rotation = root.transform.rotation;
-            bow.AddComponent<MeshFilter>().sharedMesh = BuildBowMesh();
-            var r = bow.AddComponent<MeshRenderer>();
-            PropKit.SetupRenderer(r, palette);
-        }
-
-        /// <summary>Recurve bow 1.1 m: tapered wood-and-bone limbs bulging forward (+Z), a taut string behind. Rebuilt each run.</summary>
-        private static Mesh BuildBowMesh()
-        {
-            var mb = new MeshBuilder();
-            const float half = 0.55f;
-            var limb = new List<Vector3>();
-            for (int i = 0; i <= 12; i++)
-            {
-                float t = i / 12f * 2f - 1f;                       // -1 bottom .. 1 top
-                float bulge = 0.16f * (1f - t * t) - 0.03f * t * t * t * t; // recurve tips bend back
-                limb.Add(new Vector3(0f, t * half, bulge));
-            }
-            mb.Tube(limb, t => Mathf.Lerp(0.026f, 0.012f, Mathf.Abs(t * 2f - 1f)), PaletteAtlas.For(Swatch.Bleached), 0, sides: 6);
-            mb.Tube(new[] { new Vector3(0f, -0.07f, 0.15f), new Vector3(0f, 0.07f, 0.15f) }, _ => 0.032f, PaletteAtlas.For(Swatch.DarkLeather), 0, sides: 6); // grip wrap
-            mb.Tube(new[] { limb[0], limb[12] }, _ => 0.005f, PaletteAtlas.For(Swatch.Fletching), 0, sides: 4, caps: false);
-            var mesh = EditorAssetUtil.LoadOrCreateMesh(BowMeshPath);
-            mb.WriteTo(mesh);
-            mesh.RecalculateBounds();
-            EditorUtility.SetDirty(mesh);
-            return mesh;
         }
 
         // ------------------------------------------------------------ Scene
@@ -360,16 +311,12 @@ namespace SurvivorSouls.Editor.Enemies
 
         // ------------------------------------------------------------ Debug
 
-        [MenuItem("Survivor Souls/Debug/Ranged: Spawn Bone Archer")]
-        private static void SpawnArcher() => SpawnNearKnight("BoneArcher");
-
         [MenuItem("Survivor Souls/Debug/Ranged: Spawn Pyre Thrower")]
         private static void SpawnPyre() => SpawnNearKnight("PyreThrower");
 
         [MenuItem("Survivor Souls/Debug/Ranged: Spawn Bile Spitter")]
         private static void SpawnSpitter() => SpawnNearKnight("BileSpitter");
 
-        [MenuItem("Survivor Souls/Debug/Ranged: Spawn Bone Archer", true)]
         [MenuItem("Survivor Souls/Debug/Ranged: Spawn Pyre Thrower", true)]
         [MenuItem("Survivor Souls/Debug/Ranged: Spawn Bile Spitter", true)]
         private static bool InPlay() => Application.isPlaying && Object.FindAnyObjectByType<EnemySpawner>() != null;

@@ -6,7 +6,7 @@ using UnityEngine;
 namespace SurvivorSouls.Gameplay.Combat
 {
     /// <summary>
-    /// Ranged zombie attack (KAN-105): Bone Archer arrows, Pyre Thrower fire pots, Bile Spitter acid globs. Sits next to
+    /// Ranged zombie attack (KAN-105): straight arrows (no shipped type since KAN-128), Pyre Thrower fire pots, Bile Spitter acid globs. Sits next to
     /// <see cref="Enemy"/> (which keeps the distance: hold band) and uses the scene's shared pools: shots
     /// (<see cref="EnemyProjectiles"/>), warnings (<see cref="EnemyTelegraphs"/>) and hazards (<see cref="GroundHazards"/>).
     /// <list type="number">
