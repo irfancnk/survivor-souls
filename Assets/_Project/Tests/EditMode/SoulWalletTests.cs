@@ -14,6 +14,8 @@ namespace SurvivorSouls.Tests
     {
         private bool _hadBalance, _hadCheck;
         private int _balance, _check;
+        private bool _hadPending;
+        private int _pending, _pendingCheck;
 
         [SetUp]
         public void SetUp()
@@ -22,6 +24,9 @@ namespace SurvivorSouls.Tests
             _hadCheck = PlayerPrefs.HasKey(SoulWallet.KeyCheck);
             _balance = PlayerPrefs.GetInt(SoulWallet.KeyBalance, 0);
             _check = PlayerPrefs.GetInt(SoulWallet.KeyCheck, 0);
+            _hadPending = PlayerPrefs.HasKey(SoulWallet.KeyPending); // Clear() deletes the KAN-101 pending amount too
+            _pending = PlayerPrefs.GetInt(SoulWallet.KeyPending, 0);
+            _pendingCheck = PlayerPrefs.GetInt(SoulWallet.KeyPendingCheck, 0);
             PlayerPrefs.DeleteKey(SoulWallet.KeyBalance);
             PlayerPrefs.DeleteKey(SoulWallet.KeyCheck);
             SoulWallet.Clear(); // resets TamperDetected
@@ -36,6 +41,11 @@ namespace SurvivorSouls.Tests
             else PlayerPrefs.DeleteKey(SoulWallet.KeyBalance);
             if (_hadCheck) PlayerPrefs.SetInt(SoulWallet.KeyCheck, _check);
             else PlayerPrefs.DeleteKey(SoulWallet.KeyCheck);
+            if (_hadPending)
+            {
+                PlayerPrefs.SetInt(SoulWallet.KeyPending, _pending);
+                PlayerPrefs.SetInt(SoulWallet.KeyPendingCheck, _pendingCheck);
+            }
             PlayerPrefs.Save();
         }
 
