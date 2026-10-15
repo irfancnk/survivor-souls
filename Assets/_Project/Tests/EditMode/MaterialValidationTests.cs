@@ -1,5 +1,7 @@
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using NUnit.Framework;
 using SurvivorSouls.Editor;
 using UnityEditor;
@@ -9,7 +11,8 @@ namespace SurvivorSouls.Tests
 {
     /// <summary>
     /// Builder materials are already in the state the URP inspector writes (ShaderGUI.ValidateMaterial), so opening them or a
-    /// test session never changes a .mat in git. Simple Lit specular look per family (KAN-158).
+    /// test session never changes a .mat in git. Simple Lit specular look per family (KAN-158). URP Lit + the custom
+    /// SurvivorSouls shaders (KAN-178).
     /// </summary>
     public class MaterialValidationTests
     {
@@ -26,15 +29,17 @@ namespace SurvivorSouls.Tests
         public void EveryUrpMaterial_IsAlreadyValidated()
         {
             var problems = new List<string>();
-            int checkedCount = 0;
+            int checkedCount = 0, litCount = 0;
             foreach (string guid in AssetDatabase.FindAssets("t:Material", new[] { "Assets/_Project" }))
             {
                 string path = AssetDatabase.GUIDToAssetPath(guid);
                 var mat = AssetDatabase.LoadAssetAtPath<Material>(path);
                 if (mat == null || mat.shader == null) continue;
                 string shader = mat.shader.name;
-                if (shader != EditorAssetUtil.SimpleLit && shader != EditorAssetUtil.Unlit && shader != EditorAssetUtil.ParticlesUnlit) continue;
+                if (shader != EditorAssetUtil.SimpleLit && shader != EditorAssetUtil.Unlit && shader != EditorAssetUtil.ParticlesUnlit
+                    && shader != EditorAssetUtil.Lit) continue;
                 checkedCount++;
+                if (shader == EditorAssetUtil.Lit) litCount++;
                 var copy = new Material(mat);
                 try
                 {
@@ -45,6 +50,7 @@ namespace SurvivorSouls.Tests
                 finally { Object.DestroyImmediate(copy); }
             }
             Assert.Greater(checkedCount, 20, "expected the Simple Lit / Unlit / particle materials of the project");
+            Assert.GreaterOrEqual(litCount, 2, "expected the Lit materials of the Meshy Knight + crossbow (KAN-178)");
             Assert.IsEmpty(problems, "URP validation would change these materials (rebuild them with the builder):\n" + string.Join("\n", problems));
         }
 
@@ -91,6 +97,80 @@ namespace SurvivorSouls.Tests
                 }
             }
             finally { Object.DestroyImmediate(tex); }
+        }
+
+        [Test]
+        public void LitMaterial_LikeTheImporters_IsValidated_AndKeepsItsMaps()
+        {
+            var tex = new Texture2D(4, 4);
+            try
+            {
+                // Same set-up as MeshyCharacterImporter.CreateMaterial / GeneratedPropImporter.LitMaterial (KAN-178).
+                var mat = EditorAssetUtil.LoadOrCreateMaterial(TempDir + "/M_Lit.mat", EditorAssetUtil.Lit);
+                mat.SetTexture("_BaseMap", tex);
+                mat.SetTexture("_BumpMap", tex);
+                mat.EnableKeyword("_NORMALMAP");
+                mat.SetTexture("_MetallicGlossMap", tex);
+                mat.SetFloat("_Metallic", 1f);
+                mat.SetFloat("_SmoothnessTextureChannel", 0f);
+                mat.EnableKeyword("_METALLICSPECGLOSSMAP");
+                mat.SetFloat("_EnvironmentReflections", 0f);
+                mat.EnableKeyword("_ENVIRONMENTREFLECTIONS_OFF");
+                EditorAssetUtil.ValidateLikeInspector(mat);
+
+                foreach (string keyword in new[] { "_NORMALMAP", "_METALLICSPECGLOSSMAP", "_ENVIRONMENTREFLECTIONS_OFF" })
+                    Assert.IsTrue(mat.IsKeywordEnabled(keyword), keyword);
+                Assert.IsFalse(mat.GetShaderPassEnabled("MotionVectors"), "URP Lit validation turns the motion vector pass off");
+                var copy = new Material(mat);
+                EditorAssetUtil.ValidateLikeInspector(copy);
+                Assert.IsNull(Diff(mat, copy));
+                Object.DestroyImmediate(copy);
+            }
+            finally { Object.DestroyImmediate(tex); }
+        }
+
+        [Test]
+        public void LitValidation_RunsTheDetailMapPass()
+        {
+            var tex = new Texture2D(4, 4);
+            var mat = new Material(Shader.Find(EditorAssetUtil.Lit));
+            try
+            {
+                mat.SetTexture("_DetailAlbedoMap", tex);
+                EditorAssetUtil.ValidateLikeInspector(mat); // LitDetailGUI (internal to URP) found by reflection
+                Assert.IsTrue(mat.IsKeywordEnabled("_DETAIL_MULX2"));
+                mat.SetFloat("_DetailAlbedoMapScale", 0.5f);
+                EditorAssetUtil.ValidateLikeInspector(mat);
+                Assert.IsTrue(mat.IsKeywordEnabled("_DETAIL_SCALED"));
+                Assert.IsFalse(mat.IsKeywordEnabled("_DETAIL_MULX2"));
+            }
+            finally
+            {
+                Object.DestroyImmediate(mat);
+                Object.DestroyImmediate(tex);
+            }
+        }
+
+        /// <summary>
+        /// The editor runs no validation pass on the SurvivorSouls/* shaders: no CustomEditor and no keyword drawer, so their
+        /// materials never flip in git. A shader that gets one must be added to <see cref="EditorAssetUtil.ValidateLikeInspector"/>
+        /// and to <see cref="EveryUrpMaterial_IsAlreadyValidated"/> (KAN-178).
+        /// </summary>
+        [Test]
+        public void ProjectShaders_HaveNoInspectorValidationPass()
+        {
+            var keywordDrawer = new Regex(@"\[\s*(Toggle|ToggleOff|ToggleUI|KeywordEnum)\b");
+            var problems = new List<string>();
+            string[] shaders = Directory.GetFiles("Assets/_Project", "*.shader", SearchOption.AllDirectories);
+            foreach (string path in shaders)
+            {
+                string source = File.ReadAllText(path);
+                if (Regex.IsMatch(source, @"^\s*CustomEditor\b", RegexOptions.Multiline)) problems.Add($"{path}: CustomEditor");
+                if (keywordDrawer.IsMatch(source)) problems.Add($"{path}: keyword drawer ({keywordDrawer.Match(source).Value})");
+            }
+            Assert.GreaterOrEqual(shaders.Length, 10, "expected the SurvivorSouls/* shaders");
+            Assert.IsEmpty(problems, "these shaders get an editor validation pass: add them to EditorAssetUtil.ValidateLikeInspector:\n"
+                + string.Join("\n", problems));
         }
 
         [TestCase("Assets/_Project/Art/Materials/Game/M_Palette.mat", true)]
