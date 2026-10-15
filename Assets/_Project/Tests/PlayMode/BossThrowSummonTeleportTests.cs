@@ -94,9 +94,10 @@ namespace SurvivorSouls.Tests
             ghoulGo.SetActive(false);
             _ghoul = ghoulGo.AddComponent<Enemy>();
 
-            var spawnerGo = Track(new GameObject("Enemies"));
-            spawnerGo.SetActive(false);
-            _spawner = spawnerGo.AddComponent<EnemySpawner>();
+            // Active object, component off: no Start / Update (no waves), but summons live under an active parent, so they
+            // enable and leave Enemy.Active again when destroyed.
+            _spawner = Track(new GameObject("Enemies")).AddComponent<EnemySpawner>();
+            _spawner.enabled = false;
             _spawner.SetExtraTypes(new[] { _ghoul });
 
             _telegraph = Track(new GameObject("Telegraph")).AddComponent<GroundTelegraph>();
