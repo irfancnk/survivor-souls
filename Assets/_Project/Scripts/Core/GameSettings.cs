@@ -15,6 +15,7 @@ namespace SurvivorSouls.Core
         private const string KeyHighFrameRate = "settings.highFrameRate";
         private const string KeyReloadRing = "settings.reloadRing";
         public const string KeyTestMode = "settings.testMode";
+        private const string KeyFastSkillReveal = "settings.fastSkillReveal";
 
         public static event Action Changed;
 
@@ -48,6 +49,15 @@ namespace SurvivorSouls.Core
         {
             get => PlayerPrefs.GetInt(KeyReloadRing, 1) == 1;
             set => SetInt(KeyReloadRing, value ? 1 : 0);
+        }
+
+        /// <summary>
+        /// Fast skill reveal (KAN-159): the skill pick cards land at once, without the slot-machine roll. Off by default.
+        /// </summary>
+        public static bool FastSkillReveal
+        {
+            get => PlayerPrefs.GetInt(KeyFastSkillReveal, 0) == 1;
+            set => SetInt(KeyFastSkillReveal, value ? 1 : 0);
         }
 
         /// <summary>

@@ -42,6 +42,8 @@ namespace SurvivorSouls.Dev
     /// <c>-ss-reroll &lt;n&gt;</c> (KAN-67, with -ss-xp) taps the level-up re-roll n times once the cards are in (0.5 s apart,
     /// the capture follows the last flip); logs each new offer and the re-rolls left. n above the re-rolls left shows the
     /// disabled "x0" button.
+    /// <c>-ss-xp-lead &lt;seconds&gt;</c> (KAN-159) replaces the 1.5 s between the -ss-xp grant and the capture (e.g. 1.0 shows the
+    /// skill cards mid slot-machine roll; the Knight's level-up burst opens the pick ~0.5 s after the grant).
     /// <c>-ss-horde &lt;n&gt;</c> places n enemies (wave table mix of the last phase) on a ring 4-11 m round the player after
     /// load, from the spawner's pools (perf runs; KAN-30). <c>-ss-immortal</c> turns off all damage on the player (KAN-44).
     /// <c>-ss-hold &lt;n&gt;</c> keeps at least n enemies alive: every second, missing ones are spawned off screen (perf soak).
@@ -119,6 +121,7 @@ namespace SurvivorSouls.Dev
         private string _openChest;
         private string _offer;
         private int _rerolls;
+        private float _xpLead = XpLead; // -ss-xp-lead (KAN-159): shorter = capture the skill reel mid-roll
         private int _horde;
         private float _hordePower;
         private bool _hordeTiers;
@@ -181,6 +184,7 @@ namespace SurvivorSouls.Dev
             shot._chests = int.TryParse(GetArg("-ss-chests"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int ch) ? ch : 0;
             shot._offer = GetArg("-ss-offer");
             shot._rerolls = int.TryParse(GetArg("-ss-reroll"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int rr) ? rr : 0;
+            if (float.TryParse(GetArg("-ss-xp-lead"), NumberStyles.Float, CultureInfo.InvariantCulture, out float xl)) shot._xpLead = Mathf.Max(0f, xl);
             shot._openChest = GetArg("-ss-open-chest");
             shot._xp = int.TryParse(GetArg("-ss-xp"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int x) ? x : 0;
             shot._horde = int.TryParse(GetArg("-ss-horde"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int h) ? h : 0;
@@ -313,7 +317,7 @@ namespace SurvivorSouls.Dev
             if (_store) OpenStore();
 
             float release = Mathf.Clamp(_release, 0f, _delay);
-            float xpLead = _xp > 0 ? Mathf.Min(XpLead, _delay - release) : 0f;
+            float xpLead = _xp > 0 ? Mathf.Min(_xpLead, _delay - release) : 0f;
             float wait = _delay - release - xpLead;
             yield return new WaitForSecondsRealtime(Mathf.Max(0f, wait - 1f));
             yield return LogStats(Mathf.Min(1f, wait));
@@ -914,8 +918,12 @@ namespace SurvivorSouls.Dev
             }
             for (int i = 0; i < count; i++)
             {
+                // KAN-159: the cards roll first; the re-roll button arms after the last reel stops.
+                for (float t = 0f; t < 3f && screen.IsShowing && !screen.CanReroll && screen.RerollsLeft > 0; t += Time.unscaledDeltaTime)
+                    yield return null;
                 bool ok = screen.Reroll();
                 yield return new WaitForSecondsRealtime(0.5f);
+                for (float t = 0f; t < 3f && screen.IsRolling; t += Time.unscaledDeltaTime) yield return null;
                 var names = new System.Text.StringBuilder();
                 foreach (var s in screen.Options) names.Append(s.Id).Append(' ');
                 Debug.Log($"[DevScreenshot] Re-roll {i + 1}: {(ok ? "done" : "refused")}, left={screen.RerollsLeft}, " +

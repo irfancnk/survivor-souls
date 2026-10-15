@@ -28,6 +28,8 @@ namespace SurvivorSouls.Editor.Audio
             public AudioClip[] HeartHeals;
             /// <summary>Level-up re-roll (KAN-67): cards flip to a new offer.</summary>
             public AudioClip[] Rerolls;
+            /// <summary>Skill pick slot-machine roll (KAN-159): soft tick as a skill passes, clunk when a reel stops.</summary>
+            public AudioClip[] ReelTicks, ReelStops;
             /// <summary>Boss charge (KAN-168): heavy foot-scrape at the warning, dash whoosh + clank + grunt, stop thud, wall crash.</summary>
             public AudioClip[] ChargeScrapes, ChargeDashes, ChargeStops, ChargeCrashes;
             /// <summary>Boss charge wind-up growl (KAN-168): seamless loop, pitch raised with the lane fill at runtime.</summary>
@@ -59,6 +61,8 @@ namespace SurvivorSouls.Editor.Audio
                 SkillUpgrades = Many("sfx_skill_upgrade", 1, SkillUpgrade),
                 HeartHeals = Many("sfx_heart_heal", 1, HeartHeal),
                 Rerolls = Many("sfx_card_reroll", 1, CardReroll),
+                ReelTicks = Many("sfx_reel_tick", 2, ReelTick),
+                ReelStops = Many("sfx_reel_stop", 1, ReelStop),
                 PortalOpens = Many("sfx_portal_open", 1, PortalOpen),
                 PortalEnters = Many("sfx_portal_enter", 1, PortalEnter),
                 ChamberArrives = Many("sfx_chamber_arrive", 1, ChamberArrive),
@@ -271,6 +275,32 @@ namespace SurvivorSouls.Editor.Audio
             NoiseBurst(b, 0.3f, 0.06f, 0.4f, 150f, 1400f, 60f, rng);             // die knock
             Sweep(b, 0.3f, 0.12f, 220f, 180f, 0.3f, 30f, 2);                     // knock body
             Sweep(b, 0.31f, 0.19f, 880f, 880f, 0.07f, 14f, 1);                   // A5 ring
+            return Normalize(b, 0.7f);
+        }
+
+        /// <summary>Skill reel tick (KAN-159, ~40 ms): a dry wooden ratchet click, high and quiet, so 16 a second stay soft.</summary>
+        private static float[] ReelTick(int seed)
+        {
+            var rng = new System.Random(seed * 1597);
+            var b = new float[(int)(Rate * 0.04f)];
+            Click(b, 0f, 0.003f, 0.5f, 6200f, rng);                             // pawl click
+            NoiseBurst(b, 0f, 0.025f, 0.3f, 1800f, 5200f, 140f, rng);           // wood body
+            Sweep(b, 0f, 0.03f, 1760f + seed * 90f, 1700f, 0.08f, 90f, 1);     // tiny ring, a hair apart per variant
+            return Normalize(b, 0.45f);
+        }
+
+        /// <summary>
+        /// Skill reel stop (KAN-159, ~0.22 s): a heavy wooden clunk with an iron latch, low enough to sit under the tier
+        /// reveal that plays at the same moment.
+        /// </summary>
+        private static float[] ReelStop(int seed)
+        {
+            var rng = new System.Random(seed * 1609);
+            var b = new float[(int)(Rate * 0.22f)];
+            NoiseBurst(b, 0f, 0.05f, 0.7f, 90f, 900f, 55f, rng);                // wooden block
+            Sweep(b, 0f, 0.14f, 150f, 104f, 0.55f, 26f, 2);                     // body thud
+            Click(b, 0.006f, 0.005f, 0.35f, 4200f, rng);                        // iron latch
+            Sweep(b, 0.008f, 0.12f, 523.3f, 520f, 0.06f, 30f, 1);               // faint C5 ring
             return Normalize(b, 0.7f);
         }
 

@@ -424,6 +424,31 @@ namespace SurvivorSouls.Gameplay.Skills
             return n;
         }
 
+        /// <summary>
+        /// Slot-machine reel of the skill pick (KAN-159): fills <paramref name="results"/> with the skills a level-up roll at
+        /// <paramref name="level"/> could offer right now (same rule as <see cref="OfferableCount"/>), so the reel never
+        /// shows a maxed or locked skill. Show only: it does not touch the roll, the odds or the pity counter.
+        /// </summary>
+        public int CollectOfferable(int level, List<SkillDefinition> results)
+        {
+            results.Clear();
+            if (progression == null) return 0;
+            _pool.Clear();
+            progression.CollectPool(level, _pool);
+            foreach (var s in _pool)
+                if (CanOffer(s) && !results.Contains(s)) results.Add(s);
+            return results.Count;
+        }
+
+        /// <summary>Chest upgrade reel (KAN-159): owned skills that can still level up (<see cref="CanUpgrade"/>), in owned order.</summary>
+        public int CollectUpgradable(List<SkillDefinition> results)
+        {
+            results.Clear();
+            foreach (var o in _owned)
+                if (o.Level < o.Skill.MaxLevel) results.Add(o.Skill);
+            return results.Count;
+        }
+
         /// <summary>Re-rolls left this run (KAN-67): the table's per-run count plus bonuses minus the ones spent.</summary>
         public int RerollsLeft => SurvivorSouls.Gameplay.Chamber.RunState.RerollsLeft(progression != null ? progression.RerollsPerRun : 0);
 

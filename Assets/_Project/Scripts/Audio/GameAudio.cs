@@ -57,6 +57,11 @@ namespace SurvivorSouls.Audio
         [SerializeField] private AudioClip[] boonPicks;
         [SerializeField] private AudioClip[] chestDrops;
         [SerializeField] private AudioClip[] rerolls;
+        [Tooltip("Skill pick slot-machine roll (KAN-159): tick as a skill passes (one shared voice), clunk on each reel stop.")]
+        [SerializeField] private AudioClip[] reelTicks;
+        [SerializeField] private AudioClip[] reelStops;
+        [SerializeField, Range(0f, 1f)] private float reelTickVolume = 0.22f;
+        [SerializeField, Range(0f, 1f)] private float reelStopVolume = 0.5f;
         [SerializeField] private AudioClip[] chestOpens;
         [Tooltip("Owned skill levelled up: HUD glow chime (KAN-74).")]
         [SerializeField] private AudioClip[] skillUpgrades;
@@ -126,6 +131,8 @@ namespace SurvivorSouls.Audio
 
         private AudioSource[] _pool;
         private AudioSource _ambience;
+        private AudioSource _reelVoice; // KAN-159: ticks cut each other instead of piling up
+        private int _reelTick;
         private int _next;
         private float _stepDistance;
         private int _lastClip = -1;
@@ -140,6 +147,7 @@ namespace SurvivorSouls.Audio
             _pool = new AudioSource[voices];
             for (int i = 0; i < voices; i++) _pool[i] = NewSource($"Voice {i}");
             _ambience = NewSource("Ambience");
+            _reelVoice = NewSource("Reel Ticks");
             _ambience.loop = true;
             _ambience.clip = ambience;
         }
@@ -166,6 +174,8 @@ namespace SurvivorSouls.Audio
                 skillChoice.CardRevealed += OnCardRevealed;
                 skillChoice.Upgraded += OnSkillUpgraded;
                 skillChoice.Rerolled += OnRerolled;
+                skillChoice.ReelTicked += OnReelTicked;
+                skillChoice.ReelStopped += OnReelStopped;
             }
             if (skillHud != null) skillHud.UpgradeShown += OnUpgradeShown;
             if (chests != null)
@@ -219,6 +229,8 @@ namespace SurvivorSouls.Audio
                 skillChoice.CardRevealed -= OnCardRevealed;
                 skillChoice.Upgraded -= OnSkillUpgraded;
                 skillChoice.Rerolled -= OnRerolled;
+                skillChoice.ReelTicked -= OnReelTicked;
+                skillChoice.ReelStopped -= OnReelStopped;
             }
             if (skillHud != null) skillHud.UpgradeShown -= OnUpgradeShown;
             if (chests != null)
@@ -309,6 +321,21 @@ namespace SurvivorSouls.Audio
 
         /// <summary>Level-up re-roll (KAN-67): card whoosh + die knock; the new cards' tier sounds follow as they open.</summary>
         private void OnRerolled(int left) => Play(rerolls, boonPickVolume * 0.85f, 0.03f);
+
+        /// <summary>Skill reel tick (KAN-159): one shared voice, so a new tick cuts the last one (no pile-up from 3 reels).</summary>
+        private void OnReelTicked()
+        {
+            if (reelTicks == null || reelTicks.Length == 0 || _reelVoice == null) return;
+            _reelTick = (_reelTick + 1) % reelTicks.Length;
+            _reelVoice.Stop();
+            _reelVoice.clip = reelTicks[_reelTick];
+            _reelVoice.pitch = 1f + Random.Range(-0.04f, 0.04f);
+            _reelVoice.volume = reelTickVolume * GameSettings.SfxVolume;
+            _reelVoice.Play();
+        }
+
+        /// <summary>Skill reel stop (KAN-159): clunk, a hair lower per card so three stops read as a row; the tier sound follows.</summary>
+        private void OnReelStopped(int index, SkillDefinition skill) => Play(reelStops, reelStopVolume, 0.02f, 1f - index * 0.04f);
 
         private void OnChestDropped(ReliquaryChest chest) => Play(chestDrops, boonPickVolume * 0.8f, 0.04f);
 
