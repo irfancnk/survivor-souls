@@ -1261,7 +1261,7 @@ namespace SurvivorSouls.Gameplay.Boss
                 if (type == null || spawner == null) continue;
                 int slot = FreeSummonSlot();
                 if (slot < 0) break;
-                _summoned[slot] = spawner.SpawnAt(type, _summonAt[i]);
+                _summoned[slot] = spawner.SpawnAt(type, _summonAt[i], onScreen: true); // they rise in sight, by design
                 spawned++;
             }
             _summonPlanned = 0;

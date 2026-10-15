@@ -343,8 +343,12 @@ namespace SurvivorSouls.Gameplay.Combat
         /// <summary>Tests and tools: replaces <see cref="ExtraTypes"/> (pooled on demand, no prewarm).</summary>
         public void SetExtraTypes(Enemy[] types) => extraTypes = types ?? new Enemy[0];
 
-        /// <summary>Takes <paramref name="prefab"/> from its pool and starts it at <paramref name="position"/>. Public for tests and boss spawners.</summary>
-        public Enemy SpawnAt(Enemy prefab, Vector3 position)
+        /// <summary>
+        /// Takes <paramref name="prefab"/> from its pool and starts it at <paramref name="position"/>. Public for tests and boss
+        /// spawners. <paramref name="onScreen"/>: the spawn is meant to be seen (boss summons, KAN-119), so the off-screen audit
+        /// skips it.
+        /// </summary>
+        public Enemy SpawnAt(Enemy prefab, Vector3 position, bool onScreen = false)
         {
             var enemy = Take(prefab);
             _live.Add(enemy);
@@ -352,7 +356,7 @@ namespace SurvivorSouls.Gameplay.Combat
             enemy.Spawn(position, player, _releaseAction, boss ? _healthMul : SpawnHealthMultiplier);
             if (!boss && _scaling != null) enemy.SetDangerStep(_scaling, DangerStep);
             Remember(position);
-            Audit(position, "spawn");
+            if (!onScreen) Audit(position, "spawn");
             _stats.Spawned++;
             Placed?.Invoke(enemy, position, false);
             return enemy;
@@ -542,6 +546,7 @@ namespace SurvivorSouls.Gameplay.Combat
 
         private bool InViewport(Vector3 world)
         {
+            if (viewCamera == null) return false;
             Vector3 v = viewCamera.WorldToViewportPoint(world);
             return v.z > 0f && v.x >= 0f && v.x <= 1f && v.y >= 0f && v.y <= 1f;
         }
