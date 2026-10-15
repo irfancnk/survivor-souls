@@ -150,10 +150,17 @@ namespace SurvivorSouls.Gameplay.Boss
         private const float SummonClearRadius = 0.5f;
         /// <summary>Most shockwave rings in one attack (the shared circle pool caps it too).</summary>
         public const int MaxWaves = 4;
+        /// <summary>KAN-109: most burning patches of one boss on the ground (a new one puts out its oldest).</summary>
+        public const int MaxBurns = 8;
+        /// <summary>KAN-109: hazard owner id of boss patches (ranged zombies count up from 1; one boss at a time).</summary>
+        public const int BurnOwner = -109;
 
         [SerializeField] private BossData data;
         [Tooltip("KAN-108: bosses of this Realm's boss Chambers in order (round). Empty = data above.")]
         [SerializeField] private BossData[] bosses = new BossData[0];
+        [Tooltip("KAN-109: other bosses in the build (Realm 2+ candidates). Never fought unless picked by the dev flag "
+            + "-ss-boss-type (ForcedBoss) or a tool.")]
+        [SerializeField] private BossData[] library = new BossData[0];
         [Tooltip("Rules for boss Chambers: OpenCondition KillBoss (no clock).")]
         [SerializeField] private ChamberRules bossRules;
         [SerializeField] private SurvivalTimer timer;
@@ -292,6 +299,8 @@ namespace SurvivorSouls.Gameplay.Boss
         public event Action<Vector3, int> BeamsWarned;
         /// <summary>KAN-121: the beams went out (boss ground point, damage dealt; 0 = dodged).</summary>
         public event Action<Vector3, float> BeamsEnded;
+        /// <summary>KAN-109: a burning patch was left on the ground (centre, radius).</summary>
+        public event Action<Vector3, float> BurnPlaced;
 
         public BossData Data => data;
         /// <summary>The attack list of the fight (KAN-108).</summary>
@@ -427,6 +436,8 @@ namespace SurvivorSouls.Gameplay.Boss
         /// </summary>
         public BossData BossFor(int chamber)
         {
+            var forced = FindBoss(ForcedBoss);
+            if (forced != null) return forced;
             if (bosses == null || bosses.Length == 0) return null;
             var setup = FindAnyObjectByType<ChamberSetup>(); // once per boss Chamber
             var difficulty = setup != null ? setup.Difficulty : null;
@@ -439,6 +450,38 @@ namespace SurvivorSouls.Gameplay.Boss
 
         /// <summary>The boss list per boss Chamber (KAN-108).</summary>
         public BossData[] Bosses => bosses;
+
+        /// <summary>KAN-109: other bosses in the build (see <see cref="ForcedBoss"/>).</summary>
+        public BossData[] Library => library;
+
+        /// <summary>
+        /// KAN-109, dev builds and tests: roster id (e.g. PyreLord; body prefab Enemy_&lt;id&gt;) or asset name of the boss every
+        /// boss Chamber gets, from the boss list, the library or the default data. Empty or unknown = the normal pick.
+        /// </summary>
+        public static string ForcedBoss { get; set; }
+
+        /// <summary>KAN-109: the boss of this fight's lists whose body is Enemy_&lt;<paramref name="id"/>&gt; or whose asset is named so.</summary>
+        public BossData FindBoss(string id)
+        {
+            if (string.IsNullOrEmpty(id)) return null;
+            var hit = FindIn(bosses, id) ?? FindIn(library, id);
+            return hit != null ? hit : Matches(data, id) ? data : null;
+        }
+
+        private static BossData FindIn(BossData[] list, string id)
+        {
+            if (list == null) return null;
+            foreach (var d in list)
+                if (Matches(d, id)) return d;
+            return null;
+        }
+
+        private static bool Matches(BossData d, string id) =>
+            d != null && (string.Equals(d.name, id, StringComparison.OrdinalIgnoreCase)
+                          || d.Prefab != null && string.Equals(d.Prefab.name, "Enemy_" + id, StringComparison.OrdinalIgnoreCase));
+
+        /// <summary>Tests and tools: the library without the scene builder.</summary>
+        public void SetLibrary(BossData[] bossLibrary) => library = bossLibrary ?? new BossData[0];
 
         private void Update() => Tick(Time.deltaTime);
 
@@ -788,6 +831,7 @@ namespace SurvivorSouls.Gameplay.Boss
                 dealt = player.TakeDamage(data.DamageFor(_attack.damage, player.Max));
             if (telegraph != null) telegraph.Flash();
             BeginRecover(_attack.recover, _attack.cooldown);
+            Burn(_slamCentre);
             Slammed?.Invoke(_slamCentre, dealt);
         }
 
@@ -1108,6 +1152,23 @@ namespace SurvivorSouls.Gameplay.Boss
             SpiralFired?.Invoke(_attackOrigin, _spiralFired);
         }
 
+        /// <summary>
+        /// KAN-109: a burning patch of the current attack at <paramref name="centre"/> (fire hazard of the scene's shared
+        /// <see cref="GroundHazards"/> pool; none in the scene = no patch). One boss keeps at most <see cref="MaxBurns"/>.
+        /// </summary>
+        private void Burn(Vector3 centre)
+        {
+            if (!_attack.Burns || _boss == null || player == null) return;
+            var pool = GroundHazards.Current;
+            if (pool == null) return;
+            var spec = new HazardSpec
+            {
+                kind = HazardKind.Fire, radius = _attack.burnRadius, life = _attack.burnLife,
+                dps = _attack.burnDps * player.Max,
+            };
+            if (pool.Spawn(centre, spec, BurnOwner, MaxBurns)) BurnPlaced?.Invoke(centre, _attack.burnRadius);
+        }
+
         /// <summary>The rain's circle pool: the wired one, else the scene's ranged-zombie pool.</summary>
         private EnemyTelegraphs RainPool => circles != null ? circles : EnemyTelegraphs.Current;
 
@@ -1149,6 +1210,7 @@ namespace SurvivorSouls.Gameplay.Boss
                 if (_rainPool != null) _rainPool.Release(circle);
                 _rain[i] = null;
                 _rainLive--;
+                Burn(_rainAt[i]);
                 RainStruck?.Invoke(_rainAt[i], dealt);
             }
             if (_rainPlaced >= count && _rainLive == 0) BeginRecover(_attack.recover, _attack.cooldown);

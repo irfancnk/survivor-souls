@@ -59,6 +59,10 @@ namespace SurvivorSouls.Gameplay.Boss
     /// <see cref="width"/>; the Knight starts between two), shown while it winds up, then live: they turn
     /// <see cref="spread"/> degrees per second (random way) for <see cref="duration"/> s. The whole cast hits once.</item>
     /// </list>
+    /// KAN-109: a <b>Slam</b> or <b>Rain</b> entry with <see cref="burnRadius"/>, <see cref="burnLife"/> and
+    /// <see cref="burnDps"/> above 0 leaves a burning ground patch (shared <see cref="SurvivorSouls.Gameplay.Combat.GroundHazards"/>
+    /// pool, fire look) where each hit lands: the slam circle centre, every meteor circle. It hurts only while the Knight stands
+    /// in it and goes out after its life (the Pyre Lord's flame circle and meteor rain).
     /// </summary>
     [Serializable]
     public struct BossAttack
@@ -101,6 +105,12 @@ namespace SurvivorSouls.Gameplay.Boss
         [Min(0f)] public float turn;
         [Tooltip("Summon: roster id of the summoned type (e.g. FrenziedGhoul). Must be a type of the scene's spawner.")]
         public string summon;
+        [Tooltip("Slam / Rain (KAN-109): radius (m) of the burning patch left where a hit lands. 0 = none.")]
+        [Min(0f)] public float burnRadius;
+        [Tooltip("Slam / Rain (KAN-109): seconds the burning patch stays.")]
+        [Min(0f)] public float burnLife;
+        [Tooltip("Slam / Rain (KAN-109): damage per second inside the patch, as a share of the Knight's max health.")]
+        [Range(0f, 0.5f)] public float burnDps;
         [Tooltip("Animator state the body plays for this attack (wind-up and strike). Empty or missing = its Attack state.")]
         public string clip;
 
@@ -110,6 +120,19 @@ namespace SurvivorSouls.Gameplay.Boss
 
         /// <summary>Wind-up with the 0.6 s floor (the phase 2 factor comes on top, <see cref="BossData.TelegraphFor"/>).</summary>
         public float Telegraph => Mathf.Max(BossData.MinTelegraph, telegraph);
+
+        /// <summary>KAN-109: this entry leaves a burning patch where its hits land.</summary>
+        public bool Burns => burnRadius > 0f && burnLife > 0f && burnDps > 0f;
+
+        /// <summary>KAN-109: a copy of this entry that leaves burning patches (radius m, life s, dps as a share of max health).</summary>
+        public BossAttack WithBurn(float radius, float life, float dpsShare)
+        {
+            var a = this;
+            a.burnRadius = radius;
+            a.burnLife = life;
+            a.burnDps = dpsShare;
+            return a;
+        }
 
         public override string ToString() => string.IsNullOrEmpty(label) ? type.ToString() : label;
 

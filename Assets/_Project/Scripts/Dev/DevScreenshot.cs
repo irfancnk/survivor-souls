@@ -63,6 +63,8 @@ namespace SurvivorSouls.Dev
     /// (<c>BossAttack.Sample</c>, Pyre Lord numbers) added to its fight for the shot.
     /// KAN-119: also <c>lobbed|summon|teleport</c> (samples: Rotting Colossus boulder / ghoul summon, Bone Matriarch teleport).
     /// KAN-121: also <c>shockwave|homing|beams</c> (samples: Rotting Colossus double slam, Bone Matriarch skulls / cross beams).
+    /// <c>-ss-boss-type &lt;Id&gt;</c> (KAN-109): every boss Chamber gets that boss (roster id, e.g. <c>PyreLord</c>, from the
+    /// fight's boss list or its library of other bosses in the build) instead of the Realm's own.
     /// <c>-ss-shaman-cast orbs|hex|raise[,&lt;s&gt;]</c> (KAN-107, with <c>-ss-enemy HexboundShaman,...</c>): every Shaman starts
     /// that cast that many seconds after load (default 1.2; hex falls back to raise without zombies in reach).
     /// <c>-ss-hearts &lt;n&gt;</c> (KAN-60, boss Chamber): drops n healing hearts ahead of the Knight right after load (cap
@@ -169,6 +171,8 @@ namespace SurvivorSouls.Dev
             shot._boss = GetArg("-ss-boss");
             shot._bossAttack = GetArg("-ss-boss-attack");
             shot._bossStay = Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-boss-stay") >= 0;
+            // KAN-109: which boss the boss Chambers get (before the Game scene wakes: BossFight picks in Start).
+            SurvivorSouls.Gameplay.Boss.BossFight.ForcedBoss = GetArg("-ss-boss-type");
             shot._hearts = int.TryParse(GetArg("-ss-hearts"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int hs) ? hs : 0;
             shot._cleared = int.TryParse(GetArg("-ss-cleared"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int cl) ? cl : 0;
             // Souls wallet (KAN-96) set before any scene wakes, so the menu and the end screens show a known balance.
