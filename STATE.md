@@ -517,6 +517,7 @@
   - Clips: hand-keyed IK `Shoot` (1.0 s loop, release frame 19 = 0.63 s, string to the jaw, follow-through) replaces the Meshy Archery Shot; new `Idle` (2 s, bow upright). Meshy Walking / Running got rest keys for the new bones.
   - Checked with EEVEE renders (every clip, face close-ups, 55 deg game camera) and the Bestiary viewer v5. Details: `Docs/ENEMY_ROSTER.md` section 7.
   - Blender MCP add-on is not installed in Blender 5.2 (Blender Lab extensions repo); all work ran headless via CLI.
+  - Polish after the user's Legolas reference: side-on stance (hips / feet 82 deg off the shot line, chest 46 deg, head to the target), bow canted 18 deg, right hand curled into a fist in the mesh (no finger bones), old grip / arrow flakes cut from the bow hand. Release frame unchanged (19 = 0.63 s). Shoot rotates the hips inside the clip, so Idle / Run -> Shoot blends turn the body ~80 deg (expected).
 
 - 2026-10-15: Bug fix, flaky soak test "pool covers the cap" (KAN-155, branch `feat/kan-155-deterministic-soak`, from main 10e783c). Scheduled-task run.
   - Cause: seeding was not the problem (SetUp already calls `Random.InitState(2029)`); frame times at timeScale 8 make every soak path different. Per-type pools are sized from the weighted share (x1.5, max 1.25x cap), so a luck streak on one type (plus its dying bodies) emptied that pool and `Take` instantiated mid-fight, while other types still had idle bodies.
