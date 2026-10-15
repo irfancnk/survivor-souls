@@ -11,13 +11,20 @@ namespace SurvivorSouls.Core
     /// Basic anti-tamper: a checksum key sits next to the balance. A balance that does not match its checksum (hand-edited
     /// prefs) is reset to 0 on the next read and <see cref="TamperDetected"/> turns true. This stops casual edits only; real
     /// protection needs a server (out of scope, see KAN-89).
+    /// Pending souls (KAN-101): when the app goes to the background mid-run, the run's unbanked souls are saved as a
+    /// pending amount (own key + checksum). iOS can kill a background app, so the next menu start adds a pending amount
+    /// to the balance once (<see cref="RestorePending"/>). A normal run end clears it first, so nothing is counted twice.
     /// </summary>
     public static class SoulWallet
     {
         public const string KeyBalance = "wallet.souls";
         public const string KeyCheck = "wallet.souls.check";
+        public const string KeyPending = "wallet.souls.pending";
+        public const string KeyPendingCheck = "wallet.souls.pending.check";
         private const uint Salt = 0x5EED50F1u;
+        private const uint PendingSalt = 0x5EED50F2u;
         private static readonly CheckedPrefInt Store = new CheckedPrefInt(KeyBalance, Salt);
+        private static readonly CheckedPrefInt PendingStore = new CheckedPrefInt(KeyPending, PendingSalt);
 
         /// <summary>New balance after every earn, spend or clear.</summary>
         public static event Action<int> Changed;
@@ -66,12 +73,62 @@ namespace SurvivorSouls.Core
             return true;
         }
 
-        /// <summary>Balance to 0 (debug, tests).</summary>
+        /// <summary>Balance to 0 and no pending souls (debug, tests).</summary>
         public static void Clear()
         {
             TamperDetected = false;
+            ClearPending();
             Write(0);
             Changed?.Invoke(0);
+        }
+
+        /// <summary>
+        /// Souls of a run that was not banked when the app last went to the background (KAN-101). 0 when none is saved; a
+        /// pending amount that fails its checksum is deleted and reads 0.
+        /// </summary>
+        public static int PendingSouls
+        {
+            get
+            {
+                int value = PendingStore.Read(0, out bool tampered);
+                if (!tampered) return value;
+                Debug.LogWarning($"[SoulWallet] Pending souls {PlayerPrefs.GetInt(KeyPending, 0)} fail their checksum: dropped.");
+                ClearPending();
+                return 0;
+            }
+        }
+
+        /// <summary>
+        /// Saves the run's unbanked souls as the pending amount (replaces the last one). Not positive = no pending amount.
+        /// Called when the app goes to the background mid-run (<c>RunCounters</c>).
+        /// </summary>
+        public static void SavePending(int amount)
+        {
+            if (amount <= 0) ClearPending();
+            else PendingStore.Write(amount);
+        }
+
+        /// <summary>No pending amount any more (a run end banked the souls, or the pending amount was restored).</summary>
+        public static void ClearPending()
+        {
+            if (!PlayerPrefs.HasKey(KeyPending) && !PlayerPrefs.HasKey(KeyPendingCheck)) return;
+            PlayerPrefs.DeleteKey(KeyPending);
+            PlayerPrefs.DeleteKey(KeyPendingCheck);
+            PlayerPrefs.Save();
+        }
+
+        /// <summary>
+        /// App start with no run going (main menu): adds the pending amount to the balance once and deletes it. The delete
+        /// comes first, so a crash between the two steps loses the amount instead of counting it twice. Returns the souls added.
+        /// </summary>
+        public static int RestorePending()
+        {
+            int amount = PendingSouls;
+            ClearPending();
+            if (amount <= 0) return 0;
+            Earn(amount);
+            Debug.Log($"[SoulWallet] Restored {amount} pending souls from an unfinished run.");
+            return amount;
         }
 
         /// <summary>Checksum of a balance (<see cref="CheckedPrefInt.Checksum"/> with the Souls salt). Public for tests.</summary>

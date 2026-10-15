@@ -129,6 +129,7 @@ namespace SurvivorSouls.UI.MainMenu
             _toast = root.Q<Label>(ToastName);
             root.Q<Label>(VersionName).text = $"v{Application.version}";
             _wallet = root.Q<Label>(WalletName);
+            int recovered = SoulWallet.RestorePending(); // souls of a run the OS killed in the background (KAN-101)
             ShowWallet(SoulWallet.Balance);
             SoulWallet.Changed += ShowWallet;
             _gems = root.Q<Label>(GemsName);
@@ -180,7 +181,11 @@ namespace SurvivorSouls.UI.MainMenu
                 else storeButton.AddToClassList(HiddenClass);
             }
             _play.Focus();
+            if (recovered > 0) ShowToast(RecoveredText(recovered), 4f); // as long as the welcome toast: news, not a hint
         }
+
+        /// <summary>Toast after the pending souls of an unfinished run were banked (KAN-101).</summary>
+        public static string RecoveredText(int souls) => $"{PlayerHealthHud.FormatCount(souls)} souls recovered from your unfinished journey.";
 
         private void OnDisable()
         {

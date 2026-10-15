@@ -21,6 +21,7 @@ namespace SurvivorSouls.Tests
     /// Soul tree levels (KAN-98) are saved too and zeroed for the suite: every Game scene test sees the bare Knight, even
     /// when nodes were bought in the editor.
     /// Test Mode (KAN-144) is saved and turned off for the suite: lock, START and progress tests see the real rules.
+    /// Pending souls (KAN-101) are saved and deleted for the suite: a menu test must not bank the editor's pending amount.
     /// </summary>
     [SetUpFixture]
     public sealed class WalletPrefsGuard
@@ -31,6 +32,8 @@ namespace SurvivorSouls.Tests
         {
             yield return SoulWallet.KeyBalance;
             yield return SoulWallet.KeyCheck;
+            yield return SoulWallet.KeyPending;
+            yield return SoulWallet.KeyPendingCheck;
             foreach (var k in GemWallet.Keys) yield return k;
             foreach (var k in TreeKeys()) yield return k;
             yield return GameSettings.KeyTestMode;
@@ -58,6 +61,7 @@ namespace SurvivorSouls.Tests
                 if (PlayerPrefs.HasKey(k)) _saved[k] = PlayerPrefs.GetInt(k);
             foreach (var k in TreeKeys()) PlayerPrefs.DeleteKey(k); // no bought levels during the suite
             PlayerPrefs.DeleteKey(GameSettings.KeyTestMode); // real lock rules during the suite
+            SoulWallet.ClearPending(); // no pending souls (KAN-101) banked by a menu test
         }
 
         [OneTimeTearDown]
