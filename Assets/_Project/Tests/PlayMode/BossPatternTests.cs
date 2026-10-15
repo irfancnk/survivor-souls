@@ -623,6 +623,11 @@ namespace SurvivorSouls.Tests
             Assert.That(fight.Current, Is.EqualTo(BossFight.Stage.Fighting));
             var knight = Object.FindAnyObjectByType<PlayerHealth>();
             knight.Invulnerable = true;
+            // KAN-169: the Knight auto-shoots the minions and levels up; the level-up pause (time scale 0) froze the boss
+            // in its wind-up while this test counts unscaled time. No level-up or chest pick in this test.
+            var levelUp = Object.FindAnyObjectByType<LevelUpFlow>();
+            if (levelUp != null) levelUp.enabled = false;
+            GamePause.Clear();
             var arena = BossArena.Active;
             Assert.That(arena, Is.Not.Null);
 
@@ -661,7 +666,7 @@ namespace SurvivorSouls.Tests
                     limit -= Time.unscaledDeltaTime;
                     yield return null;
                 }
-                Assert.That(fight.CurrentAttack, Is.EqualTo(BossFight.Attack.Recover), $"{attacks[i]} recovers");
+                Assert.That(fight.CurrentAttack, Is.EqualTo(BossFight.Attack.Recover), $"{attacks[i]} recovers (paused {GamePause.IsPaused})");
                 int pose = fight.Boss.AttackStateHash;
                 bool crashed = attacks[i].type == BossFight.Move.Charge && fight.DashBlocked;
                 Assert.That(pose, Is.EqualTo(crashed ? roar : stand), $"{attacks[i]} recover pose (crash {crashed})");
