@@ -81,7 +81,7 @@ namespace SurvivorSouls.Tests
         }
 
         [Test]
-        public void SettleAll_RestoresChurnOnly_KeepsRealChange()
+        public void Settle_RestoresChurnOnly_KeepsRealChange()
         {
             const string dir = "Temp/StableAssetWriterTests"; // outside Assets: no import
             string churn = dir + "/Churn.prefab";
@@ -99,7 +99,7 @@ namespace SurvivorSouls.Tests
                 string changed = Prefab(100, 101, 200, 201, 300, 301, ax: 3f);
                 File.WriteAllText(real, changed);
 
-                StableAssetWriter.SettleAll();
+                StableAssetWriter.SettleRemembered(); // no SaveAssets: other tests' loaded assets stay untouched
 
                 Assert.AreEqual(original, File.ReadAllText(churn), "fileID churn only: old bytes come back");
                 Assert.AreEqual(changed, File.ReadAllText(real), "a real change stays");

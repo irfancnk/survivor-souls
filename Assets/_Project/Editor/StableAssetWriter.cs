@@ -38,6 +38,12 @@ namespace SurvivorSouls.Editor
         public static int SettleAll()
         {
             AssetDatabase.SaveAssets();
+            return SettleRemembered();
+        }
+
+        /// <summary><see cref="SettleAll"/> without the save: only the remembered files are touched (tests).</summary>
+        public static int SettleRemembered()
+        {
             int restored = 0;
             foreach (var pair in Before)
             {
