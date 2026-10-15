@@ -18,7 +18,8 @@ namespace SurvivorSouls.Tests
     /// drops a wisp of the right tier, the magnet collects inside the pickup radius only, drift brings far wisps in (and
     /// stays off when disabled), a full pool merges XP instead of losing it, pickups tap the haptics once per burst,
     /// 60 wisps simulate + render with no GC allocation, and the level-up flow pauses, shows one choice per level in
-    /// order and resumes.
+    /// order and resumes. KAN-34: every tier is a gold orb, bigger tiers have bigger orbs and halos, and each wisp
+    /// renders one orb body plus one larger halo.
     /// </summary>
     public sealed class XpTests
     {
@@ -229,7 +230,8 @@ namespace SurvivorSouls.Tests
         {
             var bodies = Track(new GameObject("Bodies")).AddComponent<ParticleSystem>();
             var motes = Track(new GameObject("Motes")).AddComponent<ParticleSystem>();
-            _field.Setup(_xp, _collector, 128, bodies, motes);
+            var halos = Track(new GameObject("Halos")).AddComponent<ParticleSystem>();
+            _field.Setup(_xp, _collector, 128, bodies, motes, halos);
             for (int i = 0; i < 60; i++)
             {
                 float a = i * 2.4f, d = i % 2 == 0 ? 1.5f : 6f; // half fly in, half rest and emit motes
@@ -239,6 +241,51 @@ namespace SurvivorSouls.Tests
             Assert.That(() => _field.Tick(Frame), Is.Not.AllocatingGCMemory());
             Run(0.6f);
             Assert.That(() => _field.Tick(Frame), Is.Not.AllocatingGCMemory());
+        }
+
+        [Test]
+        public void Tiers_AreGoldOrbs_GrowingWithXp()
+        {
+            Assert.That(_field.TierCount, Is.EqualTo(3));
+            for (int i = 0; i < _field.TierCount; i++)
+            {
+                var tier = _field.TierStyle(i);
+                // Warm gold: red full, green below red, blue low (not the KAN-21 pale blue, not the red-orange heart).
+                Assert.That(tier.body.r, Is.GreaterThan(0.9f), $"tier {i} red");
+                Assert.That(tier.body.g, Is.InRange(0.6f, tier.body.r), $"tier {i} green");
+                Assert.That(tier.body.b, Is.LessThan(0.5f), $"tier {i} blue");
+                Assert.That(tier.haloScale, Is.GreaterThan(1f), $"tier {i} halo");
+                if (i == 0) continue;
+                var below = _field.TierStyle(i - 1);
+                Assert.That(tier.size, Is.GreaterThan(below.size), $"tier {i} size");
+                Assert.That(tier.size * tier.haloScale, Is.GreaterThan(below.size * below.haloScale), $"tier {i} halo size");
+            }
+        }
+
+        [Test]
+        public void Render_OneOrbAndOneLargerHaloPerWisp()
+        {
+            var bodies = Track(new GameObject("Bodies")).AddComponent<ParticleSystem>();
+            var motes = Track(new GameObject("Motes")).AddComponent<ParticleSystem>();
+            var halos = Track(new GameObject("Halos")).AddComponent<ParticleSystem>();
+            _field.Setup(_xp, _collector, 128, bodies, motes, halos);
+            _field.DriftEnabled = false;
+            for (int i = 0; i < 5; i++) _field.Spawn(new Vector3(10f + i * 2f, 1f, 0f), i == 4 ? 150 : 10); // out of reach
+            Run(1f); // landed and resting, full size
+
+            Assert.That(bodies.particleCount, Is.EqualTo(5));
+            Assert.That(halos.particleCount, Is.EqualTo(5));
+            var body = new ParticleSystem.Particle[5];
+            var halo = new ParticleSystem.Particle[5];
+            bodies.GetParticles(body);
+            halos.GetParticles(halo);
+            for (int i = 0; i < 5; i++)
+            {
+                Assert.That(halo[i].position, Is.EqualTo(body[i].position), $"halo {i} on its orb");
+                Assert.That(halo[i].startSize, Is.GreaterThan(body[i].startSize * 1.5f), $"halo {i} larger than its orb");
+                Color32 c = body[i].startColor;
+                Assert.That(c.r, Is.GreaterThan(c.b), $"orb {i} gold");
+            }
         }
 
         // ------------------------------------------------------------ Level-up flow
