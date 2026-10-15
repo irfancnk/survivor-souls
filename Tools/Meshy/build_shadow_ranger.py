@@ -610,6 +610,21 @@ if STAGE != "A":
         upv = (joint("neck") - joint("Spine02")); upv = (upv - across * upv.dot(across)).normalized()
         return across, upv, across.cross(upv)        # left, up, forward
 
+    def relax_right_hand(straighten=0.75):
+        """Running / walking hand: wrist in line with the forearm, palm turned in to the body (Meshy had it palm-up)."""
+        pb = PB["RightHand"]; upd()
+        fore = (joint("RightHand") - joint("RightForeArm")).normalized()
+        hw = (AW @ pb.matrix).to_3x3().normalized()
+        y = (hw @ Vector((0, 1, 0))).normalized()
+        rot_world("RightHand", y.rotation_difference(y.lerp(fore, straighten).normalized()).to_matrix())
+        hw = (AW @ pb.matrix).to_3x3().normalized()
+        y = (hw @ Vector((0, 1, 0))).normalized()
+        palm = (hw @ Vector(HAND_PALM_AXIS)); palm = (palm - y * palm.dot(y)).normalized()
+        across, upv, fwdv = chest_axes()
+        want = (across - y * across.dot(y)).normalized()          # palm faces the body midline
+        ang = math.atan2(palm.cross(want).dot(y), palm.dot(want))
+        rot_world("RightHand", Matrix.Rotation(ang, 3, y))
+
     def carry_bow(swing=0.0, lean_deg=30):
         """Bow arm low at the side, grip at hip height, bow upright leaning forward, string facing back."""
         across, upv, fwdv = chest_axes()
@@ -773,6 +788,7 @@ if STAGE != "A":
         carry_bow(0.004 * b, lean_deg=18)
         Sr = joint("RightArm")
         two_bone("RightArm", "RightForeArm", "RightHand", Sr + Vector((-0.10, -0.06, -0.40 + 0.004 * b)), Sr + Vector((-0.35, 0.3, -0.1)))
+        relax_right_hand(0.9)
         key_all(f)
     act2.use_fake_user = True
     print("B5 Idle keyed")
@@ -827,6 +843,7 @@ if STAGE != "A":
             PB["BowString"].location = (0, 0, 0); PB["BowString"].rotation_quaternion = (1, 0, 0, 0)
             upd()
             carry_bow((swings[i] - mean) / amp * span, lean_deg=34 if clip == "Running" else 26)
+            relax_right_hand()
             key_all(f)
         dst.use_fake_user = True
         bpy.data.actions.remove(src)
