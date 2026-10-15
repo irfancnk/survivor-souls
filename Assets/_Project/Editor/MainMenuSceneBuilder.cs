@@ -64,9 +64,11 @@ namespace SurvivorSouls.Editor
             CreateRuins(materials);
             CreateUi(panelSettings, realmCatalog);
 
+            StableAssetWriter.Remember(ScenePath);
             EditorSceneManager.SaveScene(scene, ScenePath);
             SetFirstInBuild(ScenePath);
             AssetDatabase.SaveAssets();
+            StableAssetWriter.SettleAll(); // undo pure fileID churn (KAN-157)
             Debug.Log($"[MainMenuSceneBuilder] Built {ScenePath}");
         }
 

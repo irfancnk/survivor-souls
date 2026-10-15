@@ -628,7 +628,9 @@ namespace SurvivorSouls.Editor.World
                 }
 
                 EditorAssetUtil.EnsureFolder(PrefabDir);
-                return PrefabUtility.SaveAsPrefabAsset(root, $"{PrefabDir}/Tile_{name}.prefab");
+                string path = $"{PrefabDir}/Tile_{name}.prefab";
+                StableAssetWriter.Remember(path); // same-named children ("Block") get new fileIDs each save (KAN-157)
+                return PrefabUtility.SaveAsPrefabAsset(root, path);
             }
             finally
             {

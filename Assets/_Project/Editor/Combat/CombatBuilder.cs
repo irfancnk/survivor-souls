@@ -318,6 +318,7 @@ namespace SurvivorSouls.Editor.Combat
         /// <summary>Walk (default) + Attack. Enemy cross-fades between them from code: no transitions, no parameters.</summary>
         private static void BuildController(string path, AnimationClip walk, AnimationClip attack)
         {
+            StableAssetWriter.Remember(path); // new fileIDs every rebuild: keep the old file when nothing changed (KAN-157)
             AssetDatabase.DeleteAsset(path);
             var controller = AnimatorController.CreateAnimatorControllerAtPath(path);
             var machine = controller.layers[0].stateMachine;

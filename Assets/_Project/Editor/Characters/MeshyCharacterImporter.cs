@@ -464,6 +464,7 @@ namespace SurvivorSouls.Editor.Characters
         /// <summary>Locomotion blend tree on Speed (Idle 0, Walking, Running) + Hit reaction on trigger.</summary>
         private static UnityEditor.Animations.AnimatorController BuildController(Dictionary<string, AnimationClip> clips)
         {
+            StableAssetWriter.Remember(ControllerPath); // new fileIDs every rebuild: keep the old file when nothing changed (KAN-157)
             AssetDatabase.DeleteAsset(ControllerPath); // rebuilt from scratch each import
             var ctrl = UnityEditor.Animations.AnimatorController.CreateAnimatorControllerAtPath(ControllerPath);
             ctrl.AddParameter("Speed", AnimatorControllerParameterType.Float);

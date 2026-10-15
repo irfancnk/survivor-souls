@@ -286,6 +286,7 @@ namespace SurvivorSouls.Editor.Enemies
         /// </summary>
         private static AnimatorController BuildController(Spec spec, Dictionary<string, AnimationClip> clips, string move)
         {
+            StableAssetWriter.Remember(spec.ControllerPath); // new fileIDs every rebuild: keep the old file when nothing changed (KAN-157)
             AssetDatabase.DeleteAsset(spec.ControllerPath);
             var controller = AnimatorController.CreateAnimatorControllerAtPath(spec.ControllerPath);
             var machine = controller.layers[0].stateMachine;
