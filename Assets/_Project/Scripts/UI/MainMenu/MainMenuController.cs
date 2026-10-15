@@ -81,7 +81,7 @@ namespace SurvivorSouls.UI.MainMenu
         /// <summary>Build flag for the Test Mode row; tests set false to check the hidden reveal. Default: development build.</summary>
         public bool DevBuildForTestMode
         {
-            get => _devBuildForTestMode;
+            get => _devBuildForTestMode ?? TestMode.RowVisibleByDefault;
             set
             {
                 _devBuildForTestMode = value;
@@ -90,7 +90,7 @@ namespace SurvivorSouls.UI.MainMenu
                 ShowTestMode();
             }
         }
-        private bool _devBuildForTestMode = TestMode.RowVisibleByDefault;
+        private bool? _devBuildForTestMode; // null = the build flag (read on enable, not in a field initializer)
 
         /// <summary>Wiring for tests and code-built menus (call before the object is enabled).</summary>
         public void Setup(RealmCatalog catalog, GemRewardConfig gemRewards = null, SoulTree tree = null)
@@ -295,7 +295,7 @@ namespace SurvivorSouls.UI.MainMenu
 
         private void BindTestMode(VisualElement root)
         {
-            _testReveal = new TestModeReveal(_devBuildForTestMode);
+            _testReveal = new TestModeReveal(DevBuildForTestMode);
             _testTag = root.Q<Label>(TestModeTagName);
             _testToggle = root.Q<Toggle>(TestModeToggleName);
             if (_testToggle != null)
