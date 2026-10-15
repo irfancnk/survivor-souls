@@ -610,6 +610,9 @@ namespace SurvivorSouls.Tests
             var chargeSounds = Object.FindAnyObjectByType<ChargeSounds>();
             Assert.That(chargeSounds, Is.Not.Null, "KAN-168: charge sounds in the scene");
             Assert.That(chargeSounds.Rumble.clip, Is.Not.Null, "growl loop wired");
+            Assert.That(LaneSmoke.Active, Is.Not.Null, "KAN-167: one shared lane smoke in the scene");
+            foreach (var r in fight.Lines.GetComponentsInChildren<Renderer>(true))
+                Assert.That(r.sharedMaterial.shader.name, Is.EqualTo("SurvivorSouls/TelegraphLane"), "KAN-167: " + r.name);
 
             float wait = fight.Data.IntroDelay + fight.Data.SpawnWarning + 4f;
             while (fight.Current != BossFight.Stage.Fighting && wait > 0f)
