@@ -52,23 +52,27 @@ namespace SurvivorSouls.Gameplay.Skills
         public float SingleTargetDps => BoltDamage * ShotsPerSecond * CritFactor * ChainFactor + BurnDps;
         public float CrowdDps => (BoltDamage * ShotsPerSecond * CritFactor + BurnDps) * VolleyFactor * (1f + Pierce + Ricochet);
 
-        public static PowerSnapshot Measure(PlayerStats stats, PowerBase b, int skills = 0) => new PowerSnapshot
+        /// <summary>
+        /// Power of <paramref name="stats"/> on base <paramref name="b"/>. <paramref name="permanentOnly"/>: only the permanent
+        /// sources (KAN-98 soul tree), i.e. the Knight as he enters the run.
+        /// </summary>
+        public static PowerSnapshot Measure(PlayerStats stats, PowerBase b, int skills = 0, bool permanentOnly = false) => new PowerSnapshot
         {
-            BoltDamage = PlayerStats.Eval(stats, StatId.Damage, b.Damage),
-            ShotsPerSecond = Mathf.Max(0.05f, PlayerStats.Eval(stats, StatId.AttackSpeed, b.ShotsPerSecond)),
-            CritChance = Mathf.Clamp01(PlayerStats.Eval(stats, StatId.CritChance, b.CritChance)),
-            CritMultiplier = Mathf.Max(1f, PlayerStats.Eval(stats, StatId.CritDamage, b.CritMultiplier)),
-            Bolts = 1 + (stats != null ? stats.ModifyInt(StatId.Multishot, 0) : 0),
-            Chain = stats != null ? stats.ModifyInt(StatId.DoubleShot, 0) : 0,
-            SpreadDamage = Mathf.Clamp01(PlayerStats.Eval(stats, StatId.SpreadDamage, b.SpreadDamage)),
-            ChainDamage = Mathf.Max(0f, PlayerStats.Eval(stats, StatId.ChainDamage, 1f)),
-            Pierce = stats != null ? stats.ModifyInt(StatId.Pierce, 0) : 0,
-            Ricochet = stats != null ? stats.ModifyInt(StatId.Ricochet, 0) : 0,
-            BurnDps = PlayerStats.Eval(stats, StatId.BurnDps, 0f),
-            KillBurst = PlayerStats.Eval(stats, StatId.KillBurst, 0f),
-            LifeSteal = PlayerStats.Eval(stats, StatId.LifeSteal, 0f),
-            MaxHealth = PlayerStats.Eval(stats, StatId.MaxHealth, b.MaxHealth),
-            MoveSpeed = PlayerStats.Eval(stats, StatId.MoveSpeed, b.MoveSpeed),
+            BoltDamage = PlayerStats.Eval(stats, StatId.Damage, b.Damage, permanentOnly),
+            ShotsPerSecond = Mathf.Max(0.05f, PlayerStats.Eval(stats, StatId.AttackSpeed, b.ShotsPerSecond, permanentOnly)),
+            CritChance = Mathf.Clamp01(PlayerStats.Eval(stats, StatId.CritChance, b.CritChance, permanentOnly)),
+            CritMultiplier = Mathf.Max(1f, PlayerStats.Eval(stats, StatId.CritDamage, b.CritMultiplier, permanentOnly)),
+            Bolts = 1 + (stats != null ? stats.ModifyInt(StatId.Multishot, 0, permanentOnly) : 0),
+            Chain = stats != null ? stats.ModifyInt(StatId.DoubleShot, 0, permanentOnly) : 0,
+            SpreadDamage = Mathf.Clamp01(PlayerStats.Eval(stats, StatId.SpreadDamage, b.SpreadDamage, permanentOnly)),
+            ChainDamage = Mathf.Max(0f, PlayerStats.Eval(stats, StatId.ChainDamage, 1f, permanentOnly)),
+            Pierce = stats != null ? stats.ModifyInt(StatId.Pierce, 0, permanentOnly) : 0,
+            Ricochet = stats != null ? stats.ModifyInt(StatId.Ricochet, 0, permanentOnly) : 0,
+            BurnDps = PlayerStats.Eval(stats, StatId.BurnDps, 0f, permanentOnly),
+            KillBurst = PlayerStats.Eval(stats, StatId.KillBurst, 0f, permanentOnly),
+            LifeSteal = PlayerStats.Eval(stats, StatId.LifeSteal, 0f, permanentOnly),
+            MaxHealth = PlayerStats.Eval(stats, StatId.MaxHealth, b.MaxHealth, permanentOnly),
+            MoveSpeed = PlayerStats.Eval(stats, StatId.MoveSpeed, b.MoveSpeed, permanentOnly),
             Skills = skills,
         };
 

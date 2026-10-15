@@ -11,6 +11,9 @@ namespace SurvivorSouls.Gameplay.Chamber
     /// asset every frame (two floats, no allocation). Zombies already on the field keep the health they spawned with.
     /// Boss Chambers: no clock, progress 0. <see cref="PowerOverride"/> / <see cref="ProgressOverride"/> are debug hooks
     /// (dev screenshots, tests). On the "Chamber" object (ChamberBuilder).
+    /// The power index is measured against the Knight with his permanent bonuses (KAN-98 soul tree,
+    /// <see cref="PlayerStats.Modify(StatId, float, bool)"/>), not the bare Knight: meta upgrades make the Knight
+    /// stronger than the horde; only in-run skills raise zombie health.
     /// </summary>
     public sealed class HordeScaler : MonoBehaviour
     {
@@ -19,10 +22,10 @@ namespace SurvivorSouls.Gameplay.Chamber
         [SerializeField] private PlayerStats stats;
         [SerializeField] private SurvivalTimer timer;
 
-        private PowerSnapshot _bare;
+        private PowerSnapshot _baseline;
         private bool _dirty = true;
 
-        /// <summary>Power index now (1 = bare Knight). Updated when the stats change.</summary>
+        /// <summary>Power index now (1 = the Knight at run start: bare + permanent bonuses). Updated when the stats change.</summary>
         public float Power { get; private set; } = 1f;
         /// <summary>Chamber clock progress used now (0 = start, 1 = portal open).</summary>
         public float Progress { get; private set; }
@@ -47,8 +50,6 @@ namespace SurvivorSouls.Gameplay.Chamber
             Refresh();
         }
 
-        private void Awake() => _bare = PowerSnapshot.Measure(null, PowerBase.Default);
-
         private void OnEnable()
         {
             if (stats != null) stats.Changed += MarkDirty;
@@ -71,9 +72,9 @@ namespace SurvivorSouls.Gameplay.Chamber
             if (_dirty)
             {
                 _dirty = false;
-                if (_bare.ShotsPerSecond <= 0f) _bare = PowerSnapshot.Measure(null, PowerBase.Default);
+                _baseline = PowerSnapshot.Measure(stats, PowerBase.Default, permanentOnly: true);
                 var now = PowerSnapshot.Measure(stats, PowerBase.Default);
-                Power = scaling != null ? scaling.PowerOf(now, _bare) : HordeScaling.PowerIndex(now, _bare);
+                Power = scaling != null ? scaling.PowerOf(now, _baseline) : HordeScaling.PowerIndex(now, _baseline);
             }
             Progress = ProgressOverride >= 0f ? Mathf.Clamp01(ProgressOverride) : ClockProgress();
             float power = PowerOverride > 0f ? PowerOverride : Power;
