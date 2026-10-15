@@ -68,6 +68,14 @@ namespace SurvivorSouls.Editor.Boss
         private const string BoltTexturePath = ArtDir + "/T_BossBolt.png";
         private const int LaneTextureWidth = 64;
         private const int LaneTextureHeight = 256;
+        /// <summary>How far (v) a lane chevron's sides trail behind its tip.</summary>
+        public const float LaneChevronSweep = 0.06f;
+
+        /// <summary>Lane fill size in pixels (tests sample <see cref="LaneFillPixel"/> on this grid).</summary>
+        public static Vector2Int LaneTextureSize => new Vector2Int(LaneTextureWidth, LaneTextureHeight);
+
+        /// <summary>v of chevron <paramref name="i"/>'s tip (0 = attacker, 1 = far end); bands span v 0.70 .. 0.94.</summary>
+        public static float LaneChevronTip(int i) => 0.76f + i * 0.09f;
         private const int BoltTextureSize = 64;
         private const int BoltCapacity = 64; // KAN-116: a 2-arm spiral keeps ~40 bolts in the air
         private const int TextureSize = 256;
@@ -310,8 +318,12 @@ namespace SurvivorSouls.Editor.Boss
             return new Color(1f, 1f, 1f, a);
         }
 
-        /// <summary>Lane fill: solid with soft sides and three chevron bands near the tip (reads as direction).</summary>
-        private static Color LaneFillPixel(int x, int y)
+        /// <summary>
+        /// Lane fill: solid with soft sides and three chevron bands near the tip (reads as direction). The quad has v 0 at
+        /// the attacker and v 1 at the far end, so each band's centre sits further along v than its sides: the arrow tips
+        /// point along the attack (KAN-166). Public for the EditMode test.
+        /// </summary>
+        public static Color LaneFillPixel(int x, int y)
         {
             float u = Mathf.Abs((x + 0.5f) / LaneTextureWidth * 2f - 1f);
             float v = (y + 0.5f) / LaneTextureHeight;
@@ -319,7 +331,7 @@ namespace SurvivorSouls.Editor.Boss
             float chevron = 0f;
             for (int i = 0; i < 3; i++)
             {
-                float c = 0.7f + i * 0.09f + u * 0.06f; // arrow tips point to the far end
+                float c = LaneChevronTip(i) - u * LaneChevronSweep; // sides trail behind the tip
                 chevron = Mathf.Max(chevron, 1f - TextureFactory.SmoothStep(0.008f, 0.02f, Mathf.Abs(v - c)));
             }
             float a = Mathf.Clamp01(body + chevron * 0.28f) * (1f - TextureFactory.SmoothStep(0.95f, 1f, v));
