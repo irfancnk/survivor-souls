@@ -643,6 +643,7 @@ namespace SurvivorSouls.Tests
             var attacks = fight.Attacks;
             for (int i = 0; i < attacks.Length; i++)
             {
+                if (attacks[i].type == BossFight.Move.Barrage) continue; // KAN-174: a side cast, no attack state of its own
                 int dir = 0;
                 float limit = 10f; // an automatic attack may be running: wait for the chase; a charge needs room
                 while (limit > 0f)
