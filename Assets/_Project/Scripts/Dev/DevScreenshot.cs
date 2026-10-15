@@ -69,7 +69,7 @@ namespace SurvivorSouls.Dev
     /// Realm's detail sheet. With either, the saved progress of Realms 1-3 is wiped first (repeatable shots); then
     /// <c>-ss-best &lt;realm&gt;:&lt;chamber&gt;</c> records a best Chamber and <c>-ss-cleared &lt;realm&gt;</c> marks a Realm completed.
     /// <c>-ss-wallet &lt;n&gt;</c> (KAN-96) sets the saved Souls wallet to n before the first scene wakes.
-    /// <c>-ss-enemy &lt;Id&gt;[+Id...][,count]</c> (KAN-104) places count (default 3) enemies of each roster type (e.g.
+    /// <c>-ss-enemy &lt;Id&gt;[+Id...][,count[,radius]]</c> (KAN-104; radius KAN-106) places count (default 3) enemies of each roster type (e.g.
     /// GraveyardLaborer, prefab <c>Enemy_&lt;Id&gt;</c>) in an arc ~5 m ahead of the Knight after load and turns the crossbow off,
     /// so they walk in and attack. Only types the scene's wave table or the spawner's extra types (KAN-105 ranged zombies)
     /// hold can be placed (others are not in the build).
@@ -550,6 +550,8 @@ namespace SurvivorSouls.Dev
             string[] parts = arg.Split(',');
             string[] ids = parts[0].Split('+');
             int count = parts.Length > 1 && int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out int c) ? Mathf.Max(1, c) : 3;
+            // Optional third part (KAN-106): spawn radius (m) round the Knight, e.g. "FrenziedGhoul,1,11" (default 4.5 / 5.5).
+            float radius = parts.Length > 2 && float.TryParse(parts[2], NumberStyles.Float, CultureInfo.InvariantCulture, out float rr) ? rr : 0f;
             var spawner = FindAnyObjectByType<EnemySpawner>();
             var player = FindAnyObjectByType<PlayerMover>();
             var waves = spawner != null ? spawner.Waves : null;
@@ -573,7 +575,7 @@ namespace SurvivorSouls.Dev
                 {
                     float t = total > 1 ? slot / (float)(total - 1) : 0.5f;
                     float a = Mathf.Lerp(150f, 30f, t) * Mathf.Deg2Rad;
-                    float r = slot % 2 == 0 ? 4.5f : 5.5f;
+                    float r = radius > 0f ? radius : slot % 2 == 0 ? 4.5f : 5.5f;
                     spawner.SpawnAt(prefab, player.transform.position + new Vector3(Mathf.Cos(a) * r, 0f, Mathf.Sin(a) * r));
                 }
                 Debug.Log($"[DevScreenshot] enemy {prefab.name} x{count}: height {prefab.Height:F2} m, hit radius {prefab.HitRadius:F2} m");
