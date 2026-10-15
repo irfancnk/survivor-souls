@@ -61,7 +61,8 @@ namespace SurvivorSouls.Editor.Enemies
 
         /// <summary>
         /// Bosses: health is the type base only (BossData holds the fight's health, KAN-58); no XP of their own; hard to push.
-        /// Their contact damage is a placeholder until their attack patterns land (KAN-108..111).
+        /// Their contact damage is a placeholder until their attack patterns land (KAN-108..110); the Bone Matriarch has none
+        /// (KAN-111, BossBuilder.ConfigurePrefab).
         /// </summary>
         private static Spec Boss(string id, string move, string attack, float hp, float speed) =>
             new Spec { Id = id, Move = move, Attack = attack, Health = hp, Speed = speed, Dps = 30f, Xp = 0, Knockback = 0.1f, Boss = true, SpeedJitter = 0f, ScaleJitter = 0f };
@@ -308,7 +309,7 @@ namespace SurvivorSouls.Editor.Enemies
         }
 
         /// <summary>Walk playback rates the Move clip may need (real speed / clip ground speed). Enemy clamps at 0.2-2.2.</summary>
-        public const float MinMoveRate = 0.4f, MaxMoveRate = 2.4f; // 0.4: the Bone Matriarch glides (KAN-111 gives her a hover)
+        public const float MinMoveRate = 0.4f, MaxMoveRate = 2.4f; // 0.4: the Bone Matriarch glides (KAN-111: HoverBob)
 
         /// <summary>
         /// The design walk clip (<see cref="Spec.Move"/>) when the type's speed plays it at <see cref="MinMoveRate"/>..
@@ -411,6 +412,7 @@ namespace SurvivorSouls.Editor.Enemies
                 RangedEnemyBuilder.ConfigurePrefab(root, enemy, spec.Id, kit.Palette); // hold band + attack + bow (KAN-105)
                 SpecialMeleeBuilder.ConfigurePrefab(root, spec.Id); // burst / leap / slam (KAN-106)
                 ShamanBuilder.ConfigurePrefab(root, enemy, spec.Id); // hold band + orb ring / hex / raise / blink (KAN-107)
+                SurvivorSouls.Editor.Boss.BossBuilder.ConfigurePrefab(root, enemy, spec.Id); // Bone Matriarch: no contact, hold band, hover (KAN-111)
                 PrefabUtility.SaveAsPrefabAsset(root, spec.PrefabPath);
                 return (height, radius);
             }

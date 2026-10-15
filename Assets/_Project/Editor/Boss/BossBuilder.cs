@@ -40,6 +40,10 @@ namespace SurvivorSouls.Editor.Boss
     /// a Realm 2 boss once KAN-57 lands. Its slam and meteors leave burning patches (shared ground hazard pool, fire look).
     /// KAN-110: The Rotting Colossus asset (<see cref="ColossusDataPath"/>, never overwritten) joins the library the same way:
     /// <c>-ss-boss-type RottingColossus</c> or the menu "Boss: Next Fight Rotting Colossus".
+    /// KAN-111: The Bone Matriarch asset (<see cref="MatriarchDataPath"/>, never overwritten) joins the library the same way:
+    /// <c>-ss-boss-type BoneMatriarch</c> or the menu "Boss: Next Fight Bone Matriarch". Her body is tuned by
+    /// <see cref="ConfigurePrefab"/> (called by <see cref="EnemyRosterBuilder"/>): no contact damage, a 6-9 m hold band and a
+    /// <see cref="HoverBob"/> on the model.
     /// </summary>
     public static class BossBuilder
     {
@@ -48,6 +52,10 @@ namespace SurvivorSouls.Editor.Boss
         public const string ButcherDataPath = DataDir + "/Boss_Realm1_Butcher.asset";
         public const string PyreLordDataPath = DataDir + "/Boss_PyreLord.asset";
         public const string ColossusDataPath = DataDir + "/Boss_RottingColossus.asset";
+        public const string MatriarchDataPath = DataDir + "/Boss_BoneMatriarch.asset";
+        public const string MatriarchId = "BoneMatriarch";
+        /// <summary>KAN-111: the Matriarch keeps this far from the Knight (m): hard to reach, never melee.</summary>
+        public const float MatriarchHoldMin = 6f, MatriarchHoldMax = 9f;
         public const string BossRulesPath = "Assets/_Project/Data/Chamber/ChamberRules_Boss.asset";
         private const string ArtDir = "Assets/_Project/Art/Boss";
         private const string RingTexturePath = ArtDir + "/T_TelegraphRing.png";
@@ -71,6 +79,7 @@ namespace SurvivorSouls.Editor.Boss
             var butcher = LoadOrCreateButcher();
             var pyreLord = LoadOrCreatePyreLord();
             var colossus = LoadOrCreateColossus();
+            var matriarch = LoadOrCreateMatriarch();
             var rules = LoadOrCreateRules();
             var root = new GameObject("Boss");
             var telegraph = CreateTelegraph(kit, root.transform);
@@ -93,9 +102,10 @@ namespace SurvivorSouls.Editor.Boss
             list.arraySize = 1;
             list.GetArrayElementAtIndex(0).objectReferenceValue = butcher; // Realm 1 boss Chambers (KAN-108)
             var library = so.FindProperty("library");
-            library.arraySize = 2;
+            library.arraySize = 3;
             library.GetArrayElementAtIndex(0).objectReferenceValue = pyreLord; // KAN-109: -ss-boss-type PyreLord, Realm 2 later
             library.GetArrayElementAtIndex(1).objectReferenceValue = colossus; // KAN-110: -ss-boss-type RottingColossus
+            library.GetArrayElementAtIndex(2).objectReferenceValue = matriarch; // KAN-111: -ss-boss-type BoneMatriarch
             so.ApplyModifiedPropertiesWithoutUndo();
             BossHeartsBuilder.Create(kit, root, fight, player); // healing hearts during the fight (KAN-60)
             return fight;
@@ -539,6 +549,90 @@ namespace SurvivorSouls.Editor.Boss
             return data;
         }
 
+        /// <summary>
+        /// The Bone Matriarch (KAN-111, Docs/ENEMY_ROSTER.md 3.15): 4.0 m roster body, 7000 HP (doc; the least of all bosses),
+        /// floats and never melees (<see cref="ConfigurePrefab"/>: no contact damage, holds 6-9 m from the Knight, hover bob).
+        /// Phase 1: Homing Skulls (3 slow orbs, turn 55 deg/s, 3.6 m/s, 14.4 m = 4 s life, a pillar or the wall stops them),
+        /// Soul Ring (24 orbs with 3 gaps of two missing orbs), Raise the Dead (4 Graveyard Laborers rise round her; only the
+        /// missing ones come; the Bone Archer is cut, KAN-128). Phase 2 (50 %) adds Cross Beams (4 lanes 11 m from the body,
+        /// line warnings, then they turn 45 deg/s for 4 s; the Knight starts in a gap and can walk with it) and a timed
+        /// Teleport every 8 s (warning circle where she lands, 7.5 m from the Knight = inside her hold band). Clips: CastOrbs,
+        /// CastRing, Summon, Roar. Never overwritten: edit the asset.
+        /// </summary>
+        public static BossAttack[] MatriarchAttacks()
+        {
+            var skulls = BossAttack.Sample(BossFight.Move.Homing);
+            skulls.length = skulls.speed * 4f; // die after 4 s (or on a pillar / the wall)
+            skulls.weight = 1.5f;
+            skulls.clip = "CastOrbs";
+            var beams = BossAttack.Sample(BossFight.Move.Beams);
+            beams.length = 11f; // reaches past her 9 m hold band
+            beams.weight = 1.2f;
+            beams.clip = "CastRing";
+            var teleport = BossAttack.Sample(BossFight.Move.Teleport).Every(8f);
+            teleport.length = (MatriarchHoldMin + MatriarchHoldMax) * 0.5f; // lands inside her band: no walk after
+            teleport.cooldown = 1f;
+            teleport.clip = "CastOrbs";
+            return new[]
+            {
+                skulls,
+                BossAttack.Nova("Soul Ring", BossPhases.Both, 14f, bolts: 24, gaps: 3, warnRadius: 3f, telegraph: 0.9f, speed: 6f,
+                    distance: 14f, hitRadius: 0.5f, damage: 0.14f, recover: 0.8f, cooldown: 2.8f, clip: "CastRing"),
+                BossAttack.Summon("Raise the Dead", BossPhases.Both, 0f, 30f, "GraveyardLaborer", count: 4, ring: 2.6f,
+                    telegraph: 1.2f, recover: 0.8f, cooldown: 4f, weight: 0.7f, clip: "Summon"),
+                beams,
+                teleport,
+            };
+        }
+
+        private static BossData LoadOrCreateMatriarch()
+        {
+            var body = EnemyRosterBuilder.LoadPrefab(MatriarchId);
+            if (body == null) throw new System.InvalidOperationException("Boss body missing: Enemy_BoneMatriarch (EnemyRosterBuilder)");
+            var data = AssetDatabase.LoadAssetAtPath<BossData>(MatriarchDataPath);
+            if (data != null)
+            {
+                if (data.Prefab == null)
+                {
+                    var so = new SerializedObject(data);
+                    so.FindProperty("prefab").objectReferenceValue = body;
+                    so.ApplyModifiedPropertiesWithoutUndo();
+                    EditorUtility.SetDirty(data);
+                }
+                AssetDatabase.ForceReserializeAssets(new[] { MatriarchDataPath });
+                return data;
+            }
+            EditorAssetUtil.EnsureFolder(DataDir);
+            // 7000 HP x Chamber 5 health (x1.6): a 10-pick Knight kills it in ~64 s, no picks ~204 s (BossIntroTests balance check).
+            data = BossData.CreateWithAttacks(body, MatriarchAttacks(), health: 7000f, firstAttackDelay: 1.5f, introTime: 2.6f,
+                victoryBeat: 1.8f, roarClip: "Roar", phaseRoar: 1.4f, displayName: "THE BONE MATRIARCH",
+                title: "Lich Queen of the Ossuary");
+            AssetDatabase.CreateAsset(data, MatriarchDataPath);
+            AssetDatabase.SaveAssets();
+            return data;
+        }
+
+        /// <summary>
+        /// KAN-111: the Bone Matriarch body before <see cref="EnemyRosterBuilder"/> saves the prefab: no contact damage (she
+        /// never melees), a 6-9 m hold band (backs off when the Knight closes in) and a <see cref="HoverBob"/> on the model
+        /// (0.3 m lift, 0.12 m bob every 2.6 s; the root and blob shadow stay on the ground). Her Walking clip already plays
+        /// slow (glide; EnemyRosterBuilder.MinMoveRate). No-op for other types.
+        /// </summary>
+        public static void ConfigurePrefab(GameObject root, Enemy enemy, string id)
+        {
+            if (id != MatriarchId) return;
+            var so = new SerializedObject(enemy);
+            so.FindProperty("damagePerSecond").floatValue = 0f;
+            so.FindProperty("holdMin").floatValue = MatriarchHoldMin;
+            so.FindProperty("holdMax").floatValue = MatriarchHoldMax;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            var animator = root.GetComponentInChildren<Animator>();
+            var model = animator != null && animator.transform.parent != null && animator.transform.parent != root.transform
+                ? animator.transform.parent
+                : throw new System.InvalidOperationException("BoneMatriarch: model node above the rig missing");
+            model.gameObject.AddComponent<HoverBob>().Configure(0.3f, 0.12f, 2.6f);
+        }
+
         private static ChamberRules LoadOrCreateRules()
         {
             var rules = AssetDatabase.LoadAssetAtPath<ChamberRules>(BossRulesPath);
@@ -654,6 +748,14 @@ namespace SurvivorSouls.Editor.Boss
         private static void NextColossus()
         {
             BossFight.ForcedBoss = BossFight.ForcedBoss == "RottingColossus" ? null : "RottingColossus";
+            Debug.Log($"[BossBuilder] forced boss: {BossFight.ForcedBoss ?? "none (Realm list)"}");
+        }
+
+        /// <summary>KAN-111: the next boss Chamber (this run, after a jump or a portal) gets The Bone Matriarch. Play mode only.</summary>
+        [MenuItem("Survivor Souls/Debug/Boss: Next Fight Bone Matriarch")]
+        private static void NextMatriarch()
+        {
+            BossFight.ForcedBoss = BossFight.ForcedBoss == MatriarchId ? null : MatriarchId;
             Debug.Log($"[BossBuilder] forced boss: {BossFight.ForcedBoss ?? "none (Realm list)"}");
         }
 

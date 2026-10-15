@@ -322,6 +322,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 4264005255324842780}
+  - component: {fileID: 6142849204724314314}
   m_Layer: 0
   m_Name: SK_BoneMatriarch
   m_TagString: Untagged
@@ -345,6 +346,21 @@ Transform:
   - {fileID: 9065532923158145879}
   m_Father: {fileID: 5829408027067325133}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &6142849204724314314
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2999442633619288101}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f5daf3685a44e41ffae017340503a6af, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Boss.HoverBob
+  lift: 0.3
+  amplitude: 0.12
+  period: 2.6
 --- !u!1 &3050646121094814604
 GameObject:
   m_ObjectHideFlags: 0
@@ -969,7 +985,7 @@ MonoBehaviour:
   height: 4.000001
   separation: 2.1000004
   contactRange: 2.4962857
-  damagePerSecond: 30
+  damagePerSecond: 0
   xpValue: 0
   body: {fileID: 1434964744715363475}
   baseTint: {r: 1, g: 1, b: 1, a: 1}
@@ -986,8 +1002,8 @@ MonoBehaviour:
   deathState: Death
   hitHold: 0.4
   deathHold: 2
-  holdMin: 0
-  holdMax: 0
+  holdMin: 6
+  holdMax: 9
 --- !u!1 &8683312044742543700
 GameObject:
   m_ObjectHideFlags: 0

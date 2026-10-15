@@ -202,7 +202,7 @@ namespace SurvivorSouls.Editor
             SetRef(spawner, "world", world);
             // Ranged zombies (KAN-105) are in the build but not in the waves yet (spawn tables: KAN-112).
             var extras = new SerializedObject(spawner);
-            // KAN-119: boss summons (Rotting Colossus: Frenzied Ghouls; Bone Matriarch: Bone Archers, already a ranged type).
+            // KAN-119: boss summons (Rotting Colossus: Frenzied Ghouls; KAN-111 Bone Matriarch: Graveyard Laborers, a wave type).
             // KAN-107: the Hexbound Shaman (not in the waves until KAN-112).
             SetArray(extras.FindProperty("extraTypes"), RangedEnemyBuilder.Ids.Append("FrenziedGhoul").Append(ShamanBuilder.Id).Select(EnemyRosterBuilder.LoadPrefab).ToArray());
             extras.ApplyModifiedPropertiesWithoutUndo();

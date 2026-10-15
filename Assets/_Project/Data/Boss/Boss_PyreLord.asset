@@ -57,6 +57,7 @@ MonoBehaviour:
     burnLife: 3
     burnDps: 0.05
     clip: Slam
+    every: 0
   - label: Fireball Fan
     type: 1
     phases: 3
@@ -87,6 +88,7 @@ MonoBehaviour:
     burnLife: 0
     burnDps: 0
     clip: CastFan
+    every: 0
   - label: Fire Nova
     type: 5
     phases: 3
@@ -117,6 +119,7 @@ MonoBehaviour:
     burnLife: 0
     burnDps: 0
     clip: CastNova
+    every: 0
   - label: Fire Spiral
     type: 6
     phases: 2
@@ -147,6 +150,7 @@ MonoBehaviour:
     burnLife: 0
     burnDps: 0
     clip: CastNova
+    every: 0
   - label: Meteor Rain
     type: 7
     phases: 2
@@ -177,6 +181,7 @@ MonoBehaviour:
     burnLife: 2
     burnDps: 0.05
     clip: CastFan
+    every: 0
   roarClip: Roar
   phaseRoar: 1.2
   slamRange: 4

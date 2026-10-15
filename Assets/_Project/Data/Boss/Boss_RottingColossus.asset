@@ -57,6 +57,7 @@ MonoBehaviour:
     burnLife: 0
     burnDps: 0
     clip: Slam
+    every: 0
   - label: Grab
     type: 3
     phases: 3
@@ -87,6 +88,7 @@ MonoBehaviour:
     burnLife: 0
     burnDps: 0
     clip: Grab
+    every: 0
   - label: Corpse Boulder
     type: 8
     phases: 1
@@ -117,6 +119,7 @@ MonoBehaviour:
     burnLife: 0
     burnDps: 0
     clip: Throw
+    every: 0
   - label: Boulder Volley
     type: 8
     phases: 2
@@ -147,6 +150,7 @@ MonoBehaviour:
     burnLife: 0
     burnDps: 0
     clip: Throw
+    every: 0
   - label: Summon Ghouls
     type: 9
     phases: 2
@@ -177,6 +181,7 @@ MonoBehaviour:
     burnLife: 0
     burnDps: 0
     clip: Roar
+    every: 0
   roarClip: Roar
   phaseRoar: 1.4
   slamRange: 4
