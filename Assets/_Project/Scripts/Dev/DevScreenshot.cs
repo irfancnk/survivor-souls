@@ -64,6 +64,9 @@ namespace SurvivorSouls.Dev
     /// Realm's detail sheet. With either, the saved progress of Realms 1-3 is wiped first (repeatable shots); then
     /// <c>-ss-best &lt;realm&gt;:&lt;chamber&gt;</c> records a best Chamber and <c>-ss-cleared &lt;realm&gt;</c> marks a Realm completed.
     /// <c>-ss-wallet &lt;n&gt;</c> (KAN-96) sets the saved Souls wallet to n before the first scene wakes.
+    /// <c>-ss-enemy &lt;Id&gt;[,count]</c> (KAN-104) places count (default 3) enemies of that roster type (e.g. GraveyardLaborer,
+    /// prefab <c>Enemy_&lt;Id&gt;</c>) in an arc 5 m ahead of the Knight after load and turns the crossbow off, so they walk in
+    /// and attack. Only types the scene's wave table holds can be placed (others are not in the build).
     /// Used by tools/agents to verify visuals without a human. Inactive in release builds (Debug.isDebugBuild).
     /// </summary>
     public sealed class DevScreenshot : MonoBehaviour
@@ -91,6 +94,7 @@ namespace SurvivorSouls.Dev
         private int _horde;
         private float _hordePower;
         private bool _hordeTiers;
+        private string _enemy;
         private int _hold;
         private bool _immortal;
         private bool _bossStay;
@@ -143,6 +147,7 @@ namespace SurvivorSouls.Dev
             shot._horde = int.TryParse(GetArg("-ss-horde"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int h) ? h : 0;
             shot._hordePower = float.TryParse(GetArg("-ss-horde-power"), NumberStyles.Float, CultureInfo.InvariantCulture, out float hp) ? hp : 0f;
             shot._hordeTiers = Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-horde-tiers") >= 0;
+            shot._enemy = GetArg("-ss-enemy");
             shot._hold = int.TryParse(GetArg("-ss-hold"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int hold) ? hold : 0;
             shot._immortal = Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-immortal") >= 0;
             shot._timer = GetArg("-ss-timer");
@@ -202,6 +207,7 @@ namespace SurvivorSouls.Dev
             if (_hordePower > 0f) SetHordePower(_hordePower);
             if (_horde > 0) PlaceHorde(_horde);
             if (_hordeTiers) PlaceTierLineup();
+            if (!string.IsNullOrEmpty(_enemy)) PlaceEnemyType(_enemy);
             if (_hold > 0) StartCoroutine(HoldHorde(_hold));
             if (!string.IsNullOrEmpty(_skills)) GrantSkills(_skills);
             if (_powerCurve) PrintPowerCurve();
@@ -497,6 +503,33 @@ namespace SurvivorSouls.Dev
                 enemy.Halted = true;
             }
             Debug.Log($"[DevScreenshot] tier lineup: {steps} steps, {HordeTierMaterials.Count} tier materials");
+        }
+
+        /// <summary>KAN-104: <c>Id[,count]</c> enemies of one roster type in an arc ahead of the Knight; crossbow off.</summary>
+        private static void PlaceEnemyType(string arg)
+        {
+            string[] parts = arg.Split(',');
+            int count = parts.Length > 1 && int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out int c) ? Mathf.Max(1, c) : 3;
+            var spawner = FindAnyObjectByType<EnemySpawner>();
+            var player = FindAnyObjectByType<PlayerMover>();
+            var waves = spawner != null ? spawner.Waves : null;
+            Enemy prefab = null;
+            for (int i = 0; waves != null && i < waves.PhaseCount && prefab == null; i++)
+                foreach (var e in waves.GetPhase(i).enemies)
+                    if (e.prefab != null && e.prefab.name == "Enemy_" + parts[0]) prefab = e.prefab;
+            if (player == null || prefab == null)
+            {
+                Debug.LogWarning($"[DevScreenshot] -ss-enemy: no '{parts[0]}' in the wave table (or no player)");
+                return;
+            }
+            foreach (var shooter in FindObjectsByType<AutoShooter>()) shooter.enabled = false;
+            for (int i = 0; i < count; i++)
+            {
+                float t = count > 1 ? i / (float)(count - 1) : 0.5f;
+                float a = Mathf.Lerp(125f, 55f, t) * Mathf.Deg2Rad;
+                spawner.SpawnAt(prefab, player.transform.position + new Vector3(Mathf.Cos(a) * 5f, 0f, Mathf.Sin(a) * 5f));
+            }
+            Debug.Log($"[DevScreenshot] enemy {prefab.name} x{count}: height {prefab.Height:F2} m, hit radius {prefab.HitRadius:F2} m");
         }
 
         /// <summary>Tops the field up to <paramref name="count"/> enemies once a second (off-screen spawn points).</summary>
