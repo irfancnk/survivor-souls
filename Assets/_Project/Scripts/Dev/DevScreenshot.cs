@@ -754,6 +754,8 @@ namespace SurvivorSouls.Dev
             var dropper = FindAnyObjectByType<SurvivorSouls.Gameplay.Chests.ChestDropper>();
             var player = FindAnyObjectByType<PlayerHealth>();
             if (dropper == null || player == null) return;
+            var rewards = dropper.GetComponent<SurvivorSouls.Gameplay.Chests.ChestRewards>();
+            if (rewards != null) rewards.GemsFound += (at, n) => Debug.Log($"[DevScreenshot] Chest gave {n} Ember Shards"); // KAN-97
             var tier = rare ? SurvivorSouls.Gameplay.Chests.ChestTier.Rare : SurvivorSouls.Gameplay.Chests.ChestTier.Light;
             var chest = dropper.Drop(player.transform.position + player.transform.forward * 0.2f, tier, dropper.Choices,
                 rare ? dropper.Config.RareUpgrades : 1);
