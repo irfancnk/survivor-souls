@@ -138,6 +138,7 @@ Numbers are first guesses in Chamber 1 terms (same units as `CombatBuilder.Zombi
 - Role: Boss (heavy bruiser + thrower).
 - Attack: Phase 1: (a) double ground slam, two shockwave rings; (b) corpse boulder throw, lobbed, landing circle r 2.5 m, leaves a rubble obstacle 8 s; (c) grab: 1.2 s reach lane, a hit pulls the Knight in and deals 20 %. Phase 2: (d) roar summons 4 Frenzied Ghouls; (e) 3 boulders in a row. Slowest boss, biggest body.
 - Stats: HP 11000, height 5.0 m.
+- Status: in the game since KAN-110 (fight library, not in Realm 1's rotation: `-ss-boss-type RottingColossus`; 8200 HP for the balance rule, still the most HP of all bosses; grab drags the Knight in to the body; numbers in `Assets/_Project/Data/Boss/Boss_RottingColossus.asset`, see STATE.md).
 - Pose sheet: `Docs/enemies/RottingColossus.png`. Meshy tasks: preview `01a13cb4-631c-73d2-8ec1-3425de328878`, refine `01a13cb5-b0db-7582-a82f-875043db4831`, remesh `01a13cb7-0eab-7466-9dea-ea9e361ad67b`, rigging `01a13cb8-bf0c-773e-87c6-e9e06d0893cc`.
 
 ### 15. The Bone Matriarch (`BoneMatriarch`)
