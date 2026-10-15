@@ -518,6 +518,7 @@
   - Checked with EEVEE renders (every clip, face close-ups, 55 deg game camera) and the Bestiary viewer v5. Details: `Docs/ENEMY_ROSTER.md` section 7.
   - Blender MCP add-on is not installed in Blender 5.2 (Blender Lab extensions repo); all work ran headless via CLI.
   - Polish after the user's Legolas reference: side-on stance (hips / feet 82 deg off the shot line, chest 46 deg, head to the target), bow canted 18 deg, right hand curled into a fist in the mesh (no finger bones), old grip / arrow flakes cut from the bow hand. Release frame unchanged (19 = 0.63 s). Shoot rotates the hips inside the clip, so Idle / Run -> Shoot blends turn the body ~80 deg (expected).
+  - Polish 3 (user review): draw arm went into the face, run held the bow "by the string". Cheek anchor 3.5 cm outside the hood surface (raycast) + raise-and-draw from chest height: `Tools/Meshy/check_ranger_clipping.py` shows <= 2 shoulder vertices under the hood hem per frame (was 36 arm vertices, 5.9 cm deep). Walk / Run rebaked: Meshy legs / torso / right arm read straight from the source F-curves + hand-keyed bow-carry left arm (bow at the hip, by the grip). Gotcha: in Blender 5 an imported glTF action assigned to another armature may not drive it (action slots), and exporting with ACTIVE_ACTIONS baked a frozen pose; export each clip as its own NLA track instead.
 
 ## DECISIONS
 - Design language: Archero / Archero 2 (menus, loop, chests, daily/weekly quests, gear merge, talents, energy). Look: Dark Souls, realistic, not dismal. User decision 2026-10-11.
