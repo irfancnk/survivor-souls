@@ -59,6 +59,9 @@ namespace SurvivorSouls.Gameplay.Boss
     /// once as it passes the Knight; outside the circle is safe), <b>Homing</b> (slow orbs that turn towards the Knight; the
     /// whole volley hits once) and <b>Beams</b> (lanes evenly round the body warn, then turn as live beams for a few
     /// seconds; the whole cast hits once). Shockwave and Beams run in <see cref="Attack.Casting"/>.
+    /// KAN-111: timed entries (<see cref="BossAttack.every"/>): fight time counts while fighting; a timed entry is due
+    /// <see cref="BossAttack.every"/> s after it last started (or after its phase began) and then wins the next pick over every
+    /// band (the Bone Matriarch's phase 2 teleport every 8 s).
     /// </summary>
     public sealed class BossFight : MonoBehaviour
     {
@@ -190,6 +193,8 @@ namespace SurvivorSouls.Gameplay.Boss
         private bool _dashHit;
         private BossAttack[] _attacks = new BossAttack[0];
         private int[] _lastUsed = new int[0];
+        private float[] _dueAt = new float[0];  // KAN-111: fight time a timed entry is next due
+        private float _clock;                   // KAN-111: seconds of Fighting (scaled)
         private int _picks;
         private int _index = -1;          // the attack being warned / struck / recovered from
         private BossAttack _attack;
@@ -321,6 +326,8 @@ namespace SurvivorSouls.Gameplay.Boss
         public Move CurrentMove { get; private set; } = Move.Slam;
         /// <summary>1 until the boss falls to <see cref="BossData.Phase2At"/> health, then 2.</summary>
         public int Phase { get; private set; } = 1;
+        /// <summary>KAN-111: scaled seconds spent Fighting (timed attacks count on it).</summary>
+        public float FightTime => _clock;
         /// <summary>Seconds of the current (or last) warning, after the phase 2 factor and the 0.6 s floor.</summary>
         public float WindUpTime => _windUp;
         /// <summary>The boss body (null until it spawns).</summary>
@@ -413,6 +420,9 @@ namespace SurvivorSouls.Gameplay.Boss
             _attacks = data.Attacks;
             _lastUsed = new int[_attacks.Length];
             for (int i = 0; i < _lastUsed.Length; i++) _lastUsed[i] = -NeverUsed;
+            _clock = 0f;
+            _dueAt = new float[_attacks.Length];
+            for (int i = 0; i < _dueAt.Length; i++) _dueAt[i] = _attacks[i].every;
             _failed = new int[_attacks.Length];
             _summonTypes = new Enemy[_attacks.Length];
             for (int i = 0; i < _attacks.Length; i++) _summonTypes[i] = ResolveSummon(_attacks[i]);
@@ -506,6 +516,7 @@ namespace SurvivorSouls.Gameplay.Boss
                     if (_time >= data.IntroTime) EndIntro();
                     break;
                 case Stage.Fighting:
+                    _clock += dt;
                     TickAttack(dt);
                     break;
                 case Stage.Defeated:
@@ -676,10 +687,12 @@ namespace SurvivorSouls.Gameplay.Boss
                 {
                     var a = _attacks[i];
                     if (!a.InPhase(Phase) || !a.InRange(distance) || !CanUse(i) || _lastUsed[i] == FailedPick) continue;
+                    if (a.Timed && _clock < _dueAt[i]) continue; // KAN-111: not due yet
+                    int priority = a.Timed ? TimedPriority : a.priority;
                     float score = a.weight * Mathf.Min(NeverUsed, _picks - _lastUsed[i]);
-                    if (a.priority < bestPriority || (a.priority == bestPriority && score <= bestScore)) continue;
+                    if (priority < bestPriority || (priority == bestPriority && score <= bestScore)) continue;
                     best = i;
-                    bestPriority = a.priority;
+                    bestPriority = priority;
                     bestScore = score;
                 }
                 if (best < 0) break;
@@ -691,6 +704,7 @@ namespace SurvivorSouls.Gameplay.Boss
         }
 
         private const int FailedPick = int.MinValue;
+        private const int TimedPriority = int.MaxValue; // KAN-111: a due timed entry beats every band
         private int[] _failed = new int[0];
 
         private void RestoreFailed()
@@ -801,6 +815,7 @@ namespace SurvivorSouls.Gameplay.Boss
             if (pick)
             {
                 _lastUsed[index] = _picks++;
+                if (_attack.Timed) _dueAt[index] = _clock + _attack.every;
                 _dashesLeft = _attack.type == Move.Charge ? Mathf.Max(1, _attack.count) - 1 : 0;
             }
             _index = index;
@@ -1687,11 +1702,13 @@ namespace SurvivorSouls.Gameplay.Boss
             int n = _attacks.Length;
             Array.Resize(ref _attacks, n + 1);
             Array.Resize(ref _lastUsed, n + 1);
+            Array.Resize(ref _dueAt, n + 1);
             Array.Resize(ref _failed, n + 1);
             Array.Resize(ref _summonTypes, n + 1);
             _attacks[n] = entry;
             _summonTypes[n] = ResolveSummon(entry);
             _lastUsed[n] = -NeverUsed;
+            _dueAt[n] = _clock + entry.every;
             return n;
         }
 
@@ -1729,6 +1746,8 @@ namespace SurvivorSouls.Gameplay.Boss
         {
             Phase = 2;
             if (_boss != null) _boss.SpeedBoost = data.Phase2Speed;
+            for (int i = 0; i < _attacks.Length; i++) // KAN-111: a phase 2 only timer starts with phase 2
+                if (_attacks[i].Timed && !_attacks[i].InPhase(1)) _dueAt[i] = _clock + _attacks[i].every;
             if (data.PhaseRoar > 0f && Current == Stage.Fighting && CurrentAttack == Attack.Chase && player != null && !player.IsDead)
             {
                 FaceKnight(); // stands and roars; the next attack waits

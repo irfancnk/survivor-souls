@@ -63,6 +63,9 @@ namespace SurvivorSouls.Gameplay.Boss
     /// <see cref="burnDps"/> above 0 leaves a burning ground patch (shared <see cref="SurvivorSouls.Gameplay.Combat.GroundHazards"/>
     /// pool, fire look) where each hit lands: the slam circle centre, every meteor circle. It hurts only while the Knight stands
     /// in it and goes out after its life (the Pyre Lord's flame circle and meteor rain).
+    /// KAN-111: an entry with <see cref="every"/> above 0 is <b>timed</b>: it is never picked by score; it comes at the first
+    /// free pick once <see cref="every"/> s of fight time have passed since it last started (or since its phase began), ahead
+    /// of every other band, range permitting (the Bone Matriarch teleports every 8 s in phase 2).
     /// </summary>
     [Serializable]
     public struct BossAttack
@@ -113,10 +116,24 @@ namespace SurvivorSouls.Gameplay.Boss
         [Range(0f, 0.5f)] public float burnDps;
         [Tooltip("Animator state the body plays for this attack (wind-up and strike). Empty or missing = its Attack state.")]
         public string clip;
+        [Tooltip("KAN-111: > 0 = timed: it comes every this many seconds (at the next free pick, before other attacks), " +
+                 "counted from its last start or the start of its phase. Never picked by score.")]
+        [Min(0f)] public float every;
 
         public bool InPhase(int phase) => (phases & (phase >= 2 ? BossPhases.Phase2 : BossPhases.Phase1)) != 0;
 
         public bool InRange(float distance) => distance >= minRange && distance <= maxRange;
+
+        /// <summary>KAN-111: comes on a timer (<see cref="every"/>), not by score.</summary>
+        public bool Timed => every > 0f;
+
+        /// <summary>KAN-111: a copy of this entry that comes every <paramref name="seconds"/> s (see <see cref="every"/>).</summary>
+        public BossAttack Every(float seconds)
+        {
+            var a = this;
+            a.every = Mathf.Max(0f, seconds);
+            return a;
+        }
 
         /// <summary>Wind-up with the 0.6 s floor (the phase 2 factor comes on top, <see cref="BossData.TelegraphFor"/>).</summary>
         public float Telegraph => Mathf.Max(BossData.MinTelegraph, telegraph);
