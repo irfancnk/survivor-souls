@@ -621,7 +621,11 @@ namespace SurvivorSouls.Gameplay.Combat
         private Enemy Take(Enemy prefab)
         {
             if (!_pools.TryGetValue(prefab, out var pool)) _pools[prefab] = pool = new Stack<Enemy>();
-            return pool.Count > 0 ? pool.Pop() : Create(prefab);
+            if (pool.Count > 0) return pool.Pop();
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            Debug.Log($"[EnemySpawner] pool of {prefab.name} empty at {RunTime:F1} s: instantiating one more ({_created + 1} made)");
+#endif
+            return Create(prefab);
         }
 
         private void Release(Enemy enemy)

@@ -357,6 +357,7 @@ namespace SurvivorSouls.Tests
             var cam = spawner.ViewCamera;
             cam.aspect = aspect;
             foreach (var c in mover.GetComponents<ContactDamageReceiver>()) c.enabled = false; // immortal
+            mover.GetComponent<PlayerHealth>().Invulnerable = true; // KAN-106: Bloater / Ghoul / Brute attacks hurt too; a dead Knight stops the run clock
             foreach (var c in mover.GetComponents<SoulCollector>()) c.enabled = false;          // no level-up pause
             // Chambers last 2 minutes (KAN-92): no portal mid-soak, so a wandering Knight never leaves the scene.
             SurvivorSouls.Gameplay.Chamber.SurvivalTimer.Active?.Stop();

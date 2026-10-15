@@ -38,6 +38,9 @@ namespace SurvivorSouls.Gameplay.Combat
             public EnemyEntry[] enemies;
         }
 
+        /// <summary>A type's pool may hold up to this many times a phase cap: the living cap plus bodies still dying.</summary>
+        public const float BodyHeadroom = 1.25f;
+
         [Tooltip("Seconds from scene start to the first spawn.")]
         [SerializeField, Min(0f)] private float firstSpawnDelay = 1f;
         [Tooltip("Minimum enemies made per type before play starts (see PrewarmFor), so the run never instantiates mid-fight.")]
@@ -60,8 +63,10 @@ namespace SurvivorSouls.Gameplay.Combat
 
         /// <summary>
         /// Pool size for <paramref name="prefab"/>: enough for its weighted share of the biggest phase cap (x1.5 for luck
-        /// streaks, never above the cap), at least <see cref="PrewarmPerType"/>. So a 36-strong horde never instantiates
-        /// mid-fight, while a rare type does not get 36 idle copies.
+        /// streaks, at most <see cref="BodyHeadroom"/> x the cap), at least <see cref="PrewarmPerType"/>. So a 36-strong horde
+        /// never instantiates mid-fight, while a rare type does not get 36 idle copies.
+        /// KAN-106 / KAN-118: the old limit was the cap itself, but bodies still falling and sinking (~1.6 s) are out of the
+        /// pool too, so a type that fills a phase (Laborers in the first 45 s) ran its pool empty when the next phase started.
         /// </summary>
         public int PrewarmFor(Enemy prefab)
         {
@@ -78,7 +83,7 @@ namespace SurvivorSouls.Gameplay.Combat
                     if (e.prefab == prefab) mine += e.weight;
                 }
                 if (mine <= 0f || total <= 0f) continue;
-                int share = Mathf.Min(phase.maxAlive, Mathf.CeilToInt(phase.maxAlive * mine / total * 1.5f));
+                int share = Mathf.CeilToInt(Mathf.Min(phase.maxAlive * BodyHeadroom, phase.maxAlive * mine / total * 1.5f) - 0.001f);
                 count = Mathf.Max(count, share);
             }
             return Mathf.Max(count, prewarmPerType);
