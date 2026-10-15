@@ -98,7 +98,7 @@ Numbers are first guesses in Chamber 1 terms (same units as `CombatBuilder.Zombi
 - Role: Boss (aggressive melee + charges).
 - Attack: Phase 1: (a) cleaver chop, long lane 6 m x 1.6 m; (b) charge dash (reuse KAN-61 charge) with a 1 s stun on a pillar hit; (c) cleaver spin, 2.5 s whirl that follows the Knight slowly (r 3 m). Phase 2: (d) chain hook throw, lane 10 m, pulls the Knight 4 m; (e) triple charge. Uses the existing BossFight slam / fan / charge code most directly: good first boss to port.
 - Stats: HP 8000, height 4.2 m.
-- Status: in the game since KAN-108 (Realm 1 boss of every boss Chamber; numbers in `Assets/_Project/Data/Boss/Boss_Realm1_Butcher.asset`, attack list per phase, see STATE.md).
+- Status: in the game since KAN-108 (Realm 1 boss of Chamber 5 since KAN-112, rotation `Assets/_Project/Data/Boss/BossRotation_Realm1.asset`; numbers in `Assets/_Project/Data/Boss/Boss_Realm1_Butcher.asset`, attack list per phase, see STATE.md).
 - Pose sheet: `Docs/enemies/AshgraveButcher.png`. Meshy tasks: preview `01a13cb4-6f2f-77f6-906e-4e4916688d19`, refine `01a13cb5-bcc2-75bd-a997-3f7f375e4788`, remesh `01a13cb7-174a-71a2-a472-9b58e5b900f5`, rigging `01a13cb8-c83d-712f-9a4f-6afa554645c3`.
 
 ### 13. The Pyre Lord (`PyreLord`)
@@ -114,7 +114,7 @@ Numbers are first guesses in Chamber 1 terms (same units as `CombatBuilder.Zombi
 - Role: Boss (heavy bruiser + thrower).
 - Attack: Phase 1: (a) double ground slam, two shockwave rings; (b) corpse boulder throw, lobbed, landing circle r 2.5 m, leaves a rubble obstacle 8 s; (c) grab: 1.2 s reach lane, a hit pulls the Knight in and deals 20 %. Phase 2: (d) roar summons 4 Frenzied Ghouls; (e) 3 boulders in a row. Slowest boss, biggest body.
 - Stats: HP 11000, height 5.0 m.
-- Status: in the game since KAN-110 (fight library, not in Realm 1's rotation: `-ss-boss-type RottingColossus`; 8200 HP for the balance rule, still the most HP of all bosses; grab drags the Knight in to the body; numbers in `Assets/_Project/Data/Boss/Boss_RottingColossus.asset`, see STATE.md).
+- Status: in the game since KAN-110 (Realm 1 boss of Chamber 10 since KAN-112, rotation `BossRotation_Realm1.asset`; also `-ss-boss-type RottingColossus`; 8200 HP for the balance rule, still the most HP of all bosses; grab drags the Knight in to the body; numbers in `Assets/_Project/Data/Boss/Boss_RottingColossus.asset`, see STATE.md).
 - Pose sheet: `Docs/enemies/RottingColossus.png`. Meshy tasks: preview `01a13cb4-631c-73d2-8ec1-3425de328878`, refine `01a13cb5-b0db-7582-a82f-875043db4831`, remesh `01a13cb7-0eab-7466-9dea-ea9e361ad67b`, rigging `01a13cb8-bf0c-773e-87c6-e9e06d0893cc`.
 
 ### 15. The Bone Matriarch (`BoneMatriarch`)
@@ -124,6 +124,10 @@ Numbers are first guesses in Chamber 1 terms (same units as `CombatBuilder.Zombi
 - Stats: HP 7000, height 4.0 m.
 - Status: in the game since KAN-111 (fight library, not in Realm 1's rotation: `-ss-boss-type BoneMatriarch`; summons 4 Graveyard Laborers instead of the cut Bone Archers (KAN-128); never melees, holds 6-9 m, hovers; teleport every 8 s in phase 2; numbers in `Assets/_Project/Data/Boss/Boss_BoneMatriarch.asset`, see STATE.md).
 - Pose sheet: `Docs/enemies/BoneMatriarch.png`. Meshy tasks: preview `01a13cb4-6919-763c-8ed7-914f787963ef`, refine `01a13cb6-1405-7211-9c12-7f5fc0416fcf`, remesh `01a13cb7-6925-73f9-aea7-ac1b08c860ce`, rigging `01a13cb9-14f4-70c5-9d1b-34ab390ab543`.
+
+## Spawn tables (KAN-112)
+
+Realm 1 wave table `Assets/_Project/Data/Combat/EnemyWaves_Realm1.asset`, entry field `fromChamber`. Chamber 1: Graveyard Laborer, Rusted Watchman, Runner, Grave Brute, Frenzied Ghoul (melee only). Chamber 2: + Pyre Thrower, Bile Spitter. Chamber 3: + Plague Bloater. Chamber 4: + Hexbound Shaman. The first 45 s of every Chamber are melee only. Shooters (types with a hold band) are capped to 20 % of the phase cap, at most 6 alive. Bosses: Butcher (Chamber 5), Rotting Colossus (Chamber 10); Pyre Lord and Bone Matriarch wait for later Realms (KAN-57).
 
 ## 4. Known asset issues
 
