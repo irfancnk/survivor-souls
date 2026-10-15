@@ -220,7 +220,7 @@
 /* Pack icon: a cluster of ember diamonds (more diamonds = bigger pack). */
 .sp-shard-cluster {
     height: 120px;
-    width: 220px;
+    width: 276px; /* five diamonds in one row (the biggest pack) clear the badge */
     flex-direction: row;
     flex-wrap: wrap;
     justify-content: center;
