@@ -55,5 +55,15 @@ namespace SurvivorSouls.Tests
             Assert.IsFalse(DevBuildTools.IsQualityLevelOnStandalone("NoSuchLevel"));
             Assert.IsTrue(File.ReadAllBytes(QualitySettingsPath).SequenceEqual(onDisk));
         }
+
+        [Test]
+        public void PhoneDefines_StoreAddsTheStoreDefine_OthersAddNothing()
+        {
+            Assert.That(DevBuildTools.PhoneDefines(store: true, dev: false), Is.EqualTo(new[] { "SS_STORE" }), "KAN-151 store build");
+            Assert.That(DevBuildTools.PhoneDefines(store: false, dev: false), Is.Empty, "phone playtest build");
+            Assert.That(DevBuildTools.PhoneDefines(store: false, dev: true), Is.Empty, "dev build");
+            Assert.That(SurvivorSouls.Core.TestMode.StoreDefine, Is.EqualTo("SS_STORE"), "same name as the #if in TestMode");
+            Assert.Throws<ArgumentException>(() => DevBuildTools.PhoneDefines(store: true, dev: true), "a store build is never a dev build");
+        }
     }
 }

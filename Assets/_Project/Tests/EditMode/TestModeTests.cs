@@ -9,7 +9,8 @@ namespace SurvivorSouls.Tests
     /// KAN-144 Test Mode rules: off by default; on opens every Realm (<see cref="RunProgress.IsUnlocked"/>) without
     /// writing a completed flag, off restores the saved locks; runs do not record progress while on; the Souls grant tops
     /// the balance up to 999,999 on the first switch-on only (a bigger balance is kept, off keeps the Souls); the hidden
-    /// row reveal (dev build at once, else the 7th title tap, or while on). The editor's real keys (Test Mode, grant flag,
+    /// row reveal (dev build at once, else the 7th title tap, or while on); a store build (KAN-151) locks all of it off.
+    /// The editor's real keys (Test Mode, grant flag,
     /// Souls wallet) are saved before each test and put back after it; test Realms 91-93 only.
     /// </summary>
     public sealed class TestModeTests
@@ -34,6 +35,7 @@ namespace SurvivorSouls.Tests
         [TearDown]
         public void TearDown()
         {
+            TestMode.SimulateStoreBuild = false;
             for (int r = First - 1; r <= First + 2; r++) RunProgress.Clear(r);
             for (int i = 0; i < SavedKeys.Length; i++)
             {
@@ -135,6 +137,48 @@ namespace SurvivorSouls.Tests
             var on = new TestModeReveal(devBuild: false);
             TestMode.SetOn(true);
             Assert.That(on.Visible, Is.True, "always shown while on, so it can be turned off");
+        }
+
+        [Test]
+        public void EditorIsNotAStoreBuild()
+        {
+            Assert.That(TestMode.StoreBuild, Is.False, "SS_STORE is set only by DevBuildTools -ss-store");
+            Assert.That(TestMode.Locked, Is.False);
+        }
+
+        [Test]
+        public void Store_SavedFlagFromOlderInstallHasNoEffect()
+        {
+            RunProgress.MarkCompleted(First - 1); // real save: 92 locked
+            GameSettings.TestMode = true; // an older install switched it on
+            TestMode.SimulateStoreBuild = true;
+            Assert.That(TestMode.IsOn, Is.False, "store build ignores the saved flag");
+            Assert.That(RunProgress.IsUnlocked(First + 1), Is.False, "saved locks stay");
+            Assert.That(RunProgress.Recording, Is.True, "runs record progress");
+        }
+
+        [Test]
+        public void Store_SetOnWritesNothing()
+        {
+            TestMode.SimulateStoreBuild = true;
+            Assert.That(TestMode.SetOn(true), Is.EqualTo(0));
+            Assert.That(TestMode.IsOn, Is.False);
+            Assert.That(GameSettings.TestMode, Is.False, "flag not saved");
+            Assert.That(TestMode.SoulsGranted, Is.False, "no grant flag");
+            Assert.That(SoulWallet.Balance, Is.EqualTo(0), "no Souls");
+        }
+
+        [Test]
+        public void Store_RevealNeverShows()
+        {
+            TestMode.SimulateStoreBuild = true;
+            Assert.That(TestMode.RowVisibleByDefault, Is.False);
+            var dev = new TestModeReveal(devBuild: true);
+            Assert.That(dev.Visible, Is.False, "even a dev flag shows nothing in a store build");
+            var store = new TestModeReveal(devBuild: false);
+            for (int i = 1; i <= TestMode.RevealTaps * 2; i++)
+                Assert.That(store.Tap(), Is.False, $"tap {i}");
+            Assert.That(store.Visible, Is.False);
         }
     }
 }

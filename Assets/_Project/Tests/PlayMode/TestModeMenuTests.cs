@@ -20,7 +20,8 @@ namespace SurvivorSouls.Tests
     /// hidden in other builds until the 7th tap on the settings title; the toggle switches Test Mode, grants the Souls once
     /// and shows the "TEST MODE" tag (menu + HUD); with it on every Realm card is open, a "coming soon" Realm can start,
     /// and the sheet's Start Chamber stepper wraps 1..last and is handed to START; with it off the stepper hides and
-    /// START begins at Chamber 1 again. Real keys are kept by <see cref="WalletPrefsGuard"/> plus this fixture.
+    /// START begins at Chamber 1 again. A store build (KAN-151) never shows the row, the tag or a Test Mode switch-on.
+    /// Real keys are kept by <see cref="WalletPrefsGuard"/> plus this fixture.
     /// </summary>
     public sealed class TestModeMenuTests
     {
@@ -50,6 +51,7 @@ namespace SurvivorSouls.Tests
                 if (o != null) Object.DestroyImmediate(o);
             _objects.Clear();
             for (int r = First - 1; r <= First + 2; r++) RunProgress.Clear(r);
+            TestMode.SimulateStoreBuild = false;
             TestMode.ResetAll(); // the suite runs with Test Mode off (WalletPrefsGuard restores the editor's value)
             if (_savedGrant.HasValue) PlayerPrefs.SetInt(TestMode.KeyGranted, _savedGrant.Value);
         }
@@ -99,6 +101,27 @@ namespace SurvivorSouls.Tests
             Assert.That(store.TestModeRowVisible, Is.False, "6 taps are not enough");
             store.TapSettingsTitle();
             Assert.That(store.TestModeRowVisible, Is.True, "7th tap shows the row");
+        }
+
+        [UnityTest]
+        public IEnumerator StoreBuild_NoRow_NoReveal_SavedFlagIgnored()
+        {
+            int before = SoulWallet.Balance;
+            GameSettings.TestMode = true; // an older install switched it on
+            TestMode.SimulateStoreBuild = true;
+            var menu = Menu(devBuild: true, out var root);
+            yield return null;
+            menu.OpenSettings();
+            Assert.That(menu.TestModeRowVisible, Is.False, "store build: row hidden even with the dev flag");
+            Assert.That(menu.TestModeTagVisible, Is.False, "saved flag shows no tag");
+            for (int i = 0; i < TestMode.RevealTaps * 2; i++) menu.TapSettingsTitle();
+            Assert.That(menu.TestModeRowVisible, Is.False, "title taps reveal nothing");
+            root.Q<Toggle>(MainMenuController.TestModeToggleName).value = true; // not bound: nothing happens
+            menu.SetTestMode(true);
+            Assert.That(TestMode.IsOn, Is.False);
+            Assert.That(TestMode.SoulsGranted, Is.False);
+            Assert.That(SoulWallet.Balance, Is.EqualTo(before), "no Souls grant");
+            Assert.That(menu.TestModeTagVisible, Is.False);
         }
 
         [UnityTest]
