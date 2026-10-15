@@ -519,7 +519,7 @@ namespace SurvivorSouls.Editor.Characters
             m.EnableKeyword("_METALLICSPECGLOSSMAP");
             m.SetFloat("_EnvironmentReflections", 0f);    // no reflection probes in the arena; saves a sample
             m.EnableKeyword("_ENVIRONMENTREFLECTIONS_OFF");
-            EditorUtility.SetDirty(m);
+            EditorAssetUtil.ValidateLikeInspector(m); // URP Lit inspector pass, so the .mat never flips in git (KAN-178)
             return m;
         }
 

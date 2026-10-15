@@ -154,7 +154,7 @@ namespace SurvivorSouls.Editor.Props
             SetKeyword(mat, "_METALLICSPECGLOSSMAP", mask != null);
             mat.SetFloat("_EnvironmentReflections", 0f);   // no reflection probes in the world
             mat.EnableKeyword("_ENVIRONMENTREFLECTIONS_OFF");
-            EditorUtility.SetDirty(mat);
+            EditorAssetUtil.ValidateLikeInspector(mat); // URP Lit inspector pass, so the .mat never flips in git (KAN-178)
             return mat;
         }
 
