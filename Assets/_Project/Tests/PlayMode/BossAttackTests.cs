@@ -458,7 +458,7 @@ namespace SurvivorSouls.Tests
 
         // ------------------------------------------------------------ Real scene
 
-        /// <summary>The built Game scene: Chamber 5's boss has the lane telegraph and bolts wired; half health is phase 2.</summary>
+        /// <summary>The built Game scene: Chamber 5's boss has the lane telegraph and bolts wired; half health is phase 2 (KAN-108: the Butcher).</summary>
         [UnityTest]
         public IEnumerator GameScene_BossHasLanesBolts_AndPhase2()
         {
@@ -475,8 +475,7 @@ namespace SurvivorSouls.Tests
             Assert.That(fight.Lines, Is.Not.Null, "lane telegraph wired");
             Assert.That(fight.Lines.Capacity, Is.EqualTo(LineTelegraph.MaxLanes));
             Assert.That(fight.Projectiles, Is.Not.Null, "bolts wired");
-            Assert.That(fight.Data.FanBolts, Is.GreaterThan(0), "the shipped boss fans");
-            Assert.That(fight.Data.ChargeEnabled, Is.True, "the shipped boss charges in phase 2");
+            Assert.That(fight.Data.HasAttackList, Is.True, "KAN-108: the shipped boss (the Butcher) runs an attack list");
             Assert.That(fight.Data.Phase2At, Is.EqualTo(0.5f).Within(1e-4f));
 
             float wait = fight.Data.IntroDelay + fight.Data.SpawnWarning + 4f;
@@ -492,24 +491,17 @@ namespace SurvivorSouls.Tests
             var hearts = fight.GetComponent<BossHearts>();
             Assert.That(hearts.OnGround.Count, Is.EqualTo(1), "phase 2 dropped a heart");
 
-            // A fan in the arena: every bolt ends at the ring or a pillar within its range.
+            // KAN-108: the Butcher has no fan; its chop lane in the arena ends at the ring or a pillar.
             float limit = 6f; // an automatic phase 2 attack may be running: wait for the chase
-            while (!fight.ForceAttack(BossFight.Move.Fan) && limit > 0f)
+            while (!fight.ForceAttack(BossFight.Move.Lane) && limit > 0f)
             {
                 limit -= Time.unscaledDeltaTime;
                 yield return null;
             }
-            Assert.That(fight.CurrentMove, Is.EqualTo(BossFight.Move.Fan));
+            Assert.That(fight.CurrentMove, Is.EqualTo(BossFight.Move.Lane));
             Assert.That(fight.Lines.IsShowing, Is.True);
-            limit = fight.WindUpTime + 4f;
-            while (fight.Projectiles.Count == 0 && limit > 0f)
-            {
-                limit -= Time.unscaledDeltaTime;
-                yield return null;
-            }
-            Assert.That(fight.Projectiles.Count, Is.GreaterThan(0), "volley fired");
-            for (int i = 0; i < fight.Projectiles.Count; i++)
-                Assert.That(BossArena.Active.IsBlocked(fight.Projectiles.PositionOf(i), 0f), Is.False, "starts inside the ring");
+            Vector3 end = fight.Lines.Origin + fight.Lines.LaneDirection(0) * fight.Lines.Length;
+            Assert.That(BossArena.Active.IsBlocked(end, 0f), Is.False, "the lane ends inside the ring");
 
             boss.TakeDamage(boss.Health + 1f, Vector3.zero);
             Assert.That(fight.Projectiles.Count, Is.EqualTo(0));

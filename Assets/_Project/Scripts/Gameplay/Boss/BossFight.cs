@@ -137,6 +137,7 @@ namespace SurvivorSouls.Gameplay.Boss
         private Vector3 _pullDir;
         private readonly Vector3[] _fanDirs = new Vector3[LineTelegraph.MaxLanes];
         private PlayerMover _mover;
+        private bool _moverChecked;
         private bool _knightHeld;
         private bool _victoryDone;
         private Vector3 _deathPoint;
@@ -538,7 +539,8 @@ namespace SurvivorSouls.Gameplay.Boss
         private void BeginWindUp(int index)
         {
             _attack = _attacks[index];
-            if (_index != index || CurrentAttack == Attack.Chase) // a re-dash of a multi-charge is not a new pick
+            bool pick = _index != index || CurrentAttack == Attack.Chase; // a re-dash of a multi-charge is not a new pick
+            if (pick)
             {
                 _lastUsed[index] = _picks++;
                 _dashesLeft = _attack.type == Move.Charge ? Mathf.Max(1, _attack.count) - 1 : 0;
@@ -550,7 +552,7 @@ namespace SurvivorSouls.Gameplay.Boss
             _time = 0f;
             _pullLeft = 0f;
             _boss.PlayAction(_attack.clip);
-            AttackStarted?.Invoke(index);
+            if (pick) AttackStarted?.Invoke(index);
         }
 
         private void BeginSlam(int index)
@@ -730,7 +732,11 @@ namespace SurvivorSouls.Gameplay.Boss
             }
             float step = Mathf.Min(PullSpeed * dt, _pullLeft);
             _pullLeft -= step;
-            if (_mover == null) _mover = player.GetComponent<PlayerMover>();
+            if (!_moverChecked) // once: GetComponent of a missing component allocates in the editor
+            {
+                _mover = player.GetComponent<PlayerMover>();
+                _moverChecked = true;
+            }
             if (_mover != null) _mover.Shove(_pullDir * step);
             else player.transform.position += _pullDir * step;
         }

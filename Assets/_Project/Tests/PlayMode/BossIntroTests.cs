@@ -37,6 +37,7 @@ namespace SurvivorSouls.Tests
         private const float Frame = 1f / 60f;
         private const int TestRealm = 97; // never touches the saved progress of a real Realm
         private const string WardenPath = "Assets/_Project/Data/Boss/Boss_Realm1_Warden.asset";
+        private const string ButcherPath = "Assets/_Project/Data/Boss/Boss_Realm1_Butcher.asset"; // the shipped Realm 1 boss (KAN-108)
         private const string DifficultyPath = "Assets/_Project/Data/Chamber/ChamberDifficulty_Realm1.asset";
 
         private readonly List<Object> _objects = new List<Object>();
@@ -495,17 +496,18 @@ namespace SurvivorSouls.Tests
         // ------------------------------------------------------------ Balance (KAN-62)
 
         /// <summary>
-        /// Time to kill the shipped Warden in its first boss Chamber with a typical 10-pick build. Model: bolt damage x fire
+        /// Time to kill the Warden and the shipped Butcher (KAN-108) in their first boss Chamber with a typical 10-pick build. Model: bolt damage x fire
         /// rate x crit, Spread Shot side bolts (at their damage share) hit half the time on the big body, burn adds its dps, and the Knight shoots 55 %
         /// of the fight (it stops to shoot; boss attacks make it move). Target (KAN-22): 60-90 s. The base Knight (no picks)
         /// must still be able to win (under 4 minutes of standing time).
         /// </summary>
-        [Test]
-        public void Balance_TenPickBuild_KillsTheWardenIn60To90Seconds()
+        [TestCase(WardenPath)]
+        [TestCase(ButcherPath)]
+        public void Balance_TenPickBuild_KillsTheBossIn60To90Seconds(string path)
         {
-            var warden = UnityEditor.AssetDatabase.LoadAssetAtPath<BossData>(WardenPath);
+            var warden = UnityEditor.AssetDatabase.LoadAssetAtPath<BossData>(path);
             var difficulty = UnityEditor.AssetDatabase.LoadAssetAtPath<ChamberDifficulty>(DifficultyPath);
-            Assert.That(warden, Is.Not.Null, WardenPath);
+            Assert.That(warden, Is.Not.Null, path);
             Assert.That(difficulty, Is.Not.Null, DifficultyPath);
             int chamber = difficulty.NextBossChamber(0);
             float hp = warden.MaxHealth * difficulty.HealthMultiplier(chamber);
@@ -527,7 +529,7 @@ namespace SurvivorSouls.Tests
             }
             Assert.That(picks, Is.EqualTo(10));
             float ttk = hp / (Dps(stats) * 0.55f);
-            Debug.Log($"[Balance] Warden Chamber {chamber}: {hp:F0} HP; 10 picks {Dps(stats):F0} dps -> {ttk:F0} s; " +
+            Debug.Log($"[Balance] {warden.DisplayName} Chamber {chamber}: {hp:F0} HP; 10 picks {Dps(stats):F0} dps -> {ttk:F0} s; " +
                       $"no picks {Dps(Track(new GameObject("Bare")).AddComponent<PlayerStats>()):F0} dps -> {baseTtk:F0} s");
             Assert.That(ttk, Is.InRange(60f, 90f), "10 picks win in 60-90 s");
             Assert.That(baseTtk, Is.LessThan(240f), "a weak Knight can still win");
