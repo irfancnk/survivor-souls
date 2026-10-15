@@ -130,6 +130,7 @@ Numbers are first guesses in Chamber 1 terms (same units as `CombatBuilder.Zombi
 - Role: Boss (fire caster), Realm 2 candidate.
 - Attack: Phase 1: (a) fireball fan, 7 bolts in a 70 deg cone; (b) fire nova, ring of 16 fireballs from the body; (c) slam with a flame circle (r 4 m). Phase 2 (50 % HP): (d) rotating spiral, 2 arms of fireballs for 3 s (bullet hell, gaps to walk through); (e) meteor rain, 6 ground circles near the Knight, 1.0 s warning each. Every telegraph >= 0.6 s (BossData.MinTelegraph).
 - Stats: HP 9000 (Chamber 1 terms), height 4.5 m.
+- Status: in the game since KAN-109 (fight library, not in Realm 1's rotation: `-ss-boss-type PyreLord`; 8000 HP for the balance rule; flame slam and meteors leave burning patches; numbers in `Assets/_Project/Data/Boss/Boss_PyreLord.asset`, see STATE.md).
 - Pose sheet: `Docs/enemies/PyreLord.png`. Meshy tasks: preview `01a13cb4-5db0-73d1-b1cb-bb10b675bae6`, refine `01a13cb5-ac13-74b2-812f-07911b02a187`, remesh `01a13cb7-5d0c-7329-8714-9edfbc4ea52d`, rigging `01a13cb9-5a24-71e4-bc65-00130f9ef35e`.
 
 ### 14. The Rotting Colossus (`RottingColossus`)
