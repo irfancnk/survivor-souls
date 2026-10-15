@@ -21,6 +21,8 @@ namespace SurvivorSouls.Dev
     /// <c>-ss-closeup &lt;yawDeg&gt;</c> frames the player up close (0 = from the front).
     /// <c>-ss-near-exit</c> moves the player in front of the exit door (open world) or the arena portal (boss Chamber, KAN-59).
     /// <c>-ss-pos x,z</c> moves the player to a world position first (e.g. the shore).
+    /// <c>-ss-exit-offset x,z</c> moves the player to the exit (or arena portal) plus this world offset (KAN-176: gate arrow
+    /// direction shots; offset 0,-40 = gate straight up the screen, 40,0 = gate to the left).
     /// Every capture also logs render stats of the last second: <c>[DevScreenshot] Stats ...</c> (draw calls, batches,
     /// SetPass calls, triangles, average frame ms).
     /// <c>-ss-player-hp &lt;0..1&gt;</c> sets the player's health fraction after load (0 = death screen).
@@ -105,6 +107,7 @@ namespace SurvivorSouls.Dev
         private string _closeup;
         private bool _nearExit;
         private string _pos;
+        private string _exitOffset; // KAN-176
         private string _playerHp;
         private string _counters;
         private string _hitMarker;
@@ -169,6 +172,7 @@ namespace SurvivorSouls.Dev
             shot._closeup = GetArg("-ss-closeup");
             shot._nearExit = Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-near-exit") >= 0;
             shot._pos = GetArg("-ss-pos");
+            shot._exitOffset = GetArg("-ss-exit-offset"); // KAN-176
             shot._playerHp = GetArg("-ss-player-hp");
             shot._counters = GetArg("-ss-counters");
             shot._hitMarker = GetArg("-ss-hit-marker");
@@ -266,6 +270,11 @@ namespace SurvivorSouls.Dev
             {
                 string[] xz = _pos.Split(',');
                 Teleport(new Vector3(float.Parse(xz[0], CultureInfo.InvariantCulture), 0f, float.Parse(xz[1], CultureInfo.InvariantCulture)));
+            }
+            if (!string.IsNullOrEmpty(_exitOffset)) // KAN-176: gate arrow direction shots
+            {
+                string[] xz = _exitOffset.Split(',');
+                MoveNearExit(new Vector3(float.Parse(xz[0], CultureInfo.InvariantCulture), 0f, float.Parse(xz[1], CultureInfo.InvariantCulture)));
             }
             if (!string.IsNullOrEmpty(_counters)) SetCounters(_counters);
             if (!string.IsNullOrEmpty(_playerHp)) SetPlayerHealth(float.Parse(_playerHp, CultureInfo.InvariantCulture));
@@ -604,12 +613,14 @@ namespace SurvivorSouls.Dev
                       $"mainThreadMs={m / frames * 1e-6f:F2} mainThreadMaxMs={mMax * 1e-6f:F2} enemies={enemies / frames} {QualityTag()}");
         }
 
-        private static void MoveNearExit()
+        private static void MoveNearExit() => MoveNearExit(new Vector3(0f, 0f, -5.5f));
+
+        private static void MoveNearExit(Vector3 offset)
         {
             var arena = SurvivorSouls.Gameplay.World.BossArena.Active; // boss Chamber: the arena portal (KAN-59)
             var world = FindAnyObjectByType<SurvivorSouls.Gameplay.World.WorldStreamer>();
-            if (arena != null) Teleport(arena.ExitPosition + new Vector3(0f, 0f, -5.5f));
-            else if (world != null) Teleport(world.ExitPosition + new Vector3(0f, 0f, -5.5f));
+            if (arena != null) Teleport(arena.ExitPosition + offset);
+            else if (world != null) Teleport(world.ExitPosition + offset);
         }
 
         private static void Teleport(Vector3 position)
