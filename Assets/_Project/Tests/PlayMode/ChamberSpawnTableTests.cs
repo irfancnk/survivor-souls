@@ -286,6 +286,13 @@ namespace SurvivorSouls.Tests
             Assert.That(fight.Library.Select(b => b.name), Has.No.Member("Boss_RottingColossus"), "the Colossus moved to the rotation");
             Assert.That(fight.FindBoss("RottingColossus"), Is.Not.Null, "the dev flag still finds it");
             RunState.NewRun(1);
+
+            // KAN-155: leave no Game scene behind. Its Knight auto-fires at the next fixture's test enemies (a filtered run
+            // of the spawn tests failed EnemySpawnTests.Chaser_SteersAroundAWall: the chaser died at the wall).
+            var empty = SceneManager.CreateScene("ChamberSpawnEmpty");
+            SceneManager.SetActiveScene(empty);
+            yield return SceneManager.UnloadSceneAsync("Game");
+            Enemy.LandMaxZ = float.PositiveInfinity;
         }
     }
 }

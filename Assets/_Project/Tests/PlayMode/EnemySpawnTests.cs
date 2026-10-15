@@ -304,6 +304,49 @@ namespace SurvivorSouls.Tests
             Assert.That(EnemyWaveTable.PickEnemy(phase, 0.76f), Is.SameAs(other));
             Assert.That(EnemyWaveTable.PickEnemy(phase, 0.9999f), Is.SameAs(other));
             Assert.That(EnemyWaveTable.PickEnemy(new EnemyWaveTable.Phase(), 0.5f), Is.Null);
+
+            // KAN-155: a stock check moves the pick to a type that still has pooled bodies; none stocked = no pick.
+            Assert.That(EnemyWaveTable.PickEnemy(phase, 0f, stocked: e => e != _prefab), Is.SameAs(other));
+            Assert.That(EnemyWaveTable.PickEnemy(phase, 0.9999f, stocked: e => e != other), Is.SameAs(_prefab));
+            Assert.That(EnemyWaveTable.PickEnemy(phase, 0.5f, stocked: e => false), Is.Null);
+        }
+
+        [Test]
+        public void Waves_DryTypePool_SwapsToStockedType_NoInstantiate()
+        {
+            // KAN-155: a luck streak on one type used to empty its pool and instantiate mid-fight (soak "pool covers the cap"
+            // flakes, 87 > 86). Drain type A by hand, then let the waves fill the rest of the cap: every pick goes to B.
+            var other = Track(new GameObject("Other")).AddComponent<Enemy>();
+            other.gameObject.SetActive(false);
+            var table = Track(ScriptableObject.CreateInstance<EnemyWaveTable>());
+            table.Configure(0f, 0, new[]
+            {
+                new EnemyWaveTable.Phase
+                {
+                    maxAlive = 20, spawnInterval = 0.1f, groupSize = Vector2Int.one,
+                    enemies = new[]
+                    {
+                        new EnemyWaveTable.EnemyEntry { prefab = _prefab, weight = 1f },
+                        new EnemyWaveTable.EnemyEntry { prefab = other, weight = 1f },
+                    },
+                },
+            });
+            int poolA = table.PrewarmFor(_prefab), poolB = table.PrewarmFor(other);
+            Assert.That(poolA, Is.LessThan(20), "type A alone cannot fill the cap");
+            var spawner = Spawner(table, new FakeWalk((p, r) => false));
+            int made = spawner.Created;
+            Assert.That(made, Is.EqualTo(poolA + poolB), "prewarmed before play");
+            for (int i = 0; i < poolA; i++) spawner.SpawnAt(_prefab, new Vector3(-21f + 3f * i, 0f, -30f));
+
+            var placed = new List<Enemy>();
+            spawner.Placed += (enemy, pos, recycled) => { if (!recycled) placed.Add(enemy); };
+            for (int i = 0; i < 60; i++) spawner.Tick(0.1f);
+
+            Assert.That(spawner.InUse, Is.EqualTo(20), "the cap still fills");
+            Assert.That(spawner.Created, Is.EqualTo(made), "no Instantiate during play");
+            Assert.That(placed.Count, Is.EqualTo(20 - poolA));
+            foreach (var e in placed) Assert.That(e.name, Does.StartWith(other.name), "dry type swapped to the stocked one");
+            Assert.That(spawner.Stats.PoolSwaps, Is.GreaterThan(0), "at least one pick hit the dry type (seeded roll)");
         }
 
         // ------------------------------------------------------------ Steering
@@ -408,7 +451,9 @@ namespace SurvivorSouls.Tests
             Assert.That(failures, Is.Empty, string.Join("\n", failures));
             Assert.That(stats.OnScreenSpawns, Is.EqualTo(0));
             Assert.That(stats.Spawned, Is.GreaterThan(gameSeconds / 10f), "spawner kept the field populated");
-            Assert.That(created, Is.LessThanOrEqualTo(startCreated + 4), "pool covers the cap: no Instantiate in play");
+            // KAN-155: a dry type's pick moves to a stocked type, so play instantiates only when every pool of the phase is
+            // empty (alive + dying > the whole prewarm, ~82 bodies vs a ~36 cap). The old +4 slack hid luck-streak flakes.
+            Assert.That(created, Is.EqualTo(startCreated), "pool covers the cap: no Instantiate in play");
         }
     }
 }
