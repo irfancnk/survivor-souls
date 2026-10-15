@@ -192,6 +192,7 @@ namespace SurvivorSouls.Editor.Enemies
             {
                 (sprites: FlatSprites(go.transform, "Fire Patches", "T_FirePatch", FirePatchPixel), color: new Color(1f, 0.72f, 0.45f, 0.95f), scale: 1.18f, flicker: 0.12f),
                 (sprites: FlatSprites(go.transform, "Acid Puddles", "T_AcidPuddle", AcidPuddlePixel), color: new Color(0.85f, 1f, 0.7f, 0.9f), scale: 1.12f, flicker: 0.03f),
+                (sprites: FlatSprites(go.transform, "Toxic Clouds", "T_ToxicCloud", ToxicCloudPixel), color: new Color(0.9f, 1f, 0.75f, 0.85f), scale: 1.25f, flicker: 0.06f), // KAN-106 Bloater
             };
             var so = new SerializedObject(hazards);
             so.FindProperty("player").objectReferenceValue = player;
@@ -339,6 +340,20 @@ namespace SurvivorSouls.Editor.Enemies
             float rim = 1f - TextureFactory.SmoothStep(0.03f, 0.1f, Mathf.Abs(edge - 0.76f));
             c = Color.Lerp(c, new Color(0.12f, 0.2f, 0.02f), rim * 0.8f);
             c.a = (1f - TextureFactory.SmoothStep(0.76f, 0.86f, edge)) * 0.92f;
+            return c;
+        }
+
+        /// <summary>Toxic cloud (KAN-106): low murky yellow-green billows, denser clumps, soft dark-olive edge (reads on snow).</summary>
+        private static Color ToxicCloudPixel(int x, int y)
+        {
+            float r = R(x, y, out float u, out float v);
+            float n = TextureFactory.Fbm((u + 1f) * 0.5f, (v + 1f) * 0.5f, 4, 4, 211);
+            float clumps = TextureFactory.Fbm((u + 1f) * 1.5f, (v + 1f) * 1.5f, 6, 3, 57);
+            float edge = r + (n - 0.5f) * 0.35f;
+            var murk = Color.Lerp(new Color(0.42f, 0.5f, 0.12f), new Color(0.72f, 0.82f, 0.3f), clumps);
+            var c = Color.Lerp(murk, new Color(0.2f, 0.26f, 0.05f), TextureFactory.SmoothStep(0.55f, 0.85f, edge));
+            float a = (1f - TextureFactory.SmoothStep(0.62f, 0.92f, edge)) * Mathf.Lerp(0.55f, 0.85f, clumps);
+            c.a = Mathf.Clamp01(a) * (1f - TextureFactory.SmoothStep(0.9f, 1f, r));
             return c;
         }
 

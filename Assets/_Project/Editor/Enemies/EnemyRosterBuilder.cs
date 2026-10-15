@@ -65,8 +65,9 @@ namespace SurvivorSouls.Editor.Enemies
             new Spec { Id = id, Move = move, Attack = attack, Health = hp, Speed = speed, Dps = 30f, Xp = 0, Knockback = 0.1f, Boss = true, SpeedJitter = 0f, ScaleJitter = 0f };
 
         /// <summary>
-        /// Melee tiers 1-4 (the four reference sheets) first: they join the waves. Specials (KAN-105..107) only melee on
-        /// contact for now (8 dps) until their own attacks land; their Attack state is their signature clip.
+        /// Melee tiers 1-4 (the four reference sheets) first: they join the waves. Specials melee on contact (8 dps) on top
+        /// of their own attacks (ranged KAN-105, Bloater / Ghoul / Brute KAN-106, Shaman KAN-107); their Attack state is their
+        /// signature clip.
         /// </summary>
         public static readonly Spec[] Roster =
         {
@@ -398,6 +399,7 @@ namespace SurvivorSouls.Editor.Enemies
                 so.FindProperty("deathHold").floatValue = spec.Boss ? BossDeathPlayTime : DeathPlayTime;
                 so.ApplyModifiedPropertiesWithoutUndo();
                 RangedEnemyBuilder.ConfigurePrefab(root, enemy, spec.Id, kit.Palette); // hold band + attack + bow (KAN-105)
+                SpecialMeleeBuilder.ConfigurePrefab(root, spec.Id); // burst / leap / slam (KAN-106)
                 PrefabUtility.SaveAsPrefabAsset(root, spec.PrefabPath);
                 return (height, radius);
             }

@@ -537,6 +537,7 @@ GameObject:
   m_Component:
   - component: {fileID: 5308681323853611269}
   - component: {fileID: 2746306838725838666}
+  - component: {fileID: 4624705221159774619}
   m_Layer: 0
   m_Name: Enemy_FrenziedGhoul
   m_TagString: Untagged
@@ -600,6 +601,31 @@ MonoBehaviour:
   deathHold: 0.9
   holdMin: 0
   holdMax: 0
+--- !u!114 &4624705221159774619
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4899488837845062183}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b6edc99ea83d14d81ac3d82e7aca5a23, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Combat.GhoulLeap
+  settings:
+    minRange: 4
+    maxRange: 6
+    crouch: 0.6
+    leapDistance: 5
+    minLeap: 3
+    leapTime: 0.35
+    arcHeight: 0.8
+    laneWidth: 1
+    hitPadding: 0.25
+    damageShare: 0.1
+    stun: 0.8
+    cooldown: 3
 --- !u!1 &5058329069439645975
 GameObject:
   m_ObjectHideFlags: 0

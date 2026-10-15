@@ -43,8 +43,12 @@ MonoBehaviour:
       weight: 0.025
     - prefab: {fileID: 77487197354657862, guid: b05691b72fc1d44249bfd634c3b97071, type: 3}
       weight: 0.14
-    - prefab: {fileID: 8306789231946715184, guid: 822c3348110e8474ba3785c66af1e9a7, type: 3}
+    - prefab: {fileID: 8924236305345745035, guid: 7fb54dcda50fd44a3b5f03756d4e0bcd, type: 3}
       weight: 0.04
+    - prefab: {fileID: 2493435506327165802, guid: 853263fe2ab0145219569ea744916fae, type: 3}
+      weight: 0.04
+    - prefab: {fileID: 2746306838725838666, guid: f90461d02f0c944c6a14b7788114c8e0, type: 3}
+      weight: 0.05
   - startTime: 120
     maxAlive: 30
     spawnInterval: 0.9
@@ -62,8 +66,12 @@ MonoBehaviour:
       weight: 0.043
     - prefab: {fileID: 77487197354657862, guid: b05691b72fc1d44249bfd634c3b97071, type: 3}
       weight: 0.18
-    - prefab: {fileID: 8306789231946715184, guid: 822c3348110e8474ba3785c66af1e9a7, type: 3}
+    - prefab: {fileID: 8924236305345745035, guid: 7fb54dcda50fd44a3b5f03756d4e0bcd, type: 3}
       weight: 0.1
+    - prefab: {fileID: 2493435506327165802, guid: 853263fe2ab0145219569ea744916fae, type: 3}
+      weight: 0.06
+    - prefab: {fileID: 2746306838725838666, guid: f90461d02f0c944c6a14b7788114c8e0, type: 3}
+      weight: 0.07
   - startTime: 240
     maxAlive: 36
     spawnInterval: 0.8
@@ -81,5 +89,9 @@ MonoBehaviour:
       weight: 0.066
     - prefab: {fileID: 77487197354657862, guid: b05691b72fc1d44249bfd634c3b97071, type: 3}
       weight: 0.2
-    - prefab: {fileID: 8306789231946715184, guid: 822c3348110e8474ba3785c66af1e9a7, type: 3}
+    - prefab: {fileID: 8924236305345745035, guid: 7fb54dcda50fd44a3b5f03756d4e0bcd, type: 3}
       weight: 0.14
+    - prefab: {fileID: 2493435506327165802, guid: 853263fe2ab0145219569ea744916fae, type: 3}
+      weight: 0.07
+    - prefab: {fileID: 2746306838725838666, guid: f90461d02f0c944c6a14b7788114c8e0, type: 3}
+      weight: 0.08

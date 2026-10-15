@@ -10,6 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 3270334667080622248}
   - component: {fileID: 2493435506327165802}
+  - component: {fileID: 6259626790257018531}
   m_Layer: 0
   m_Name: Enemy_PlagueBloater
   m_TagString: Untagged
@@ -73,6 +74,33 @@ MonoBehaviour:
   deathHold: 0.9
   holdMin: 0
   holdMax: 0
+--- !u!114 &6259626790257018531
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 84304043799194539}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c089c67ce270a4262b57b3c599833de5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Combat.BloaterBurst
+  settings:
+    triggerRange: 2
+    swell: 1
+    radius: 2.8
+    damageShare: 0.25
+    enemyShare: 0.5
+    deathFuse: 0.6
+    swellScale: 1.22
+    cloud:
+      kind: 2
+      radius: 2.2
+      life: 6
+      dps: 15
+      slow: 0
+    spawnCooldown: 1
 --- !u!1 &123597573795461801
 GameObject:
   m_ObjectHideFlags: 0
