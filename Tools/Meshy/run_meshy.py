@@ -156,7 +156,8 @@ class Job:
             else:
                 prompt = (s["prompt"] + " " + style)[:600]
                 self.create("preview", ["text-to-3d", "create", "--mode", "preview", "--prompt", prompt,
-                                        "--pose-mode", s.get("pose", "a-pose"), "--target-formats", "glb"])
+                                        "--pose-mode", s.get("pose", "a-pose"), "--target-formats", "glb"]
+                            + (["--data", json.dumps(s["preview_data"])] if s.get("preview_data") else []))
                 self.wait("preview")
                 self.download("preview", "preview_mesh.png", asset="thumbnail.primary")
                 if os.environ.get("UNTIL") == "preview":
@@ -172,12 +173,18 @@ class Job:
             if os.environ.get("UNTIL") in ("preview", "texture"):
                 log(self.slug, "PAUSED after texture")
                 return
-            self.create("remesh", ["remesh", "create", "--input-task-id", self.st["tasks"][tex_key],
-                                   "--topology", "triangle", "--target-polycount", str(s["tris"]),
-                                   "--target-formats", "glb"])
-            self.wait("remesh")
-            self.download("remesh", "textured.glb", model_format="glb")
-            self.create("rigging", ["rigging", "create", "--input-task-id", self.st["tasks"]["remesh"],
+            if s.get("skip_remesh"):
+                # preview already remeshed (preview_data should_remesh): rig the textured task directly
+                self.download(tex_key, "textured.glb", model_format="glb")
+                rig_src = tex_key
+            else:
+                self.create("remesh", ["remesh", "create", "--input-task-id", self.st["tasks"][tex_key],
+                                       "--topology", "triangle", "--target-polycount", str(s["tris"]),
+                                       "--target-formats", "glb"])
+                self.wait("remesh")
+                self.download("remesh", "textured.glb", model_format="glb")
+                rig_src = "remesh"
+            self.create("rigging", ["rigging", "create", "--input-task-id", self.st["tasks"][rig_src],
                                     "--height-meters", str(s["height"])])
             self.wait("rigging")
             self.download("rigging", "rigged.glb", asset="result.rigged_character_glb_url")

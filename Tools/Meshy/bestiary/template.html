@@ -79,6 +79,8 @@ aside.folio { background: var(--slab); border-left: 1px solid var(--rule); overf
 .kind { font-family: var(--f-display); font-size: 11px; letter-spacing: .26em; text-transform: uppercase; color: var(--ember); }
 .kind.boss { color: var(--blood); }
 .kind.pet { color: var(--rc); }
+.kind.hero { color: var(--ember); }
+.rail .hero .bar i { background: var(--ember); }
 .cutNote { font-size: 13px; color: var(--bone); border: 1px solid var(--rule); padding: 8px 10px; }
 .folio h2 { margin: 4px 0 0; font-family: var(--f-display); font-weight: 700; font-size: 26px; line-height: 1.15; letter-spacing: .03em; text-wrap: balance; }
 .role { margin: 6px 0 0; color: var(--ash-fg); font-style: italic; }
@@ -113,7 +115,7 @@ dl.nums code { font-family: var(--f-mono); font-size: 11.5px; color: var(--bone)
 <div class="app">
   <header class="top">
     <h1>Survivor <span>Souls</span> Bestiary</h1>
-    <p>Three flying pets and fifteen foes from the Meshy batches of 15 Oct 2026, rigged and animated.</p>
+    <p>The new hero, three flying pets and fifteen foes from the Meshy batches of 15 Oct 2026, rigged and animated.</p>
     <span class="keys">↑ ↓ creature · 1–8 clip · space pause</span>
   </header>
   <nav class="rail" id="rail" aria-label="Creatures"></nav>
@@ -163,7 +165,7 @@ const clipLabel = { Walking: "Walk (rig)", Running: "Run (rig)" };
 
 /* --- rail --- */
 const rail = $("rail");
-for (const [kind, label] of [["pet", "Pets"], ["boss", "Bosses"], ["zombie", "Zombies"]]) {
+for (const [kind, label] of [["hero", "Hero"], ["pet", "Pets"], ["boss", "Bosses"], ["zombie", "Zombies"]]) {
   const list = DATA.filter((d) => d.kind === kind);
   const h = document.createElement("h2"); h.innerHTML = `${label}<em>${list.length}</em>`; rail.append(h);
   for (const d of list) {
@@ -349,18 +351,18 @@ function renderFolio(d) {
   const order = clipOrder(d);
   const folio = $("folio");
   folio.innerHTML = `
-    <div ${d.rarity ? `data-r="${d.rarity}"` : ""}><div class="kind ${d.kind}">${d.kind === "boss" ? "Boss" : d.kind === "pet" ? d.rarity + " pet" : "Zombie"}</div>
+    <div ${d.rarity ? `data-r="${d.rarity}"` : ""}><div class="kind ${d.kind}">${d.kind === "boss" ? "Boss" : d.kind === "pet" ? d.rarity + " pet" : d.kind === "hero" ? "Hero" : "Zombie"}</div>
       <h2>${d.title}</h2><p class="role">${d.role}</p></div>
     <section><h3>Animations</h3><div class="clips">${order.map((c, i) =>
       `<button data-clip="${c}" aria-pressed="false"><kbd>${i + 1}</kbd>${clipLabel[c] || c}<small>${d.clips[c].sec.toFixed(1)} s</small></button>`).join("")}</div></section>
-    <section><h3>${d.kind === "pet" ? "How it helps" : "How it fights"}</h3><p class="attack">${d.attack}</p></section>
+    <section><h3>${d.kind === "pet" ? "How it helps" : d.kind === "hero" ? "How he fights" : "How it fights"}</h3><p class="attack">${d.attack}</p></section>
     <section><h3>Ledger</h3><dl class="nums">
       <dt>Height</dt><dd>${d.h.toFixed(2)} m (${(d.h / KNIGHT).toFixed(2)}× the Knight)</dd>
       <dt>Mesh</dt><dd>${d.tris.toLocaleString("en")} triangles, 24 bones</dd>
       <dt>Stats</dt><dd>${d.stats}</dd>
       <dt>Unity</dt><dd><code>${d.folder.replace("Assets/_Project/Art/Characters/", "Art/Characters/")}</code></dd>
     </dl></section>
-    ${d.cut ? `<p class="cutNote">Cut from the game on 15 Oct 2026. KAN-128 removes it from the waves, code and asset folders.</p>` : ""}${d.kind === "pet" ? `<p class="cutNote">Pets have no game code yet. They float at shoulder height here; the wings move with the body but do not flap (the Meshy rig has no wing bones).</p>` : ""}<p class="note">First-guess numbers from Docs/ENEMY_ROSTER.md. Gameplay is not built yet (KAN-103). Walk and run marked “rig” are Meshy defaults; root motion is frozen here as in Unity.</p>`;
+    ${d.cut ? `<p class="cutNote">Cut from the game on 15 Oct 2026. KAN-128 removes it from the waves, code and asset folders.</p>` : ""}${d.kind === "hero" ? `<p class="cutNote">Only 3 clips so far (Meshy credits ran out): Shoot, and the rig walk / run. Idle, hit and death come later. The original bow from Meshy was cut out and rebuilt as a rigid mesh on the left hand.</p>` : ""}${d.kind === "pet" ? `<p class="cutNote">Pets have no game code yet. They float at shoulder height here; the wings move with the body but do not flap (the Meshy rig has no wing bones).</p>` : ""}<p class="note">First-guess numbers from Docs/ENEMY_ROSTER.md. Gameplay is not built yet (KAN-103). Walk and run marked “rig” are Meshy defaults; root motion is frozen here as in Unity.</p>`;
   for (const b of folio.querySelectorAll(".clips button")) b.addEventListener("click", () => playClip(b.dataset.clip));
 }
 

@@ -88,5 +88,11 @@
   "role": "Normal pet (light, support)",
   "attack": "Bobs beside the Knight. Every 1.8 s shoots a slow light mote at the nearest enemy. Its lantern also pulls in XP wisps from 1.5 m further away.",
   "stats": "Mote 30 % of the Knight's bolt damage, range 8 m, +1.5 m pickup radius"
+ },
+ "shadow-ranger": {
+  "title": "The Shadow Ranger",
+  "role": "New main hero, a hooded bow ranger (replaces the crossbow Knight)",
+  "attack": "Same Archero rule as today: stands still to shoot the nearest enemy in range. Bow instead of crossbow: faster draw, a little more reach. Draw-and-release clip (Meshy Archery Shot) timed so the arrow leaves on the release frame. Black recurve bow is a separate rigid mesh on the left hand.",
+  "stats": "Slightly stronger than the Knight: arrow damage 105 (Knight bolt 100), one shot every 0.9 s (Knight 1.0 s), range 11 m (Knight 10 m), arrow speed 30 m/s (bolt 26). About +17 % damage per second. HP 400 as today"
  }
 }

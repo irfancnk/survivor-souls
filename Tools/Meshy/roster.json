@@ -235,6 +235,23 @@
     "Hover": 245,
     "Cast": 130
    }
+  },
+  {
+   "slug": "shadow-ranger",
+   "name": "ShadowRanger",
+   "kind": "hero",
+   "height": 1.78,
+   "skip_remesh": true,
+   "preview_data": {
+    "should_remesh": true,
+    "target_polycount": 20000,
+    "topology": "triangle"
+   },
+   "prompt": "Heroic dark ranger archer, lean athletic human hunter in the style of a Lord of the Rings ranger. Black hooded cloak with a long flowing cape to the calves, dark layered leather armour and fitted black leather jerkin, leather bracers, belt with pouches, tall dark boots, quiver of black-fletched arrows on the back. Face shadowed under the hood, short dark beard. Empty open hands, no bow, no weapon in hands.",
+   "texture": "Black and charcoal leather with subtle dark grey and deep brown tones, worn black wool cloak with frayed hem, dark iron buckles, black arrow fletching, slight silver trim on the bracers, weathered realistic.",
+   "anims": {
+    "Shoot": 224
+   }
   }
  ]
 }

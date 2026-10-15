@@ -495,6 +495,12 @@
   - Verified: compile 0 errors / 0 new warnings, Game scene rebuild exit 0 (no builder change: generated churn not committed), mac dev build + 5 screenshot runs without exceptions, iOS dev export + xcodebuild + install + launch on iPhone 14 Pro Max OK.
   - Limits: the 7-tap reveal stays in store builds until the store launch ticket (strip with a define then). Granted Souls are not taken back on switch-off. Souls earned in Test Mode runs still bank. Soul tree needs no own hook (999,999 Souls buy everything); hero roster / gear / Grand Reliquaries must read `TestMode.IsOn` when they exist.
 
+- 2026-10-15: New hero model The Shadow Ranger (black hooded bow ranger with cape), assets only, no game code (user session, branch `claude/meshy-ai-api-access-e2c7c1`). `Art/Characters/Heroes/ShadowRanger/`: body ~20.2k tris + separate rigid bow mesh (`ShadowRanger_Bow`, 100 % `LeftHand`). Clips: Shoot (Meshy 224), rig Walking / Running. No idle / hit / death: Meshy credits are 0.
+  - Cheaper chain: preview with `--data {"should_remesh":true,"target_polycount":20000}` (20.6k faces) -> refine -> rig, no separate remesh. Meshy put a bow in the hand despite "no bow" in the prompt.
+  - Bow fix `Tools/Meshy/fix_ranger_weights.py`: cuts the fused bow (thin sliver strip after remesh, it bent and tore), builds a black recurve bow on the same arc skinned to `LeftHand`, quiver -> `Spine`. Checked with renders of every clip (`Docs/enemies/ShadowRanger.png`). Raw rig kept as `rigged_meshy.glb`.
+  - Design + stats (slightly stronger than the Knight: 105 dmg, 0.9 s, 11 m): `Docs/ENEMY_ROSTER.md` section 7. Bestiary viewer v4 has a Hero group.
+  - Limits: few leftover bow flakes near the tips; 21k tris above the hero budget (5-8k, add LODs); cape has no cloth sim; no Unity batch import run (first import makes the .meta files).
+
 ## DECISIONS
 - Design language: Archero / Archero 2 (menus, loop, chests, daily/weekly quests, gear merge, talents, energy). Look: Dark Souls, realistic, not dismal. User decision 2026-10-11.
 - Naming map: energy=Estus, gold=Souls, gems=Ember Shards, chests=Reliquaries, daily=Oaths, weekly=Pilgrimage, chapter=Realm, room=Chamber. See GAME_PLAN sec 2.
