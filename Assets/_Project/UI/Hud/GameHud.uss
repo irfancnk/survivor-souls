@@ -1279,3 +1279,19 @@
 .unity-button.victory__button {
     width: 460px;
 }
+
+/* Test Mode tag (KAN-144): bottom left, small, cold blue (never reads as a reward). */
+.hud-test-tag {
+    position: absolute;
+    left: 40px;
+    bottom: 40px;
+    padding: 6px 14px;
+    font-size: 24px;
+    letter-spacing: 4px;
+    -unity-font-style: bold;
+    color: rgb(150, 210, 255);
+    background-color: rgba(10, 22, 36, 0.75);
+    border-width: 2px;
+    border-color: rgba(120, 200, 255, 0.55);
+    border-radius: 6px;
+}

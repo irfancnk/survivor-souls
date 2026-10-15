@@ -302,3 +302,25 @@
     margin-top: 36px;
     margin-bottom: 0;
 }
+
+/* ---------- Test Mode (KAN-144) ---------- */
+
+/* Corner tag while Test Mode is on (menu). Cold blue so it never reads as a game reward. */
+.ss-test-tag {
+    position: absolute;
+    top: 48px;
+    left: 40px;
+    padding: 8px 18px;
+    font-size: 26px;
+    letter-spacing: 4px;
+    -unity-font-style: bold;
+    color: rgb(150, 210, 255);
+    background-color: rgba(10, 22, 36, 0.85);
+    border-width: 2px;
+    border-color: rgba(120, 200, 255, 0.6);
+    border-radius: 6px;
+}
+
+.ss-field--test .unity-label {
+    color: rgb(150, 210, 255);
+}

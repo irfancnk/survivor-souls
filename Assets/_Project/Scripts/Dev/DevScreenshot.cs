@@ -69,6 +69,9 @@ namespace SurvivorSouls.Dev
     /// that cast that many seconds after load (default 1.2; hex falls back to raise without zombies in reach).
     /// <c>-ss-hearts &lt;n&gt;</c> (KAN-60, boss Chamber): drops n healing hearts ahead of the Knight right after load (cap
     /// permitting); each shows its ground glow for 1 s, then floats.
+    /// Test Mode (KAN-144): <c>-ss-test-mode on</c> turns it on before any scene wakes (grant flag reset first, so the
+    /// Souls grant runs); without the arg it is off, so a Test Mode left on never leaks into other shots.
+    /// <c>-ss-settings</c> opens the menu settings; <c>-ss-start-chamber &lt;n&gt;</c> steps the Realm sheet's Start Chamber.
     /// Main menu (KAN-20): <c>-ss-realms</c> opens the Realm selection page, <c>-ss-realm &lt;id&gt;</c> also opens that
     /// Realm's detail sheet. With either, the saved progress of Realms 1-3 is wiped first (repeatable shots); then
     /// <c>-ss-best &lt;realm&gt;:&lt;chamber&gt;</c> records a best Chamber and <c>-ss-cleared &lt;realm&gt;</c> marks a Realm completed.
@@ -126,6 +129,8 @@ namespace SurvivorSouls.Dev
         private string _boss;
         private string _bossAttack;
         private int _hearts;
+        private bool _settings;
+        private int _startChamber;
 
         private const float XpLead = 1.5f; // realtime seconds between the XP grant and the capture (cards fully in)
 
@@ -185,6 +190,16 @@ namespace SurvivorSouls.Dev
             SurvivorSouls.Gameplay.Boss.BossFight.ForcedBoss = GetArg("-ss-boss-type");
             shot._hearts = int.TryParse(GetArg("-ss-hearts"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int hs) ? hs : 0;
             shot._cleared = int.TryParse(GetArg("-ss-cleared"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int cl) ? cl : 0;
+            shot._settings = Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-settings") >= 0;
+            shot._startChamber = int.TryParse(GetArg("-ss-start-chamber"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int sc) ? sc : 0;
+            // Test Mode (KAN-144) before any scene wakes: menus and the HUD read it on enable.
+            if (GetArg("-ss-test-mode") == "on")
+            {
+                SurvivorSouls.Core.TestMode.ResetAll();
+                int added = SurvivorSouls.Core.TestMode.SetOn(true);
+                Debug.Log($"[DevScreenshot] Test Mode on, +{added} Souls, balance {SurvivorSouls.Core.SoulWallet.Balance}");
+            }
+            else SurvivorSouls.Core.GameSettings.TestMode = false;
             // Souls wallet (KAN-96) set before any scene wakes, so the menu and the end screens show a known balance.
             if (int.TryParse(GetArg("-ss-wallet"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int wallet))
             {
@@ -258,6 +273,7 @@ namespace SurvivorSouls.Dev
             if (_portal) EnterPortal();
             if (_soak > 0) yield return PortalSoak(_soak);
             if (_realms) OpenRealms();
+            if (_settings) OpenSettings();
             if (_treeLevels != null) SetTreeLevels(_treeLevels);
             if (_soulTree) OpenSoulTree();
 
@@ -315,6 +331,9 @@ namespace SurvivorSouls.Dev
             menu.OpenRealms();
             if (_realmDetail > 0 && !menu.RealmSelect.OpenDetail(_realmDetail))
                 Debug.LogWarning($"[DevScreenshot] -ss-realm: no Realm {_realmDetail}");
+            for (int i = 1; i < _startChamber; i++) menu.RealmSelect.StepChamber(1);
+            if (_startChamber > 0)
+                Debug.Log($"[DevScreenshot] Start Chamber {menu.RealmSelect.StartChamber} stepper={menu.RealmSelect.StepperVisible}");
             Debug.Log($"[DevScreenshot] Realm page open, detail={menu.RealmSelect.Selected?.DisplayName ?? "none"} canStart={menu.RealmSelect.CanStart}");
         }
 
@@ -343,6 +362,18 @@ namespace SurvivorSouls.Dev
         }
 
         /// <summary>Main menu: opens the soul tree page (and a node's sheet with -ss-soul-node).</summary>
+        private static void OpenSettings()
+        {
+            var menu = FindAnyObjectByType<SurvivorSouls.UI.MainMenu.MainMenuController>();
+            if (menu == null)
+            {
+                Debug.LogWarning("[DevScreenshot] -ss-settings: no main menu in the scene");
+                return;
+            }
+            menu.OpenSettings();
+            Debug.Log($"[DevScreenshot] Settings open, testRow={menu.TestModeRowVisible} testTag={menu.TestModeTagVisible} testMode={SurvivorSouls.Core.TestMode.IsOn}");
+        }
+
         private void OpenSoulTree()
         {
             var menu = FindAnyObjectByType<SurvivorSouls.UI.MainMenu.MainMenuController>();

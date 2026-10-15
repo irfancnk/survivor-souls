@@ -48,6 +48,15 @@
                 </ui:VisualElement>
             </ui:VisualElement>
             <ui:Label name="rs-detail-note" text="" class="rs-detail__note ss-hidden" />
+            <!-- Test Mode only (KAN-144): pick the Chamber START begins at (wraps 1..last). Hidden in normal play. -->
+            <ui:VisualElement name="rs-chamber-step" class="rs-step ss-hidden">
+                <ui:Button name="rs-chamber-prev" text="&lt;" class="rs-step__button" />
+                <ui:VisualElement class="rs-step__body" picking-mode="Ignore">
+                    <ui:Label text="START CHAMBER" class="rs-step__key" picking-mode="Ignore" />
+                    <ui:Label name="rs-chamber-value" text="1 / 10" class="rs-step__value" picking-mode="Ignore" />
+                </ui:VisualElement>
+                <ui:Button name="rs-chamber-next" text="&gt;" class="rs-step__button" />
+            </ui:VisualElement>
             <ui:Button name="rs-start" text="START" class="ss-button ss-button--primary rs-start" />
             <ui:Button name="rs-detail-back" text="BACK" class="ss-button rs-detail__back" />
         </ui:VisualElement>

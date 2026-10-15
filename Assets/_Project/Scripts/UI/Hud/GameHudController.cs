@@ -10,7 +10,8 @@ namespace SurvivorSouls.UI.Hud
     /// <summary>
     /// Binds GameHud.uxml: shows a first-time hint until the joystick first moves (JoystickView draws the stick),
     /// and handles the pause button (for now: back to main menu). Android back / Escape does the same. Leaving ends the run:
-    /// its souls are banked into the wallet first (KAN-96).
+    /// its souls are banked into the wallet first (KAN-96). Shows the "TEST MODE" tag while Test Mode is on (KAN-144; it
+    /// can only change in the menu, so it is read once).
     /// Element names are constants below; keep them in sync with the UXML.
     /// </summary>
     [RequireComponent(typeof(UIDocument))]
@@ -20,6 +21,7 @@ namespace SurvivorSouls.UI.Hud
         private const string PauseName = "btn-pause";
         private const string HintName = "lbl-hint";
         private const string HintGoneClass = "hud-hint--gone";
+        public const string TestModeTagName = "lbl-test-mode";
 
         [SerializeField] private FloatingJoystick joystick;
         [Tooltip("Leaving to the menu banks this run's souls (KAN-96).")]
@@ -40,6 +42,7 @@ namespace SurvivorSouls.UI.Hud
             _safeArea = new SafeAreaPadding(root.Q(SafeRootName));
             _hint = root.Q<Label>(HintName);
             root.Q<Button>(PauseName).clicked += LeaveToMenu;
+            root.Q<Label>(TestModeTagName)?.EnableInClassList("hud-hidden", !TestMode.IsOn);
         }
 
         private void Update()

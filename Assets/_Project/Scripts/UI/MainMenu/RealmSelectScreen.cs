@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using SurvivorSouls.Core;
 using SurvivorSouls.Gameplay.Chamber;
 using SurvivorSouls.Gameplay.Realms;
 using SurvivorSouls.UI.Hud;
@@ -16,6 +17,9 @@ namespace SurvivorSouls.UI.MainMenu
     /// best, Estus cost); its START is on only for an unlocked, playable Realm and hands the Realm to the start callback.
     /// <see cref="Back"/> closes the sheet first, then the page. Opening and closing fade and slide (USS transitions);
     /// a closed part gets display none after its transition, so it never takes taps.
+    /// Test Mode (KAN-144, <see cref="TestMode.IsOn"/>, read on every sheet open): every Realm is open and startable
+    /// (a Realm without own content plays the Realm 1 content until KAN-57), and the sheet shows a Start Chamber stepper
+    /// (1..last, wraps), so a boss Chamber is one or two taps away. <see cref="StartChamber"/> is 1 when it is off.
     /// Plain class, owned by <see cref="MainMenuController"/>; tests build it on the MainMenu.uxml tree.
     /// </summary>
     public sealed class RealmSelectScreen
@@ -29,6 +33,10 @@ namespace SurvivorSouls.UI.MainMenu
         private const string DetailThumbName = "rs-detail-thumb";
         private const string StartName = "rs-start";
         private const string DetailBackName = "rs-detail-back";
+        public const string StepName = "rs-chamber-step";
+        private const string StepPrevName = "rs-chamber-prev";
+        private const string StepNextName = "rs-chamber-next";
+        private const string StepValueName = "rs-chamber-value";
         private const string HiddenClass = "ss-hidden";
         private const string ScreenClosedClass = "rs-screen--closed";
         private const string VeilClosedClass = "rs-veil--closed";
@@ -53,7 +61,10 @@ namespace SurvivorSouls.UI.MainMenu
         private readonly ScrollView _list;
         private readonly Label _numeral, _name, _desc, _enemies, _rewards, _chambers, _best, _estus, _note;
         private readonly Button _start;
+        private readonly VisualElement _step;
+        private readonly Label _stepValue;
         private readonly List<Card> _cards = new List<Card>();
+        private int _startChamber = RunState.FirstChamber;
         private IVisualElementScheduledItem _screenHide, _veilHide, _detailHide;
 
         public bool IsOpen { get; private set; }
@@ -63,6 +74,10 @@ namespace SurvivorSouls.UI.MainMenu
         /// <summary>START is on in the detail sheet.</summary>
         public bool CanStart => _start != null && _start.enabledSelf;
         public VisualElement Page => _screen;
+        /// <summary>Chamber START begins at: the stepper's pick in Test Mode, else Chamber 1.</summary>
+        public int StartChamber => TestMode.IsOn ? _startChamber : RunState.FirstChamber;
+        /// <summary>The Start Chamber stepper shows in the sheet (Test Mode).</summary>
+        public bool StepperVisible => _step != null && !_step.ClassListContains(HiddenClass);
 
         /// <param name="root">Tree that holds RealmSelect.uxml (the main menu root).</param>
         /// <param name="onStart">Called with the Realm when START is pressed on a startable Realm.</param>
@@ -89,11 +104,17 @@ namespace SurvivorSouls.UI.MainMenu
             _estus = _screen.Q<Label>("rs-detail-estus");
             _note = _screen.Q<Label>("rs-detail-note");
             _start = _screen.Q<Button>(StartName);
+            _step = _screen.Q(StepName);
+            _stepValue = _screen.Q<Label>(StepValueName);
 
             _screen.Q<Button>(BackName).clicked += () => Back();
             _screen.Q<Button>(DetailBackName).clicked += CloseDetail;
             _veil.RegisterCallback<PointerDownEvent>(_ => CloseDetail());
             _start.clicked += OnStart;
+            var prev = _screen.Q<Button>(StepPrevName);
+            if (prev != null) prev.clicked += () => StepChamber(-1);
+            var next = _screen.Q<Button>(StepNextName);
+            if (next != null) next.clicked += () => StepChamber(1);
 
             BuildCards();
         }
@@ -153,16 +174,20 @@ namespace SurvivorSouls.UI.MainMenu
             _estus.text = realm.EstusCost.ToString();
 
             string note = locked ? $"Clear Realm {ChamberTransitionHud.Roman(realm.Id - 1)} to unlock."
-                : !realm.Playable ? "This Realm is still being forged. Coming soon."
+                : !IsPlayable(realm) ? "This Realm is still being forged. Coming soon."
                 : null;
             _note.text = note ?? "";
             _note.EnableInClassList(HiddenClass, note == null);
             _start.SetEnabled(note == null);
             _start.text = locked ? "LOCKED"
-                : !realm.Playable ? "COMING SOON"
+                : !IsPlayable(realm) ? "COMING SOON"
                 : state == RealmState.Completed ? "START AGAIN"
                 : RunProgress.BestChamber(realm.Id) > 0 ? "START"
                 : "ENTER";
+
+            _startChamber = RunState.FirstChamber;
+            _step?.EnableInClassList(HiddenClass, !TestMode.IsOn || note != null);
+            ShowStartChamber();
 
             foreach (var card in _cards) card.Root.EnableInClassList(SelectedClass, card.Realm == realm);
             _veilHide?.Pause();
@@ -220,7 +245,7 @@ namespace SurvivorSouls.UI.MainMenu
         {
             if (state == RealmState.Locked) return "LOCKED";
             if (state == RealmState.Completed) return "CLEARED";
-            if (!realm.Playable) return "SOON";
+            if (!IsPlayable(realm)) return "SOON";
             return RunProgress.BestChamber(realm.Id) > 0 ? "" : "NEW";
         }
 
@@ -228,6 +253,24 @@ namespace SurvivorSouls.UI.MainMenu
         {
             int best = Mathf.Min(RunProgress.BestChamber(realm.Id), realm.Chambers);
             return best > 0 ? $"BEST {best} / {realm.Chambers}" : "NOT YET ENTERED";
+        }
+
+        /// <summary>Has content to play. Test Mode: every Realm (no own content yet = the Realm 1 content, KAN-57).</summary>
+        public static bool IsPlayable(RealmDefinition realm) => realm.Playable || TestMode.IsOn;
+
+        /// <summary>Test Mode stepper: next / previous start Chamber, wraps inside the selected Realm.</summary>
+        public void StepChamber(int step)
+        {
+            int count = Selected != null ? Mathf.Max(1, Selected.Chambers) : 1;
+            _startChamber = ((_startChamber - 1 + step) % count + count) % count + 1;
+            ShowStartChamber();
+        }
+
+        private void ShowStartChamber()
+        {
+            if (_stepValue == null) return;
+            int count = Selected != null ? Selected.Chambers : 0;
+            _stepValue.text = count > 0 ? $"{_startChamber} / {count}" : _startChamber.ToString();
         }
 
         private static string Or(string text, string fallback) => string.IsNullOrEmpty(text) ? fallback : text;

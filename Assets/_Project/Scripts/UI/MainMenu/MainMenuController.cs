@@ -16,6 +16,8 @@ namespace SurvivorSouls.UI.MainMenu
     /// Realm. Without a catalog PLAY starts Realm 1 at once. SOUL TREE opens the soul tree page (KAN-98,
     /// <see cref="SoulTreeScreen"/>); without a tree asset the button is hidden. Back / Esc closes the top layer (sheet,
     /// page, settings).
+    /// Test Mode (KAN-144): a settings row (dev builds, or after 7 taps on the settings title: <see cref="TestModeReveal"/>)
+    /// switches <see cref="TestMode"/>; a "TEST MODE" tag shows top left while it is on.
     /// </summary>
     [RequireComponent(typeof(UIDocument))]
     public sealed class MainMenuController : MonoBehaviour
@@ -32,6 +34,9 @@ namespace SurvivorSouls.UI.MainMenu
         private const string VibrationName = "tgl-vibration";
         private const string FpsName = "tgl-fps";
         private const string ReloadRingName = "tgl-reload-ring";
+        public const string TestModeToggleName = "tgl-test-mode";
+        public const string TestModeTagName = "lbl-test-mode";
+        public const string SettingsTitleName = "lbl-settings-title";
         private const string CloseName = "btn-settings-close";
         private const string HiddenClass = "ss-hidden";
         private const string WalletName = "lbl-wallet-souls";
@@ -56,6 +61,9 @@ namespace SurvivorSouls.UI.MainMenu
         private Label _gems;
         private Button _play;
         private IVisualElementScheduledItem _toastHide;
+        private Toggle _testToggle;
+        private Label _testTag;
+        private TestModeReveal _testReveal;
         private RealmSelectScreen _realmSelect;
         private SoulTreeScreen _soulTreeScreen;
         private bool _loading;
@@ -64,6 +72,25 @@ namespace SurvivorSouls.UI.MainMenu
         public RealmSelectScreen RealmSelect => _realmSelect;
         /// <summary>The soul tree page (null until enabled or without a tree asset).</summary>
         public SoulTreeScreen SoulTreePage => _soulTreeScreen;
+        /// <summary>The settings overlay is showing.</summary>
+        public bool SettingsOpen => _overlay != null && !_overlay.ClassListContains(HiddenClass);
+        /// <summary>The Test Mode row shows in the settings (tests, screenshots).</summary>
+        public bool TestModeRowVisible => _testToggle != null && !_testToggle.ClassListContains(HiddenClass);
+        /// <summary>The "TEST MODE" corner tag shows (tests, screenshots).</summary>
+        public bool TestModeTagVisible => _testTag != null && !_testTag.ClassListContains(HiddenClass);
+        /// <summary>Build flag for the Test Mode row; tests set false to check the hidden reveal. Default: development build.</summary>
+        public bool DevBuildForTestMode
+        {
+            get => _devBuildForTestMode;
+            set
+            {
+                _devBuildForTestMode = value;
+                if (_testReveal == null) return;
+                _testReveal = new TestModeReveal(value);
+                ShowTestMode();
+            }
+        }
+        private bool _devBuildForTestMode = TestMode.RowVisibleByDefault;
 
         /// <summary>Wiring for tests and code-built menus (call before the object is enabled).</summary>
         public void Setup(RealmCatalog catalog, GemRewardConfig gemRewards = null, SoulTree tree = null)
@@ -107,6 +134,7 @@ namespace SurvivorSouls.UI.MainMenu
                 quit.clicked += OnQuit;
 
             BindSettings(root);
+            BindTestMode(root);
             _realmSelect = realms != null && root.Q(RealmSelectScreen.ScreenName) != null
                 ? new RealmSelectScreen(root, realms, StartRealm)
                 : null;
@@ -209,9 +237,10 @@ namespace SurvivorSouls.UI.MainMenu
             StartRun(1);
         }
 
-        private void StartRealm(RealmDefinition realm) => StartRun(realm.Id);
+        private void StartRealm(RealmDefinition realm) => StartRun(realm.Id, _realmSelect.StartChamber);
 
-        private void StartRun(int realm)
+        /// <summary>New run in <paramref name="realm"/> at <paramref name="chamber"/> (above 1 only from the Test Mode stepper).</summary>
+        private void StartRun(int realm, int chamber = RunState.FirstChamber)
         {
             if (_loading) return;
             if (!SceneLoader.IsInBuild(SceneNames.Game))
@@ -224,6 +253,7 @@ namespace SurvivorSouls.UI.MainMenu
             _loading = true;
             _play.SetEnabled(false);
             RunState.NewRun(realm); // Chamber 1 of the chosen Realm, nothing carried (KAN-40)
+            if (chamber > RunState.FirstChamber) RunState.JumpToChamber(chamber); // Test Mode start Chamber (KAN-144)
             SceneLoader.LoadAsync(SceneNames.Game);
         }
 
@@ -237,7 +267,52 @@ namespace SurvivorSouls.UI.MainMenu
 #endif
         }
 
-        private void OpenSettings() => _overlay.RemoveFromClassList(HiddenClass);
+        /// <summary>Opens the settings overlay (SETTINGS). Dev screenshots call it too.</summary>
+        public void OpenSettings()
+        {
+            _overlay.RemoveFromClassList(HiddenClass);
+            ShowTestMode();
+        }
+
+        /// <summary>One tap on the settings title: the 7th shows the Test Mode row in a non-development build.</summary>
+        public void TapSettingsTitle()
+        {
+            if (_testReveal == null || !_testReveal.Tap()) return;
+            ShowTestMode();
+            ShowToast("Test Mode row revealed.");
+        }
+
+        /// <summary>Switches Test Mode (the settings toggle does the same). Switch-on tells the one-time Souls grant.</summary>
+        public void SetTestMode(bool on)
+        {
+            int added = TestMode.SetOn(on);
+            _testToggle?.SetValueWithoutNotify(on);
+            ShowTestMode();
+            _realmSelect?.Refresh();
+            if (on) ShowToast(added > 0 ? $"Test Mode on. +{PlayerHealthHud.FormatCount(added)} Souls." : "Test Mode on. All Realms open.", 3f);
+            else ShowToast("Test Mode off. Real progress restored.", 3f);
+        }
+
+        private void BindTestMode(VisualElement root)
+        {
+            _testReveal = new TestModeReveal(_devBuildForTestMode);
+            _testTag = root.Q<Label>(TestModeTagName);
+            _testToggle = root.Q<Toggle>(TestModeToggleName);
+            if (_testToggle != null)
+            {
+                _testToggle.SetValueWithoutNotify(TestMode.IsOn);
+                _testToggle.RegisterValueChangedCallback(e => SetTestMode(e.newValue));
+            }
+            root.Q<Label>(SettingsTitleName)?.RegisterCallback<PointerDownEvent>(_ => TapSettingsTitle());
+            ShowTestMode();
+        }
+
+        /// <summary>Row visibility and the corner tag from the current Test Mode state.</summary>
+        private void ShowTestMode()
+        {
+            _testToggle?.EnableInClassList(HiddenClass, _testReveal == null || !_testReveal.Visible);
+            _testTag?.EnableInClassList(HiddenClass, !TestMode.IsOn);
+        }
 
         private void CloseSettings()
         {

@@ -61,6 +61,8 @@
                 <ui:Label name="run-souls-value" text="0" class="hud-souls__value" picking-mode="Ignore" />
             </ui:VisualElement>
         </ui:VisualElement>
+        <!-- Test Mode tag (KAN-144, GameHudController): bottom left while Test Mode is on. -->
+        <ui:Label name="lbl-test-mode" text="TEST MODE" class="hud-test-tag hud-hidden" picking-mode="Ignore" />
         <!-- Owned skills (SkillHud, KAN-19): icon slots added in code, pick order. -->
         <ui:VisualElement name="skill-row" class="hud-skills" picking-mode="Ignore" />
         <ui:VisualElement class="hud-spacer" picking-mode="Ignore" />

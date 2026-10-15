@@ -396,6 +396,50 @@
     color: var(--ss-gold);
 }
 
+/* Test Mode Start Chamber stepper (KAN-144): "<  START CHAMBER 5 / 10  >" above START. */
+.rs-step {
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    margin: 26px 48px 0 48px;
+    padding: 10px 14px;
+    border-width: 2px;
+    border-color: rgba(120, 200, 255, 0.55);
+    background-color: rgba(18, 30, 44, 0.85);
+}
+
+.rs-step__body {
+    flex-grow: 1;
+    align-items: center;
+}
+
+.rs-step__key {
+    font-size: 24px;
+    letter-spacing: 4px;
+    color: rgb(150, 210, 255);
+    -unity-text-align: middle-center;
+}
+
+.rs-step__value {
+    font-size: 46px;
+    -unity-font-style: bold;
+    color: var(--ss-gold-bright);
+    -unity-text-align: middle-center;
+}
+
+.unity-button.rs-step__button {
+    width: 116px;
+    height: 104px;
+    margin: 0;
+    font-size: 48px;
+    -unity-font-style: bold;
+    color: var(--ss-gold-bright);
+    background-color: rgba(8, 10, 15, 0.9);
+    border-width: 2px;
+    border-color: var(--ss-line);
+    border-radius: 10px;
+}
+
 .unity-button.rs-start {
     margin: 30px 48px 0 48px;
 }
