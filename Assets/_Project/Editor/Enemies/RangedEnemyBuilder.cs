@@ -86,6 +86,7 @@ namespace SurvivorSouls.Editor.Enemies
                 ShotLook(root.transform, "Fire Pots", "T_FirePot", FirePotPixel, size: 0.62f, Color.white, ghosts: 3, spacing: 0.3f, stretch: false),
                 ShotLook(root.transform, "Acid Globs", "T_AcidGlob", AcidGlobPixel, size: 0.5f, Color.white, ghosts: 2, spacing: 0.26f, stretch: false),
                 ShotLook(root.transform, "Soul Orbs", "T_SoulOrb", ShamanBuilder.SoulOrbPixel, size: 0.6f, Color.white, ghosts: 2, spacing: 0.24f, stretch: false), // KAN-107 Shaman ring
+                BossBuilder.CreateFireballLook(root.transform, ShotCapacity), // KAN-174 the Butcher's black fireballs (Blender mesh)
             };
             var so = new SerializedObject(shots);
             so.FindProperty("player").objectReferenceValue = player;
@@ -103,6 +104,12 @@ namespace SurvivorSouls.Editor.Enemies
                 e.FindPropertyRelative("ghosts").intValue = looks[i].ghosts;
                 e.FindPropertyRelative("ghostSpacing").floatValue = looks[i].ghostSpacing;
                 e.FindPropertyRelative("stretch").boolValue = looks[i].stretch;
+                e.FindPropertyRelative("mesh").boolValue = looks[i].mesh;
+                e.FindPropertyRelative("spin").floatValue = looks[i].spin;
+                e.FindPropertyRelative("trail").objectReferenceValue = looks[i].trail;
+                e.FindPropertyRelative("trailRate").floatValue = looks[i].trailRate;
+                e.FindPropertyRelative("impactSparks").intValue = looks[i].impactSparks;
+                e.FindPropertyRelative("trailColor").colorValue = looks[i].trailColor;
             }
             so.ApplyModifiedPropertiesWithoutUndo();
             return shots;

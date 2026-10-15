@@ -45,6 +45,11 @@ namespace SurvivorSouls.Editor.Boss
     /// <c>-ss-boss-type BoneMatriarch</c> or the menu "Boss: Next Fight Bone Matriarch". Her body is tuned by
     /// <see cref="ConfigurePrefab"/> (called by <see cref="EnemyRosterBuilder"/>): no contact damage, a 6-9 m hold band and a
     /// <see cref="HoverBob"/> on the model.
+    /// KAN-174: the Butcher's black fireballs (<see cref="BossAttack.BlackFireballs"/>, a <see cref="BossFight.Move.Barrage"/>
+    /// side cast, appended once to an existing Butcher asset that has no barrage). Their look
+    /// (<see cref="CreateFireballLook"/>, the <see cref="ShotKind.BlackFireball"/> entry of the "Enemy Shots" pool): the Blender
+    /// model <see cref="FireballModelPath"/> (Tools/Blender/export_black_fireball.py) as mesh particles with the
+    /// SurvivorSouls/BlackFireball shader, plus one violet spark trail system. Menu "Boss: Black Fireball" throws one now.
     /// </summary>
     public static class BossBuilder
     {
@@ -83,6 +88,14 @@ namespace SurvivorSouls.Editor.Boss
         public const int BoulderCount = 6;
         private const string BoulderMeshPath = ArtDir + "/Mesh_BossBoulder.asset";
         private const string BoulderMaterialPath = "Assets/_Project/Art/Materials/Realm1/M_SnowProps.mat";
+        /// <summary>KAN-174: the black fireball comet (Blender export, head at the pivot pointing +Z, 1 m wide head).</summary>
+        public const string FireballModelPath = ArtDir + "/SM_BlackFireball.fbx";
+        private const string FireballMaterialPath = ArtDir + "/M_FX_BlackFireball.mat";
+        private const string FireballShader = "SurvivorSouls/BlackFireball";
+        private const string FireSparkTexturePath = ArtDir + "/T_BlackFireSpark.png";
+        /// <summary>KAN-174: head width (m) of a black fireball in flight (the comet is ~2.2 x as long).</summary>
+        public const float FireballSize = 0.8f;
+        private const int FireSparkCapacity = 192;
 
         public static BossFight Create(GameArtKit kit, PlayerHealth player, SurvivalTimer timer, EnemySpawner spawner, SoulWispField souls)
         {
@@ -468,6 +481,7 @@ namespace SurvivorSouls.Editor.Boss
                 recover: 0.7f, cooldown: 2.4f, pull: 4f, clip: "Chop"),
             BossAttack.Charge("Triple Charge", BossPhases.Phase2, 4.5f, 14f, telegraph: 0.75f, speed: 16f, distance: 10f,
                 width: 2.6f, damage: 0.18f, recover: 1f, cooldown: 3.6f, dashes: 3, stun: 1f, weight: 2f, clip: "Charge"),
+            BossAttack.BlackFireballs(), // KAN-174: side cast, 1 per s near the Knight, both phases
         };
 
         private static BossData LoadOrCreateButcher()
@@ -484,6 +498,7 @@ namespace SurvivorSouls.Editor.Boss
                     so.ApplyModifiedPropertiesWithoutUndo();
                     EditorUtility.SetDirty(data);
                 }
+                AddBarrageOnce(data);
                 AssetDatabase.ForceReserializeAssets(new[] { ButcherDataPath });
                 return data;
             }
@@ -685,6 +700,153 @@ namespace SurvivorSouls.Editor.Boss
         }
 
         /// <summary>
+        /// KAN-174: an existing Butcher asset (designer edits kept) gets the black fireballs appended once: only when its list
+        /// has no <see cref="BossFight.Move.Barrage"/> entry yet. To turn them off, edit the entry (phases, interval), do not
+        /// delete it: a deleted entry comes back on the next rebuild.
+        /// </summary>
+        private static void AddBarrageOnce(BossData data)
+        {
+            if (!data.HasAttackList) return;
+            foreach (var a in data.Attacks)
+                if (a.type == BossFight.Move.Barrage) return;
+            var so = new SerializedObject(data);
+            var list = so.FindProperty("attacks");
+            list.arraySize++;
+            list.GetArrayElementAtIndex(list.arraySize - 1).boxedValue = BossAttack.BlackFireballs();
+            so.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(data);
+            AssetDatabase.SaveAssets();
+        }
+
+        /// <summary>
+        /// KAN-174: the <see cref="ShotKind.BlackFireball"/> look of the shot pool: the Blender comet as script-owned mesh
+        /// particles (one draw call for every fireball; CPU-built, read/write mesh, world vertices for the shader) and a spark
+        /// trail system the pool emits into (alpha blend violet sparks that fall a little and fade; one more draw call while
+        /// sparks live).
+        /// </summary>
+        public static EnemyProjectiles.Look CreateFireballLook(Transform parent, int capacity)
+        {
+            var mesh = LoadFireballMesh();
+            var mat = EditorAssetUtil.LoadOrCreateMaterial(FireballMaterialPath, FireballShader);
+            EditorUtility.SetDirty(mat);
+            var ps = PropKit.Particles("Black Fireballs", parent, mat);
+            ps.transform.localRotation = Quaternion.identity;
+            var main = ps.main;
+            main.loop = true;
+            main.prewarm = false;
+            main.playOnAwake = true;
+            main.maxParticles = capacity;
+            main.startLifetime = 1000f;
+            main.startSpeed = 0f;
+            main.startRotation3D = true;
+            main.cullingMode = ParticleSystemCullingMode.AlwaysSimulate;
+            var emission = ps.emission;
+            emission.enabled = false;
+            var shape = ps.shape;
+            shape.enabled = false;
+            var r = ps.GetComponent<ParticleSystemRenderer>();
+            r.renderMode = ParticleSystemRenderMode.Mesh;
+            r.mesh = mesh;
+            r.alignment = ParticleSystemRenderSpace.World;
+            r.enableGPUInstancing = false;
+            r.SetActiveVertexStreams(new System.Collections.Generic.List<ParticleSystemVertexStream>
+            {
+                ParticleSystemVertexStream.Position, ParticleSystemVertexStream.Normal, ParticleSystemVertexStream.Color,
+                ParticleSystemVertexStream.UV,
+            });
+            r.sortMode = ParticleSystemSortMode.Distance;
+            r.lightProbeUsage = LightProbeUsage.Off;
+            r.reflectionProbeUsage = ReflectionProbeUsage.Off;
+
+            return new EnemyProjectiles.Look
+            {
+                sprites = ps, size = FireballSize, color = Color.white, ghosts = 0, ghostSpacing = 0f, stretch = false,
+                mesh = true, spin = 220f, trail = CreateFireSparks(parent), trailRate = 34f, impactSparks = 16,
+                trailColor = new Color(0.78f, 0.42f, 1f, 1f),
+            };
+        }
+
+        /// <summary>The comet mesh of <see cref="FireballModelPath"/> with mobile import settings (read/write: mesh particles).</summary>
+        private static Mesh LoadFireballMesh()
+        {
+            var importer = AssetImporter.GetAtPath(FireballModelPath) as ModelImporter
+                ?? throw new System.InvalidOperationException($"Missing {FireballModelPath} (Tools/Blender/export_black_fireball.py)");
+            bool dirty = !importer.isReadable || importer.materialImportMode != ModelImporterMaterialImportMode.None
+                || importer.importAnimation || importer.importCameras || importer.importLights || importer.addCollider
+                || importer.meshCompression != ModelImporterMeshCompression.Off
+                || importer.importTangents != ModelImporterTangents.None || importer.bakeAxisConversion;
+            if (dirty)
+            {
+                importer.isReadable = true; // CPU-built mesh particles read the vertices
+                importer.materialImportMode = ModelImporterMaterialImportMode.None;
+                importer.importAnimation = false;
+                importer.animationType = ModelImporterAnimationType.None;
+                importer.importCameras = false;
+                importer.importLights = false;
+                importer.importBlendShapes = false;
+                importer.addCollider = false;
+                importer.meshCompression = ModelImporterMeshCompression.Off; // keep the UV gradient exact
+                importer.importNormals = ModelImporterNormals.Import;
+                importer.importTangents = ModelImporterTangents.None;
+                importer.globalScale = 1f;
+                importer.useFileScale = true;
+                importer.bakeAxisConversion = false;
+                importer.SaveAndReimport();
+            }
+            foreach (var o in AssetDatabase.LoadAllAssetsAtPath(FireballModelPath))
+                if (o is Mesh m) return m;
+            throw new System.InvalidOperationException($"No mesh in {FireballModelPath}");
+        }
+
+        /// <summary>KAN-174: violet sparks behind and around the fireballs (emission off: the shot pool emits them).</summary>
+        private static ParticleSystem CreateFireSparks(Transform parent)
+        {
+            var tex = TextureFactory.Write(FireSparkTexturePath, 64, 64, FireSparkPixel, TextureFactory.Kind.Color,
+                wrap: TextureWrapMode.Clamp, maxSize: 64);
+            var mat = EditorAssetUtil.ParticleMaterial(ArtDir + "/M_FX_BlackFireSpark.mat", tex, additive: false);
+            var ps = PropKit.Particles("Black Fireball Sparks", parent, mat);
+            ps.transform.localRotation = Quaternion.identity;
+            var main = ps.main;
+            main.loop = true;
+            main.prewarm = false;
+            main.playOnAwake = true;
+            main.maxParticles = FireSparkCapacity;
+            main.startLifetime = 0.5f;
+            main.startSpeed = 0f;
+            main.gravityModifier = 0.35f;
+            var emission = ps.emission;
+            emission.enabled = false;
+            var shape = ps.shape;
+            shape.enabled = false;
+            var col = ps.colorOverLifetime;
+            col.enabled = true;
+            var fade = new Gradient();
+            fade.SetKeys(new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(new Color(0.55f, 0.3f, 0.8f), 1f) },
+                new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(0.9f, 0.5f), new GradientAlphaKey(0f, 1f) });
+            col.color = fade;
+            var size = ps.sizeOverLifetime;
+            size.enabled = true;
+            size.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 1f, 1f, 0.35f));
+            var r = ps.GetComponent<ParticleSystemRenderer>();
+            r.sortMode = ParticleSystemSortMode.None;
+            r.lightProbeUsage = LightProbeUsage.Off;
+            r.reflectionProbeUsage = ReflectionProbeUsage.Off;
+            return ps;
+        }
+
+        /// <summary>Spark sprite: white-hot centre, violet glow, dark plum rim (reads on snow and on the dark body).</summary>
+        private static Color FireSparkPixel(int x, int y)
+        {
+            float u = (x + 0.5f) / 64f * 2f - 1f, v = (y + 0.5f) / 64f * 2f - 1f;
+            float r = Mathf.Sqrt(u * u + v * v);
+            var c = r < 0.25f ? Color.Lerp(Color.white, new Color(0.85f, 0.6f, 1f), r / 0.25f)
+                : r < 0.6f ? Color.Lerp(new Color(0.85f, 0.6f, 1f), new Color(0.5f, 0.12f, 0.9f), (r - 0.25f) / 0.35f)
+                : Color.Lerp(new Color(0.5f, 0.12f, 0.9f), new Color(0.12f, 0.02f, 0.18f), Mathf.Clamp01((r - 0.6f) / 0.25f));
+            c.a = 1f - TextureFactory.SmoothStep(0.7f, 0.95f, r);
+            return c;
+        }
+
+        /// <summary>
         /// KAN-111: the Bone Matriarch body before <see cref="EnemyRosterBuilder"/> saves the prefab: no contact damage (she
         /// never melees), a 6-9 m hold band (backs off when the Knight closes in) and a <see cref="HoverBob"/> on the model
         /// (0.3 m lift, 0.12 m bob every 2.6 s; the root and blob shadow stay on the ground). Her Walking clip already plays
@@ -820,6 +982,9 @@ namespace SurvivorSouls.Editor.Boss
         [MenuItem("Survivor Souls/Debug/Boss: Beams")]
         private static void Beams() => ForceOrSample(BossFight.Move.Beams);
 
+        [MenuItem("Survivor Souls/Debug/Boss: Black Fireball")]
+        private static void BlackFireball() => ForceOrSample(BossFight.Move.Barrage);
+
         /// <summary>KAN-116: starts the boss's <paramref name="move"/> attack; a boss without one gets the sample entry first.</summary>
         private static void ForceOrSample(BossFight.Move move)
         {
@@ -881,6 +1046,7 @@ namespace SurvivorSouls.Editor.Boss
         [MenuItem("Survivor Souls/Debug/Boss: Shockwave", true)]
         [MenuItem("Survivor Souls/Debug/Boss: Homing", true)]
         [MenuItem("Survivor Souls/Debug/Boss: Beams", true)]
+        [MenuItem("Survivor Souls/Debug/Boss: Black Fireball", true)]
         [MenuItem("Survivor Souls/Debug/Boss: Print Attacks", true)]
         [MenuItem("Survivor Souls/Debug/Boss: Half Health", true)]
         [MenuItem("Survivor Souls/Debug/Boss: Health 25 %", true)]

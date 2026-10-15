@@ -6,7 +6,7 @@ using UnityEngine;
 namespace SurvivorSouls.Gameplay.Combat
 {
     /// <summary>Look (and particle system) of an enemy shot. Index into <see cref="EnemyProjectiles"/> looks.</summary>
-    public enum ShotKind { Arrow, FirePot, AcidGlob, SoulOrb } // SoulOrb: Hexbound Shaman ring (KAN-107); new kinds at the end
+    public enum ShotKind { Arrow, FirePot, AcidGlob, SoulOrb, BlackFireball } // SoulOrb: Hexbound Shaman ring (KAN-107); BlackFireball: Butcher (KAN-174); new kinds at the end
 
     /// <summary>
     /// Shots of the ranged zombies (KAN-105), shared by every shooter in the scene and reused by later casters and bosses.
@@ -25,6 +25,9 @@ namespace SurvivorSouls.Gameplay.Combat
     /// end them. A stopped lob hides its circle and leaves no hazard (nothing lands outside the shown area).</item>
     /// <item>Nothing hits a dead Knight.</item>
     /// </list>
+    /// KAN-174: a look can be a 3D mesh (<see cref="Look.mesh"/>: mesh particles turned along the flight, rolling) with a
+    /// spark trail (<see cref="Look.trail"/>: a second particle system fed by Emit, no allocation) and a spark burst on
+    /// landing: the Butcher's black fireballs (<see cref="ShotKind.BlackFireball"/>, Blender model SM_BlackFireball).
     /// On the "Enemy Shots" object (RangedEnemyBuilder). <see cref="RangedAttack"/> fires; <see cref="Clear"/> ends all.
     /// </summary>
     public sealed class EnemyProjectiles : MonoBehaviour
@@ -56,6 +59,8 @@ namespace SurvivorSouls.Gameplay.Combat
             public bool Blockable;
             public GroundTelegraph Circle;
             public float ProgressStart; // circle progress at launch (the wind-up already filled part of it)
+            public float Sparks;        // KAN-174: trail sparks owed (fractions carry over)
+            public float Roll;          // KAN-174: mesh roll phase (degrees)
         }
 
         [Serializable]
@@ -70,6 +75,17 @@ namespace SurvivorSouls.Gameplay.Combat
             [Min(0f)] public float ghostSpacing;
             [Tooltip("Write the velocity into the particle (stretched billboard renderer: arrows).")]
             public bool stretch;
+            [Tooltip("KAN-174: mesh particles (3D start rotation on): the mesh's +Z turns along the flight and rolls.")]
+            public bool mesh;
+            [Tooltip("KAN-174: roll of a mesh shot round its flight line (degrees per second).")]
+            public float spin;
+            [Tooltip("KAN-174: spark trail (a particle system with emission off; the pool emits into it). Empty = none.")]
+            public ParticleSystem trail;
+            [Tooltip("KAN-174: trail sparks per second per shot.")]
+            [Min(0f)] public float trailRate;
+            [Tooltip("KAN-174: sparks thrown out where a lobbed shot lands.")]
+            [Min(0)] public int impactSparks;
+            public Color trailColor;
         }
 
         /// <summary>The scene's shot pool (ranged attacks find it here). Set while enabled.</summary>
@@ -88,6 +104,7 @@ namespace SurvivorSouls.Gameplay.Combat
         private int _hitVolley = -1;
         private ParticleSystem.Particle[][] _particles;
         private int[] _drawn;
+        private ParticleSystem.EmitParams _spark;
 
         /// <summary>A shot hurt the Knight: point, damage dealt.</summary>
         public event Action<Vector3, float> HitPlayer;
@@ -102,6 +119,19 @@ namespace SurvivorSouls.Gameplay.Combat
         public Vector3 PositionOf(int i) => _shots[i].Position;
         public ShotKind KindOf(int i) => _shots[i].Kind;
         public bool IsLobbed(int i) => _shots[i].Lobbed;
+        public Vector3 TargetOf(int i) => _shots[i].Target;
+        /// <summary>KAN-174: trail and landing sparks emitted since the scene started (tests).</summary>
+        public int SparksEmitted { get; private set; }
+        public Look LookOf(ShotKind kind) => (int)kind < looks.Length ? looks[(int)kind] : default;
+
+        /// <summary>KAN-174: shots of <paramref name="kind"/> in flight.</summary>
+        public int CountOf(ShotKind kind)
+        {
+            int n = 0;
+            for (int i = 0; i < _count; i++)
+                if (_shots[i].Kind == kind) n++;
+            return n;
+        }
 
         /// <summary>Tests and tools: wiring without the builder.</summary>
         public void Setup(PlayerHealth knight, GroundHazards hazardPool, EnemyTelegraphs warnings, int shotCapacity = 48, Look[] shotLooks = null)
@@ -209,6 +239,18 @@ namespace SurvivorSouls.Gameplay.Combat
         public static Vector3 ArcPoint(Vector3 start, Vector3 target, float arc, float t) =>
             Vector3.LerpUnclamped(start, target, t) + Vector3.up * (4f * arc * t * (1f - t));
 
+        /// <summary>KAN-174: removes the shots of one <paramref name="kind"/> and hides their warnings (the boss died).</summary>
+        public void ClearKind(ShotKind kind)
+        {
+            for (int i = _count - 1; i >= 0; i--)
+            {
+                if (_shots[i].Kind != kind) continue;
+                EndCircle(ref _shots[i], hide: true);
+                Remove(i);
+            }
+            Draw();
+        }
+
         /// <summary>Removes every shot and hides their warnings (scene end, tests).</summary>
         public void Clear()
         {
@@ -242,6 +284,7 @@ namespace SurvivorSouls.Gameplay.Combat
                     s.Position = ArcPoint(s.Start, s.Target, s.Arc, t);
                     s.Velocity = (s.Position - from) / dt;
                     if (s.Circle != null) s.Circle.SetProgress(Mathf.Lerp(s.ProgressStart, 1f, t));
+                    Trail(ref s, dt);
                     float ground = Mathf.Lerp(s.Start.y - ThrowHeight, s.Target.y, t);
                     if (t < 1f && s.Blockable && s.Position.y - ground < LowArcHeight && walk != null && walk.IsBlocked(s.Position, BlockRadius))
                     {
@@ -296,6 +339,7 @@ namespace SurvivorSouls.Gameplay.Combat
             }
             var pool = Hazards;
             if (pool != null && s.Hazard.IsValid) pool.Spawn(s.Target, s.Hazard, s.Owner, s.MaxPerOwner);
+            Burst(s.Kind, s.Target);
             EndCircle(ref s, hide: false);
             Landed?.Invoke(s.Target, s.Kind);
         }
@@ -311,6 +355,51 @@ namespace SurvivorSouls.Gameplay.Combat
         }
 
         private void Remove(int i) => _shots[i] = _shots[--_count];
+
+        /// <summary>KAN-174: trail sparks behind a shot whose look has a trail (rate per second, fractions carry over).</summary>
+        private void Trail(ref Shot s, float dt)
+        {
+            int k = (int)s.Kind;
+            if (k >= looks.Length) return;
+            var look = looks[k];
+            s.Roll += look.spin * dt;
+            if (look.trail == null || look.trailRate <= 0f) return;
+            s.Sparks += look.trailRate * dt;
+            Vector3 back = s.Velocity.sqrMagnitude > 0.0001f ? -s.Velocity.normalized : Vector3.zero;
+            while (s.Sparks >= 1f)
+            {
+                s.Sparks -= 1f;
+                Spark(look, s.Position + UnityEngine.Random.insideUnitSphere * (look.size * 0.35f),
+                    back * UnityEngine.Random.Range(0.4f, 1.4f) + UnityEngine.Random.insideUnitSphere * 0.5f + Vector3.up * 0.3f,
+                    UnityEngine.Random.Range(0.35f, 0.65f));
+            }
+        }
+
+        /// <summary>KAN-174: sparks thrown out where a shot with a trail look lands.</summary>
+        private void Burst(ShotKind kind, Vector3 at)
+        {
+            int k = (int)kind;
+            if (k >= looks.Length) return;
+            var look = looks[k];
+            if (look.trail == null) return;
+            for (int i = 0; i < look.impactSparks; i++)
+            {
+                Vector2 d = UnityEngine.Random.insideUnitCircle.normalized * UnityEngine.Random.Range(1.5f, 3.5f);
+                Spark(look, at + Vector3.up * 0.2f, new Vector3(d.x, UnityEngine.Random.Range(1.2f, 3f), d.y),
+                    UnityEngine.Random.Range(0.4f, 0.75f));
+            }
+        }
+
+        private void Spark(in Look look, Vector3 position, Vector3 velocity, float life)
+        {
+            _spark.position = position;
+            _spark.velocity = velocity;
+            _spark.startLifetime = life;
+            _spark.startSize = look.size * UnityEngine.Random.Range(0.12f, 0.24f);
+            _spark.startColor = look.trailColor;
+            look.trail.Emit(_spark, 1);
+            SparksEmitted++;
+        }
 
         private void Draw()
         {
@@ -329,6 +418,13 @@ namespace SurvivorSouls.Gameplay.Combat
                     if ((int)s.Kind != k) continue;
                     Vector3 back = s.Velocity.sqrMagnitude > 0.0001f ? -s.Velocity.normalized : Vector3.zero;
                     float flicker = 1f + 0.08f * Mathf.Sin(time * 37f + i * 1.7f);
+                    Vector3 rotation = Vector3.zero;
+                    if (look.mesh) // KAN-174: the mesh's +Z (head) along the flight, rolling round it
+                    {
+                        Vector3 ahead = back != Vector3.zero ? -back : s.Target - s.Start;
+                        if (ahead.sqrMagnitude < 0.0001f) ahead = Vector3.forward;
+                        rotation = (Quaternion.LookRotation(ahead) * Quaternion.Euler(0f, 0f, s.Roll)).eulerAngles;
+                    }
                     for (int g = 0; g <= ghosts; g++)
                     {
                         ref var p = ref buffer[n++];
@@ -338,6 +434,7 @@ namespace SurvivorSouls.Gameplay.Combat
                         p.position = s.Position + back * (look.ghostSpacing * g);
                         p.velocity = look.stretch ? s.Velocity : Vector3.zero;
                         p.rotation = 0f;
+                        if (look.mesh) p.rotation3D = rotation;
                         p.startSize = look.size * scale * (look.stretch ? 1f : flicker);
                         p.startColor = c;
                         p.startLifetime = 1000f;

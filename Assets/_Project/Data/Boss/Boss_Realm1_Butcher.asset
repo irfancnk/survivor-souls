@@ -182,6 +182,37 @@ MonoBehaviour:
     burnDps: 0
     clip: Charge
     every: 0
+  - label: Black Fireballs
+    type: 14
+    phases: 3
+    priority: 0
+    weight: 1
+    minRange: 0
+    maxRange: 30
+    telegraph: 0.9
+    recover: 0
+    cooldown: 0
+    damage: 0.06
+    radius: 1
+    reach: 3
+    length: 0.6
+    width: 0
+    speed: 0
+    spread: 0
+    count: 0
+    duration: 0.9
+    interval: 1
+    pull: 0
+    stun: 0
+    gaps: 0
+    obstacle: 0
+    turn: 0
+    summon: 
+    burnRadius: 0
+    burnLife: 0
+    burnDps: 0
+    clip: 
+    every: 0
   roarClip: Roar
   phaseRoar: 1.2
   slamRange: 4
