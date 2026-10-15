@@ -158,7 +158,7 @@ const stage = $("stage");
 const store = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} } };
 
 /* --- clip ordering: signature moves first, rig defaults last --- */
-const LATE = ["Hit", "Death", "Walk", "Shamble", "Sprint", "Walking", "Running"];
+const LATE = ["Idle", "Hover", "Hit", "Death", "Walk", "Shamble", "Sprint", "Walking", "Running"];
 const rank = (c) => { const i = LATE.indexOf(c); return i < 0 ? -1 : i; };
 const clipOrder = (d) => Object.keys(d.clips).sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
 const clipLabel = { Walking: "Walk (rig)", Running: "Run (rig)" };
@@ -344,7 +344,7 @@ function updateTags() {
   const ratio = d.h / KNIGHT;
   $("tagL").innerHTML = `<b>${d.h.toFixed(2)} m</b> · ${ratio.toFixed(2)}× Knight · ${d.tris.toLocaleString("en")} tris`;
   const a = d.clips[clipName];
-  $("tagR").innerHTML = a ? `<b>${clipLabel[clipName] || clipName}</b> · ${a.action != null ? "Meshy action " + a.action : "rig default"}` : "";
+  $("tagR").innerHTML = a ? `<b>${clipLabel[clipName] || clipName}</b> · ${a.action == null ? "rig default" : (typeof a.action === "number" ? "Meshy action " + a.action : a.action)}` : "";
 }
 
 function renderFolio(d) {
@@ -358,11 +358,11 @@ function renderFolio(d) {
     <section><h3>${d.kind === "pet" ? "How it helps" : d.kind === "hero" ? "How he fights" : "How it fights"}</h3><p class="attack">${d.attack}</p></section>
     <section><h3>Ledger</h3><dl class="nums">
       <dt>Height</dt><dd>${d.h.toFixed(2)} m (${(d.h / KNIGHT).toFixed(2)}× the Knight)</dd>
-      <dt>Mesh</dt><dd>${d.tris.toLocaleString("en")} triangles, 24 bones</dd>
+      <dt>Mesh</dt><dd>${d.tris.toLocaleString("en")} triangles, ${d.kind === "hero" ? 26 : 24} bones</dd>
       <dt>Stats</dt><dd>${d.stats}</dd>
       <dt>Unity</dt><dd><code>${d.folder.replace("Assets/_Project/Art/Characters/", "Art/Characters/")}</code></dd>
     </dl></section>
-    ${d.cut ? `<p class="cutNote">Cut from the game on 15 Oct 2026. KAN-128 removes it from the waves, code and asset folders.</p>` : ""}${d.kind === "hero" ? `<p class="cutNote">Only 3 clips so far (Meshy credits ran out): Shoot, and the rig walk / run. Idle, hit and death come later. The original bow from Meshy was cut out and rebuilt as a rigid mesh on the left hand.</p>` : ""}${d.kind === "pet" ? `<p class="cutNote">Pets have no game code yet. They float at shoulder height here; the wings move with the body but do not flap (the Meshy rig has no wing bones).</p>` : ""}<p class="note">First-guess numbers from Docs/ENEMY_ROSTER.md. Gameplay is not built yet (KAN-103). Walk and run marked “rig” are Meshy defaults; root motion is frozen here as in Unity.</p>`;
+    ${d.cut ? `<p class="cutNote">Cut from the game on 15 Oct 2026. KAN-128 removes it from the waves, code and asset folders.</p>` : ""}${d.kind === "hero" ? `<p class="cutNote">Shoot and Idle are hand-keyed in Blender (IK): the string bends to the jaw and the arrow leaves on release. Walk / run are the Meshy rig clips. Hit and death are still missing. Bow, string, arrow and face cloth are new meshes; the fused Meshy bow was cut out.</p>` : ""}${d.kind === "pet" ? `<p class="cutNote">Pets have no game code yet. They float at shoulder height here; the wings move with the body but do not flap (the Meshy rig has no wing bones).</p>` : ""}<p class="note">First-guess numbers from Docs/ENEMY_ROSTER.md. Gameplay is not built yet (KAN-103). Walk and run marked “rig” are Meshy defaults; root motion is frozen here as in Unity.</p>`;
   for (const b of folio.querySelectorAll(".clips button")) b.addEventListener("click", () => playClip(b.dataset.clip));
 }
 

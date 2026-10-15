@@ -250,7 +250,8 @@
    "prompt": "Heroic dark ranger archer, lean athletic human hunter in the style of a Lord of the Rings ranger. Black hooded cloak with a long flowing cape to the calves, dark layered leather armour and fitted black leather jerkin, leather bracers, belt with pouches, tall dark boots, quiver of black-fletched arrows on the back. Face shadowed under the hood, short dark beard. Empty open hands, no bow, no weapon in hands.",
    "texture": "Black and charcoal leather with subtle dark grey and deep brown tones, worn black wool cloak with frayed hem, dark iron buckles, black arrow fletching, slight silver trim on the bracers, weathered realistic.",
    "anims": {
-    "Shoot": 224
+    "Shoot": "hand-keyed (Blender IK)",
+    "Idle": "hand-keyed (Blender IK)"
    }
   }
  ]

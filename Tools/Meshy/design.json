@@ -92,7 +92,7 @@
  "shadow-ranger": {
   "title": "The Shadow Ranger",
   "role": "New main hero, a hooded bow ranger (replaces the crossbow Knight)",
-  "attack": "Same Archero rule as today: stands still to shoot the nearest enemy in range. Bow instead of crossbow: faster draw, a little more reach. Draw-and-release clip (Meshy Archery Shot) timed so the arrow leaves on the release frame. Black recurve bow is a separate rigid mesh on the left hand.",
+  "attack": "Same Archero rule as today: stands still to shoot the nearest enemy in range. Hand-keyed bow cycle (1 s, loops): side-on stance with the left shoulder to the target, bow arm locked out, string drawn to the jaw, release at 0.63 s, follow-through past the ear, next arrow from the quiver. The string really bends (BowString bone) and the arrow rides it (Arrow bone, rests in the quiver).",
   "stats": "Slightly stronger than the Knight: arrow damage 105 (Knight bolt 100), one shot every 0.9 s (Knight 1.0 s), range 11 m (Knight 10 m), arrow speed 30 m/s (bolt 26). About +17 % damage per second. HP 400 as today"
  }
 }

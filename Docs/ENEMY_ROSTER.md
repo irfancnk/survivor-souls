@@ -173,15 +173,30 @@ Three flying familiars that fight for the Knight. Winged humanoid bodies on purp
 
 Pet cost: 138 Meshy credits (balance after: 38). Files follow section 1 (SK / A / T naming, Generic rig, 24 bones, root scale 0.01). Not yet imported in a Unity batch run: the first import makes the .meta files.
 
-## 7. Hero: The Shadow Ranger (Meshy 2026-10-15, assets only)
+## 7. Hero: The Shadow Ranger (Meshy 2026-10-15 + Blender rebuild, assets only)
 
-New main hero model: a black hooded bow ranger with a long cape (Lord of the Rings ranger look). Replaces the crossbow Knight look when KAN-100 / the hero swap ticket lands. No game code uses it yet.
+New main hero model: a black hooded bow ranger with a long cape (Lord of the Rings ranger look). Replaces the crossbow Knight look when KAN-153 lands. No game code uses it yet.
 
-- Folder: `Assets/_Project/Art/Characters/Heroes/ShadowRanger`. `SK_ShadowRanger.fbx` has 2 skinned meshes: `ShadowRanger_Mesh` (body, ~20.2k tris) and `ShadowRanger_Bow` (~1k tris, 100 % `LeftHand`, plain dark material `M_Bow`, no texture). Textures: BaseColor 2048, Normal 1024.
-- Height 1.78 m (rig); skinned bounds 1.83 m with the bow tip. 24-bone Meshy rig, same layout as the enemies.
-- Clips: `Shoot` (Meshy Archery Shot, action 224, ~3 s: trim to the draw + release), `Walking` / `Running` (rig). No idle, hit or death yet: the Meshy credits ran out (balance 0). Add them later (3 credits each) or bake them in Blender.
-- Bow: Meshy fused a bow into the left hand. The 20k remesh made it a strip of long thin triangles that bent and tore in the clips. `Tools/Meshy/fix_ranger_weights.py` cuts it out and builds a black recurve bow (limbs + recurve tips + string) on the same arc, skinned 100 % to `LeftHand`. The quiver arrows on the back are bound 100 % to `Spine` (they swung out with the right arm). Raw Meshy rig kept as `rigged_meshy.glb` in the job folder.
-- Known issues: a few thin flakes of the old bow remain near the tips; the arrow on the string is not a separate object (spawn the projectile at the bow grip); the cape follows the legs (no cloth sim); 21k tris is above the hero budget (5-8k): add Mesh LODs.
-- Design: Same Archero rule as today: stands still to shoot the nearest enemy in range. Bow instead of crossbow: faster draw, a little more reach. Draw-and-release clip (Meshy Archery Shot) timed so the arrow leaves on the release frame. Black recurve bow is a separate rigid mesh on the left hand.
+**Build:** `Tools/Meshy/build_shadow_ranger.py` (headless Blender) turns the raw Meshy rig (`rigged_meshy.glb` in the job folder) into the final asset. It replaces the first fix (`fix_ranger_weights.py`, deleted). Run:
+`blender -b --python Tools/Meshy/build_shadow_ranger.py -- <job_dir> --stage B --export`, then `Tools/Meshy/install.py` (Unity FBX) and `to_web.py` (viewer). Work file for hand edits: `~/survivor-souls-assets/models/shadow_ranger/ShadowRanger.blend` (everything packed; actions Shoot / Idle / Walking / Running).
+
+**What the build does**
+- Merges the remesh triangle soup (26.8k -> 9.9k verts) and smooths normals (hard edges > 40 deg kept). Removes the faceted look.
+- Cuts the fused Meshy bow, string and arrow (the "drawn bow" preview pose left a string from both tips to the chest and an arrow across the body: the tangled strings). Region fit from vertex plots.
+- Quiver arrows bound 100 % to `Spine`.
+- Face: a hood shadow painted into the base colour (smooth height ramp, skin texels only), plus a dark ranger cowl `ShadowRanger_Mask` (raycast onto the face, smoothed, 11 mm off the skin, drapes from the chin into the collar), skinned to `Head`.
+- New black recurve bow `ShadowRanger_Bow` (1.24 m, grip wrap, nocks), built around the hand in the aim pose and mapped to rest: 100 % `LeftHand`.
+- New string `ShadowRanger_String`: two tubes from the tips to a new bone `BowString` (child of `LeftHand`); the middle follows the draw hand.
+- New arrow `ShadowRanger_Arrow` on a new bone `Arrow` (child of `Spine`): at rest it sits in the quiver; in Shoot it rides the string and goes back to the quiver on release (game spawns the flying arrow then).
+- Clips, hand-keyed with two-bone IK and baked: `Shoot` (1.0 s loop, 30 fps: ready 0-4, draw 4-14, hold 14-19, **release frame 19 = 0.63 s**, follow-through 19-25, next arrow 27-30; side-on stance, left shoulder to the target, string to the right jaw, palm down for the top camera) and `Idle` (2 s, bow carried upright, breathing). `Walking` / `Running` are the Meshy rig clips with rest keys added for `Arrow` / `BowString` (no stale pose after Shoot).
+
+**Unity files** (`Assets/_Project/Art/Characters/Heroes/ShadowRanger/`)
+- `SK_ShadowRanger.fbx`: 26 bones (Meshy 24 + `BowString`, `Arrow`), meshes Body (19.9k tris, BaseColor 2048 + Normal 1024, painted face), Mask, Bow, String, Arrow. Materials without textures (make URP Lit): Bow wood RGB 0.030/0.026/0.024 rough 0.38; grip leather 0.11/0.065/0.035; string 0.55/0.52/0.45; cowl cloth 0.022/0.021/0.022 rough 0.85; arrow shaft 0.06/0.05/0.045; arrowhead steel 0.35/0.36/0.38 metal 0.9.
+- `A_ShadowRanger_Shoot.fbx`, `_Idle.fbx`, `_Walking.fbx`, `_Running.fbx`. Fire the projectile on the release frame (0.63 s of the 1.0 s clip; scale the state speed to the fire interval). Spawn it at the arrow bone position on that frame, along the bone Y axis.
+- Height 1.78 m (rig). Skinned bounds read taller because the bow tip rises above the head in the rest pose.
+
+**Known limits:** no finger bones (the draw hand is an open hand, posed palm down); cape has no cloth sim; 21k tris above the hero budget (add Mesh LODs); no hit / death clips yet (Meshy credits 0: hand-key them with the same build script, or 3 credits each later); a small strip of cheek shows beside the cowl.
+
+- Design: Same Archero rule as today: stands still to shoot the nearest enemy in range. Hand-keyed bow cycle (1 s, loops): side-on stance with the left shoulder to the target, bow arm locked out, string drawn to the jaw, release at 0.63 s, follow-through past the ear, next arrow from the quiver.
 - Stats: Slightly stronger than the Knight: arrow damage 105 (Knight bolt 100), one shot every 0.9 s (Knight 1.0 s), range 11 m (Knight 10 m), arrow speed 30 m/s (bolt 26). About +17 % damage per second. HP 400 as today.
-- Pose sheet: `Docs/enemies/ShadowRanger.png` (Shoot draw / release / back, Walking, Running). Meshy tasks: preview `01a13f57-6aed-7656-b86a-478e3a999999`, refine `01a13f58-eca0-77e2-ba5e-008a14656854`, rigging `01a13f59-ce9a-755c-be1a-c740e239ad26`. Cost 38 credits (preview built-in remesh to 20k: no separate remesh step).
+- Pose sheet: `Docs/enemies/ShadowRanger.png` (Shoot ready / full draw / follow-through, Idle, Walking, Running, Shoot side). Meshy tasks: preview `01a13f57-6aed-7656-b86a-478e3a999999`, refine `01a13f58-eca0-77e2-ba5e-008a14656854`, rigging `01a13f59-ce9a-755c-be1a-c740e239ad26`. Cost 38 credits.
