@@ -50,7 +50,7 @@ namespace SurvivorSouls.Gameplay.Combat
         }
 
         private const float BodyRadius = 0.35f;
-        private const float LaneStep = 0.4f;
+        private const float LaneStep = 0.25f; // 5 m = 20 probes: a free lane is the full leap
         private const float TurnSpeed = 900f;
 
         [SerializeField] private Settings settings;
