@@ -133,7 +133,7 @@ Realm 1 wave table `Assets/_Project/Data/Combat/EnemyWaves_Realm1.asset`, entry 
 
 - Hooded look repeats (Pyre Thrower, Hexbound Shaman, Butcher). Textures differ (bone / ember / violet / black), but add a colour rim or emissive accent so they read apart at the gameplay camera.
 - The Butcher came out as a hooded skeleton executioner with a cleaver-axe, not a fat butcher. The Rotting Colossus came out as a horned demon brute, not a corpse golem. Both read as big bosses; names kept.
-- Plague Bloater arms clip into the belly in `Burst`.
+- Plague Bloater arms clipped into the belly / apron skirt in `Burst`: fixed in the clip (KAN-146, arms held 15 deg wider, `Tools/Meshy/fix_bloater_burst.py`; run it again after any `to_unity.py` re-export of the Bloater). The cause stays in the rig: Meshy weights the belly and apron to the thigh bones.
 - Graveyard Laborer and Rusted Watchman are two of the four reference sheets (common-enemy tiers) made 3D. The other two (Fallen Militiaman, Gravebound Knight) and the Bone Archer were cut (KAN-128): art, prefabs, pose sheets and wave slots are gone; the raw Meshy jobs stay in `~/survivor-souls-assets/meshy_jobs` (outside git).
 
 ## 5. Rebuild
