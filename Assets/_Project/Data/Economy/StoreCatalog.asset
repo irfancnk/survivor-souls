@@ -1,0 +1,67 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ce204dabee1f940288611c31c3440636, type: 3}
+  m_Name: StoreCatalog
+  m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Meta.StoreCatalog
+  packs:
+  - id: com.irfancnk.survivorsouls.shards.100
+    title: Ember Pinch
+    shards: 100
+    bonus: 0
+    priceCents: 99
+    badge: 
+  - id: com.irfancnk.survivorsouls.shards.550
+    title: Ember Pouch
+    shards: 500
+    bonus: 50
+    priceCents: 499
+    badge: POPULAR
+  - id: com.irfancnk.survivorsouls.shards.1200
+    title: Ember Satchel
+    shards: 1000
+    bonus: 200
+    priceCents: 999
+    badge: 
+  - id: com.irfancnk.survivorsouls.shards.2500
+    title: Ember Coffer
+    shards: 2000
+    bonus: 500
+    priceCents: 1999
+    badge: 
+  - id: com.irfancnk.survivorsouls.shards.6500
+    title: Ember Hoard
+    shards: 5000
+    bonus: 1500
+    priceCents: 4999
+    badge: BEST VALUE
+  offers:
+  - id: reliquary
+    title: Ashen Reliquary
+    description: An old chest of loose souls. Never the same twice.
+    kind: 1
+    cost: 60
+    souls: 800
+    soulsMax: 2400
+  - id: souls-bundle
+    title: Soul Bundle
+    description: Souls bound in a cloth. Enough for a kindling or two.
+    kind: 0
+    cost: 120
+    souls: 2500
+    soulsMax: 2500
+  - id: souls-cache
+    title: Soul Cache
+    description: A hoard of souls taken from the fallen.
+    kind: 0
+    cost: 400
+    souls: 10000
+    soulsMax: 10000

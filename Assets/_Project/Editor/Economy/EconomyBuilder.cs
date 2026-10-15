@@ -12,12 +12,15 @@ namespace SurvivorSouls.Editor.Economy
     /// GameSceneBuilder (run end bonus, chest shards) and MainMenuSceneBuilder (welcome bonus).
     /// Soul tree (KAN-98): <see cref="SoulTree"/> + one <see cref="SoulTreeNode"/> asset per node, made the same way (only
     /// when missing; a missing node is added to an existing tree). Node icons reuse the in-run skill icons.
+    /// Store (KAN-99): <see cref="StoreCatalog"/> with the shipped packs and shard offers (<see cref="StoreCatalog.CreateDefault"/>),
+    /// made once and never overwritten. Used by MainMenuSceneBuilder (store page).
     /// </summary>
     public static class EconomyBuilder
     {
         private const string DataDir = "Assets/_Project/Data/Economy";
         public const string GemRewardsPath = DataDir + "/GemRewards.asset";
         public const string SoulTreePath = DataDir + "/SoulTree.asset";
+        public const string StoreCatalogPath = DataDir + "/StoreCatalog.asset";
         private const string SoulNodeDir = DataDir + "/SoulTree";
         private const string IconDir = "Assets/_Project/Art/Skills/Icons";
 
@@ -73,6 +76,18 @@ namespace SurvivorSouls.Editor.Economy
             AssetDatabase.CreateAsset(config, GemRewardsPath);
             AssetDatabase.SaveAssets();
             return config;
+        }
+
+        /// <summary>The store catalog asset (KAN-99). Made with the shipped packs and offers only when missing.</summary>
+        public static StoreCatalog LoadOrCreateStoreCatalog()
+        {
+            var catalog = AssetDatabase.LoadAssetAtPath<StoreCatalog>(StoreCatalogPath);
+            if (catalog != null) return catalog;
+            EditorAssetUtil.EnsureFolder(DataDir);
+            catalog = StoreCatalog.CreateDefault();
+            AssetDatabase.CreateAsset(catalog, StoreCatalogPath);
+            AssetDatabase.SaveAssets();
+            return catalog;
         }
 
         /// <summary>The soul tree asset with every shipped node. Missing assets are made; existing ones are not changed.</summary>
