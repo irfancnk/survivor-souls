@@ -633,6 +633,16 @@ if STAGE != "A":
         ang = math.atan2(palm.cross(want).dot(y), palm.dot(want))
         rot_world("RightHand", Matrix.Rotation(ang, 3, y))
 
+    def run_right_arm(sw, running=True):
+        """Free arm in walk / run: elbow bent (about 90 deg running), fist low in front of the hip, swings fore / aft
+        opposite the bow arm (Meshy had the forearm raised with the palm up)."""
+        across, upv, fwdv = chest_axes()
+        Sh = joint("RightArm")
+        swing = (0.13 if running else 0.08) * sw
+        down = 0.30 if running else 0.38
+        target = Sh - upv * (down - 0.04 * max(sw, 0.0)) + fwdv * (0.10 + swing) + across * 0.05
+        two_bone("RightArm", "RightForeArm", "RightHand", target, Sh - fwdv * 0.40 - across * 0.15 - upv * 0.10)
+
     def carry_bow(swing=0.0, lean_deg=30):
         """Bow arm low at the side, grip at hip height, bow upright leaning forward, string facing back."""
         across, upv, fwdv = chest_axes()
@@ -1031,8 +1041,10 @@ if STAGE != "A":
             PB["Arrow"].location = (0, 0, 0); PB["Arrow"].rotation_quaternion = (1, 0, 0, 0)
             PB["BowString"].location = (0, 0, 0); PB["BowString"].rotation_quaternion = (1, 0, 0, 0)
             upd()
-            carry_bow((swings[i] - mean) / amp * span, lean_deg=34 if clip == "Running" else 26)
-            relax_right_hand()
+            sw = (swings[i] - mean) / amp
+            carry_bow(sw * span, lean_deg=34 if clip == "Running" else 26)
+            run_right_arm(-sw, clip == "Running")
+            relax_right_hand(1.0)
             key_all(f)
         dst.use_fake_user = True
         bpy.data.actions.remove(src)
