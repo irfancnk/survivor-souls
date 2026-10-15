@@ -21,7 +21,7 @@ namespace SurvivorSouls.Tests
     /// <summary>
     /// KAN-105 ranged zombies: the keep-distance band (back off, walk in, hold), the shared shot pool (straight hit / miss /
     /// pillar, one hit per volley, lobbed impact only inside the circle, low lobs stopped by walls), ground hazards (dps,
-    /// slow, no stacking, max per owner, life), the attack loop of the three shipped types (warning >= 0.6 s before any
+    /// slow, no stacking, max per owner, life), the attack loop of the two shipped types + straight arrows (warning >= 0.6 s before any
     /// damage, aim lanes, 1-1-3 pattern, lead aim, kill cancels the warning), no GC per frame, prefab and Game scene wiring.
     /// Uses the real built prefabs (run the Game scene builder first). Pools have no sprites: logic only.
     /// </summary>
@@ -111,16 +111,34 @@ namespace SurvivorSouls.Tests
             return o;
         }
 
-        private Enemy Spawn(string id, Vector3 position)
+        private Enemy Spawn(string id, Vector3 position, System.Action<Enemy> setUp = null)
         {
             var asset = UnityEditor.AssetDatabase.LoadAssetAtPath<Enemy>(Dir + "Enemy_" + id + ".prefab");
             Assert.That(asset, Is.Not.Null, id);
             var enemy = Object.Instantiate(asset);
             Track(enemy.gameObject);
             enemy.gameObject.SetActive(false);
+            setUp?.Invoke(enemy);
             enemy.Spawn(position, _knight.transform, _ => { });
             return enemy;
         }
+
+        /// <summary>
+        /// Straight arrows (hold band 7-9 m, aim lane that locks, 1-1-3 fan, needs a clear line). No shipped type shoots them
+        /// since KAN-128 cut the Bone Archer; the framework keeps them, so tests put these numbers on a Pyre Thrower body.
+        /// </summary>
+        private static readonly RangedAttack.Settings StraightShot = new RangedAttack.Settings
+        {
+            kind = ShotKind.Arrow, lobbed = false,
+            windUp = 0.8f, lockShare = 0.35f, cooldown = 2.2f, pattern = new[] { 1, 1, 3 }, spread = 30f,
+            speed = 14f, range = 14f, damageShare = 0.1f, hitRadius = 0.45f, laneWidth = 0.3f, needsLineOfFire = true,
+        };
+
+        private Enemy SpawnArcher(Vector3 position) => Spawn("PyreThrower", position, e =>
+        {
+            e.SetHoldBand(7f, 9f);
+            e.GetComponent<RangedAttack>().Configure(StraightShot);
+        });
 
         /// <summary>Steps attack, shots, hazards and warnings by hand (no frames: Update does not run inside a [Test]).</summary>
         private void Run(RangedAttack attack, float seconds)
@@ -139,7 +157,7 @@ namespace SurvivorSouls.Tests
         public IEnumerator HoldBand_BacksOff_WalksIn_ThenHolds()
         {
             _shots.enabled = false; // movement only: no pool, no attack
-            var archer = Spawn("BoneArcher", Vector3.zero);
+            var archer = SpawnArcher(Vector3.zero);
             Assert.That(archer.KeepsDistance, Is.True);
             Assert.That(archer.HoldMin, Is.EqualTo(7f));
             Assert.That(archer.HoldMax, Is.EqualTo(9f));
@@ -311,7 +329,7 @@ namespace SurvivorSouls.Tests
         // ------------------------------------------------------------ Attack loop (shipped prefabs)
 
         [Test]
-        public void ShippedTypes_WarnAtLeast06s_BeforeAnyDamage([Values("BoneArcher", "PyreThrower", "BileSpitter")] string id)
+        public void ShippedTypes_WarnAtLeast06s_BeforeAnyDamage([Values("PyreThrower", "BileSpitter")] string id)
         {
             var enemy = Spawn(id, Vector3.zero);
             var attack = enemy.GetComponent<RangedAttack>();
@@ -340,9 +358,9 @@ namespace SurvivorSouls.Tests
         }
 
         [Test]
-        public void Archer_AimLaneFollowsThenLocks_FanEveryThirdVolley()
+        public void StraightShot_AimLaneFollowsThenLocks_FanEveryThirdVolley()
         {
-            var archer = Spawn("BoneArcher", Vector3.zero);
+            var archer = SpawnArcher(Vector3.zero);
             var attack = archer.GetComponent<RangedAttack>();
             _knight.Invulnerable = true;
             _knight.transform.position = new Vector3(0f, 0f, 8f);
@@ -431,7 +449,7 @@ namespace SurvivorSouls.Tests
         [Test]
         public void KillDuringWindUp_HidesWarnings_FreesThem()
         {
-            var archer = Spawn("BoneArcher", Vector3.zero);
+            var archer = SpawnArcher(Vector3.zero);
             var attack = archer.GetComponent<RangedAttack>();
             _knight.transform.position = new Vector3(0f, 0f, 8f);
             Assert.That(attack.ForceAttack(), Is.True);
@@ -452,7 +470,7 @@ namespace SurvivorSouls.Tests
             Assert.That(RangedAttack.ClearShot(Vector3.zero, new Vector3(0f, 0f, 9f)), Is.False);
             Assert.That(RangedAttack.ClearShot(new Vector3(4f, 0f, 0f), new Vector3(4f, 0f, 9f)), Is.True);
 
-            var archer = Spawn("BoneArcher", Vector3.zero);
+            var archer = SpawnArcher(Vector3.zero);
             var attack = archer.GetComponent<RangedAttack>();
             _knight.transform.position = new Vector3(0f, 0f, 9f);
             Run(attack, RangedAttack.SightInterval + Frame);
@@ -463,7 +481,7 @@ namespace SurvivorSouls.Tests
         [Test]
         public void FlyingShots_AndHazards_DoNotAllocate()
         {
-            var archer = Spawn("BoneArcher", Vector3.zero);
+            var archer = SpawnArcher(Vector3.zero);
             var attack = archer.GetComponent<RangedAttack>();
             _knight.Invulnerable = true;
             _knight.transform.position = new Vector3(0f, 0f, 8f);
@@ -483,7 +501,6 @@ namespace SurvivorSouls.Tests
         {
             (string id, ShotKind kind, bool lobbed, float min, float max)[] ranged =
             {
-                ("BoneArcher", ShotKind.Arrow, false, 7f, 9f),
                 ("PyreThrower", ShotKind.FirePot, true, 6f, 10f),
                 ("BileSpitter", ShotKind.AcidGlob, true, 5f, 8f),
             };
@@ -497,13 +514,6 @@ namespace SurvivorSouls.Tests
                 Assert.That(prefab.HoldMin, Is.EqualTo(r.min), r.id);
                 Assert.That(prefab.HoldMax, Is.EqualTo(r.max), r.id);
             }
-            var archer = UnityEditor.AssetDatabase.LoadAssetAtPath<Enemy>(Dir + "Enemy_BoneArcher.prefab");
-            var bow = FindDeep(archer.transform, "Bow");
-            Assert.That(bow, Is.Not.Null, "bow prop");
-            Assert.That(bow.parent.name, Is.EqualTo("LeftHand"));
-            Assert.That(bow.GetComponent<MeshRenderer>(), Is.Not.Null);
-            Assert.That(bow.lossyScale.x, Is.EqualTo(1f).Within(0.02f), "real size (rig cm scale undone)");
-
             var spitter = UnityEditor.AssetDatabase.LoadAssetAtPath<Enemy>(Dir + "Enemy_BileSpitter.prefab").GetComponent<RangedAttack>();
             Assert.That(spitter.Config.maxHazards, Is.EqualTo(3));
             Assert.That(spitter.Config.hazard.slow, Is.EqualTo(0.3f).Within(1e-4f));
@@ -511,19 +521,12 @@ namespace SurvivorSouls.Tests
             Assert.That(pyre.Config.hazard.kind, Is.EqualTo(HazardKind.Fire));
             Assert.That(pyre.Config.flightTime, Is.EqualTo(1.1f).Within(1e-4f));
 
-            foreach (var id in new[] { "GraveyardLaborer", "FallenMilitiaman", "RustedWatchman", "GraveboundKnight" })
+            foreach (var id in new[] { "GraveyardLaborer", "RustedWatchman" })
             {
                 var melee = UnityEditor.AssetDatabase.LoadAssetAtPath<Enemy>(Dir + "Enemy_" + id + ".prefab");
                 Assert.That(melee.GetComponent<RangedAttack>(), Is.Null, id);
                 Assert.That(melee.KeepsDistance, Is.False, id);
             }
-        }
-
-        private static Transform FindDeep(Transform root, string name)
-        {
-            foreach (var t in root.GetComponentsInChildren<Transform>(true))
-                if (t.name == name) return t;
-            return null;
         }
 
         /// <summary>The built Game scene: shot pools wired, ranged types in the build, each one fires at the Knight.</summary>
@@ -550,7 +553,11 @@ namespace SurvivorSouls.Tests
             knight.Invulnerable = true;
             foreach (var shooter in Object.FindObjectsByType<AutoShooter>()) shooter.enabled = false;
 
-            foreach (string id in new[] { "BoneArcher", "PyreThrower", "BileSpitter" })
+            foreach (string cut in new[] { "FallenMilitiaman", "GraveboundKnight", "BoneArcher" }) // KAN-128
+                Assert.That(spawner.FindType("Enemy_" + cut), Is.Null, cut + " still in the build");
+            foreach (var extra in spawner.ExtraTypes) Assert.That(extra != null, Is.True, "missing extra type (a deleted prefab)");
+
+            foreach (string id in new[] { "PyreThrower", "BileSpitter" })
             {
                 var prefab = spawner.FindType("Enemy_" + id);
                 Assert.That(prefab, Is.Not.Null, id + " in the build");

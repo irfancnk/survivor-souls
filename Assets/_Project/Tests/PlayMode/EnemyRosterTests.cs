@@ -18,7 +18,7 @@ namespace SurvivorSouls.Tests
     public sealed class EnemyRosterTests
     {
         private const string Dir = "Assets/_Project/Prefabs/Enemies/";
-        private static readonly string[] MeleeTiers = { "GraveyardLaborer", "FallenMilitiaman", "RustedWatchman", "GraveboundKnight" };
+        private static readonly string[] MeleeTiers = { "GraveyardLaborer", "RustedWatchman" };
         private static readonly int MoveHash = Animator.StringToHash("Move");
         private static readonly int AttackHash = Animator.StringToHash("Attack");
         private static readonly int HitHash = Animator.StringToHash("Hit");
@@ -149,7 +149,7 @@ namespace SurvivorSouls.Tests
         [UnityTest]
         public IEnumerator Kill_PlaysDeath_ThenReturnsToPool()
         {
-            var enemy = Spawn(Dir + "Enemy_FallenMilitiaman.prefab");
+            var enemy = Spawn(Dir + "Enemy_RustedWatchman.prefab");
             _player.position = new Vector3(0f, 0f, 30f);
             yield return new WaitForSeconds(0.2f);
             Quaternion before = enemy.transform.rotation;

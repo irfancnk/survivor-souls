@@ -492,7 +492,7 @@ namespace SurvivorSouls.Tests
             Assert.That(brute.Config.radius, Is.EqualTo(4.5f));
             Assert.That(bloater.Config.swell, Is.GreaterThanOrEqualTo(SpecialAttack.MinTelegraph));
             Assert.That(brute.Config.windUp, Is.GreaterThanOrEqualTo(SpecialAttack.MinTelegraph));
-            foreach (var other in new[] { "GraveyardLaborer", "BoneArcher", "HexboundShaman" })
+            foreach (var other in new[] { "GraveyardLaborer", "PyreThrower", "HexboundShaman" })
                 Assert.That(AssetDatabase.LoadAssetAtPath<SpecialAttack>(Dir + "Enemy_" + other + ".prefab"), Is.Null, other);
 
             var waves = AssetDatabase.LoadAssetAtPath<EnemyWaveTable>("Assets/_Project/Data/Combat/EnemyWaves_Realm1.asset");

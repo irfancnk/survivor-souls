@@ -9,9 +9,9 @@ using UnityEngine;
 namespace SurvivorSouls.Tests
 {
     /// <summary>
-    /// KAN-104: the 15 roster prefabs as the builder left them (run the Game scene builder first): mesh, material, animator
+    /// KAN-104: the roster prefabs as the builder left them (run the Game scene builder first): mesh, material, animator
     /// and clips wired, sizes from Docs/ENEMY_ROSTER.md, in-place walk clips, long action clips cut to their strike, and the
-    /// one-time wave table move to the four melee tiers.
+    /// one-time wave table move to the melee tiers. KAN-128: the three cut types are gone everywhere.
     /// </summary>
     public sealed class EnemyRosterBuilderTests
     {
@@ -21,8 +21,8 @@ namespace SurvivorSouls.Tests
         /// <summary>Rig heights of Docs/ENEMY_ROSTER.md section 2 (m).</summary>
         private static readonly (string id, float height)[] DocHeights =
         {
-            ("GraveyardLaborer", 1.72f), ("FallenMilitiaman", 1.78f), ("RustedWatchman", 1.8f), ("GraveboundKnight", 1.85f),
-            ("PlagueBloater", 1.8f), ("BoneArcher", 1.78f), ("PyreThrower", 1.75f), ("BileSpitter", 1.7f),
+            ("GraveyardLaborer", 1.72f), ("RustedWatchman", 1.8f),
+            ("PlagueBloater", 1.8f), ("PyreThrower", 1.75f), ("BileSpitter", 1.7f),
             ("FrenziedGhoul", 1.7f), ("GraveBrute", 2.3f), ("HexboundShaman", 1.75f), ("AshgraveButcher", 4.2f),
             ("PyreLord", 4.5f), ("RottingColossus", 5.0f), ("BoneMatriarch", 4.0f),
         };
@@ -33,10 +33,11 @@ namespace SurvivorSouls.Tests
             controller.layers[0].stateMachine.states.Select(s => s.state).FirstOrDefault(s => s.name == name);
 
         [Test]
-        public void Roster_HasAllFifteenCharacters()
+        public void Roster_HasTheTwelveKeptCharacters()
         {
             Assert.That(Ids, Is.EquivalentTo(DocHeights.Select(d => d.id)));
             Assert.That(EnemyRosterBuilder.Roster.Count(s => s.Boss), Is.EqualTo(4));
+            Assert.That(EnemyRosterBuilder.Roster.Length, Is.EqualTo(12), "8 zombies + 4 bosses (KAN-128 cut 3)");
         }
 
         [Test]
@@ -158,7 +159,7 @@ namespace SurvivorSouls.Tests
         }
 
         [Test]
-        public void ShippedWaves_SpawnTheFourMeleeTiers_NotTheOldShambler()
+        public void ShippedWaves_SpawnTheMeleeTiers_NotTheOldShambler()
         {
             var table = AssetDatabase.LoadAssetAtPath<EnemyWaveTable>(WavesPath);
             var shambler = AssetDatabase.LoadAssetAtPath<Enemy>(ShamblerPath);
@@ -193,21 +194,44 @@ namespace SurvivorSouls.Tests
                     Assert.That(entries.Any(e => e.prefab == shambler), Is.False);
                     Assert.That(entries.Sum(e => e.weight), Is.EqualTo(1f).Within(0.01f), $"phase {i} total weight");
                 }
-                Assert.That(table.GetPhase(0).enemies.Length, Is.EqualTo(2), "phase 0: Laborer + Militiaman only");
+                Assert.That(table.GetPhase(0).enemies.Length, Is.EqualTo(2), "phase 0: Laborer + Watchman");
                 Assert.That(table.GetPhase(1).enemies.Single(e => e.prefab == runner).weight, Is.EqualTo(0.2f));
-                Assert.That(table.GetPhase(1).enemies.Length, Is.EqualTo(5), "4 tiers + Runner");
+                Assert.That(table.GetPhase(1).enemies.Length, Is.EqualTo(3), "2 tiers + Runner");
 
                 // A designer edit after the move (the Watchman removed) is kept: the move never runs again.
                 var p1 = table.GetPhase(1);
                 p1.enemies = p1.enemies.Where(e => e.prefab != EnemyRosterBuilder.LoadPrefab("RustedWatchman")).ToArray();
                 table.Configure(table.FirstSpawnDelay, table.PrewarmPerType, new[] { table.GetPhase(0), p1 });
                 Assert.That(EnemyRosterBuilder.AddMeleeTiers(table, shambler), Is.False);
-                Assert.That(table.GetPhase(1).enemies.Length, Is.EqualTo(4));
+                Assert.That(table.GetPhase(1).enemies.Length, Is.EqualTo(2));
             }
             finally
             {
                 Object.DestroyImmediate(table);
             }
+        }
+
+        /// <summary>KAN-128: the cut types. Nothing in the roster, the ranged specs, the waves or the asset folders may use them.</summary>
+        private static readonly string[] Cut = { "FallenMilitiaman", "GraveboundKnight", "BoneArcher" };
+
+        [Test]
+        public void CutTypes_AreGone_FromRosterRangedWavesAndAssets()
+        {
+            foreach (var id in Cut)
+            {
+                Assert.That(EnemyRosterBuilder.Roster.Any(s => s.Id == id), Is.False, id + " in the roster");
+                Assert.That(EnemyRosterBuilder.MeleeTiers, Has.No.Member(id));
+                Assert.That(RangedEnemyBuilder.Ids, Has.No.Member(id));
+                Assert.That(AssetDatabase.FindAssets(id, new[] { "Assets" }), Is.Empty, id + " assets left");
+            }
+            Assert.That(AssetDatabase.FindAssets("SM_BoneBow", new[] { "Assets" }), Is.Empty, "bone bow mesh left");
+            var table = AssetDatabase.LoadAssetAtPath<EnemyWaveTable>(WavesPath);
+            for (int i = 0; i < table.PhaseCount; i++)
+                foreach (var e in table.GetPhase(i).enemies)
+                {
+                    Assert.That(e.prefab, Is.Not.Null, $"phase {i}: missing prefab (a deleted type)");
+                    Assert.That(Cut.Any(c => e.prefab.name.Contains(c)), Is.False, e.prefab.name);
+                }
         }
     }
 }
