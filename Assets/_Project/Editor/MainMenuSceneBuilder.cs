@@ -448,7 +448,9 @@ namespace SurvivorSouls.Editor
             doc.panelSettings = panelSettings;
             doc.visualTreeAsset = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(UxmlPath);
             if (doc.visualTreeAsset == null) throw new System.InvalidOperationException($"UXML missing: {UxmlPath}");
-            go.AddComponent<MainMenuController>().Setup(realmCatalog, Economy.EconomyBuilder.LoadOrCreateGemRewards()); // welcome shards (KAN-97)
+            go.AddComponent<MainMenuController>().Setup(realmCatalog,
+                Economy.EconomyBuilder.LoadOrCreateGemRewards(), // welcome shards (KAN-97)
+                Economy.EconomyBuilder.LoadOrCreateSoulTree()); // soul tree page (KAN-98)
         }
 
         // ---------------------------------------------------------------- Realms (KAN-20)

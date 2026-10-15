@@ -1,0 +1,50 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <Style src="SoulTree.uss" />
+    <!-- Soul tree page (KAN-98). Instanced by MainMenu.uxml, driven by SoulTreeScreen.
+         Tier rows and node cards are built in code from the SoulTree asset (classes st-tier, st-node*). -->
+    <ui:VisualElement name="st-screen" class="st-screen st-screen--closed ss-hidden">
+        <ui:VisualElement name="st-safe" class="st-safe" picking-mode="Ignore">
+            <ui:VisualElement class="st-header">
+                <ui:VisualElement class="st-header__bar">
+                    <ui:Button name="st-back" text="BACK" class="st-back" />
+                    <ui:VisualElement class="ss-wallet st-souls" picking-mode="Ignore">
+                        <ui:VisualElement class="ss-wallet__gem" picking-mode="Ignore" />
+                        <ui:Label name="st-souls" text="0" class="ss-wallet__value" picking-mode="Ignore" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+                <ui:Label text="SOUL TREE" class="st-title" />
+                <ui:Label text="Spend Souls on lasting strength. Every level holds for every run." class="st-subtitle" />
+            </ui:VisualElement>
+            <ui:ScrollView name="st-list" mode="Vertical" horizontal-scroller-visibility="Hidden" vertical-scroller-visibility="Hidden" class="st-list" />
+        </ui:VisualElement>
+
+        <ui:VisualElement name="st-veil" class="st-veil st-veil--closed ss-hidden" />
+        <ui:VisualElement name="st-detail" class="st-detail st-detail--closed ss-hidden">
+            <ui:VisualElement class="st-detail__head" picking-mode="Ignore">
+                <ui:VisualElement name="st-detail-icon" class="st-icon st-detail__icon" picking-mode="Ignore" />
+                <ui:VisualElement class="st-detail__titles" picking-mode="Ignore">
+                    <ui:Label name="st-detail-name" text="Node" class="st-detail__name" />
+                    <ui:Label name="st-detail-level" text="LEVEL 0 / 5" class="st-detail__level" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+            <ui:Label name="st-detail-desc" text="" class="st-detail__desc" />
+            <ui:VisualElement class="st-detail__rows">
+                <ui:VisualElement class="st-row">
+                    <ui:Label text="NOW" class="st-row__key" />
+                    <ui:Label name="st-detail-now" text="" class="st-row__value" />
+                </ui:VisualElement>
+                <ui:VisualElement class="st-row">
+                    <ui:Label text="NEXT" class="st-row__key" />
+                    <ui:Label name="st-detail-next" text="" class="st-row__value st-row__value--next" />
+                </ui:VisualElement>
+                <ui:VisualElement class="st-row">
+                    <ui:Label text="COST" class="st-row__key" />
+                    <ui:Label name="st-detail-cost" text="" class="st-row__value" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+            <ui:Label name="st-detail-note" text="" class="st-detail__note ss-hidden" />
+            <ui:Button name="st-buy" text="KINDLE" class="ss-button ss-button--primary st-buy" />
+            <ui:Button name="st-detail-back" text="BACK" class="ss-button st-detail__back" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

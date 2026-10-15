@@ -1,0 +1,425 @@
+/* Soul tree page (KAN-98). Same palette as MainMenu.uss (its :root variables, .ss-button, .ss-wallet and .ss-hidden
+   apply here too: this tree is instanced inside MainMenu.uxml). Reference 1080x1920 portrait, match width.
+   Open / close: SoulTreeScreen toggles the *--closed classes; transitions fade and slide (like RealmSelect.uss). */
+
+.st-screen {
+    position: absolute;
+    left: 0; right: 0; top: 0; bottom: 0;
+    background-color: rgb(9, 11, 17); /* opaque: the menu title must not show through */
+    opacity: 1;
+    translate: 0 0;
+    transition-property: opacity, translate;
+    transition-duration: 0.22s;
+    transition-timing-function: ease-out-cubic;
+}
+
+.st-screen--closed {
+    opacity: 0;
+    translate: 0 60px;
+}
+
+.st-safe {
+    flex-grow: 1;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* ---------- Header ---------- */
+
+.st-header {
+    width: 940px;
+    margin-top: 56px;
+    margin-bottom: 18px;
+    flex-direction: column;
+    align-items: center;
+}
+
+.st-header__bar {
+    width: 100%;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.unity-button.st-back {
+    height: 96px;
+    min-width: 220px;
+    margin: 0;
+    padding: 0 30px;
+    font-size: 34px;
+    letter-spacing: 8px;
+    -unity-font-style: bold;
+    color: var(--ss-ash);
+    background-color: rgba(20, 22, 30, 0.7);
+    background-image: none;
+    border-width: 2px;
+    border-color: rgba(232, 196, 120, 0.22);
+    border-radius: 4px;
+    transition-property: scale, border-color, color;
+    transition-duration: 0.12s;
+}
+
+.unity-button.st-back:hover {
+    color: var(--ss-gold-bright);
+    border-color: var(--ss-gold);
+}
+
+.unity-button.st-back:active {
+    scale: 0.96 0.96;
+}
+
+.st-souls {
+    margin-bottom: 0;
+    scale: 1 1;
+    transition-property: scale;
+    transition-duration: 0.14s;
+}
+
+/* Souls just spent: the pill dips once. */
+.st-souls--spent {
+    scale: 0.9 0.9;
+}
+
+.st-title {
+    font-size: 62px;
+    letter-spacing: 14px;
+    padding-left: 14px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    color: var(--ss-gold);
+    margin: 0;
+    text-shadow: 0 4px 12px rgba(0, 0, 0, 0.85);
+}
+
+.st-subtitle {
+    margin-top: 14px;
+    font-size: 30px;
+    white-space: normal;
+    -unity-text-align: middle-center;
+    -unity-font-style: italic;
+    color: var(--ss-ash-dim);
+}
+
+/* ---------- Tree: tier rows of node cards, joined by a faint ember line ---------- */
+
+.st-list {
+    flex-grow: 1;
+    width: 100%;
+}
+
+.st-list .unity-scroll-view__content-container {
+    align-items: center;
+    padding-top: 10px;
+    padding-bottom: 60px;
+}
+
+.st-tier {
+    width: 980px;
+    flex-direction: row;
+    justify-content: center;
+}
+
+.st-link {
+    width: 6px;
+    height: 46px;
+    border-radius: 3px;
+    background-color: rgba(214, 110, 46, 0.35);
+}
+
+.unity-button.st-node {
+    width: 300px;
+    margin: 0 10px;
+    padding: 22px 14px 18px 14px;
+    flex-direction: column;
+    align-items: center;
+    background-color: rgba(20, 22, 30, 0.92);
+    background-image: none;
+    border-width: 2px;
+    border-color: rgba(232, 196, 120, 0.3);
+    border-top-width: 6px;
+    border-radius: 8px;
+    -unity-text-align: middle-center;
+    scale: 1 1;
+    transition-property: scale, border-color, background-color;
+    transition-duration: 0.12s;
+}
+
+.unity-button.st-node:active {
+    scale: 0.96 0.96;
+}
+
+.unity-button.st-node--selected {
+    border-color: var(--ss-gold-bright);
+    background-color: rgba(40, 32, 24, 0.95);
+}
+
+/* A level was just bought: the card swells once. */
+.unity-button.st-node--bought {
+    scale: 1.08 1.08;
+}
+
+.st-icon {
+    width: 132px;
+    height: 132px;
+    border-radius: 66px;
+    border-width: 3px;
+    border-color: rgba(232, 196, 120, 0.5);
+    background-color: rgb(30, 26, 22);
+    -unity-background-scale-mode: scale-to-fit;
+    align-items: center;
+    justify-content: center;
+}
+
+.st-node__name {
+    margin: 14px 0 0 0;
+    padding: 0;
+    font-size: 30px;
+    letter-spacing: 1px;
+    -unity-font-style: bold;
+    white-space: normal;
+    -unity-text-align: middle-center;
+    color: var(--ss-gold-bright);
+}
+
+.st-node__effect {
+    margin: 6px 0 0 0;
+    padding: 0;
+    font-size: 26px;
+    white-space: normal;
+    -unity-text-align: middle-center;
+    color: var(--ss-ash);
+}
+
+.st-pips {
+    flex-direction: row;
+    justify-content: center;
+    margin-top: 12px;
+}
+
+.st-pip {
+    width: 30px;
+    height: 12px;
+    margin: 0 4px;
+    border-radius: 6px;
+    background-color: rgba(206, 200, 188, 0.16);
+}
+
+.st-pip--on {
+    background-color: var(--ss-ember);
+}
+
+.st-node__cost {
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    margin-top: 14px;
+}
+
+.st-gem {
+    width: 22px;
+    height: 22px;
+    rotate: 45deg;
+    margin-right: 10px;
+    border-radius: 4px;
+    border-width: 2px;
+    border-color: rgb(226, 244, 255);
+    background-color: rgb(156, 210, 255);
+}
+
+.st-node__price {
+    margin: 0;
+    padding: 0;
+    font-size: 28px;
+    -unity-font-style: bold;
+    color: rgb(190, 228, 255);
+}
+
+/* Can't afford yet: the price reads muted. */
+.st-node--poor .st-node__price {
+    color: var(--ss-ash-dim);
+}
+
+/* Locked: dim icon and texts, the price row shows the requirement. */
+.st-node--locked .st-icon {
+    -unity-background-image-tint-color: rgb(70, 74, 86);
+    border-color: rgba(206, 200, 188, 0.2);
+}
+
+.st-node--locked .st-node__name {
+    color: var(--ss-ash-dim);
+}
+
+.st-node--locked .st-gem {
+    display: none;
+}
+
+.st-node--locked .st-node__price {
+    font-size: 22px;
+    -unity-font-style: normal;
+    color: var(--ss-ash-dim);
+    white-space: normal;
+}
+
+/* Max level: gold frame. */
+.unity-button.st-node--max {
+    border-color: var(--ss-gold);
+}
+
+.st-node--max .st-gem {
+    display: none;
+}
+
+.st-node--max .st-node__price {
+    color: var(--ss-gold);
+    letter-spacing: 6px;
+}
+
+/* ---------- Detail sheet ---------- */
+
+.st-veil {
+    position: absolute;
+    left: 0; right: 0; top: 0; bottom: 0;
+    background-color: rgba(0, 0, 0, 0.7);
+    opacity: 1;
+    transition-property: opacity;
+    transition-duration: 0.2s;
+}
+
+.st-veil--closed {
+    opacity: 0;
+}
+
+.st-detail {
+    position: absolute;
+    left: 40px;
+    right: 40px;
+    bottom: 40px;
+    padding: 40px 0 36px 0;
+    background-color: rgb(16, 18, 26); /* opaque: cards behind must not show through */
+    border-width: 2px;
+    border-top-width: 8px;
+    border-color: var(--ss-line);
+    border-radius: 8px;
+    opacity: 1;
+    translate: 0 0;
+    transition-property: opacity, translate;
+    transition-duration: 0.24s;
+    transition-timing-function: ease-out-cubic;
+}
+
+.st-detail--closed {
+    opacity: 0;
+    translate: 0 240px;
+}
+
+.st-detail__head {
+    flex-direction: row;
+    align-items: center;
+    margin: 0 48px;
+}
+
+.st-detail__icon {
+    width: 168px;
+    height: 168px;
+    border-radius: 84px;
+}
+
+.st-detail--locked .st-detail__icon {
+    -unity-background-image-tint-color: rgb(70, 74, 86);
+}
+
+.st-detail__titles {
+    flex-shrink: 1;
+    margin-left: 34px;
+}
+
+.st-detail__name {
+    font-size: 58px;
+    letter-spacing: 2px;
+    -unity-font-style: bold;
+    white-space: normal;
+    color: var(--ss-gold-bright);
+    margin: 0;
+    padding: 0;
+}
+
+.st-detail__level {
+    font-size: 28px;
+    letter-spacing: 8px;
+    -unity-font-style: bold;
+    color: var(--ss-ember);
+    margin: 8px 0 0 0;
+    padding: 0;
+}
+
+.st-detail__desc {
+    font-size: 32px;
+    white-space: normal;
+    -unity-font-style: italic;
+    color: var(--ss-ash);
+    margin: 26px 48px 0 48px;
+    padding: 0;
+}
+
+.st-detail__rows {
+    margin: 26px 48px 0 48px;
+    border-top-width: 1px;
+    border-color: var(--ss-line);
+}
+
+.st-row {
+    flex-direction: row;
+    padding: 14px 0;
+    border-bottom-width: 1px;
+    border-color: rgba(232, 196, 120, 0.16);
+}
+
+.st-row__key {
+    width: 200px;
+    font-size: 26px;
+    letter-spacing: 5px;
+    -unity-font-style: bold;
+    color: var(--ss-ash-dim);
+    -unity-text-align: middle-left;
+    margin: 0;
+    padding: 0;
+}
+
+.st-row__value {
+    flex-shrink: 1;
+    flex-grow: 1;
+    font-size: 32px;
+    white-space: normal;
+    color: var(--ss-ash);
+    -unity-text-align: middle-left;
+    margin: 0;
+    padding: 0;
+}
+
+.st-row__value--next {
+    color: var(--ss-gold-bright);
+    -unity-font-style: bold;
+}
+
+.st-detail__note {
+    margin: 22px 48px 0 48px;
+    font-size: 30px;
+    white-space: normal;
+    -unity-text-align: middle-center;
+    color: var(--ss-gold);
+}
+
+.unity-button.st-buy {
+    margin: 30px 48px 0 48px;
+}
+
+.unity-button.st-buy:disabled {
+    opacity: 0.35;
+}
+
+.unity-button.st-detail__back {
+    margin: 18px 48px 0 48px;
+    height: 104px;
+    font-size: 36px;
+}

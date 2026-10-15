@@ -74,6 +74,9 @@ namespace SurvivorSouls.Dev
     /// <c>-ss-best &lt;realm&gt;:&lt;chamber&gt;</c> records a best Chamber and <c>-ss-cleared &lt;realm&gt;</c> marks a Realm completed.
     /// <c>-ss-wallet &lt;n&gt;</c> (KAN-96) sets the saved Souls wallet to n before the first scene wakes.
     /// <c>-ss-gems &lt;n&gt;</c> (KAN-97) sets the Ember Shards wallet to n and clears the granted bonuses (welcome toast shows).
+    /// Soul tree (KAN-98): <c>-ss-tree-levels &lt;id&gt;:&lt;n&gt;[,id:n...]</c> sets those node levels (all others 0) after load;
+    /// in the Game scene the Knight's permanent bonuses are applied again. <c>-ss-soul-tree</c> opens the main menu's tree
+    /// page, <c>-ss-soul-node &lt;id&gt;</c> also opens that node's detail sheet.
     /// <c>-ss-enemy &lt;Id&gt;[+Id...][,count[,radius]]</c> (KAN-104; radius KAN-106) places count (default 3) enemies of each roster type (e.g.
     /// GraveyardLaborer, prefab <c>Enemy_&lt;Id&gt;</c>) in an arc ~5 m ahead of the Knight after load and turns the crossbow off,
     /// so they walk in and attack. Only types the scene's wave table or the spawner's extra types (KAN-105 ranged zombies)
@@ -114,6 +117,9 @@ namespace SurvivorSouls.Dev
         private bool _portal;
         private int _soak;
         private bool _realms;
+        private bool _soulTree;
+        private string _soulNode;
+        private string _treeLevels;
         private int _realmDetail;
         private string _best;
         private int _cleared;
@@ -169,6 +175,9 @@ namespace SurvivorSouls.Dev
             shot._realmDetail = int.TryParse(GetArg("-ss-realm"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int rd) ? rd : 0;
             shot._realms = shot._realmDetail > 0 || Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-realms") >= 0;
             shot._best = GetArg("-ss-best");
+            shot._soulNode = GetArg("-ss-soul-node");
+            shot._soulTree = !string.IsNullOrEmpty(shot._soulNode) || Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-soul-tree") >= 0;
+            shot._treeLevels = GetArg("-ss-tree-levels");
             shot._boss = GetArg("-ss-boss");
             shot._bossAttack = GetArg("-ss-boss-attack");
             shot._bossStay = Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-boss-stay") >= 0;
@@ -249,6 +258,8 @@ namespace SurvivorSouls.Dev
             if (_portal) EnterPortal();
             if (_soak > 0) yield return PortalSoak(_soak);
             if (_realms) OpenRealms();
+            if (_treeLevels != null) SetTreeLevels(_treeLevels);
+            if (_soulTree) OpenSoulTree();
 
             float release = Mathf.Clamp(_release, 0f, _delay);
             float xpLead = _xp > 0 ? Mathf.Min(XpLead, _delay - release) : 0f;
@@ -305,6 +316,45 @@ namespace SurvivorSouls.Dev
             if (_realmDetail > 0 && !menu.RealmSelect.OpenDetail(_realmDetail))
                 Debug.LogWarning($"[DevScreenshot] -ss-realm: no Realm {_realmDetail}");
             Debug.Log($"[DevScreenshot] Realm page open, detail={menu.RealmSelect.Selected?.DisplayName ?? "none"} canStart={menu.RealmSelect.CanStart}");
+        }
+
+        /// <summary>Soul tree levels from "id:n,id:n" (others 0) on the scene's tree; Game scene: bonuses applied again.</summary>
+        private static void SetTreeLevels(string spec)
+        {
+            var bonuses = FindAnyObjectByType<SurvivorSouls.Gameplay.Meta.SoulTreeBonuses>();
+            var menu = FindAnyObjectByType<SurvivorSouls.UI.MainMenu.MainMenuController>();
+            var tree = bonuses != null ? bonuses.Tree : menu != null && menu.SoulTreePage != null ? menu.SoulTreePage.Tree : null;
+            if (tree == null)
+            {
+                Debug.LogWarning("[DevScreenshot] -ss-tree-levels: no soul tree in the scene");
+                return;
+            }
+            SurvivorSouls.Gameplay.Meta.SoulTreeProgress.ResetAll(tree);
+            foreach (string part in spec.Split(','))
+            {
+                string[] kv = part.Split(':');
+                var node = kv.Length == 2 ? tree.Find(kv[0].Trim()) : null;
+                if (node == null) Debug.LogWarning($"[DevScreenshot] -ss-tree-levels: unknown node '{part}'");
+                else SurvivorSouls.Gameplay.Meta.SoulTreeProgress.SetLevel(node, int.Parse(kv[1], CultureInfo.InvariantCulture));
+            }
+            if (bonuses != null) bonuses.Apply();
+            menu?.SoulTreePage?.Refresh();
+            Debug.Log($"[DevScreenshot] Soul tree levels set ({spec}), {tree.TotalSpent()} of {tree.FullCost()} Souls spent");
+        }
+
+        /// <summary>Main menu: opens the soul tree page (and a node's sheet with -ss-soul-node).</summary>
+        private void OpenSoulTree()
+        {
+            var menu = FindAnyObjectByType<SurvivorSouls.UI.MainMenu.MainMenuController>();
+            if (menu == null || menu.SoulTreePage == null)
+            {
+                Debug.LogWarning("[DevScreenshot] -ss-soul-tree: no main menu with a soul tree page in the scene");
+                return;
+            }
+            menu.OpenSoulTree();
+            if (!string.IsNullOrEmpty(_soulNode) && !menu.SoulTreePage.OpenDetail(_soulNode))
+                Debug.LogWarning($"[DevScreenshot] -ss-soul-node: no node '{_soulNode}'");
+            Debug.Log($"[DevScreenshot] Soul tree open, detail={menu.SoulTreePage.Selected?.DisplayName ?? "none"} canBuy={menu.SoulTreePage.CanBuy}");
         }
 
         /// <summary>Waits for the boss to rise, sets its health share and puts the Knight in slam range in front of it.</summary>

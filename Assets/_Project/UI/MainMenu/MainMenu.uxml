@@ -1,5 +1,6 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
     <ui:Template name="RealmSelect" src="project://database/Assets/_Project/UI/RealmSelect/RealmSelect.uxml" />
+    <ui:Template name="SoulTree" src="project://database/Assets/_Project/UI/SoulTree/SoulTree.uxml" />
     <Style src="MainMenu.uss" />
     <!-- Portrait layout: title top, bonfire (3D) in the middle, actions at the bottom (thumb zone). -->
     <ui:VisualElement name="shade-top" class="ss-shade ss-shade--top" picking-mode="Ignore" />
@@ -29,6 +30,7 @@
         <ui:VisualElement class="ss-actions">
             <ui:Label name="lbl-toast" text="" class="ss-toast ss-hidden" picking-mode="Ignore" />
             <ui:Button name="btn-play" text="PLAY" class="ss-button ss-button--primary" />
+            <ui:Button name="btn-soul-tree" text="SOUL TREE" class="ss-button" />
             <ui:Button name="btn-settings" text="SETTINGS" class="ss-button" />
             <ui:Button name="btn-quit" text="QUIT" class="ss-button ss-button--muted" />
             <ui:Label name="lbl-version" text="v0.0.0" class="ss-version" picking-mode="Ignore" />
@@ -37,6 +39,9 @@
 
     <!-- Realm selection page (KAN-20): full screen above the menu, hidden until PLAY. -->
     <ui:Instance template="RealmSelect" name="realm-select" picking-mode="Ignore" style="position: absolute; left: 0; top: 0; right: 0; bottom: 0;" />
+
+    <!-- Soul tree page (KAN-98): full screen above the menu, hidden until SOUL TREE. -->
+    <ui:Instance template="SoulTree" name="soul-tree" picking-mode="Ignore" style="position: absolute; left: 0; top: 0; right: 0; bottom: 0;" />
 
     <ui:VisualElement name="settings-overlay" class="ss-overlay ss-hidden">
         <ui:VisualElement class="ss-modal">

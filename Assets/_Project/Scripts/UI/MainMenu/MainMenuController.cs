@@ -1,5 +1,6 @@
 using SurvivorSouls.Core;
 using SurvivorSouls.Gameplay.Chamber;
+using SurvivorSouls.Gameplay.Meta;
 using SurvivorSouls.Gameplay.Realms;
 using SurvivorSouls.UI.Hud;
 using UnityEngine;
@@ -12,7 +13,9 @@ namespace SurvivorSouls.UI.MainMenu
     /// Binds MainMenu.uxml. Element names are constants below; keep them in sync with the UXML.
     /// No game logic here: Play delegates to SceneLoader, settings delegate to GameSettings.
     /// PLAY opens the Realm selection page (KAN-20, <see cref="RealmSelectScreen"/>); its START begins a run in that
-    /// Realm. Without a catalog PLAY starts Realm 1 at once. Back / Esc closes the top layer (sheet, page, settings).
+    /// Realm. Without a catalog PLAY starts Realm 1 at once. SOUL TREE opens the soul tree page (KAN-98,
+    /// <see cref="SoulTreeScreen"/>); without a tree asset the button is hidden. Back / Esc closes the top layer (sheet,
+    /// page, settings).
     /// </summary>
     [RequireComponent(typeof(UIDocument))]
     public sealed class MainMenuController : MonoBehaviour
@@ -33,16 +36,20 @@ namespace SurvivorSouls.UI.MainMenu
         private const string HiddenClass = "ss-hidden";
         private const string WalletName = "lbl-wallet-souls";
         private const string GemsName = "lbl-wallet-gems";
+        private const string SoulTreeButtonName = "btn-soul-tree";
 
         [SerializeField, Min(0.5f)] private float toastSeconds = 2f;
         [Tooltip("Realms on the selection page (Data/Realms/RealmCatalog.asset). Null = PLAY starts Realm 1.")]
         [SerializeField] private RealmCatalog realms;
         [Tooltip("Welcome bonus amount (KAN-97). Null = no welcome bonus.")]
         [SerializeField] private GemRewardConfig gems;
+        [Tooltip("Soul tree page (Data/Economy/SoulTree.asset, KAN-98). Null = no SOUL TREE button.")]
+        [SerializeField] private SoulTree soulTree;
 
         private UIDocument _document;
         private SafeAreaPadding _safeArea;
         private SafeAreaPadding _realmSafeArea;
+        private SafeAreaPadding _treeSafeArea;
         private VisualElement _overlay;
         private Label _toast;
         private Label _wallet;
@@ -50,16 +57,20 @@ namespace SurvivorSouls.UI.MainMenu
         private Button _play;
         private IVisualElementScheduledItem _toastHide;
         private RealmSelectScreen _realmSelect;
+        private SoulTreeScreen _soulTreeScreen;
         private bool _loading;
 
         /// <summary>The Realm selection page (null until enabled or without a catalog).</summary>
         public RealmSelectScreen RealmSelect => _realmSelect;
+        /// <summary>The soul tree page (null until enabled or without a tree asset).</summary>
+        public SoulTreeScreen SoulTreePage => _soulTreeScreen;
 
         /// <summary>Wiring for tests and code-built menus (call before the object is enabled).</summary>
-        public void Setup(RealmCatalog catalog, GemRewardConfig gemRewards = null)
+        public void Setup(RealmCatalog catalog, GemRewardConfig gemRewards = null, SoulTree tree = null)
         {
             realms = catalog;
             gems = gemRewards;
+            soulTree = tree;
         }
 
         private void Awake()
@@ -99,6 +110,19 @@ namespace SurvivorSouls.UI.MainMenu
             _realmSelect = realms != null && root.Q(RealmSelectScreen.ScreenName) != null
                 ? new RealmSelectScreen(root, realms, StartRealm)
                 : null;
+            _soulTreeScreen = soulTree != null && root.Q(SoulTreeScreen.ScreenName) != null
+                ? new SoulTreeScreen(root, soulTree)
+                : null;
+            var treeButton = root.Q<Button>(SoulTreeButtonName);
+            if (treeButton != null)
+            {
+                if (_soulTreeScreen != null)
+                {
+                    treeButton.clicked += OpenSoulTree;
+                    _soulTreeScreen.Bought += (_, _) => Haptics.Light();
+                }
+                else treeButton.AddToClassList(HiddenClass);
+            }
             _play.Focus();
         }
 
@@ -133,14 +157,16 @@ namespace SurvivorSouls.UI.MainMenu
         {
             _safeArea?.Refresh();
             _realmSafeArea?.Refresh();
+            _treeSafeArea?.Refresh();
             // Esc on desktop; Android's back button arrives as Escape too.
             if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame) Back();
         }
 
-        /// <summary>Closes the top layer: Realm sheet, Realm page, then settings. False when nothing was open.</summary>
+        /// <summary>Closes the top layer: Realm sheet / page, soul tree sheet / page, then settings. False when nothing was open.</summary>
         public bool Back()
         {
             if (_realmSelect != null && _realmSelect.Back()) return true;
+            if (_soulTreeScreen != null && _soulTreeScreen.Back()) return true;
             if (_overlay != null && !_overlay.ClassListContains(HiddenClass))
             {
                 CloseSettings();
@@ -156,6 +182,15 @@ namespace SurvivorSouls.UI.MainMenu
             _realmSafeArea ??= new SafeAreaPadding(_realmSelect.Page);
             _realmSelect.Open();
             _realmSafeArea.Refresh(force: true);
+        }
+
+        /// <summary>Opens the soul tree page (SOUL TREE). Dev screenshots call it too.</summary>
+        public void OpenSoulTree()
+        {
+            if (_soulTreeScreen == null) return;
+            _treeSafeArea ??= new SafeAreaPadding(_soulTreeScreen.Page);
+            _soulTreeScreen.Open();
+            _treeSafeArea.Refresh(force: true);
         }
 
         private void OnApplicationPause(bool paused)
