@@ -197,13 +197,14 @@ namespace SurvivorSouls.Editor
             var waves = CombatBuilder.LoadOrCreateWaves(enemy);
             EnemyRosterBuilder.AddMeleeTiers(waves, enemy); // one-time: Shambler slots -> the melee tiers (KAN-104, KAN-128)
             SpecialMeleeBuilder.AddToWaves(waves); // one-time: Grave Brute for the old Brute, Bloater + Ghoul from 45 s (KAN-106)
+            ChamberSpawnTables.Apply(waves); // one-time: shooters + Chamber gates + shooter cap (KAN-112)
             SetRef(spawner, "waves", waves);
             SetRef(spawner, "player", player.transform);
             SetRef(spawner, "world", world);
-            // Ranged zombies (KAN-105) are in the build but not in the waves yet (spawn tables: KAN-112).
+            // Extras: types needed in every Chamber whatever the gates (KAN-112): dev spawns of the ranged zombies (KAN-105) and
+            // the Hexbound Shaman (KAN-107), boss summons (KAN-119 Rotting Colossus: Frenzied Ghouls; KAN-111 Bone Matriarch:
+            // Graveyard Laborers, a wave type).
             var extras = new SerializedObject(spawner);
-            // KAN-119: boss summons (Rotting Colossus: Frenzied Ghouls; KAN-111 Bone Matriarch: Graveyard Laborers, a wave type).
-            // KAN-107: the Hexbound Shaman (not in the waves until KAN-112).
             SetArray(extras.FindProperty("extraTypes"), RangedEnemyBuilder.Ids.Append("FrenziedGhoul").Append(ShamanBuilder.Id).Select(EnemyRosterBuilder.LoadPrefab).ToArray());
             extras.ApplyModifiedPropertiesWithoutUndo();
             return (shooter, spawner);

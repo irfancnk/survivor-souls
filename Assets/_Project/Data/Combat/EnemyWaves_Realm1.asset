@@ -14,6 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Combat.EnemyWaveTable
   firstSpawnDelay: 1
   prewarmPerType: 12
+  maxShooterShare: 0.2
+  maxShooters: 6
   phases:
   - startTime: 0
     maxAlive: 18
@@ -24,8 +26,10 @@ MonoBehaviour:
     enemies:
     - prefab: {fileID: 5335434802141488015, guid: 64dd4dfba50f345cea746a72f7dd7708, type: 3}
       weight: 0.94
+      fromChamber: 1
     - prefab: {fileID: 3682811672515521020, guid: 57f8490f179ba4061acd1f827691a040, type: 3}
       weight: 0.06
+      fromChamber: 1
   - startTime: 45
     maxAlive: 24
     spawnInterval: 1
@@ -35,16 +39,31 @@ MonoBehaviour:
     enemies:
     - prefab: {fileID: 5335434802141488015, guid: 64dd4dfba50f345cea746a72f7dd7708, type: 3}
       weight: 0.65
+      fromChamber: 1
     - prefab: {fileID: 3682811672515521020, guid: 57f8490f179ba4061acd1f827691a040, type: 3}
       weight: 0.17
+      fromChamber: 1
     - prefab: {fileID: 77487197354657862, guid: b05691b72fc1d44249bfd634c3b97071, type: 3}
       weight: 0.14
+      fromChamber: 1
     - prefab: {fileID: 8924236305345745035, guid: 7fb54dcda50fd44a3b5f03756d4e0bcd, type: 3}
       weight: 0.04
+      fromChamber: 1
     - prefab: {fileID: 2493435506327165802, guid: 853263fe2ab0145219569ea744916fae, type: 3}
       weight: 0.04
+      fromChamber: 3
     - prefab: {fileID: 2746306838725838666, guid: f90461d02f0c944c6a14b7788114c8e0, type: 3}
       weight: 0.05
+      fromChamber: 1
+    - prefab: {fileID: 5959471082069176258, guid: 9259724b152e74898b54a68785962834, type: 3}
+      weight: 0.05
+      fromChamber: 2
+    - prefab: {fileID: 3407614011995091446, guid: 0893280a4353647bd9183a987cc6ed9e, type: 3}
+      weight: 0.05
+      fromChamber: 2
+    - prefab: {fileID: 8638987078726056127, guid: 099560f2ae773494e95758cd1cd86065, type: 3}
+      weight: 0.03
+      fromChamber: 4
   - startTime: 120
     maxAlive: 30
     spawnInterval: 0.9
@@ -54,16 +73,31 @@ MonoBehaviour:
     enemies:
     - prefab: {fileID: 5335434802141488015, guid: 64dd4dfba50f345cea746a72f7dd7708, type: 3}
       weight: 0.481
+      fromChamber: 1
     - prefab: {fileID: 3682811672515521020, guid: 57f8490f179ba4061acd1f827691a040, type: 3}
       weight: 0.239
+      fromChamber: 1
     - prefab: {fileID: 77487197354657862, guid: b05691b72fc1d44249bfd634c3b97071, type: 3}
       weight: 0.18
+      fromChamber: 1
     - prefab: {fileID: 8924236305345745035, guid: 7fb54dcda50fd44a3b5f03756d4e0bcd, type: 3}
       weight: 0.1
+      fromChamber: 1
     - prefab: {fileID: 2493435506327165802, guid: 853263fe2ab0145219569ea744916fae, type: 3}
       weight: 0.06
+      fromChamber: 3
     - prefab: {fileID: 2746306838725838666, guid: f90461d02f0c944c6a14b7788114c8e0, type: 3}
       weight: 0.07
+      fromChamber: 1
+    - prefab: {fileID: 5959471082069176258, guid: 9259724b152e74898b54a68785962834, type: 3}
+      weight: 0.06
+      fromChamber: 2
+    - prefab: {fileID: 3407614011995091446, guid: 0893280a4353647bd9183a987cc6ed9e, type: 3}
+      weight: 0.06
+      fromChamber: 2
+    - prefab: {fileID: 8638987078726056127, guid: 099560f2ae773494e95758cd1cd86065, type: 3}
+      weight: 0.04
+      fromChamber: 4
   - startTime: 240
     maxAlive: 36
     spawnInterval: 0.8
@@ -73,13 +107,28 @@ MonoBehaviour:
     enemies:
     - prefab: {fileID: 5335434802141488015, guid: 64dd4dfba50f345cea746a72f7dd7708, type: 3}
       weight: 0.384
+      fromChamber: 1
     - prefab: {fileID: 3682811672515521020, guid: 57f8490f179ba4061acd1f827691a040, type: 3}
       weight: 0.276
+      fromChamber: 1
     - prefab: {fileID: 77487197354657862, guid: b05691b72fc1d44249bfd634c3b97071, type: 3}
       weight: 0.2
+      fromChamber: 1
     - prefab: {fileID: 8924236305345745035, guid: 7fb54dcda50fd44a3b5f03756d4e0bcd, type: 3}
       weight: 0.14
+      fromChamber: 1
     - prefab: {fileID: 2493435506327165802, guid: 853263fe2ab0145219569ea744916fae, type: 3}
       weight: 0.07
+      fromChamber: 3
     - prefab: {fileID: 2746306838725838666, guid: f90461d02f0c944c6a14b7788114c8e0, type: 3}
       weight: 0.08
+      fromChamber: 1
+    - prefab: {fileID: 5959471082069176258, guid: 9259724b152e74898b54a68785962834, type: 3}
+      weight: 0.06
+      fromChamber: 2
+    - prefab: {fileID: 3407614011995091446, guid: 0893280a4353647bd9183a987cc6ed9e, type: 3}
+      weight: 0.06
+      fromChamber: 2
+    - prefab: {fileID: 8638987078726056127, guid: 099560f2ae773494e95758cd1cd86065, type: 3}
+      weight: 0.05
+      fromChamber: 4
