@@ -62,6 +62,9 @@ namespace SurvivorSouls.Gameplay.Boss
     /// KAN-111: timed entries (<see cref="BossAttack.every"/>): fight time counts while fighting; a timed entry is due
     /// <see cref="BossAttack.every"/> s after it last started (or after its phase began) and then wins the next pick over every
     /// band (the Bone Matriarch's phase 2 teleport every 8 s).
+    /// KAN-174: <b>Barrage</b> entries are side casts, never picked: each has its own clock and, while the boss fights (any
+    /// attack state) and the Knight lives, lobs a shot (<see cref="ShotKind.BlackFireball"/>, <see cref="EnemyProjectiles"/>)
+    /// to a random point near the Knight with a landing circle from the shared pool (the Butcher's black fireballs, 1 per s).
     /// </summary>
     public sealed class BossFight : MonoBehaviour
     {
@@ -117,6 +120,11 @@ namespace SurvivorSouls.Gameplay.Boss
             Homing = 12,
             /// <summary>KAN-121: lanes round the body that turn as live beams (the Matriarch's cross beams).</summary>
             Beams = 13,
+            /// <summary>
+            /// KAN-174: a side cast on its own clock, next to the attack pick: a lobbed shot every few seconds to a random
+            /// point near the Knight (the Butcher's black fireballs). Never picked by score; never stops the chase.
+            /// </summary>
+            Barrage = 14,
         }
 
         private const float SpawnClearRadius = 1.4f; // free ground the boss body needs
@@ -143,6 +151,14 @@ namespace SurvivorSouls.Gameplay.Boss
         public const int MaxSummons = 8;
         /// <summary>Seconds the boss takes to shrink away before a teleport (and to grow back after it).</summary>
         public const float VanishTime = 0.35f;
+        /// <summary>KAN-174: a barrage shot leaves this high (m) above the boss's feet (plus the shot pool's throw height).</summary>
+        public const float BarrageHand = 1.6f;
+        /// <summary>KAN-174: apex (m) of a barrage lob over the straight line.</summary>
+        public const float BarrageArc = 2.5f;
+        /// <summary>KAN-174: hazard owner id of barrage shots (they leave no hazard; keeps them apart from the zombies').</summary>
+        public const int BarrageOwner = -174;
+        private const int BarrageTries = 6;     // random points tried for a landing spot (pillars / wall block one)
+        private const float BarrageMinInterval = 0.2f;
         private const float VanishScale = 0.05f;
         private const float MinTeleportMove = 3f;   // a teleport always moves the boss at least this far
         /// <summary>
@@ -179,6 +195,8 @@ namespace SurvivorSouls.Gameplay.Boss
         [SerializeField] private EnemyTelegraphs circles;
         [Tooltip("KAN-119: boulders of the lobbed attack. Empty = the scene's BossBoulders.Current.")]
         [SerializeField] private BossBoulders boulders;
+        [Tooltip("KAN-174: shot pool of barrage entries (black fireballs). Empty = the scene's EnemyProjectiles.Current.")]
+        [SerializeField] private EnemyProjectiles shots;
 
         private Enemy _boss;
         private float _bossHealthMultiplier = 1f; // BossData health over the body's type health, x the Chamber multiplier
@@ -194,6 +212,8 @@ namespace SurvivorSouls.Gameplay.Boss
         private BossAttack[] _attacks = new BossAttack[0];
         private int[] _lastUsed = new int[0];
         private float[] _dueAt = new float[0];  // KAN-111: fight time a timed entry is next due
+        private float[] _barrageWait = new float[0]; // KAN-174: seconds until a barrage entry throws again
+        private int _fireballs;
         private float _clock;                   // KAN-111: seconds of Fighting (scaled)
         private int _picks;
         private int _index = -1;          // the attack being warned / struck / recovered from
@@ -308,6 +328,8 @@ namespace SurvivorSouls.Gameplay.Boss
         public event Action<Vector3, float> BeamsEnded;
         /// <summary>KAN-109: a burning patch was left on the ground (centre, radius).</summary>
         public event Action<Vector3, float> BurnPlaced;
+        /// <summary>KAN-174: a barrage shot (black fireball) was thrown: landing point, circle radius.</summary>
+        public event Action<Vector3, float> FireballThrown;
 
         public BossData Data => data;
         /// <summary>The attack list of the fight (KAN-108).</summary>
@@ -347,6 +369,10 @@ namespace SurvivorSouls.Gameplay.Boss
         public int SpiralBolts => _spiralFired;
         /// <summary>KAN-119: boulders the current (or last) lobbed attack threw.</summary>
         public int Thrown => _thrown;
+        /// <summary>KAN-174: barrage shots thrown this fight.</summary>
+        public int Fireballs => _fireballs;
+        /// <summary>KAN-174: the shot pool of barrage entries (wired, else the scene's).</summary>
+        public EnemyProjectiles Shots => shots != null ? shots : EnemyProjectiles.Current;
         /// <summary>KAN-119: the boulder pool of the lobbed attack (wired, else the scene's).</summary>
         public BossBoulders Boulders => boulders != null ? boulders : BossBoulders.Current;
         /// <summary>KAN-119: summons of this boss still alive.</summary>
@@ -379,9 +405,10 @@ namespace SurvivorSouls.Gameplay.Boss
         public void Setup(BossData bossData, ChamberRules rules, SurvivalTimer survivalTimer, EnemySpawner enemySpawner,
             PlayerHealth playerHealth, SoulWispField soulField, GroundTelegraph groundTelegraph,
             LineTelegraph laneTelegraph = null, BossProjectiles bolts = null, BossData[] roster = null,
-            EnemyTelegraphs circlePool = null, BossBoulders boulderPool = null)
+            EnemyTelegraphs circlePool = null, BossBoulders boulderPool = null, EnemyProjectiles shotPool = null)
         {
             circles = circlePool;
+            shots = shotPool;
             boulders = boulderPool;
             data = bossData;
             rotation = roster != null ? BossRotation.Create(roster) : null;
@@ -410,6 +437,7 @@ namespace SurvivorSouls.Gameplay.Boss
             CancelWaves();
             CancelPending();
             RestoreScale();
+            ClearFireballs();
         }
 
         private void Start() => Begin(ChamberSetup.Current);
@@ -427,6 +455,9 @@ namespace SurvivorSouls.Gameplay.Boss
             _clock = 0f;
             _dueAt = new float[_attacks.Length];
             for (int i = 0; i < _dueAt.Length; i++) _dueAt[i] = _attacks[i].every;
+            _barrageWait = new float[_attacks.Length];
+            for (int i = 0; i < _barrageWait.Length; i++) _barrageWait[i] = BarrageInterval(_attacks[i]);
+            _fireballs = 0;
             _failed = new int[_attacks.Length];
             _summonTypes = new Enemy[_attacks.Length];
             for (int i = 0; i < _attacks.Length; i++) _summonTypes[i] = ResolveSummon(_attacks[i]);
@@ -588,6 +619,7 @@ namespace SurvivorSouls.Gameplay.Boss
         {
             if (_boss == null || !_boss.IsAlive) return;
             bool playerDead = player == null || player.IsDead;
+            if (!playerDead) TickBarrage(dt); // KAN-174: side casts run next to whatever the boss does
             switch (CurrentAttack)
             {
                 case Attack.Chase:
@@ -692,6 +724,7 @@ namespace SurvivorSouls.Gameplay.Boss
                 for (int i = 0; i < _attacks.Length; i++)
                 {
                     var a = _attacks[i];
+                    if (a.type == Move.Barrage) continue; // KAN-174: a side cast, never picked
                     if (!a.InPhase(Phase) || !a.InRange(distance) || !CanUse(i) || _lastUsed[i] == FailedPick) continue;
                     if (a.Timed && _clock < _dueAt[i]) continue; // KAN-111: not due yet
                     int priority = a.Timed ? TimedPriority : a.priority;
@@ -743,6 +776,9 @@ namespace SurvivorSouls.Gameplay.Boss
                     return a.count > 0 && wavePool != null && wavePool.FreeCircles() >= Mathf.Min(a.count, MaxWaves);
                 case Move.Homing: return a.count > 0 && projectiles != null;
                 case Move.Beams: return a.count > 0 && lines != null && lines.Capacity > 0;
+                case Move.Barrage:
+                    var barragePool = RainPool;
+                    return Shots != null && barragePool != null && barragePool.FreeCircles() > 0;
                 default: return true;
             }
         }
@@ -796,6 +832,10 @@ namespace SurvivorSouls.Gameplay.Boss
         /// <summary>Starts attack <paramref name="index"/> of <see cref="Attacks"/> now (see <see cref="ForceAttack(Move)"/>).</summary>
         public bool ForceAttack(int index)
         {
+            // KAN-174: a barrage entry throws one shot now, whatever the boss is doing (it is not an attack state).
+            if (index >= 0 && index < _attacks.Length && _attacks[index].type == Move.Barrage)
+                return Current == Stage.Fighting && player != null && !player.IsDead && _boss != null && _boss.IsAlive
+                       && ThrowFireball(index);
             if (Current != Stage.Fighting || CurrentAttack != Attack.Chase || player == null || player.IsDead) return false;
             if (_boss == null || !_boss.IsAlive || index < 0 || index >= _attacks.Length || !CanUse(index)) return false;
             return Begin(index);
@@ -1532,6 +1572,92 @@ namespace SurvivorSouls.Gameplay.Boss
             _summonPlanned = 0;
         }
 
+        // ------------------------------------------------------------ Barrage (KAN-174)
+
+        private static float BarrageInterval(in BossAttack a) => Mathf.Max(BarrageMinInterval, a.interval);
+
+        /// <summary>
+        /// Barrage entries: each on its own clock (scaled time), next to whatever the boss does. Out of phase = the clock
+        /// restarts; Knight out of range = it waits. A throw that cannot happen (no free circle, no landing spot) tries again
+        /// next frame.
+        /// </summary>
+        private void TickBarrage(float dt)
+        {
+            float distance = -1f;
+            for (int i = 0; i < _attacks.Length; i++)
+            {
+                if (_attacks[i].type != Move.Barrage) continue;
+                if (!_attacks[i].InPhase(Phase))
+                {
+                    _barrageWait[i] = BarrageInterval(_attacks[i]);
+                    continue;
+                }
+                if (distance < 0f) distance = PlanarDistance(_boss.transform.position, player.transform.position);
+                if (!_attacks[i].InRange(distance)) continue;
+                _barrageWait[i] -= dt;
+                if (_barrageWait[i] > 0f || !ThrowFireball(i)) continue;
+                _barrageWait[i] = Mathf.Max(0f, _barrageWait[i] + BarrageInterval(_attacks[i]));
+            }
+        }
+
+        /// <summary>
+        /// One barrage shot of entry <paramref name="index"/>: a random landing point near the Knight (never right on it), its
+        /// circle shown for the whole flight, then a lob from the boss's hand. False when it cannot (no pool, no free circle,
+        /// no landing spot).
+        /// </summary>
+        private bool ThrowFireball(int index)
+        {
+            var a = _attacks[index];
+            var pool = Shots;
+            var warnings = RainPool;
+            if (pool == null || warnings == null || warnings.FreeCircles() <= 0 || !FindFireballTarget(a, out Vector3 target)) return false;
+            var circle = warnings.RentCircle();
+            if (circle == null) return false;
+            circle.Show(target, a.radius);
+            Vector3 from = _boss.transform.position;
+            Vector3 hand = new Vector3(from.x, from.y + BarrageHand, from.z) + _boss.transform.forward * 0.6f;
+            bool thrown = pool.FireLobbed(pool.NextVolley(), ShotKind.BlackFireball, hand, target, Flight(a), BarrageArc, a.radius,
+                data.DamageFor(a.damage, player.Max), default, BarrageOwner, 0, false, circle, 0f);
+            if (!thrown)
+            {
+                circle.Hide();
+                warnings.Release(circle);
+                return false;
+            }
+            _fireballs++;
+            FireballThrown?.Invoke(target, a.radius);
+            return true;
+        }
+
+        /// <summary>
+        /// A landing point <see cref="BossAttack.length"/>..<see cref="BossAttack.reach"/> m from the Knight in a random
+        /// direction, on land and off pillars / the ring wall. False when <see cref="BarrageTries"/> picks all fail.
+        /// </summary>
+        private bool FindFireballTarget(in BossAttack a, out Vector3 target)
+        {
+            Vector3 knight = player.transform.position;
+            float near = Mathf.Min(a.length, a.reach), far = Mathf.Max(a.length, a.reach);
+            var walk = Enemy.Walkability;
+            for (int t = 0; t < BarrageTries; t++)
+            {
+                float angle = UnityEngine.Random.value * Mathf.PI * 2f;
+                float d = UnityEngine.Random.Range(near, far);
+                var p = ClampToLand(knight + new Vector3(Mathf.Cos(angle) * d, 0f, Mathf.Sin(angle) * d), a.radius);
+                if (walk != null && walk.IsBlocked(p, a.radius * 0.5f)) continue;
+                target = p;
+                return true;
+            }
+            target = knight;
+            return false;
+        }
+
+        /// <summary>Barrage shots still in the air go (boss died, fight disabled): nothing lands after the kill.</summary>
+        private void ClearFireballs()
+        {
+            var pool = Shots;
+            if (pool != null) pool.ClearKind(ShotKind.BlackFireball);
+        }
+
         // ------------------------------------------------------------ Shockwave, Homing, Beams (KAN-121)
 
         /// <summary>Shockwave: the boss stands; a circle of the attack's radius fills round the slam point.</summary>
@@ -1712,7 +1838,9 @@ namespace SurvivorSouls.Gameplay.Boss
             Array.Resize(ref _dueAt, n + 1);
             Array.Resize(ref _failed, n + 1);
             Array.Resize(ref _summonTypes, n + 1);
+            Array.Resize(ref _barrageWait, n + 1);
             _attacks[n] = entry;
+            _barrageWait[n] = BarrageInterval(entry);
             _summonTypes[n] = ResolveSummon(entry);
             _lastUsed[n] = -NeverUsed;
             _dueAt[n] = _clock + entry.every;
@@ -1803,6 +1931,7 @@ namespace SurvivorSouls.Gameplay.Boss
             RestoreScale();
             _pullLeft = 0f;
             if (projectiles != null) projectiles.Clear(); // the fight is over: no bolt lands after the kill
+            ClearFireballs(); // KAN-174: nor a black fireball
             var rocks = Boulders;
             if (rocks != null) rocks.Clear(); // no boulder lands after the kill; the rubble goes too
             CurrentAttack = Attack.Chase;

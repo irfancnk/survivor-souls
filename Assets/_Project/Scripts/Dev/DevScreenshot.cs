@@ -66,6 +66,8 @@ namespace SurvivorSouls.Dev
     /// (<c>BossAttack.Sample</c>, Pyre Lord numbers) added to its fight for the shot.
     /// KAN-119: also <c>lobbed|summon|teleport</c> (samples: Rotting Colossus boulder / ghoul summon, Bone Matriarch teleport).
     /// KAN-121: also <c>shockwave|homing|beams</c> (samples: Rotting Colossus double slam, Bone Matriarch skulls / cross beams).
+    /// KAN-174: also <c>barrage</c>: the Knight stands 6 m away and the boss throws one black fireball at once (the Butcher's
+    /// own entry; the rest keep coming on its 1 s clock).
     /// <c>-ss-boss-type &lt;Id&gt;</c> (KAN-109): every boss Chamber gets that boss (roster id, e.g. <c>PyreLord</c>, from the
     /// fight's boss list or its library of other bosses in the build) instead of the Realm's own.
     /// <c>-ss-shaman-cast orbs|hex|raise[,&lt;s&gt;]</c> (KAN-107, with <c>-ss-enemy HexboundShaman,...</c>): every Shaman starts
@@ -506,6 +508,7 @@ namespace SurvivorSouls.Dev
                 : a.type == SurvivorSouls.Gameplay.Boss.BossFight.Move.Rain ? 6f
                 : a.type == SurvivorSouls.Gameplay.Boss.BossFight.Move.Shockwave ? 3f
                 : a.type == SurvivorSouls.Gameplay.Boss.BossFight.Move.Beams ? 5f
+                : a.type == SurvivorSouls.Gameplay.Boss.BossFight.Move.Barrage ? 6f // KAN-174: boss and fireballs in one frame
                 : 8f;
             return Mathf.Clamp(want, a.minRange + 0.3f, Mathf.Max(a.minRange + 0.3f, a.maxRange - 0.3f));
         }

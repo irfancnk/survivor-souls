@@ -58,6 +58,12 @@ namespace SurvivorSouls.Gameplay.Boss
     /// <item><b>Beams</b> (KAN-121): <see cref="count"/> lanes evenly round the body (<see cref="length"/> x
     /// <see cref="width"/>; the Knight starts between two), shown while it winds up, then live: they turn
     /// <see cref="spread"/> degrees per second (random way) for <see cref="duration"/> s. The whole cast hits once.</item>
+    /// <item><b>Barrage</b> (KAN-174): a side cast, not part of the pick. While the boss fights (any attack state) and the
+    /// Knight is in range, every <see cref="interval"/> s it lobs one shot (<see cref="SurvivorSouls.Gameplay.Combat.ShotKind.BlackFireball"/>)
+    /// to a random point <see cref="length"/>..<see cref="reach"/> m from the Knight (never right on it); flight
+    /// <see cref="duration"/> s (0.6 s floor), landing circle of <see cref="radius"/> m shown for the whole flight; each shot
+    /// hits once inside its circle. No free circle = no throw (it waits). Circles: the shared
+    /// <see cref="SurvivorSouls.Gameplay.Combat.EnemyTelegraphs"/> pool; shots: <see cref="SurvivorSouls.Gameplay.Combat.EnemyProjectiles"/>.</item>
     /// </list>
     /// KAN-109: a <b>Slam</b> or <b>Rain</b> entry with <see cref="burnRadius"/>, <see cref="burnLife"/> and
     /// <see cref="burnDps"/> above 0 leaves a burning ground patch (shared <see cref="SurvivorSouls.Gameplay.Combat.GroundHazards"/>
@@ -300,11 +306,33 @@ namespace SurvivorSouls.Gameplay.Boss
             };
 
         /// <summary>
+        /// KAN-174: a side cast (see <see cref="BossFight.Move.Barrage"/>): every <paramref name="interval"/> s one lobbed shot
+        /// to a random point <paramref name="minOffset"/>..<paramref name="maxOffset"/> m from the Knight, flight
+        /// <paramref name="flight"/> s (= the warning), landing circle <paramref name="impactRadius"/> m.
+        /// </summary>
+        public static BossAttack Barrage(string label, BossPhases phases, float minRange, float maxRange, float interval,
+            float minOffset, float maxOffset, float impactRadius, float flight, float damage) =>
+            new BossAttack
+            {
+                label = label, type = BossFight.Move.Barrage, phases = phases, weight = 1f, minRange = minRange,
+                maxRange = maxRange, interval = interval, length = minOffset, reach = maxOffset, radius = impactRadius,
+                duration = flight, telegraph = Mathf.Max(BossData.MinTelegraph, flight), damage = damage,
+            };
+
+        /// <summary>
+        /// KAN-174: the Butcher of Ashgrave's black fireballs: one every 1 s in both phases, 0.6-3 m from the Knight (a
+        /// still Knight is clipped now and then; walking blind into the circles hurts), circle r 1 m, flight 0.9 s, 6 % each.
+        /// </summary>
+        public static BossAttack BlackFireballs() =>
+            Barrage("Black Fireballs", BossPhases.Both, 0f, 30f, interval: 1f, minOffset: 0.6f, maxOffset: 3f,
+                impactRadius: 1f, flight: 0.9f, damage: 0.06f);
+
+        /// <summary>
         /// Pyre Lord style numbers (Docs/ENEMY_ROSTER.md 3.13) for a type: the debug menu and dev screenshots add it to a
         /// boss that lacks that type; KAN-109 starts its list from these. KAN-119: Lobbed and Summon are Rotting Colossus
         /// numbers (3.14), Teleport is the Bone Matriarch's (3.15); KAN-110 / KAN-111 start from these. KAN-121: Shockwave is the
-        /// Colossus double slam (3.14a), Homing and Beams are the Matriarch's skulls and cross beams (3.15a, d). Other types:
-        /// a plain slam.
+        /// Colossus double slam (3.14a), Homing and Beams are the Matriarch's skulls and cross beams (3.15a, d). KAN-174: Barrage
+        /// is the Butcher's black fireballs (<see cref="BlackFireballs"/>). Other types: a plain slam.
         /// </summary>
         public static BossAttack Sample(BossFight.Move type)
         {
@@ -336,6 +364,8 @@ namespace SurvivorSouls.Gameplay.Boss
                     return Homing("Homing Skulls", BossPhases.Both, 0f, 14f, orbs: 3, spread: 60f, turn: 55f, speed: 3.6f,
                         distance: 16f, hitRadius: 0.5f, warnRadius: 2.2f, telegraph: 0.8f, damage: 0.12f, recover: 0.6f,
                         cooldown: 2.5f);
+                case BossFight.Move.Barrage:
+                    return BlackFireballs();
                 case BossFight.Move.Beams:
                     return Beams("Cross Beams", BossPhases.Phase2, 0f, 30f, lanes: 4, length: 9f, width: 0.9f, turnSpeed: 45f,
                         duration: 4f, telegraph: 1f, damage: 0.16f, recover: 0.8f, cooldown: 3f);
