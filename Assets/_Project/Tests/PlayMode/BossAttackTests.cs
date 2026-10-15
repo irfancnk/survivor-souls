@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using NUnit.Framework;
+using SurvivorSouls.Audio;
 using SurvivorSouls.Core;
 using SurvivorSouls.Gameplay.Boss;
 using SurvivorSouls.Gameplay.Chamber;
@@ -458,6 +459,135 @@ namespace SurvivorSouls.Tests
 
         // ------------------------------------------------------------ Real scene
 
+        // ------------------------------------------------------------ Charge sounds (KAN-168)
+
+        private AudioClip Clip(string name) => Track(AudioClip.Create(name, 4410, 1, 44100, false));
+
+        private ChargeSounds Sounds(out AudioClip rumble, out AudioClip scrape, out AudioClip dash, out AudioClip stop, out AudioClip crash)
+        {
+            rumble = Clip("rumble");
+            scrape = Clip("scrape");
+            dash = Clip("dash");
+            stop = Clip("stop");
+            crash = Clip("crash");
+            var sounds = Track(new GameObject("ChargeSounds")).AddComponent<ChargeSounds>();
+            sounds.Setup(_fight, rumble, new[] { scrape }, new[] { dash }, new[] { stop }, new[] { crash });
+            return sounds;
+        }
+
+        private void RunWithSounds(ChargeSounds sounds, BossFight.Attack until, float limit = 10f)
+        {
+            for (float t = 0f; t < limit && _fight.CurrentAttack != until; t += Frame)
+            {
+                _fight.Tick(Frame);
+                _bolts.Tick(Frame);
+                sounds.Tick();
+            }
+        }
+
+        [Test]
+        public void ChargeSounds_GrowlRisesWithTheFill_StopsAtTheDash_ThenTheStopThud()
+        {
+            var data = Data(fanBolts: 0, charge: true);
+            StartFight(data);
+            var sounds = Sounds(out var rumble, out var scrape, out var dash, out var stop, out _);
+            HalfHealth();
+            RunWithSounds(sounds, BossFight.Attack.WindUp);
+            Assert.That(_fight.CurrentMove, Is.EqualTo(BossFight.Move.Charge));
+            Assert.That(sounds.Rumbling, Is.True, "the warning starts the growl");
+            Assert.That(sounds.Rumble.clip, Is.SameAs(rumble));
+            Assert.That(sounds.Rumble.loop, Is.True);
+            Assert.That(sounds.OneShots, Is.EqualTo(1));
+            Assert.That(sounds.LastClip, Is.SameAs(scrape), "heavy foot-scrape with the warning");
+            float pitch0 = sounds.Rumble.pitch, volume0 = sounds.Rumble.volume;
+
+            for (float t = 0f; t < _fight.WindUpTime * 0.6f; t += Frame)
+            {
+                _fight.Tick(Frame);
+                sounds.Tick();
+            }
+            Assert.That(_fight.CurrentAttack, Is.EqualTo(BossFight.Attack.WindUp));
+            Assert.That(_fight.WindUpProgress, Is.InRange(0.5f, 0.7f));
+            Assert.That(sounds.Rumble.pitch, Is.GreaterThan(pitch0 + 0.2f), "pitch rises with the fill");
+            Assert.That(sounds.Rumble.volume, Is.GreaterThan(volume0), "and it swells");
+
+            RunWithSounds(sounds, BossFight.Attack.Dashing);
+            Assert.That(sounds.Rumbling, Is.False, "the dash ends the growl");
+            Assert.That(sounds.LastClip, Is.SameAs(dash));
+            Assert.That(sounds.OneShots, Is.EqualTo(2));
+            Assert.That(_fight.WindUpProgress, Is.EqualTo(0f));
+
+            RunWithSounds(sounds, BossFight.Attack.Recover);
+            Assert.That(_fight.DashBlocked, Is.False);
+            Assert.That(sounds.LastClip, Is.SameAs(stop), "open ground: thud + skid, not the crash");
+            Assert.That(sounds.OneShots, Is.EqualTo(3));
+            Assert.That(sounds.GetComponentsInChildren<AudioSource>().Length, Is.EqualTo(2), "two voices per boss");
+        }
+
+        [Test]
+        public void ChargeSounds_WallStop_PlaysTheCrash()
+        {
+            var data = Data(fanBolts: 0, charge: true);
+            StartFight(data);
+            Enemy.Walkability = new WallNorth();
+            var sounds = Sounds(out _, out _, out _, out _, out var crash);
+            HalfHealth();
+            RunWithSounds(sounds, BossFight.Attack.WindUp);
+            Assert.That(_fight.CurrentMove, Is.EqualTo(BossFight.Move.Charge));
+            RunWithSounds(sounds, BossFight.Attack.Dashing);
+            RunWithSounds(sounds, BossFight.Attack.Recover);
+            Assert.That(_fight.DashBlocked, Is.True, "the wall cut the dash");
+            Assert.That(sounds.LastClip, Is.SameAs(crash));
+        }
+
+        [Test]
+        public void ChargeSounds_ManyCharges_ThreeOneShotsEach_NeverMoreVoices()
+        {
+            var data = Data(fanBolts: 0, charge: true);
+            StartFight(data);
+            var sounds = Sounds(out _, out _, out _, out _, out _);
+            HalfHealth();
+            int warnings = 0, dashes = 0;
+            _fight.ChargeWarned += (o, d, l) => warnings++;
+            _fight.DashStarted += (o, d) => dashes++;
+            for (float t = 0f; t < 40f && _charges.Count < 4; t += Frame)
+            {
+                _player.Heal(1e6f);
+                if (_fight.CurrentAttack == BossFight.Attack.Chase)
+                    _fight.Boss.transform.position = Vector3.zero; // back in charge range (the dash ends next to the Knight)
+                _fight.Tick(Frame);
+                _bolts.Tick(Frame);
+                sounds.Tick();
+                if (_fight.CurrentAttack != BossFight.Attack.WindUp || _fight.CurrentMove != BossFight.Move.Charge)
+                    Assert.That(sounds.Rumbling, Is.False, "the growl only plays during a charge warning");
+            }
+            Assert.That(_charges.Count, Is.GreaterThanOrEqualTo(4));
+            Assert.That(dashes, Is.EqualTo(_charges.Count));
+            Assert.That(sounds.OneShots, Is.EqualTo(warnings + dashes + _charges.Count), "one scrape, one dash, one end per charge");
+            Assert.That(sounds.GetComponentsInChildren<AudioSource>().Length, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void ChargeSounds_KillDuringTheWarning_StopsTheGrowl_AndPauseKeepsIt()
+        {
+            var data = Data(fanBolts: 0, charge: true);
+            StartFight(data);
+            var sounds = Sounds(out _, out _, out _, out _, out _);
+            HalfHealth();
+            RunWithSounds(sounds, BossFight.Attack.WindUp);
+            Assert.That(sounds.Rumbling, Is.True);
+            Time.timeScale = 0f;
+            float pitch = sounds.Rumble.pitch;
+            sounds.Tick();
+            Assert.That(sounds.Rumbling, Is.True, "a pause holds the growl, it does not end it");
+            Assert.That(sounds.Rumble.pitch, Is.EqualTo(pitch).Within(1e-4f));
+            Time.timeScale = 1f;
+            _fight.Boss.TakeDamage(_fight.Boss.Health + 1f, Vector3.zero);
+            _fight.Tick(Frame);
+            sounds.Tick();
+            Assert.That(sounds.Rumbling, Is.False, "the boss fell mid-warning");
+        }
+
         /// <summary>The built Game scene: Chamber 5's boss has the lane telegraph and bolts wired; half health is phase 2 (KAN-108: the Butcher).</summary>
         [UnityTest]
         public IEnumerator GameScene_BossHasLanesBolts_AndPhase2()
@@ -477,6 +607,9 @@ namespace SurvivorSouls.Tests
             Assert.That(fight.Projectiles, Is.Not.Null, "bolts wired");
             Assert.That(fight.Data.HasAttackList, Is.True, "KAN-108: the shipped boss (the Butcher) runs an attack list");
             Assert.That(fight.Data.Phase2At, Is.EqualTo(0.5f).Within(1e-4f));
+            var chargeSounds = Object.FindAnyObjectByType<ChargeSounds>();
+            Assert.That(chargeSounds, Is.Not.Null, "KAN-168: charge sounds in the scene");
+            Assert.That(chargeSounds.Rumble.clip, Is.Not.Null, "growl loop wired");
 
             float wait = fight.Data.IntroDelay + fight.Data.SpawnWarning + 4f;
             while (fight.Current != BossFight.Stage.Fighting && wait > 0f)
