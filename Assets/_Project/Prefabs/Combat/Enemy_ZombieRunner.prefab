@@ -157,6 +157,10 @@ MonoBehaviour:
   animRefSpeed: 5.165381
   walkState: Walk
   attackState: Attack
+  hitState: Hit
+  deathState: Death
+  hitHold: 0.4
+  deathHold: 0.9
 --- !u!1001 &3871125015036252370
 PrefabInstance:
   m_ObjectHideFlags: 0

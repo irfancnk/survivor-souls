@@ -67,6 +67,10 @@ MonoBehaviour:
   animRefSpeed: 1.5243081
   walkState: Walk
   attackState: Attack
+  hitState: Hit
+  deathState: Death
+  hitHold: 0.4
+  deathHold: 0.9
 --- !u!1 &6437963994060457123
 GameObject:
   m_ObjectHideFlags: 0

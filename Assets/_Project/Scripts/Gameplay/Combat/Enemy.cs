@@ -25,6 +25,9 @@ namespace SurvivorSouls.Gameplay.Combat
     /// re-requests the wanted state when the animator rests in the other one, and the playback rate is always finite.
     /// Boss (KAN-58): <see cref="isBoss"/> hides the small health bar (the HUD has a boss bar), <see cref="knockbackScale"/>
     /// makes it hard to push, and <see cref="Halted"/> lets an attack pattern stop the chase (it plays the attack state).
+    /// Hit / Death states (KAN-104 roster): when the controller has them, a direct hit plays a short "Hit" flinch (not while
+    /// attacking, not on bosses, at most every <see cref="HitCooldown"/> s) and a kill plays "Death" for
+    /// <see cref="deathHold"/> s before the body sinks. Without them (old zombies) the body tips over as before.
     /// </summary>
     public sealed class Enemy : MonoBehaviour
     {
@@ -76,6 +79,14 @@ namespace SurvivorSouls.Gameplay.Combat
         [SerializeField] private string walkState = "Walk";
         [Tooltip("Played while the player is within contact range. Skipped when the controller has no such state.")]
         [SerializeField] private string attackState = "Attack";
+        [Tooltip("Short flinch on a direct hit (KAN-104). Skipped when the controller has no such state.")]
+        [SerializeField] private string hitState = "Hit";
+        [Tooltip("Played on death (KAN-104). Without it the body tips over backwards.")]
+        [SerializeField] private string deathState = "Death";
+        [Tooltip("Seconds of the Hit state before the walk / attack resumes.")]
+        [SerializeField, Min(0f)] private float hitHold = 0.4f;
+        [Tooltip("Seconds the Death state plays before the body sinks (the builder sets it to the state's play time).")]
+        [SerializeField, Min(0f)] private float deathHold = 0.9f;
 
         private const float KnockbackSpeed = 4f;
         private const float FlashTime = 0.12f;
@@ -99,6 +110,9 @@ namespace SurvivorSouls.Gameplay.Combat
         public const float MinStateHold = 0.3f;
         /// <summary>Seconds between checks that the animator plays the wanted state (staggered per enemy).</summary>
         public const float AnimCheckInterval = 0.25f;
+        /// <summary>Minimum seconds between two Hit flinches of one enemy, so a horde under fire still walks.</summary>
+        public const float HitCooldown = 1.2f;
+        private const float HitBlend = 0.06f;
 
         private Transform _target;
         private Action<Enemy> _release;
@@ -132,6 +146,12 @@ namespace SurvivorSouls.Gameplay.Combat
         private float _animCheck;    // seconds to the next animator state check
         private int _walkHash;
         private int _attackHash;
+        private int _hitHash;
+        private int _deathHash;
+        private bool _hasHit;
+        private bool _hasDeath;
+        private float _hitLeft;      // seconds left in the current Hit flinch
+        private float _hitCooldown;  // seconds until the next flinch may start
 
         /// <summary>Northmost Z an enemy may walk to (the sea edge). Set by the spawner from the world; +inf = no limit.</summary>
         public static float LandMaxZ = float.PositiveInfinity;
@@ -164,6 +184,12 @@ namespace SurvivorSouls.Gameplay.Combat
         public float AnimRefSpeed => animRefSpeed;
         /// <summary>Playing the attack state (player within reach).</summary>
         public bool IsAttacking => _attacking;
+        /// <summary>Playing the Hit flinch (KAN-104).</summary>
+        public bool IsFlinching => _hitLeft > 0f;
+        /// <summary>The controller has a Death state: the kill plays it instead of the tip-over (KAN-104).</summary>
+        public bool HasDeathState => _hasDeath;
+        /// <summary>Seconds from the killing blow until the body is back in its pool.</summary>
+        public float DeathDuration => (_hasDeath ? deathHold : FallTime) + SinkTime;
         public Animator Animator => animator;
         public float ContactRange => contactRange;
         public float DamagePerSecond => damagePerSecond;
@@ -208,6 +234,8 @@ namespace SurvivorSouls.Gameplay.Combat
             _scale = bodyScale * (1f + UnityEngine.Random.Range(-scaleJitter, scaleJitter));
             _groundSpeed = MoveSpeed;
             _attacking = false;
+            _hitLeft = 0f;
+            _hitCooldown = 0f;
             Halted = false;
             _sinceSwitch = MinStateHold;
             _animCheck = UnityEngine.Random.value * AnimCheckInterval;
@@ -229,8 +257,12 @@ namespace SurvivorSouls.Gameplay.Combat
             if (animator == null) return;
             _walkHash = Animator.StringToHash(walkState);
             _attackHash = Animator.StringToHash(attackState);
+            _hitHash = Animator.StringToHash(hitState);
+            _deathHash = Animator.StringToHash(deathState);
             _synced = animRefSpeed > 0f && animator.HasState(0, _walkHash);
             _hasAttack = _synced && animator.HasState(0, _attackHash);
+            _hasHit = _synced && !isBoss && hitHold > 0f && animator.HasState(0, _hitHash);
+            _hasDeath = animator.HasState(0, _deathHash);
             _attackRate = UnityEngine.Random.Range(0.9f, 1.1f);
             if (_synced)
             {
@@ -276,6 +308,7 @@ namespace SurvivorSouls.Gameplay.Combat
             }
             bool killed = _health <= 0f;
             if (killed) BeginDeath();
+            else if (kind == DamageKind.Direct) Flinch();
             LastDamageKind = kind;
             LastHitCrit = crit;
             Damaged?.Invoke(this, deducted, killed);
@@ -294,12 +327,29 @@ namespace SurvivorSouls.Gameplay.Combat
             _burnLeft = Mathf.Max(_burnLeft, duration);
         }
 
+        /// <summary>Short Hit state on a direct hit, unless attacking, already flinching or flinched within <see cref="HitCooldown"/>.</summary>
+        private void Flinch()
+        {
+            if (!_hasHit || _attacking || _hitLeft > 0f || _hitCooldown > 0f || !animator.isActiveAndEnabled) return;
+            _hitLeft = hitHold;
+            _hitCooldown = HitCooldown;
+            animator.speed = 1f;
+            animator.CrossFadeInFixedTime(_hitHash, HitBlend, 0, 0f);
+        }
+
         private void BeginDeath()
         {
             Active.Remove(this);
             _deadTime = 0f;
             _deathStart = transform.rotation;
-            if (animator != null) animator.speed = 0f; // hold the pose while the body falls
+            _hitLeft = 0f;
+            if (animator == null) return;
+            if (_hasDeath && animator.isActiveAndEnabled)
+            {
+                animator.speed = 1f; // the state's own speed sets the play time
+                animator.CrossFadeInFixedTime(_deathHash, HitBlend, 0, 0f);
+            }
+            else animator.speed = 0f; // hold the pose while the body falls
         }
 
         private void OnDisable() => Active.Remove(this);
@@ -308,6 +358,7 @@ namespace SurvivorSouls.Gameplay.Combat
         {
             float dt = Time.deltaTime;
             TickStatus(dt);
+            if (_hitCooldown > 0f) _hitCooldown -= dt;
             if (_deadTime >= 0f)
             {
                 UpdateDeath(dt);
@@ -354,6 +405,13 @@ namespace SurvivorSouls.Gameplay.Combat
             if (!float.IsFinite(_groundSpeed)) _groundSpeed = MoveSpeed;
 
             _sinceSwitch += dt;
+            if (_hitLeft > 0f)
+            {
+                _hitLeft -= dt;
+                if (_hitLeft > 0f) return; // the flinch plays at its own speed
+                _sinceSwitch = 0f;
+                animator.CrossFadeInFixedTime(_walkHash, AnimBlend, 0, UnityEngine.Random.value * 0.2f);
+            }
             bool attack = _attacking
                 ? Halted || distToTarget <= contactRange + AttackRelease
                 : _hasAttack && (Halted || distToTarget <= contactRange + AttackReach);
@@ -378,7 +436,7 @@ namespace SurvivorSouls.Gameplay.Combat
         /// </summary>
         private void ResyncAnimator()
         {
-            if (_sinceSwitch < AnimBlend + 0.05f || !animator.isActiveAndEnabled || animator.IsInTransition(0)) return;
+            if (_hitLeft > 0f || _sinceSwitch < AnimBlend + 0.05f || !animator.isActiveAndEnabled || animator.IsInTransition(0)) return;
             int want = _attacking ? _attackHash : _walkHash;
             if (animator.GetCurrentAnimatorStateInfo(0).shortNameHash == want) return;
             animator.CrossFadeInFixedTime(want, AnimBlend, 0, _attacking ? 0f : UnityEngine.Random.value * 0.2f);
@@ -462,12 +520,16 @@ namespace SurvivorSouls.Gameplay.Combat
         private void UpdateDeath(float dt)
         {
             _deadTime += dt;
-            float fall = Mathf.Clamp01(_deadTime / FallTime);
-            transform.rotation = _deathStart * Quaternion.Euler(-85f * (1f - (1f - fall) * (1f - fall)), 0f, 0f); // backwards, ease out
+            float fallTime = _hasDeath ? deathHold : FallTime;
+            if (!_hasDeath)
+            {
+                float fall = Mathf.Clamp01(_deadTime / FallTime);
+                transform.rotation = _deathStart * Quaternion.Euler(-85f * (1f - (1f - fall) * (1f - fall)), 0f, 0f); // backwards, ease out
+            }
             transform.position += _knock * dt;
             _knock = Vector3.MoveTowards(_knock, Vector3.zero, KnockbackSpeed * 4f * dt);
-            if (_deadTime > FallTime) transform.position += Vector3.down * (0.9f / SinkTime * dt);
-            if (_deadTime >= FallTime + SinkTime)
+            if (_deadTime > fallTime) transform.position += Vector3.down * (0.9f * Mathf.Max(1f, Height / 1.8f) / SinkTime * dt);
+            if (_deadTime >= fallTime + SinkTime)
             {
                 gameObject.SetActive(false);
                 _release?.Invoke(this);
