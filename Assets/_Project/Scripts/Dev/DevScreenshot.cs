@@ -28,6 +28,9 @@ namespace SurvivorSouls.Dev
     /// <c>-ss-hit-marker &lt;hit|kill&gt;</c> pops a hit (or kill) marker on the nearest enemy just before the capture.
     /// <c>-ss-release &lt;seconds&gt;</c> lets go of the -ss-move stick that long before the capture (e.g. wind trail tail-off).
     /// <c>-ss-souls &lt;n&gt;</c> drops n soul wisps around the player after load (mostly small, some elite, one boss orb).
+    /// <c>-ss-souls-pull &lt;seconds&gt;[,&lt;freeze&gt;]</c> that long after load, every soul crystal flies to the Knight
+    /// (KAN-177 collect arc + trail); with a freeze time, time stops that long after the pull so a later -ss-delay capture
+    /// shows the crystals mid-flight.
     /// <c>-ss-xp &lt;amount&gt;</c> grants that much XP <see cref="XpLead"/> s before the capture (level-up burst + skill cards).
     /// <c>-ss-chests &lt;n&gt;</c> drops n Reliquary chests (KAN-72) ahead of the player after load: Light, then Rare, ...
     /// <c>-ss-open-chest &lt;light|rare&gt;</c> drops that chest at the Knight's feet: the real walk-in pickup opens it
@@ -110,6 +113,8 @@ namespace SurvivorSouls.Dev
         private string _hitMarker;
         private float _release;
         private int _souls;
+        private float _soulsPull = -1f;
+        private float _soulsFreeze = -1f;
         private int _xp;
         private string _skills;
         private bool _powerCurve;
@@ -174,6 +179,9 @@ namespace SurvivorSouls.Dev
             shot._hitMarker = GetArg("-ss-hit-marker");
             shot._release = float.TryParse(GetArg("-ss-release"), NumberStyles.Float, CultureInfo.InvariantCulture, out float r) ? r : 0f;
             shot._souls = int.TryParse(GetArg("-ss-souls"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int n) ? n : 0;
+            string[] pull = (GetArg("-ss-souls-pull") ?? "").Split(',');
+            shot._soulsPull = float.TryParse(pull[0], NumberStyles.Float, CultureInfo.InvariantCulture, out float sp) ? sp : -1f;
+            shot._soulsFreeze = pull.Length > 1 && float.TryParse(pull[1], NumberStyles.Float, CultureInfo.InvariantCulture, out float sf) ? sf : -1f;
             shot._skills = GetArg("-ss-skills");
             shot._powerCurve = Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-power-curve") >= 0;
             shot._volley = Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-volley") >= 0;
@@ -277,6 +285,7 @@ namespace SurvivorSouls.Dev
             }
 
             if (_souls > 0) DropSouls(_souls);
+            if (_soulsPull >= 0f) StartCoroutine(PullSouls(_soulsPull, _soulsFreeze));
             if (_immortal)
                 foreach (var c in FindObjectsByType<ContactDamageReceiver>()) c.enabled = false;
             if (_hordePower > 0f) SetHordePower(_hordePower);
@@ -620,6 +629,17 @@ namespace SurvivorSouls.Dev
             cc.enabled = false;
             player.transform.position = position;
             cc.enabled = true;
+        }
+
+        private static IEnumerator PullSouls(float after, float freeze)
+        {
+            yield return new WaitForSeconds(after);
+            var field = FindAnyObjectByType<SurvivorSouls.Gameplay.Progression.SoulWispField>();
+            if (field != null) field.PullAll();
+            Debug.Log($"[DevScreenshot] Souls pulled: {(field != null ? field.Count : 0)} crystals at t={Time.time:F2}");
+            if (freeze < 0f) yield break;
+            yield return new WaitForSeconds(freeze);
+            Time.timeScale = 0f;
         }
 
         private static void DropSouls(int count)
