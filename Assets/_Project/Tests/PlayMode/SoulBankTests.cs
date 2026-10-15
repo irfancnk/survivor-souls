@@ -10,6 +10,7 @@ using SurvivorSouls.UI.Hud;
 using UnityEngine;
 using UnityEngine.UIElements;
 using Object = UnityEngine.Object;
+using TestMode = SurvivorSouls.Core.TestMode;
 
 namespace SurvivorSouls.Tests
 {
@@ -19,6 +20,7 @@ namespace SurvivorSouls.Tests
     /// first-run shard bonus). Saved before the first test of the assembly, put back after the last.
     /// Soul tree levels (KAN-98) are saved too and zeroed for the suite: every Game scene test sees the bare Knight, even
     /// when nodes were bought in the editor.
+    /// Test Mode (KAN-144) is saved and turned off for the suite: lock, START and progress tests see the real rules.
     /// </summary>
     [SetUpFixture]
     public sealed class WalletPrefsGuard
@@ -31,6 +33,8 @@ namespace SurvivorSouls.Tests
             yield return SoulWallet.KeyCheck;
             foreach (var k in GemWallet.Keys) yield return k;
             foreach (var k in TreeKeys()) yield return k;
+            yield return GameSettings.KeyTestMode;
+            yield return TestMode.KeyGranted;
         }
 
         private static IEnumerable<string> TreeKeys()
@@ -53,6 +57,7 @@ namespace SurvivorSouls.Tests
             foreach (var k in Keys())
                 if (PlayerPrefs.HasKey(k)) _saved[k] = PlayerPrefs.GetInt(k);
             foreach (var k in TreeKeys()) PlayerPrefs.DeleteKey(k); // no bought levels during the suite
+            PlayerPrefs.DeleteKey(GameSettings.KeyTestMode); // real lock rules during the suite
         }
 
         [OneTimeTearDown]
