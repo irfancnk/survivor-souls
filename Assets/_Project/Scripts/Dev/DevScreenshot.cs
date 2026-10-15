@@ -72,6 +72,8 @@ namespace SurvivorSouls.Dev
     /// Test Mode (KAN-144): <c>-ss-test-mode on</c> turns it on before any scene wakes (grant flag reset first, so the
     /// Souls grant runs); without the arg it is off, so a Test Mode left on never leaks into other shots.
     /// <c>-ss-settings</c> opens the menu settings; <c>-ss-start-chamber &lt;n&gt;</c> steps the Realm sheet's Start Chamber.
+    /// <c>-ss-store-sim</c> (KAN-151): the build acts as a store release build (Test Mode locked off); with
+    /// <c>-ss-settings</c> the settings title also gets 2 x 7 taps, so the shot proves the row never shows.
     /// Main menu (KAN-20): <c>-ss-realms</c> opens the Realm selection page, <c>-ss-realm &lt;id&gt;</c> also opens that
     /// Realm's detail sheet. With either, the saved progress of Realms 1-3 is wiped first (repeatable shots); then
     /// <c>-ss-best &lt;realm&gt;:&lt;chamber&gt;</c> records a best Chamber and <c>-ss-cleared &lt;realm&gt;</c> marks a Realm completed.
@@ -204,6 +206,12 @@ namespace SurvivorSouls.Dev
             shot._cleared = int.TryParse(GetArg("-ss-cleared"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int cl) ? cl : 0;
             shot._settings = Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-settings") >= 0;
             shot._startChamber = int.TryParse(GetArg("-ss-start-chamber"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int sc) ? sc : 0;
+            // KAN-151: simulate a store build before Test Mode is read anywhere.
+            if (Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-store-sim") >= 0)
+            {
+                SurvivorSouls.Core.TestMode.SimulateStoreBuild = true;
+                Debug.Log("[DevScreenshot] Store build simulated: Test Mode locked off");
+            }
             // Test Mode (KAN-144) before any scene wakes: menus and the HUD read it on enable.
             if (GetArg("-ss-test-mode") == "on")
             {
@@ -387,6 +395,8 @@ namespace SurvivorSouls.Dev
                 return;
             }
             menu.OpenSettings();
+            if (SurvivorSouls.Core.TestMode.Locked)
+                for (int i = 0; i < SurvivorSouls.Core.TestMode.RevealTaps * 2; i++) menu.TapSettingsTitle();
             Debug.Log($"[DevScreenshot] Settings open, testRow={menu.TestModeRowVisible} testTag={menu.TestModeTagVisible} testMode={SurvivorSouls.Core.TestMode.IsOn}");
         }
 
