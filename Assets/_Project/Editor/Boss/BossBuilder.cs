@@ -30,6 +30,7 @@ namespace SurvivorSouls.Editor.Boss
     /// boss of every boss Chamber (<see cref="BossFight"/>'s boss list); the Warden asset stays as the old reference fight.
     /// Debug menus (Play mode): "Survivor Souls/Debug/Boss: Kill", "Boss: Half Health" (= phase 2), "Boss: Health 25 %",
     /// "Boss: Health 10 %", "Boss: Fan", "Boss: Charge", "Boss: Jump To Boss Chamber" (any Chamber; reloads the scene).
+    /// KAN-116: "Boss: Nova", "Boss: Spiral", "Boss: Rain" (a boss without that type gets the sample entry first); bolt pool 64.
     /// </summary>
     public static class BossBuilder
     {
@@ -46,7 +47,7 @@ namespace SurvivorSouls.Editor.Boss
         private const int LaneTextureWidth = 64;
         private const int LaneTextureHeight = 256;
         private const int BoltTextureSize = 64;
-        private const int BoltCapacity = 32;
+        private const int BoltCapacity = 64; // KAN-116: a 2-arm spiral keeps ~40 bolts in the air
         private const int TextureSize = 256;
 
         public static BossFight Create(GameArtKit kit, PlayerHealth player, SurvivalTimer timer, EnemySpawner spawner, SoulWispField souls)
@@ -417,6 +418,25 @@ namespace SurvivorSouls.Editor.Boss
         [MenuItem("Survivor Souls/Debug/Boss: Spin")]
         private static void Spin() => BossFight.Active.ForceAttack(BossFight.Move.Spin);
 
+        [MenuItem("Survivor Souls/Debug/Boss: Nova")]
+        private static void Nova() => ForceOrSample(BossFight.Move.Nova);
+
+        [MenuItem("Survivor Souls/Debug/Boss: Spiral")]
+        private static void Spiral() => ForceOrSample(BossFight.Move.Spiral);
+
+        [MenuItem("Survivor Souls/Debug/Boss: Rain")]
+        private static void Rain() => ForceOrSample(BossFight.Move.Rain);
+
+        /// <summary>KAN-116: starts the boss's <paramref name="move"/> attack; a boss without one gets the sample entry first.</summary>
+        private static void ForceOrSample(BossFight.Move move)
+        {
+            var fight = BossFight.Active;
+            if (fight.ForceAttack(move)) return;
+            foreach (var a in fight.Attacks)
+                if (a.type == move) return; // it has one: busy right now, try again
+            fight.ForceAttack(fight.AddAttack(BossAttack.Sample(move)));
+        }
+
         [MenuItem("Survivor Souls/Debug/Boss: Print Attacks")]
         private static void PrintAttacks()
         {
@@ -435,6 +455,9 @@ namespace SurvivorSouls.Editor.Boss
         [MenuItem("Survivor Souls/Debug/Boss: Slam", true)]
         [MenuItem("Survivor Souls/Debug/Boss: Lane (Chop / Hook)", true)]
         [MenuItem("Survivor Souls/Debug/Boss: Spin", true)]
+        [MenuItem("Survivor Souls/Debug/Boss: Nova", true)]
+        [MenuItem("Survivor Souls/Debug/Boss: Spiral", true)]
+        [MenuItem("Survivor Souls/Debug/Boss: Rain", true)]
         [MenuItem("Survivor Souls/Debug/Boss: Print Attacks", true)]
         [MenuItem("Survivor Souls/Debug/Boss: Half Health", true)]
         [MenuItem("Survivor Souls/Debug/Boss: Health 25 %", true)]

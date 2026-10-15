@@ -49,6 +49,7 @@ MonoBehaviour:
     interval: 0
     pull: 0
     stun: 0
+    gaps: 0
     clip: Chop
   - label: Cleaver Spin
     type: 4
@@ -72,6 +73,7 @@ MonoBehaviour:
     interval: 0.6
     pull: 0
     stun: 0
+    gaps: 0
     clip: Spin
   - label: Charge
     type: 2
@@ -95,6 +97,7 @@ MonoBehaviour:
     interval: 0
     pull: 0
     stun: 1
+    gaps: 0
     clip: Charge
   - label: Chain Hook
     type: 3
@@ -118,6 +121,7 @@ MonoBehaviour:
     interval: 0
     pull: 4
     stun: 0
+    gaps: 0
     clip: Chop
   - label: Triple Charge
     type: 2
@@ -141,6 +145,7 @@ MonoBehaviour:
     interval: 0
     pull: 0
     stun: 1
+    gaps: 0
     clip: Charge
   roarClip: Roar
   phaseRoar: 1.2
