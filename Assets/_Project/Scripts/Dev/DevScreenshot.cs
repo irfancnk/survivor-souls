@@ -218,6 +218,9 @@ namespace SurvivorSouls.Dev
                 SurvivorSouls.Core.SoulWallet.Clear();
                 SurvivorSouls.Core.SoulWallet.Earn(wallet);
             }
+            // Pending souls (KAN-101) after the wallet arg (its Clear deletes them): the menu banks them at start + toast.
+            if (int.TryParse(GetArg("-ss-pending-souls"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int pending))
+                SurvivorSouls.Core.SoulWallet.SavePending(pending);
             // Ember Shards (KAN-97): balance n and no bonus granted yet, so the menu shows the welcome toast once.
             if (int.TryParse(GetArg("-ss-gems"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int gems))
             {
