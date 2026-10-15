@@ -14,31 +14,38 @@ using Object = UnityEngine.Object;
 namespace SurvivorSouls.Tests
 {
     /// <summary>
-    /// Keeps the editor's real Souls wallet (KAN-96) out of the PlayMode suite: every test that runs the Game scene to a
-    /// death, a cleared Realm or a menu exit banks souls. Saved before the first test of the assembly, put back after the last.
+    /// Keeps the editor's real wallets (Souls KAN-96, Ember Shards + granted bonuses KAN-97) out of the PlayMode suite:
+    /// every test that runs the Game scene to a death, a cleared Realm or a menu exit banks souls (and may grant the
+    /// first-run shard bonus). Saved before the first test of the assembly, put back after the last.
     /// </summary>
     [SetUpFixture]
     public sealed class WalletPrefsGuard
     {
-        private bool _hadBalance, _hadCheck;
-        private int _balance, _check;
+        private readonly Dictionary<string, int> _saved = new Dictionary<string, int>();
+
+        private static IEnumerable<string> Keys()
+        {
+            yield return SoulWallet.KeyBalance;
+            yield return SoulWallet.KeyCheck;
+            foreach (var k in GemWallet.Keys) yield return k;
+        }
 
         [OneTimeSetUp]
         public void Save()
         {
-            _hadBalance = PlayerPrefs.HasKey(SoulWallet.KeyBalance);
-            _hadCheck = PlayerPrefs.HasKey(SoulWallet.KeyCheck);
-            _balance = PlayerPrefs.GetInt(SoulWallet.KeyBalance, 0);
-            _check = PlayerPrefs.GetInt(SoulWallet.KeyCheck, 0);
+            _saved.Clear();
+            foreach (var k in Keys())
+                if (PlayerPrefs.HasKey(k)) _saved[k] = PlayerPrefs.GetInt(k);
         }
 
         [OneTimeTearDown]
         public void Restore()
         {
-            if (_hadBalance) PlayerPrefs.SetInt(SoulWallet.KeyBalance, _balance);
-            else PlayerPrefs.DeleteKey(SoulWallet.KeyBalance);
-            if (_hadCheck) PlayerPrefs.SetInt(SoulWallet.KeyCheck, _check);
-            else PlayerPrefs.DeleteKey(SoulWallet.KeyCheck);
+            foreach (var k in Keys())
+            {
+                if (_saved.TryGetValue(k, out int v)) PlayerPrefs.SetInt(k, v);
+                else PlayerPrefs.DeleteKey(k);
+            }
             PlayerPrefs.Save();
         }
     }
