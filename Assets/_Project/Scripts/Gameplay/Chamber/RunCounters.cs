@@ -16,6 +16,8 @@ namespace SurvivorSouls.Gameplay.Chamber
     /// Run end (KAN-96): the souls are banked into the persistent <see cref="SoulWallet"/> once per run, when the Knight
     /// dies, when the Realm is cleared, or when the player leaves the run to the menu (<see cref="BankToWallet"/>). A portal
     /// to the next Chamber is not a run end: the numbers ride in the snapshot and are banked later.
+    /// App to the background mid-run (KAN-101): the unbanked souls are saved as <see cref="SoulWallet.PendingSouls"/>, so
+    /// an iOS kill in the background does not lose them; the next menu start banks them. A run end clears the pending amount.
     /// The first run that ends this way also grants the one-time first-run Ember Shard bonus (KAN-97, <see cref="GemWallet"/>).
     /// </summary>
     public sealed class RunCounters : MonoBehaviour
@@ -84,6 +86,26 @@ namespace SurvivorSouls.Gameplay.Chamber
             if (transition != null) transition.RealmCleared -= OnRealmCleared;
         }
 
+        private void OnApplicationPause(bool paused)
+        {
+            if (paused) SavePendingSouls();
+        }
+
+        private void OnApplicationFocus(bool focused)
+        {
+            if (!focused) SavePendingSouls();
+        }
+
+        /// <summary>
+        /// The app may be killed now (KAN-101): saves <see cref="Souls"/> as the wallet's pending amount when this run is
+        /// not banked yet. Nothing when it is (the pending amount was cleared at the bank).
+        /// </summary>
+        public void SavePendingSouls()
+        {
+            if (RunState.SoulsBanked) return;
+            SoulWallet.SavePending(Souls);
+        }
+
         private void OnRunEnded() => BankToWallet();
         private void OnRealmCleared(RunSnapshot run) => BankToWallet();
 
@@ -96,6 +118,7 @@ namespace SurvivorSouls.Gameplay.Chamber
         {
             if (!RunState.TryMarkSoulsBanked()) return 0;
             BankedSouls = Souls;
+            SoulWallet.ClearPending(); // a background save of this run must not be banked again at the next start (KAN-101)
             int balance = SoulWallet.Earn(Souls);
             BonusGems = 0;
             if (gems != null && GemWallet.TryGrantBonus(GemBonus.FirstRun, gems.FirstRunBonus)) BonusGems = gems.FirstRunBonus;
