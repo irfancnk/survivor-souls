@@ -518,6 +518,15 @@
   - Checked with EEVEE renders (every clip, face close-ups, 55 deg game camera) and the Bestiary viewer v5. Details: `Docs/ENEMY_ROSTER.md` section 7.
   - Blender MCP add-on is not installed in Blender 5.2 (Blender Lab extensions repo); all work ran headless via CLI.
 
+- 2026-10-15: Bug fix, flaky soak test "pool covers the cap" (KAN-155, branch `feat/kan-155-deterministic-soak`, from main 10e783c). Scheduled-task run.
+  - Cause: seeding was not the problem (SetUp already calls `Random.InitState(2029)`); frame times at timeScale 8 make every soak path different. Per-type pools are sized from the weighted share (x1.5, max 1.25x cap), so a luck streak on one type (plus its dying bodies) emptied that pool and `Take` instantiated mid-fight, while other types still had idle bodies.
+  - Fix (`Combat/EnemySpawner`, `Combat/EnemyWaveTable`): `PickEnemy` takes an optional `Predicate<Enemy> stocked`. `SpawnPending` picks as before; when the picked type's pool is empty it re-picks with the same roll among phase types that have stock (cached delegate `_hasStock`, no alloc). New counter `Counters.PoolSwaps` (in the stats line / soak log). Play now instantiates only when every pool of the phase is empty. Gameplay mix unchanged except at a dry pool.
+  - Second flake found and fixed: `ChamberSpawnTableTests.GameScene_ChamberGivesTheSpawnerItsChamber...` left the Game scene loaded; its Knight shot the next fixture's chaser (`EnemySpawnTests.Chaser_SteersAroundAWall` failed "got round the wall" in a filtered run). The test now unloads the scene like the soak.
+  - Tests (`Tests/PlayMode/EnemySpawnTests`): stock-predicate pick cases; `Waves_DryTypePool_SwapsToStockedType_NoInstantiate` (type A drained by hand, waves fill the cap with B only, Created flat, PoolSwaps > 0). Soak assert tightened from `<= prewarm + 4` to `== prewarm` (every soak: created=82, poolSwaps 0-4).
+  - Shot: `Docs/screenshots/game-kan155-natural-waves.png` (`-ss-scene Game -ss-quality Mobile -ss-immortal -ss-move 0.6,0.8 -ss-delay 30`: 18 natural spawns, poolSwaps=0, 64 draw calls).
+  - Verified: compile 0 errors / 0 new warnings, Game scene rebuild exit 0 (fileID churn only, not committed), 3 full PlayMode runs in a row 627 pass / 2 skipped / 0 fail, EditMode 90 pass, mac dev build + screenshot run without exceptions, iOS dev export + xcodebuild + install + launch on iPhone 14 Pro Max OK.
+  - Found: Heroes/ShadowRanger + Pets art is on main without `.meta` files (every checkout makes new GUIDs): KAN-156.
+
 ## DECISIONS
 - Design language: Archero / Archero 2 (menus, loop, chests, daily/weekly quests, gear merge, talents, energy). Look: Dark Souls, realistic, not dismal. User decision 2026-10-11.
 - Naming map: energy=Estus, gold=Souls, gems=Ember Shards, chests=Reliquaries, daily=Oaths, weekly=Pilgrimage, chapter=Realm, room=Chamber. See GAME_PLAN sec 2.
