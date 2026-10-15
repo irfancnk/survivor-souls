@@ -850,7 +850,9 @@
     right: 0;
     top: 0;
     display: none;
-    font-size: 38px;
+    overflow: hidden;
+    text-overflow: clip;
+    font-size: 30px;
     -unity-font-style: bold;
     -unity-text-align: middle-center;
     white-space: nowrap;

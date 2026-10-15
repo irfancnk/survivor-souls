@@ -127,7 +127,7 @@ namespace SurvivorSouls.UI.Hud
             public Label ReelName;
             public int RarityIndex;
             public bool Stopped = true;
-            public int StopItem, ReelSeed, ReelAvoid, ShownItem = -1;
+            public int StopItem, ReelSeed, ReelAvoid, ShownItem = -1, NameItem = -1;
             public float StoppedAt, RevealTime;
         }
 
@@ -435,6 +435,7 @@ namespace SurvivorSouls.UI.Hud
                 card.ReelSeed = UnityEngine.Random.Range(0, _reelPool.Count);
                 card.ReelAvoid = _reelPool.IndexOf(_options[i]);
                 card.ShownItem = -1;
+                card.NameItem = -1;
                 card.Root.AddToClassList(RollingClass);
                 for (int r = 0; r < RarityClasses.Length; r++) card.Root.EnableInClassList(RarityClasses[r], false); // neutral rim
             }
@@ -508,7 +509,6 @@ namespace SurvivorSouls.UI.Hud
                     var next = ReelSkill(card, i, item + 1);
                     if (card.Icon != null) card.Icon.style.backgroundImage = now.Icon != null ? new StyleBackground(now.Icon) : StyleKeyword.None;
                     if (card.Reel != null) card.Reel.style.backgroundImage = next.Icon != null ? new StyleBackground(next.Icon) : StyleKeyword.None;
-                    if (card.ReelName != null) card.ReelName.text = UpperName(now);
                 }
                 float stretch = 1f + reelStretch * SkillReel.Speed01(rt, ReelStopTime(i), reelDecel);
                 // Top to bottom: the current skill slides down and out, the next one comes in from above.
@@ -524,10 +524,18 @@ namespace SurvivorSouls.UI.Hud
                 }
                 if (card.ReelName != null && card.Name != null)
                 {
+                    // The name of the icon nearer the plate centre, sliding down with it.
+                    int nameItem = frac < 0.5f ? item : item + 1;
+                    float offset = frac < 0.5f ? frac : frac - 1f;
+                    if (nameItem != card.NameItem)
+                    {
+                        card.NameItem = nameItem;
+                        card.ReelName.text = UpperName(ReelSkill(card, i, nameItem));
+                    }
                     // Absolute in the card: follow the hidden real name's slot (top is measured inside the top border).
                     card.ReelName.style.top = card.Name.layout.y - card.Root.resolvedStyle.borderTopWidth;
-                    card.ReelName.style.translate = new Translate(0f, frac * 22f);
-                    card.ReelName.style.opacity = 1f - 0.6f * frac;
+                    card.ReelName.style.translate = new Translate(0f, offset * 44f);
+                    card.ReelName.style.opacity = 1f - 1.4f * Mathf.Abs(offset);
                 }
             }
             if (passed && _age - _lastTickAt >= reelTickGap)
