@@ -118,10 +118,11 @@ Shader "SurvivorSouls/BlackFireball"
 
                 float v = uv.y + (n - 0.5) * 0.35;
                 half3 col = _BodyColor.rgb;
-                half band = smoothstep(0.14, 0.3, v) * (1.0 - smoothstep(0.42, 0.68, v)) * smoothstep(0.35, 0.75, n);
-                col = lerp(col, _BandColor.rgb * 1.6, band);
-                half core = (1.0 - smoothstep(0.0, 0.2, uv.y)) * ndv * ndv * (0.55 + 0.7 * n);
-                col += _CoreColor.rgb * core * 1.5;
+                // Black first (the top-down camera sees the head face-on): thin violet flame streaks, a small hot tip.
+                half band = smoothstep(0.14, 0.3, v) * (1.0 - smoothstep(0.42, 0.68, v)) * smoothstep(0.5, 0.85, n);
+                col = lerp(col, _BandColor.rgb, band);
+                half core = (1.0 - smoothstep(0.0, 0.12, uv.y)) * ndv * ndv * ndv * (0.4 + 0.6 * n);
+                col += _CoreColor.rgb * core * 0.9;
 
                 float crackle = Noise(float2(uv.x * 14.0 + t * 0.6, uv.y * 6.0 - t * 1.3), 14.0);
                 half rim = pow(fresnel, _RimPower) * _RimStrength * (0.45 + smoothstep(0.5, 0.8, crackle));
