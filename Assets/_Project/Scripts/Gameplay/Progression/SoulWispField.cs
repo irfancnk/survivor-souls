@@ -244,6 +244,7 @@ namespace SurvivorSouls.Gameplay.Progression
 
         internal int TierAt(int index) => _wisps[index].Tier;
         internal int XpAt(int index) => _wisps[index].Xp;
+        internal Vector3 PositionAt(int index) => _wisps[index].Position;
         internal Tier TierStyle(int tier) => tiers[tier];
         internal int TierCount => tiers.Length;
 
