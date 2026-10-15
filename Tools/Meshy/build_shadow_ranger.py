@@ -29,7 +29,7 @@ STRING = [BOW[0], NOCK, BOW[-1]]
 ARROW = [NOCK, (0.53, -0.46, 1.39)]
 HAND = (0.47, -0.42, 1.38)
 FACE = dict(x=(-0.13, 0.11), z=(1.30, 1.55))      # head box for the shadow paint (skin texels only)
-MASK_Z = (1.275, 1.432)                             # face cloth / cowl: into the collar to the nose bridge (tip at 1.42)
+MASK_Z = (1.275, 1.447)                             # face cloth / cowl: into the collar up to just under the eyes
 CHIN_Z = 1.372                                      # below this the cloth drapes straight down from the chin line
 
 
@@ -50,8 +50,13 @@ def old_bow_part(p):
     return dpoly(p, BOW) < 0.045 or dpoly(p, STRING) < 0.03 or dpoly(p, ARROW) < 0.03
 
 
+QUIVER_AXIS = ((-0.27, 0.09, 1.63), (-0.095, 0.085, 1.265))   # arrow tips at the top -> quiver bottom, on the back
+
+
 def in_quiver(p):
-    return -0.30 < p.x < -0.08 and 0.055 < p.y < 0.13 and 1.36 < p.z < 1.60
+    # whole quiver + arrows: a capsule round the quiver axis, behind the back surface (the lower end used to follow the
+    # right shoulder and bent while drawing)
+    return dseg(p, *QUIVER_AXIS) < 0.075 and p.y > 0.05
 
 
 # ---------------------------------------------------------------- load
@@ -107,8 +112,8 @@ spine = body.vertex_groups["Spine"]
 q = 0
 for v in body.data.vertices:
     if in_quiver(mw @ v.co):
-        for g in list(v.groups):
-            body.vertex_groups[g.group].remove([v.index])
+        for gi in [g.group for g in v.groups]:          # copy the indices first: removing while iterating skips groups
+            body.vertex_groups[gi].remove([v.index])
         spine.add([v.index], 1.0, 'REPLACE'); q += 1
 print("A2 quiver verts", q)
 
@@ -153,7 +158,7 @@ for poly in body.data.polygons:
 has = ~np.isnan(zmap)
 z = np.where(has, zmap, 0)
 # height ramp: brow 1.49 -> 0.86, eyes 1.45 -> 0.80, nose 1.42 -> 0.62, chin 1.37 -> 0.45, neck 1.32 -> 0.55
-ramp = np.interp(z, [1.30, 1.34, 1.37, 1.42, 1.45, 1.49, 1.56], [0.55, 0.50, 0.45, 0.62, 0.80, 0.86, 0.90])
+ramp = np.interp(z, [1.30, 1.34, 1.37, 1.42, 1.45, 1.49, 1.56], [0.60, 0.72, 0.85, 0.88, 0.90, 0.92, 0.93])   # any skin left between cowl and hood reads as shadow
 r, g, bb = px[..., 0], px[..., 1], px[..., 2]
 skin = np.clip((r - bb - 0.02) / 0.10, 0, 1) * np.clip((r - 0.12) / 0.15, 0, 1)
 shade = np.where(has, ramp * skin, 0).astype(np.float32)
@@ -205,13 +210,13 @@ print("A6 right fist verts", curled)
 # BVH in world space (the rig has a 0.01 root scale, so object-space ray lengths would be 100x too short)
 _wv = [mw @ v.co for v in body.data.vertices]
 bvh = BVHTree.FromPolygons(_wv, [tuple(p.vertices) for p in body.data.polygons])
-cols, rows = 15, 10
+cols, rows = 21, 12
 grid = []
 for r in range(rows):
     zr = MASK_Z[0] + (MASK_Z[1] - MASK_Z[0]) * r / (rows - 1)
     row = []
     for cidx in range(cols):
-        a = -0.98 + 1.96 * cidx / (cols - 1)                # wrap round the face, about +-56 deg
+        a = -1.48 + 2.96 * cidx / (cols - 1)                # wrap cheek to cheek into the hood, about +-85 deg
         centre = Vector((-0.012, -0.15, zr))
         d = Vector((math.sin(a), -math.cos(a), 0)).normalized()
         start = centre + d * 0.25
@@ -260,8 +265,8 @@ for r in range(rows):
         if abs(c - cols // 2) < 3:
             continue                                    # never clip the nose columns
         v = centre_axis(grid[r][c])
-        if v.length > mid * 1.10:
-            v = v.normalized() * mid * 1.10
+        if v.length > mid * 1.06:
+            v = v.normalized() * mid * 1.06
             grid[r][c] = Vector((v.x - 0.012, v.y - 0.15, grid[r][c].z))
 for r in range(rows):
     for c in range(cols):
@@ -270,7 +275,7 @@ for r in range(rows):
 # top edge: a soft V below the nose bridge
 for cidx in range(cols):
     u = abs(cidx - (cols - 1) / 2) / ((cols - 1) / 2)
-    grid[rows - 1][cidx] = grid[rows - 1][cidx] + Vector((0, 0, 0.012 * (1 - u) - 0.022 * u * u))
+    grid[rows - 1][cidx] = grid[rows - 1][cidx] + Vector((0, 0, 0.004 * (1 - u) - 0.010 * u * u))
 verts = [mwi @ p for row in grid for p in row]
 faces = [(r * cols + c, r * cols + c + 1, (r + 1) * cols + c + 1, (r + 1) * cols + c)
          for r in range(rows - 1) for c in range(cols - 1)]
