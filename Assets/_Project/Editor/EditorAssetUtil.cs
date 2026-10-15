@@ -112,6 +112,9 @@ namespace SurvivorSouls.Editor
             mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
             mat.renderQueue = (int)RenderQueue.Transparent;
             mat.SetOverrideTag("RenderType", "Transparent");
+            // Simple Lit "Alpha" with preserve specular = premultiplied blend: fog is added where the decal is clear, so the whole
+            // quad showed as a pale square. Straight alpha (SrcAlpha / OneMinusSrcAlpha) keeps the clear parts clear (KAN-158).
+            if (shaderName == SimpleLit) mat.SetFloat("_BlendModePreserveSpecular", 0f);
             ValidateLikeInspector(mat); // KAN-158
             return mat;
         }
