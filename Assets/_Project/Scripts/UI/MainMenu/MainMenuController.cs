@@ -181,7 +181,7 @@ namespace SurvivorSouls.UI.MainMenu
                 else storeButton.AddToClassList(HiddenClass);
             }
             _play.Focus();
-            if (recovered > 0) ShowToast(RecoveredText(recovered));
+            if (recovered > 0) ShowToast(RecoveredText(recovered), 4f); // as long as the welcome toast: news, not a hint
         }
 
         /// <summary>Toast after the pending souls of an unfinished run were banked (KAN-101).</summary>
