@@ -16,7 +16,7 @@ ad = arm.animation_data or arm.animation_data_create()
 ad.action = None
 for tr in list(ad.nla_tracks):
     ad.nla_tracks.remove(tr)
-SEQ = [("Shoot", 3, "SHOOT"), ("Idle", 1, "IDLE"), ("Walking", 2, "WALK"), ("Running", 3, "RUN")]
+SEQ = [("Shoot", 3, "SHOOT"), ("Idle", 1, "IDLE"), ("Walking", 2, "WALK"), ("Running", 3, "RUN"), ("Death", 1, "DEATH")]
 BLEND = 5
 cursor = 1
 segments = []

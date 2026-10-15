@@ -380,12 +380,12 @@ if STAGE != "A":
 
     # ---------------- B2 aim pose solver (shared by every Shoot frame)
     HIPS = -82                                                        # feet perpendicular to the shot line
-    TORSO = [("Spine02", 13), ("Spine01", 12), ("Spine", 11)]         # chest opens back to -46 deg (half to the target)
-    HEAD = [("neck", 21), ("Head", 25)]                               # face fully to the target
+    TORSO = [("Spine02", 8), ("Spine01", 7), ("Spine", 6)]            # chest -61 deg: bow shoulder to the target (longer draw)
+    HEAD = [("neck", 27), ("Head", 34)]                               # face fully to the target
     CANT = 18                                                         # bow top limb leans to the archer's right
 
     HAND_OFF = Vector((-0.015, 0.055, -0.015))   # wrist behind the pinch point (fingers on the string)
-    BACK_OFF = Vector((-0.06, 0.12, -0.02))      # follow-through: hand opens back past the jaw, close to the body
+    BACK_OFF = Vector((-0.11, 0.16, -0.02))      # follow-through: hand snaps back past the jaw, out towards the shoulder
 
     def base_aim(breath=0.0):
         reset_pose()
@@ -492,16 +492,19 @@ if STAGE != "A":
         a, d, w = base_aim(); pose_bow_arm(w)
         pose_draw_arm(a + HAND_OFF, a + d * 0.10, raise_elbow=1.0)
         c1 = clip_count()
+        ex = a - d * 0.03                                  # end of the back-tension expansion (hold, frame 19)
+        pose_draw_arm(ex + HAND_OFF, ex + d * 0.10, raise_elbow=1.0)
+        c1 += clip_count()
         b = a + BACK_OFF
         pose_draw_arm(b, b + d * 0.10 + Vector((0, 0, -0.03)), raise_elbow=1.0)
         return c1 + clip_count()
 
     _a, _d, _w = base_aim()
     CHIN = joint("Head") + Vector((0, -0.06, 0.0))
-    IDEAL = CHIN + Vector((-0.045, 0.0, -0.015))
+    IDEAL = CHIN + Vector((-0.05, 0.05, -0.012))       # under the back of the jaw: deeper draw, still tight to the face
     _best = None
     for dx in (-0.035, -0.05, -0.065, -0.08, -0.095, -0.11):
-        for dy in (-0.02, 0.0, 0.02):
+        for dy in (0.0, 0.02, 0.04, 0.06, 0.08):
             for dz in (-0.045, -0.03, -0.015, 0.0, 0.015):
                 cand = CHIN + Vector((dx, dy, dz))
                 c = eval_anchor(cand)
@@ -511,7 +514,7 @@ if STAGE != "A":
     ANCHOR_LOCAL = None
     _a, _d, _w = base_aim()
     ANCHOR_LOCAL = (AW @ PB["Head"].matrix).inverted() @ _best[1]
-    print(f"B2 chin anchor {tuple(round(x, 3) for x in _best[1])}  clip {_best[0][0]}  off ideal {_best[0][1] * 100:.1f} cm")
+    print(f"B2 jaw anchor {tuple(round(x, 3) for x in _best[1])}  clip {_best[0][0]}  off ideal {_best[0][1] * 100:.1f} cm")
     anchor0, aimdir0, wrist0 = base_aim()
     pose_bow_arm(wrist0)
     upd()
@@ -639,17 +642,31 @@ if STAGE != "A":
     bpy.ops.object.mode_set(mode='EDIT')
     e = arm.data.edit_bones["BowString"]
     e.head = A(brace_rest); e.tail = A(brace_rest + (tips_rest[1] - brace_rest).normalized() * 0.05)
+    # limb bones: the bow flexes at full draw and vibrates after the release
+    grip_rest = to_rest @ grip
+    for nm, tip in (("BowLimbUp", tips_rest[1]), ("BowLimbLow", tips_rest[0])):
+        lb = arm.data.edit_bones.new(nm); lb.parent = arm.data.edit_bones["LeftHand"]
+        lb.head = A(grip_rest); lb.tail = A(grip_rest + (tip - grip_rest).normalized() * 0.10)
     bpy.ops.object.mode_set(mode='OBJECT')
+    up_rest = (tips_rest[1] - tips_rest[0]).normalized()
+    gH = bow.vertex_groups["LeftHand"]; gU = bow.vertex_groups.new(name="BowLimbUp"); gD = bow.vertex_groups.new(name="BowLimbLow")
+    for v in bow.data.vertices:
+        t = (v.co - grip_rest).dot(up_rest)
+        w = max(0.0, min(1.0, (abs(t) - 0.07) / 0.14))
+        gH.add([v.index], 1 - w, 'REPLACE')
+        if w > 0:
+            (gU if t > 0 else gD).add([v.index], w, 'REPLACE')
     # string: two thin tubes tip -> brace point; tip rings on LeftHand, middle ring on BowString
     st = curve_obj("BowStringMesh", [tips_rest[1], brace_rest, tips_rest[0]], [1, 1, 1], bevel=0.0016)
     st.data.bevel_resolution = 1
     st = to_mesh(st); st.name = "ShadowRanger_String"; st.data.materials.append(M_STRING)
-    gL = st.vertex_groups.new(name="LeftHand"); gS = st.vertex_groups.new(name="BowString")
+    gTU = st.vertex_groups.new(name="BowLimbUp"); gTD = st.vertex_groups.new(name="BowLimbLow"); gS = st.vertex_groups.new(name="BowString")
     for v in st.data.vertices:
         p = v.co
-        dt = min((p - t).length for t in tips_rest); dm = (p - brace_rest).length
+        du, dd = (p - tips_rest[1]).length, (p - tips_rest[0]).length
+        dt = min(du, dd); dm = (p - brace_rest).length
         w = max(0.0, min(1.0, dt / (dt + dm)))
-        gL.add([v.index], 1 - w, 'REPLACE'); gS.add([v.index], w, 'REPLACE')
+        (gTU if du < dd else gTD).add([v.index], 1 - w, 'REPLACE'); gS.add([v.index], w, 'REPLACE')
     st.parent = arm; st.matrix_parent_inverse = arm.matrix_world.inverted()
     st.modifiers.new("Armature", 'ARMATURE').object = arm
 
@@ -704,43 +721,60 @@ if STAGE != "A":
     def smooth(t):
         return t * t * (3 - 2 * t)
 
+    def flex_bow(deg):
+        """Bend both limbs towards the archer (deg > 0) or past straight (deg < 0) round the grip."""
+        if abs(deg) < 1e-3:
+            return
+        hand_now = AW @ PB["LeftHand"].matrix
+        T = hand_now @ hand_rest.inverted()
+        g = T @ grip_rest; backv = (T @ brace_rest) - g
+        for nm, tip in (("BowLimbUp", tips_rest[1]), ("BowLimbLow", tips_rest[0])):
+            v = (T @ tip) - g
+            axis = v.cross(backv).normalized()
+            rot_world(nm, Matrix.Rotation(math.radians(deg), 3, axis))
+
+    def ease_out(t, p=2.4):
+        return 1 - (1 - max(0.0, min(1.0, t))) ** p
+
+    # 1.0 s loop at 30 fps: set 0-3, fast draw 3-10, hold + expansion + tremor 10-19, release 19 -> 20,
+    # bow dumps forward and vibrates 20-24, follow-through 19-25, next arrow 25-30
     def shoot_pose(f):
         breath = 0.6 * math.sin(f / 30 * 2 * math.pi)
         anchor, aimdir, wrist = base_aim(breath)
-        grip_w = None
-        brace_pt = None
-        # draw amount 0 (brace) .. 1 (anchor); release at 19, follow-through 19..23, back to brace 23..30
-        if f <= 4:
+        if f <= 3:
             draw = 0.0
-        elif f <= 14:
-            draw = smooth((f - 4) / 10)
+        elif f <= 10:
+            draw = ease_out((f - 3) / 7)
         elif f <= 19:
-            draw = 1.0 + 0.03 * smooth((f - 14) / 5)             # last few mm of expansion before the release
+            draw = 1.0 + 0.05 * smooth((f - 10) / 9)              # back tension: last cm before the release
         else:
             draw = None
-        # raise-and-draw: bow arm starts 10 cm low at the ready (the reaching draw arm passes under the jaw, not along the
-        # hood), rises into line during the draw, lowers again for the next arrow after the follow-through
         SET_DROP = 0.08
-        if f <= 4:
+        if f <= 3:
             drop = SET_DROP
-        elif f <= 14:
-            drop = SET_DROP * (1 - smooth((f - 4) / 10))
+        elif f <= 10:
+            drop = SET_DROP * (1 - ease_out((f - 3) / 7, 1.8))
         elif f <= 19:
             drop = 0.0
         else:
-            drop = 0.035 * math.sin(min(f - 19, 6) / 6 * math.pi) if f <= 25 else 0.0     # bow arm reacts to the shot
-            drop += SET_DROP * smooth(max(0.0, (f - 22) / 8))
-        pose_bow_arm(wrist, drop)
+            drop = 0.05 * math.sin(min(f - 19, 6) / 6 * math.pi) if f <= 25 else 0.0     # bow arm kicks on the shot
+            drop += SET_DROP * smooth(max(0.0, (f - 23) / 7))
+        # holding a heavy draw: a small tremor in the bow arm
+        tremor = Vector((0.0025 * math.sin(f * 2.7), 0.0, 0.0022 * math.cos(f * 3.9))) if 10 < f <= 19 else Vector()
+        pose_bow_arm(wrist + tremor, drop)
         rot_world("LeftHand", Matrix.Rotation(math.radians(CANT), 3, aimdir))
+        if 19 < f <= 26:                                          # bow dumps forward in the loose grip
+            dump = 14 * math.sin(min(f - 19, 7) / 7 * math.pi)
+            hn = (AW @ PB["LeftHand"].matrix).to_3x3().normalized()
+            rot_world("LeftHand", Matrix.Rotation(math.radians(dump), 3, aimdir.cross(Vector((0, 0, 1))).normalized()))
         upd()
         hand_now = AW @ PB["LeftHand"].matrix
         grip_now = (hand_now @ hand_rest.inverted()) @ (to_rest @ grip)
         brace_now = (hand_now @ hand_rest.inverted()) @ brace_rest
         pinch_brace = brace_now
-        pinch_anchor = anchor
         if draw is not None:
             pinch_anchor = anchor + Vector((0, 0, -drop))
-            pinch = pinch_brace.lerp(pinch_anchor, min(draw, 1.0)) + aimdir * -0.02 * max(draw - 1.0, 0) / 0.03
+            pinch = pinch_brace.lerp(pinch_anchor, min(draw, 1.0)) + aimdir * -0.03 * max(draw - 1.0, 0) / 0.05
             hand_w = pinch + HAND_OFF
             string_w = pinch
             point_at = pinch + aimdir * 0.10
@@ -748,23 +782,32 @@ if STAGE != "A":
             arrow_on = True
         else:
             k = (f - 19) / 11.0
-            # follow-through: hand flies back past the ear, then returns to the string
             back_pt = anchor + BACK_OFF
-            if k < 0.35:
-                hand_w = (anchor + HAND_OFF).lerp(back_pt, smooth(k / 0.35))
+            if k < 0.25:                                          # the release snaps the hand back fast
+                hand_w = (anchor + HAND_OFF).lerp(back_pt, ease_out(k / 0.25, 3.0))
             else:
-                hand_w = back_pt.lerp(pinch_brace + HAND_OFF, smooth((k - 0.35) / 0.65))
+                hand_w = back_pt.lerp(pinch_brace + HAND_OFF, smooth((k - 0.25) / 0.75))
             string_w = None
             point_at = hand_w + aimdir * 0.10 + Vector((0, 0, -0.03))
-            raise_elbow = 1.0 - smooth(max(0.0, (k - 0.35) / 0.65))
-            arrow_on = f >= 27                                    # next arrow nocked again at the end of the loop
+            raise_elbow = 1.0 - smooth(max(0.0, (k - 0.25) / 0.75))
+            arrow_on = f >= 27
         pose_draw_arm(hand_w, point_at, raise_elbow=raise_elbow)
+        # limb flex follows the draw; after the release the limbs overshoot and ring out
+        if draw is not None:
+            flex = 13.0 * min(draw, 1.05)
+        else:
+            flex = {20: -6.0, 21: 3.5, 22: -2.0, 23: 1.0}.get(f, 0.0)
+        flex_bow(flex)
         if string_w is not None:
             place_bone_world("BowString", string_w, (AW.to_3x3() @ (arm.data.bones["BowString"].matrix_local.to_3x3() @ Vector((0, 1, 0)))).normalized())
         if arrow_on:
             nock = string_w if string_w is not None else pinch_brace
             place_bone_world("Arrow", nock, (grip_now - nock).normalized())
         upd()
+        return (pinch_brace - anchor).length
+
+    _travel = shoot_pose(14)
+    print(f"B4 string travel brace -> anchor {_travel * 100:.1f} cm")
 
     act = bpy.data.actions.new("Shoot"); arm.animation_data_create(); arm.animation_data.action = act
     for f in range(0, 31):
@@ -792,6 +835,98 @@ if STAGE != "A":
         key_all(f)
     act2.use_fake_user = True
     print("B5 Idle keyed")
+
+    # ---------------- B5b Death (48 frames, 1.6 s, plays once): hit jolt, knees buckle, falls backwards, hits the
+    # ground, small bounce, settles. Hips move only up / down (no root XZ), so it plays in place like the other clips.
+    # A ground pass lifts / lowers the hips so the lowest body point sits on the floor (z = 0) once he lands.
+    _gi2 = {g.name: g.index for g in body.vertex_groups}
+
+    def lowest_point():
+        dg = bpy.context.evaluated_depsgraph_get()
+        eb = body.evaluated_get(dg); m = eb.to_mesh(); bmw = body.matrix_world
+        z = min((bmw @ v.co).z for v in list(m.vertices)[::3])
+        eb.to_mesh_clear()
+        return z
+
+    def move_hips(dz):
+        pb = PB["Hips"]; M = pb.matrix.copy()
+        M.translation = M.translation + AWI.to_3x3() @ Vector((0, 0, dz))
+        pb.matrix = M; upd()
+
+    def bend(bone, child, toward, deg):
+        v = joint(child) - joint(bone)
+        ax = v.cross(toward)
+        if ax.length < 1e-6 or abs(deg) < 1e-4:
+            return
+        rot_world(bone, Matrix.Rotation(math.radians(deg), 3, ax.normalized()))
+
+    def body_axes():
+        across = (joint("LeftUpLeg") - joint("RightUpLeg")).normalized()
+        upv = (joint("Spine") - joint("Hips")); upv = (upv - across * upv.dot(across)).normalized()
+        return across, upv, across.cross(upv)
+
+    def seg(f, a, b):                       # 0..1 eased over frames a..b
+        return smooth(max(0.0, min(1.0, (f - a) / float(b - a))))
+
+    def death_pose(f):
+        reset_pose()
+        twist([("Spine02", -4), ("Spine01", -5), ("Spine", -5)]); twist([("neck", 6), ("Head", 7)])
+        carry_bow(0.0, lean_deg=18)
+        Sr = joint("RightArm")
+        two_bone("RightArm", "RightForeArm", "RightHand", Sr + Vector((-0.10, -0.06, -0.40)), Sr + Vector((-0.35, 0.3, -0.1)))
+        relax_right_hand(0.9)
+        across, upv, fwdv = body_axes()
+        hit = seg(f, 0, 4) * (1 - 0.4 * seg(f, 6, 14))          # jolt back, partly recovers
+        buckle = seg(f, 4, 14)
+        fall = seg(f, 11, 30) ** 1.35                            # accelerates like a real fall
+        land = seg(f, 30, 33)
+        bounce = math.sin(seg(f, 30, 38) * math.pi) * (1 - seg(f, 33, 40))
+        settle = seg(f, 36, 48)
+        # whole body tips backwards round the hips; legs give way under him
+        rot_world("Hips", Matrix.Rotation(math.radians(-84 * fall - 3 * bounce), 3, across))
+        rot_world("Hips", Matrix.Rotation(math.radians(14 * fall), 3, upv))          # twists a little as he goes
+        move_hips(-0.20 * buckle)
+        a2, u2, f2 = body_axes()
+        # legs: knees buckle, then flop half straight as he lands
+        for side in ("Left", "Right"):
+            k = 1.0 if side == "Left" else 0.8
+            bend(side + "UpLeg", side + "Leg", f2, k * (38 * buckle - 18 * fall + 6 * settle))
+            bend(side + "Leg", side + "Foot", -f2, k * (70 * buckle - 35 * fall))
+        # torso: hit jolt back, then curls a little on the fall, head snaps back and rolls to the side on landing
+        bend("Spine01", "Spine", -f2, 12 * hit - 6 * fall)
+        bend("Spine", "neck", -f2, 8 * hit)
+        bend("Head", "head_end", -f2, 22 * hit - 10 * fall + 8 * bounce)
+        rot_world("Head", Matrix.Rotation(math.radians(28 * settle), 3, (joint("head_end") - joint("Head")).normalized()))
+        # arms fling out with the hit, fall open at his sides
+        bend("LeftArm", "LeftForeArm", a2, 35 * hit + 45 * fall)
+        bend("RightArm", "RightForeArm", -a2, 40 * hit + 50 * fall)
+        bend("RightForeArm", "RightHand", u2, 25 * fall)
+        # bow arm goes limp: elbow straightens, arm drops open on the ground, bow ends up lying flat beside him
+        t = seg(f, 14, 34)
+        if t > 0:
+            ua = (joint("LeftForeArm") - joint("LeftArm")).normalized()
+            vf = joint("LeftHand") - joint("LeftForeArm")
+            ax = vf.cross(ua)
+            if ax.length > 1e-6:
+                ang = vf.angle(ua) * 0.85 * t
+                rot_world("LeftForeArm", Matrix.Rotation(ang, 3, ax.normalized()))
+            bend("LeftArm", "LeftForeArm", -f2, 30 * t)
+            c18, s18 = math.cos(math.radians(18)), math.sin(math.radians(18))
+            up_c, bk_c = u2 * c18 + f2 * s18, -f2 * c18 + u2 * s18
+            up_f, bk_f = (a2 + u2 * 0.6).normalized(), (u2 - a2 * 0.6).normalized()
+            orient_bow(up_c.lerp(up_f, t).normalized(), bk_c.lerp(bk_f, t).normalized())
+        # ground: never below the floor; once landed, rest on it
+        z = lowest_point()
+        if z < 0.0 or f >= 31:
+            move_hips(-z + 0.004 + 0.025 * bounce)
+        upd()
+
+    act_d = bpy.data.actions.new("Death"); arm.animation_data.action = act_d
+    for f in range(0, 49):
+        death_pose(f)
+        key_all(f)
+    act_d.use_fake_user = True
+    print("B5b Death keyed")
 
     # ---------------- B6 Meshy Walking / Running rebaked: Meshy legs, torso, head and right arm; my bow-carry left arm
     # (the Meshy run pumps the left arm up to the face, so the rigid bow swung flat and looked held by the string)
@@ -872,7 +1007,7 @@ if STAGE != "A":
         # one NLA track per clip (exporting the active action sampled a frozen pose for the rebaked walk / run:
         # the armature kept another action's slot during export)
         ad = arm.animation_data
-        for clip in ("Shoot", "Idle", "Walking", "Running"):
+        for clip in ("Shoot", "Idle", "Walking", "Running", "Death"):
             ad.action = None
             for tr in list(ad.nla_tracks):
                 ad.nla_tracks.remove(tr)
