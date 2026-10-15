@@ -146,6 +146,7 @@ Numbers are first guesses in Chamber 1 terms (same units as `CombatBuilder.Zombi
 - Role: Boss (bullet-hell sorceress).
 - Attack: Floats, never melee. (a) homing skull orbs, 3 at a time, slow turn rate; (b) ring of 24 teal orbs with 3 gaps; (c) summon 3 Bone Archers. Phase 2: (d) cross beams, 4 rotating lanes (line telegraphs) for 4 s; (e) teleport to a random arena point every 8 s. Low HP, hard to reach.
 - Stats: HP 7000, height 4.0 m.
+- Status: in the game since KAN-111 (fight library, not in Realm 1's rotation: `-ss-boss-type BoneMatriarch`; summons 4 Graveyard Laborers instead of the cut Bone Archers (KAN-128); never melees, holds 6-9 m, hovers; teleport every 8 s in phase 2; numbers in `Assets/_Project/Data/Boss/Boss_BoneMatriarch.asset`, see STATE.md).
 - Pose sheet: `Docs/enemies/BoneMatriarch.png`. Meshy tasks: preview `01a13cb4-6919-763c-8ed7-914f787963ef`, refine `01a13cb6-1405-7211-9c12-7f5fc0416fcf`, remesh `01a13cb7-6925-73f9-aea7-ac1b08c860ce`, rigging `01a13cb9-14f4-70c5-9d1b-34ab390ab543`.
 
 ## 4. Known asset issues
