@@ -75,6 +75,33 @@ bmesh.ops.delete(bm, geom=[v for v in bm.verts if not v.link_faces], context='VE
 bm.to_mesh(body.data); bm.free()
 print(f"A1 merge {n0} -> {len(body.data.vertices)} verts, cut {len(dead)} faces")
 
+# ---------------------------------------------------------------- A1b old bow grip flakes inside the bow hand
+# The cut above spares the hand. Inside it, faces past the wrist that do not sample skin are the old grip / arrowhead.
+_mat0 = body.data.materials[0]
+_img0 = next(n for n in _mat0.node_tree.nodes if n.type == 'BSDF_PRINCIPLED').inputs['Base Color'].links[0].from_node.image
+_W0, _H0 = _img0.size
+_px0 = np.array(_img0.pixels[:], dtype=np.float32).reshape(_H0, _W0, 4)
+_wl = arm.matrix_world @ arm.data.bones["LeftHand"].head_local
+_hd = (Vector(HAND) - _wl).normalized()
+_uv0 = body.data.uv_layers.active.data
+bm = bmesh.new(); bm.from_mesh(body.data); bm.faces.ensure_lookup_table()
+uvl = bm.loops.layers.uv.active
+flakes = []
+for f in bm.faces:
+    c = mw @ f.calc_center_median()
+    longest = max(((mw @ f.verts[i].co) - (mw @ f.verts[(i + 1) % len(f.verts)].co)).length for i in range(len(f.verts)))
+    behind = (c - _wl).dot(_hd)
+    if (c - Vector(HAND)).length > 0.10 or behind < (-0.02 if longest > 0.045 else 0.0):
+        continue                                # long slivers just behind the wrist are the old arrow's tail
+    u = sum((l[uvl].uv for l in f.loops), Vector((0, 0))) / len(f.loops)
+    col = _px0[int(min(max(u.y, 0), 1) * (_H0 - 1)), int(min(max(u.x, 0), 1) * (_W0 - 1))]
+    if not (col[0] > col[2] + 0.06 and col[0] > 0.22):
+        flakes.append(f)
+bmesh.ops.delete(bm, geom=flakes, context='FACES')
+bmesh.ops.delete(bm, geom=[v for v in bm.verts if not v.link_faces], context='VERTS')
+bm.to_mesh(body.data); bm.free()
+print("A1b grip flakes cut", len(flakes))
+
 # ---------------------------------------------------------------- A2 quiver rigid on Spine
 spine = body.vertex_groups["Spine"]
 q = 0
@@ -146,6 +173,33 @@ img.update()
 img.filepath_raw = os.path.join(JOB, "T_ShadowRanger_BaseColor_painted.png"); img.file_format = 'PNG'
 img.save(); img.pack()
 print("A4 hood shadow faces", painted, "texels", int((shade > 0.05).sum()))
+
+# ---------------------------------------------------------------- A6 right hand fist (rig has no finger bones)
+# Meshy modelled the left hand closed round its bow grip, the right hand open (palm forward). Bend every right-hand
+# vertex past the knuckle line towards the palm with a constant radius: fingers curl into a fist.
+_arm_w = arm.matrix_world
+wrist_r = _arm_w @ arm.data.bones["RightHand"].head_local
+_hi = body.vertex_groups["RightHand"].index
+_rh = [v for v in body.data.vertices if sum(g.weight for g in v.groups if g.group == _hi) > 0.3]
+_tip = max((mw @ v.co for v in _rh), key=lambda p: (p - wrist_r).length)
+hand_d = (_tip - wrist_r).normalized()
+palm_n = Vector((0.27, -0.80, 0.54))                     # thinnest PCA axis of the hand, palm side (faces forward)
+palm_n = (palm_n - hand_d * palm_n.dot(hand_d)).normalized()
+side_z = hand_d.cross(palm_n)
+K0, RAD, TMAX = 0.068, 0.020, 3.6                         # knuckles 6.8 cm from the wrist, curl radius 2 cm
+knuckle = wrist_r + hand_d * K0
+curled = 0
+for v in _rh:
+    p = mw @ v.co
+    x = (p - knuckle).dot(hand_d)
+    if x <= 0:
+        continue
+    y = (p - knuckle).dot(palm_n); z = (p - knuckle).dot(side_z)
+    th = min(x / RAD, TMAX); extra = max(0.0, x - RAD * TMAX)
+    q = knuckle + hand_d * ((RAD - y) * math.sin(th)) + palm_n * (RAD - (RAD - y) * math.cos(th)) + side_z * z
+    q += (hand_d * math.cos(th) + palm_n * math.sin(th)) * extra
+    v.co = mwi @ q; curled += 1
+print("A6 right fist verts", curled)
 
 # ---------------------------------------------------------------- A5 face cloth (ranger mask) skinned to Head
 # BVH in world space (the rig has a 0.01 root scale, so object-space ray lengths would be 100x too short)
@@ -325,12 +379,14 @@ if STAGE != "A":
     REACH_L = (joint("LeftForeArm") - joint("LeftArm")).length + (joint("LeftHand") - joint("LeftForeArm")).length
 
     # ---------------- B2 aim pose solver (shared by every Shoot frame)
-    TORSO = [("Spine02", -14), ("Spine01", -20), ("Spine", -22)]   # -56 deg: left shoulder to the target
-    HEAD = [("neck", 22), ("Head", 28)]                               # face back to the target
+    HIPS = -82                                                        # feet perpendicular to the shot line
+    TORSO = [("Spine02", 13), ("Spine01", 12), ("Spine", 11)]         # chest opens back to -46 deg (half to the target)
+    HEAD = [("neck", 21), ("Head", 25)]                               # face fully to the target
+    CANT = 18                                                         # bow top limb leans to the archer's right
 
     def base_aim(breath=0.0):
         reset_pose()
-        twist(TORSO); twist(HEAD)
+        twist([("Hips", HIPS)]); twist(TORSO); twist(HEAD)
         tilt("Spine", -3 + breath)               # chest up a little, breathing
         anchor = joint("Head") + Vector((-0.045, -0.05, 0.025))       # right jaw corner under the hood
         # arrow line: from the anchor straight at the target, slightly up
@@ -538,6 +594,7 @@ if STAGE != "A":
         if 19 < f <= 25:
             drop = 0.035 * math.sin((f - 19) / 6 * math.pi)       # bow arm reacts to the shot
         pose_bow_arm(wrist, drop)
+        rot_world("LeftHand", Matrix.Rotation(math.radians(CANT), 3, aimdir))
         upd()
         hand_now = AW @ PB["LeftHand"].matrix
         grip_now = (hand_now @ hand_rest.inverted()) @ (to_rest @ grip)
