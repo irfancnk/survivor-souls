@@ -122,6 +122,7 @@ Numbers are first guesses in Chamber 1 terms (same units as `CombatBuilder.Zombi
 - Role: Boss (aggressive melee + charges).
 - Attack: Phase 1: (a) cleaver chop, long lane 6 m x 1.6 m; (b) charge dash (reuse KAN-61 charge) with a 1 s stun on a pillar hit; (c) cleaver spin, 2.5 s whirl that follows the Knight slowly (r 3 m). Phase 2: (d) chain hook throw, lane 10 m, pulls the Knight 4 m; (e) triple charge. Uses the existing BossFight slam / fan / charge code most directly: good first boss to port.
 - Stats: HP 8000, height 4.2 m.
+- Status: in the game since KAN-108 (Realm 1 boss of every boss Chamber; numbers in `Assets/_Project/Data/Boss/Boss_Realm1_Butcher.asset`, attack list per phase, see STATE.md).
 - Pose sheet: `Docs/enemies/AshgraveButcher.png`. Meshy tasks: preview `01a13cb4-6f2f-77f6-906e-4e4916688d19`, refine `01a13cb5-bcc2-75bd-a997-3f7f375e4788`, remesh `01a13cb7-174a-71a2-a472-9b58e5b900f5`, rigging `01a13cb8-c83d-712f-9a4f-6afa554645c3`.
 
 ### 13. The Pyre Lord (`PyreLord`)
