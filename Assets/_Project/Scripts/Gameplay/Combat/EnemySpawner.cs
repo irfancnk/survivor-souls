@@ -111,6 +111,10 @@ namespace SurvivorSouls.Gameplay.Combat
         private const float IdleBias = 0.35f;  // standing still: keep a little of the last heading's preference
 
         [SerializeField] private EnemyWaveTable waves;
+        [Tooltip("Types not in the wave table that must be in the build: dev spawns, the ranged zombies until their spawn " +
+                 "tables (KAN-105 / KAN-112), later boss summons. Pooled at start (extraPrewarm each).")]
+        [SerializeField] private Enemy[] extraTypes = new Enemy[0];
+        [SerializeField, Min(0)] private int extraPrewarm = 3;
         [SerializeField] private Transform player;
         [SerializeField] private WorldStreamer world;
         [SerializeField] private Camera viewCamera;
@@ -313,6 +317,28 @@ namespace SurvivorSouls.Gameplay.Combat
                 _pending--;
             }
         }
+
+        /// <summary>
+        /// Enemy type by prefab name (e.g. <c>Enemy_BoneArcher</c>): the wave table first, then <see cref="ExtraTypes"/>.
+        /// Null when the scene has no such type. Dev tools; allocates nothing.
+        /// </summary>
+        public Enemy FindType(string prefabName)
+        {
+            if (waves != null)
+                for (int i = 0; i < waves.PhaseCount; i++)
+                {
+                    var entries = waves.GetPhase(i).enemies;
+                    if (entries == null) continue;
+                    foreach (var e in entries)
+                        if (e.prefab != null && e.prefab.name == prefabName) return e.prefab;
+                }
+            foreach (var e in extraTypes)
+                if (e != null && e.name == prefabName) return e;
+            return null;
+        }
+
+        /// <summary>Types in the build outside the wave table (see the field tooltip).</summary>
+        public IReadOnlyList<Enemy> ExtraTypes => extraTypes;
 
         /// <summary>Takes <paramref name="prefab"/> from its pool and starts it at <paramref name="position"/>. Public for tests and boss spawners.</summary>
         public Enemy SpawnAt(Enemy prefab, Vector3 position)
@@ -554,8 +580,7 @@ namespace SurvivorSouls.Gameplay.Combat
 
         private void Prewarm()
         {
-            if (waves == null) return;
-            for (int i = 0; i < waves.PhaseCount; i++)
+            for (int i = 0; waves != null && i < waves.PhaseCount; i++)
             {
                 var entries = waves.GetPhase(i).enemies;
                 if (entries == null) continue;
@@ -566,6 +591,12 @@ namespace SurvivorSouls.Gameplay.Combat
                     var pool = _pools[entry.prefab] = new Stack<Enemy>(count);
                     for (int k = 0; k < count; k++) pool.Push(Create(entry.prefab));
                 }
+            }
+            foreach (var extra in extraTypes) // after the waves: a type in both keeps its wave-sized pool
+            {
+                if (extra == null || _pools.ContainsKey(extra)) continue;
+                var pool = _pools[extra] = new Stack<Enemy>(extraPrewarm);
+                for (int k = 0; k < extraPrewarm; k++) pool.Push(Create(extra));
             }
         }
 

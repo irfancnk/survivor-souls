@@ -66,7 +66,8 @@ namespace SurvivorSouls.Dev
     /// <c>-ss-wallet &lt;n&gt;</c> (KAN-96) sets the saved Souls wallet to n before the first scene wakes.
     /// <c>-ss-enemy &lt;Id&gt;[+Id...][,count]</c> (KAN-104) places count (default 3) enemies of each roster type (e.g.
     /// GraveyardLaborer, prefab <c>Enemy_&lt;Id&gt;</c>) in an arc ~5 m ahead of the Knight after load and turns the crossbow off,
-    /// so they walk in and attack. Only types the scene's wave table holds can be placed (others are not in the build).
+    /// so they walk in and attack. Only types the scene's wave table or the spawner's extra types (KAN-105 ranged zombies)
+    /// hold can be placed (others are not in the build).
     /// Used by tools/agents to verify visuals without a human. Inactive in release builds (Debug.isDebugBuild).
     /// </summary>
     public sealed class DevScreenshot : MonoBehaviour
@@ -523,13 +524,10 @@ namespace SurvivorSouls.Dev
             int total = ids.Length * count, slot = 0;
             foreach (string id in ids)
             {
-                Enemy prefab = null;
-                for (int i = 0; i < waves.PhaseCount && prefab == null; i++)
-                    foreach (var e in waves.GetPhase(i).enemies)
-                        if (e.prefab != null && e.prefab.name == "Enemy_" + id) prefab = e.prefab;
+                var prefab = spawner.FindType("Enemy_" + id);
                 if (prefab == null)
                 {
-                    Debug.LogWarning($"[DevScreenshot] -ss-enemy: no '{id}' in the wave table");
+                    Debug.LogWarning($"[DevScreenshot] -ss-enemy: no '{id}' in the wave table or the spawner's extra types");
                     slot += count;
                     continue;
                 }

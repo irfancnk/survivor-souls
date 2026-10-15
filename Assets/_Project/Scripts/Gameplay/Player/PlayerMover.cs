@@ -23,8 +23,18 @@ namespace SurvivorSouls.Gameplay.Player
         private PlayerStats _stats;
         private Vector3 _velocity; // planar
         private float _verticalSpeed;
+        private float _slow;
 
-        public float MaxSpeed => PlayerStats.Eval(_stats, StatId.MoveSpeed, maxSpeed);
+        public float MaxSpeed => PlayerStats.Eval(_stats, StatId.MoveSpeed, maxSpeed) * (1f - Slow);
+        /// <summary>
+        /// Share of the speed taken away (0 = none, at most 0.9): acid puddles (KAN-105). Set every frame by
+        /// <see cref="Combat.GroundHazards"/>; 0 when the Knight stands in no slowing hazard.
+        /// </summary>
+        public float Slow
+        {
+            get => _slow;
+            set => _slow = Mathf.Clamp(value, 0f, 0.9f);
+        }
         /// <summary>Base speed before skills (KAN-75 power curve).</summary>
         public float BaseSpeed => maxSpeed;
         /// <summary>The stick is ignored (the Knight slows to a stop): boss intro (KAN-62). Gravity still runs.</summary>

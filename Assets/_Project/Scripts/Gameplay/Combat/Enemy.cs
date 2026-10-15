@@ -28,6 +28,10 @@ namespace SurvivorSouls.Gameplay.Combat
     /// Hit / Death states (KAN-104 roster): when the controller has them, a direct hit plays a short "Hit" flinch (not while
     /// attacking, not on bosses, at most every <see cref="HitCooldown"/> s) and a kill plays "Death" for
     /// <see cref="deathHold"/> s before the body sinks. Without them (old zombies) the body tips over as before.
+    /// Keep distance (KAN-105 ranged): with a hold band (<see cref="holdMin"/>..<see cref="holdMax"/> &gt; 0) the enemy walks in
+    /// until it is inside the band, backs off when the Knight comes closer than the band, and stands facing the Knight
+    /// inside it. <see cref="NeedsClearShot"/> (set by <see cref="RangedAttack"/> when a pillar blocks the line of fire)
+    /// makes it walk in again. 0 / 0 = melee chaser.
     /// </summary>
     public sealed class Enemy : MonoBehaviour
     {
@@ -88,6 +92,12 @@ namespace SurvivorSouls.Gameplay.Combat
         [Tooltip("Seconds the Death state plays before the body sinks (the builder sets it to the state's play time).")]
         [SerializeField, Min(0f)] private float deathHold = 0.9f;
 
+        [Header("Keep distance (KAN-105)")]
+        [Tooltip("Ranged types: nearest distance (m) to the Knight. Closer = back off. 0 with holdMax 0 = melee chaser.")]
+        [SerializeField, Min(0f)] private float holdMin;
+        [Tooltip("Ranged types: farthest distance (m) to the Knight. Farther = walk in. 0 = melee chaser.")]
+        [SerializeField, Min(0f)] private float holdMax;
+
         private const float KnockbackSpeed = 4f;
         private const float FlashTime = 0.12f;
         private const float FallTime = 0.35f;
@@ -113,6 +123,10 @@ namespace SurvivorSouls.Gameplay.Combat
         /// <summary>Minimum seconds between two Hit flinches of one enemy, so a horde under fire still walks.</summary>
         public const float HitCooldown = 1.2f;
         private const float HitBlend = 0.06f;
+        /// <summary>Back-off speed as a share of the move speed (ranged types walking away from the Knight).</summary>
+        public const float BackOffSpeed = 0.8f;
+        /// <summary>A holding ranged enemy settles this far (share of the band width) round the band middle before it stops.</summary>
+        private const float SettleShare = 0.25f;
 
         private Transform _target;
         private Action<Enemy> _release;
@@ -152,6 +166,7 @@ namespace SurvivorSouls.Gameplay.Combat
         private bool _hasDeath;
         private float _hitLeft;      // seconds left in the current Hit flinch
         private float _hitCooldown;  // seconds until the next flinch may start
+        private bool _holding;       // ranged: standing inside the hold band
 
         /// <summary>Northmost Z an enemy may walk to (the sea edge). Set by the spawner from the world; +inf = no limit.</summary>
         public static float LandMaxZ = float.PositiveInfinity;
@@ -195,6 +210,20 @@ namespace SurvivorSouls.Gameplay.Combat
         public float DamagePerSecond => damagePerSecond;
         public int XpValue => xpValue;
         public bool IsBoss => isBoss;
+        /// <summary>Ranged type: has a hold band (KAN-105).</summary>
+        public bool KeepsDistance => holdMax > 0f;
+        public float HoldMin => holdMin;
+        public float HoldMax => holdMax;
+        /// <summary>Ranged: standing inside the hold band, facing the Knight (ready to shoot).</summary>
+        public bool IsHolding => _holding;
+        /// <summary>Ranged: the line of fire is blocked (pillar, wall); walk in until it is clear. Cleared on spawn.</summary>
+        public bool NeedsClearShot { get; set; }
+        /// <summary>Tests and tools: sets the hold band (0 / 0 = melee chaser).</summary>
+        public void SetHoldBand(float min, float max)
+        {
+            holdMin = Mathf.Max(0f, min);
+            holdMax = Mathf.Max(holdMin, max);
+        }
         /// <summary>
         /// Stops the chase (no walking, no turning) while an attack pattern runs (KAN-58 boss slam). Crowd push and
         /// knockback still move it. A halted enemy with an attack state plays it (wind-up). Cleared on spawn.
@@ -237,6 +266,8 @@ namespace SurvivorSouls.Gameplay.Combat
             _hitLeft = 0f;
             _hitCooldown = 0f;
             Halted = false;
+            NeedsClearShot = false;
+            _holding = false;
             _sinceSwitch = MinStateHold;
             _animCheck = UnityEngine.Random.value * AnimCheckInterval;
             Vector3 toTarget = target != null ? target.position - position : Vector3.forward;
@@ -376,10 +407,14 @@ namespace SurvivorSouls.Gameplay.Combat
                 if (dist > 0.01f)
                 {
                     Vector3 heading = to / dist;
-                    if (dist > stopDistance) heading = SlicedSteer(pos, heading, dt);
-                    var look = Quaternion.LookRotation(heading);
-                    transform.rotation = Quaternion.RotateTowards(transform.rotation, look, turnSpeed * dt);
-                    if (dist > stopDistance) move = heading * MoveSpeed;
+                    if (holdMax > 0f) move = KeepDistance(pos, heading, dist, dt);
+                    else
+                    {
+                        if (dist > stopDistance) heading = SlicedSteer(pos, heading, dt);
+                        var look = Quaternion.LookRotation(heading);
+                        transform.rotation = Quaternion.RotateTowards(transform.rotation, look, turnSpeed * dt);
+                        if (dist > stopDistance) move = heading * MoveSpeed;
+                    }
                 }
             }
             move += EnemyCrowd.Separation(this, pos, separation * _scale, MoveSpeed * 1.5f);
@@ -389,6 +424,34 @@ namespace SurvivorSouls.Gameplay.Combat
             next = Slide(pos, next);
             transform.position = next;
             UpdateAnimation(pos, next, dist, dt);
+        }
+
+        /// <summary>
+        /// Ranged movement (KAN-105). Holding: stand and face the Knight while it stays inside the band and the shot is clear.
+        /// Moving: walk in (farther than the band middle, or no clear shot) or back off (closer), steered round walls, until
+        /// the distance settles near the band middle. Returns the planar velocity.
+        /// </summary>
+        private Vector3 KeepDistance(Vector3 pos, Vector3 toTarget, float dist, float dt)
+        {
+            float mid = (holdMin + holdMax) * 0.5f;
+            float settle = Mathf.Max(0.3f, (holdMax - holdMin) * SettleShare);
+            if (_holding) _holding = !NeedsClearShot && dist >= holdMin && dist <= holdMax;
+            else _holding = !NeedsClearShot && Mathf.Abs(dist - mid) <= settle;
+
+            Vector3 face = toTarget;
+            Vector3 move = Vector3.zero;
+            if (!_holding)
+            {
+                bool walkIn = NeedsClearShot ? dist > stopDistance : dist > mid;
+                if (walkIn || dist < mid)
+                {
+                    Vector3 heading = SlicedSteer(pos, walkIn ? toTarget : -toTarget, dt);
+                    move = heading * (MoveSpeed * (walkIn ? 1f : BackOffSpeed));
+                    face = heading;
+                }
+            }
+            transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.LookRotation(face), turnSpeed * dt);
+            return move;
         }
 
         /// <summary>
