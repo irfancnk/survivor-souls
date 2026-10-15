@@ -183,8 +183,8 @@ New main hero model: a black hooded bow ranger with a long cape (Lord of the Rin
 **What the build does**
 - Merges the remesh triangle soup (26.8k -> 9.9k verts) and smooths normals (hard edges > 40 deg kept). Removes the faceted look.
 - Cuts the fused Meshy bow, string and arrow (the "drawn bow" preview pose left a string from both tips to the chest and an arrow across the body: the tangled strings). Region fit from vertex plots.
-- Quiver arrows bound 100 % to `Spine`.
-- Face: a hood shadow painted into the base colour (smooth height ramp, skin texels only), plus a dark ranger cowl `ShadowRanger_Mask` (raycast onto the face, smoothed, 11 mm off the skin, drapes from the chin into the collar), skinned to `Head`.
+- Whole quiver (case, strap end and arrows) bound 100 % to `Spine`: capsule along the quiver axis (7.5 cm radius, back side only), all old weights removed first. Polish 6 fix: the old loop removed groups while iterating, so some quiver verts kept ~48 % `RightShoulder` / `RightArm` and the arrows bent during Shoot. Now 0.00 cm drift vs `Spine` in every clip.
+- Face: a hood shadow painted into the base colour (smooth height ramp, skin texels only), plus a dark ranger cowl `ShadowRanger_Mask` (raycast onto the face, smoothed, 11 mm off the skin, drapes from the chin into the collar), skinned to `Head`. Polish 6: the cowl wraps +-85 deg round the face and rises to just under the eyes (z 1.275-1.447); only an eye slit shows.
 - New black recurve bow `ShadowRanger_Bow` (1.24 m, grip wrap, nocks), built around the hand in the aim pose and mapped to rest: 100 % `LeftHand`.
 - New string `ShadowRanger_String`: two tubes from the tips to a new bone `BowString` (child of `LeftHand`); the middle follows the draw hand.
 - New arrow `ShadowRanger_Arrow` on a new bone `Arrow` (child of `Spine`): at rest it sits in the quiver; in Shoot it rides the string and goes back to the quiver on release (game spawns the flying arrow then).
