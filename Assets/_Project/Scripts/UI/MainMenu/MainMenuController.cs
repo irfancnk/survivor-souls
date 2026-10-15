@@ -324,6 +324,7 @@ namespace SurvivorSouls.UI.MainMenu
         /// <summary>Switches Test Mode (the settings toggle does the same). Switch-on tells the one-time Souls grant.</summary>
         public void SetTestMode(bool on)
         {
+            if (TestMode.Locked) return; // store build (KAN-151)
             int added = TestMode.SetOn(on);
             _testToggle?.SetValueWithoutNotify(on);
             ShowTestMode();
@@ -337,6 +338,12 @@ namespace SurvivorSouls.UI.MainMenu
             _testReveal = new TestModeReveal(DevBuildForTestMode);
             _testTag = root.Q<Label>(TestModeTagName);
             _testToggle = root.Q<Toggle>(TestModeToggleName);
+            if (TestMode.Locked)
+            {
+                // Store build (KAN-151): the row stays hidden and neither the toggle nor the title taps are bound.
+                ShowTestMode();
+                return;
+            }
             if (_testToggle != null)
             {
                 _testToggle.SetValueWithoutNotify(TestMode.IsOn);

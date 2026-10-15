@@ -113,33 +113,38 @@ namespace SurvivorSouls.Editor
 
         /// <summary>
         /// iOS Xcode project for device installs. Sign and install with xcodebuild + devicectl
-        /// (see STATE.md, "Deploy to iPhone"). Optional <c>-ss-dev</c> makes a development build.
+        /// (see STATE.md, "Deploy to iPhone"). Optional <c>-ss-dev</c> makes a development build; optional
+        /// <c>-ss-store</c> makes a store release build (<see cref="PhoneDefines"/>).
         /// <c>-executeMethod SurvivorSouls.Editor.DevBuildTools.BuildIosXcode -ss-out &lt;dir&gt;</c>
         /// </summary>
         public static void BuildIosXcode()
         {
             string outDir = GetArg("-ss-out") ?? "Builds/iOS";
             bool dev = Environment.GetCommandLineArgs().Contains("-ss-dev");
+            if (!TryPhoneDefines(dev, out string[] defines)) return;
             var options = new BuildPlayerOptions
             {
                 scenes = EditorBuildSettings.scenes.Where(s => s.enabled).Select(s => s.path).ToArray(),
                 locationPathName = outDir,
                 target = BuildTarget.iOS,
                 options = dev ? BuildOptions.Development : BuildOptions.None,
+                extraScriptingDefines = defines,
             };
             BuildReport report = BuildPipeline.BuildPlayer(options);
-            Debug.Log($"[DevBuildTools] iOS {report.summary.result} errors={report.summary.totalErrors} -> {outDir}");
+            Debug.Log($"[DevBuildTools] iOS {report.summary.result} errors={report.summary.totalErrors} defines=[{string.Join(",", defines)}] -> {outDir}");
             EditorApplication.Exit(report.summary.result == BuildResult.Succeeded ? 0 : 1);
         }
 
         /// <summary>
-        /// Android APK for sideload checks (adb install). Optional <c>-ss-dev</c> makes a development build.
+        /// Android APK for sideload checks (adb install). Optional <c>-ss-dev</c> makes a development build; optional
+        /// <c>-ss-store</c> makes a store release build (<see cref="PhoneDefines"/>).
         /// <c>-buildTarget Android -executeMethod SurvivorSouls.Editor.DevBuildTools.BuildAndroidApk -ss-out &lt;file.apk&gt;</c>
         /// </summary>
         public static void BuildAndroidApk()
         {
             string outPath = GetArg("-ss-out") ?? "Builds/Android/SurvivorSouls.apk";
             bool dev = Environment.GetCommandLineArgs().Contains("-ss-dev");
+            if (!TryPhoneDefines(dev, out string[] defines)) return;
             EditorUserBuildSettings.buildAppBundle = false;
             var options = new BuildPlayerOptions
             {
@@ -147,10 +152,39 @@ namespace SurvivorSouls.Editor
                 locationPathName = outPath,
                 target = BuildTarget.Android,
                 options = dev ? BuildOptions.Development : BuildOptions.None,
+                extraScriptingDefines = defines,
             };
             BuildReport report = BuildPipeline.BuildPlayer(options);
-            Debug.Log($"[DevBuildTools] Android {report.summary.result} errors={report.summary.totalErrors} -> {outPath}");
+            Debug.Log($"[DevBuildTools] Android {report.summary.result} errors={report.summary.totalErrors} defines=[{string.Join(",", defines)}] -> {outPath}");
             EditorApplication.Exit(report.summary.result == BuildResult.Succeeded ? 0 : 1);
+        }
+
+        /// <summary>
+        /// Extra scripting defines of a phone build (KAN-151). <paramref name="store"/> = store release build: adds
+        /// <see cref="Core.TestMode.StoreDefine"/>, so Test Mode is locked off. A store build is never a development build.
+        /// </summary>
+        public static string[] PhoneDefines(bool store, bool dev)
+        {
+            if (store && dev) throw new ArgumentException("-ss-store and -ss-dev cannot be used together");
+            return store ? new[] { Core.TestMode.StoreDefine } : Array.Empty<string>();
+        }
+
+        /// <summary>Reads <c>-ss-store</c> into <see cref="PhoneDefines"/>; on a bad flag mix logs an error and exits 1.</summary>
+        private static bool TryPhoneDefines(bool dev, out string[] defines)
+        {
+            bool store = Environment.GetCommandLineArgs().Contains("-ss-store");
+            try
+            {
+                defines = PhoneDefines(store, dev);
+                return true;
+            }
+            catch (ArgumentException e)
+            {
+                Debug.LogError($"[DevBuildTools] {e.Message}");
+                defines = null;
+                EditorApplication.Exit(1);
+                return false;
+            }
         }
 
         private static string GetArg(string name)
