@@ -1,5 +1,6 @@
 using System.IO;
 using UnityEditor;
+using UnityEditor.Rendering.Universal.ShaderGUI;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -42,10 +43,13 @@ namespace SurvivorSouls.Editor
 
         /// <summary>
         /// Simple Lit (Blinn-Phong): cheaper than Lit on mobile. Optional normal map and specular map
-        /// (RGB = specular colour, A = smoothness).
+        /// (RGB = specular colour, A = smoothness). <paramref name="specular"/> false = URP "NoSpecular" (no highlight, cheaper
+        /// pixel). Look per family (KAN-158): stone + props on, open ground + characters off.
+        /// The result is already in the URP-validated state (<see cref="ValidateSimpleLit"/>), so opening or testing it changes nothing.
         /// </summary>
         public static Material SimpleLitMaterial(string path, Texture2D baseMap, Color tint,
-            Texture2D normalMap = null, Texture2D specMap = null, float smoothness = 0.2f, Color? specColor = null)
+            Texture2D normalMap = null, Texture2D specMap = null, float smoothness = 0.2f, Color? specColor = null,
+            bool specular = true)
         {
             var mat = LoadOrCreateMaterial(path, SimpleLit);
             mat.SetTexture("_BaseMap", baseMap);
@@ -56,13 +60,40 @@ namespace SurvivorSouls.Editor
 
             mat.SetTexture("_SpecGlossMap", specMap);
             mat.SetFloat("_SmoothnessSource", 0f); // smoothness from specular alpha
-            mat.SetFloat("_SpecularHighlights", 1f);
+            // URP SimpleLitGUI.SpecularSource: 0 = SpecularTextureAndColor, 1 = NoSpecular. Was always 1 with _SPECULAR_COLOR on,
+            // so validation removed the highlight and the .mat changed in git (KAN-158).
+            mat.SetFloat("_SpecularHighlights", specular ? 0f : 1f);
             mat.SetColor("_SpecColor", specColor ?? Color.white);
             mat.SetFloat("_Smoothness", smoothness);
-            SetKeyword(mat, "_SPECGLOSSMAP", specMap != null);
-            SetKeyword(mat, "_SPECULAR_COLOR", specMap == null);
-            EditorUtility.SetDirty(mat);
+            ValidateSimpleLit(mat);
             return mat;
+        }
+
+        /// <summary>
+        /// Runs the same keyword / blend / queue pass as the URP Simple Lit inspector (<c>ShaderGUI.ValidateMaterial</c>), which the
+        /// editor and test sessions run on Simple Lit materials. Call it after the last property change in a builder, so the builder
+        /// output equals the validated state and a rebuild or test run leaves the .mat unchanged (KAN-157, KAN-158).
+        /// </summary>
+        public static void ValidateSimpleLit(Material mat)
+        {
+            BaseShaderGUI.SetMaterialKeywords(mat, SimpleLitGUI.SetMaterialKeywords);
+            EditorUtility.SetDirty(mat);
+        }
+
+        /// <summary>
+        /// Same pass as the URP inspector of the material's shader (Simple Lit, Unlit, Particles/Unlit). Other shaders: no change.
+        /// A new material is written unvalidated; the next editor / test session validated it and the .mat changed in git (KAN-158).
+        /// </summary>
+        public static void ValidateLikeInspector(Material mat)
+        {
+            switch (mat.shader.name)
+            {
+                case SimpleLit: BaseShaderGUI.SetMaterialKeywords(mat, SimpleLitGUI.SetMaterialKeywords); break;
+                case Unlit: BaseShaderGUI.SetMaterialKeywords(mat); break;
+                case ParticlesUnlit: BaseShaderGUI.SetMaterialKeywords(mat, null, ParticleGUI.SetMaterialKeywords); break;
+                default: return;
+            }
+            EditorUtility.SetDirty(mat);
         }
 
         /// <summary>Alpha-blended material (shadow blobs, floor decals). Unlit or Simple Lit.</summary>
@@ -81,7 +112,10 @@ namespace SurvivorSouls.Editor
             mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
             mat.renderQueue = (int)RenderQueue.Transparent;
             mat.SetOverrideTag("RenderType", "Transparent");
-            EditorUtility.SetDirty(mat);
+            // Simple Lit "Alpha" with preserve specular = premultiplied blend: fog is added where the decal is clear, so the whole
+            // quad showed as a pale square. Straight alpha (SrcAlpha / OneMinusSrcAlpha) keeps the clear parts clear (KAN-158).
+            if (shaderName == SimpleLit) mat.SetFloat("_BlendModePreserveSpecular", 0f);
+            ValidateLikeInspector(mat); // KAN-158
             return mat;
         }
 
@@ -101,7 +135,7 @@ namespace SurvivorSouls.Editor
             mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
             mat.renderQueue = (int)RenderQueue.Transparent;
             mat.SetOverrideTag("RenderType", "Transparent");
-            EditorUtility.SetDirty(mat);
+            ValidateLikeInspector(mat); // KAN-158
             return mat;
         }
 
