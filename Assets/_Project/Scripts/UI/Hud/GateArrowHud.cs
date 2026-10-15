@@ -5,15 +5,17 @@ using UnityEngine.UIElements;
 namespace SurvivorSouls.UI.Hud
 {
     /// <summary>
-    /// Gate arrow on the screen edge (KAN-63, absorbs KAN-33): a forged-gold arrow (Blender model baked to one sprite,
-    /// <c>Tools/Blender/build_gate_arrow.py</c>) that glides along an inset screen rectangle and points from the Knight to
-    /// the gate (<see cref="ObjectiveArrow"/>). Dim while the portal is locked, bright gold with a pulse and two trailing
-    /// chevrons once it is open. Hides (fades) while the gate itself is on screen, with hysteresis at the border
-    /// (<see cref="EdgeMarker.OnScreen"/>). A small distance label ("42 m") sits on the inner side of the arrow.
-    /// The allowed rectangle keeps clear of the notch / home bar (safe area), the HUD bars and timer at the top and the
-    /// idle joystick at the bottom. Never blocks touches (picking ignored). Animates on unscaled time.
-    /// No allocation per frame: style structs only, distance strings cached. Names: keep in sync with GameHud.uxml;
-    /// looks: gate-arrow* in GameHud.uss.
+    /// Gate arrow on the screen edge (KAN-63, absorbs KAN-33; KAN-176 edge fix): a forged-gold arrow (Blender model baked
+    /// to one sprite, <c>Tools/Blender/build_gate_arrow.py</c>) that glides along the real screen edge and points from the
+    /// Knight to the gate (<see cref="ObjectiveArrow"/>). Dim while the portal is locked, bright gold with a pulse and two
+    /// trailing chevrons once it is open. Hides (fades) while the gate itself is on screen, with hysteresis at the border
+    /// (<see cref="EdgeMarker.OnScreen"/>). No distance text (KAN-176).
+    /// KAN-176: the arrow's outer edge sits <c>edgeMillimetres</c> (2.5 mm) inside the safe area (notch / home bar) on the
+    /// gate's side. Small no-go zones (XP bar, timer / boss bar, pause button, health bar, souls, owned skill icons, Test Mode
+    /// tag, idle joystick) push it along the same edge (<see cref="EdgeMarker.AvoidZones"/>); only when a whole edge line is
+    /// blocked (the full-width bars at the top) does it step inward, just past them. Zone rects are read on layout changes,
+    /// not per frame. Never blocks touches (picking ignored). Animates on unscaled time. No allocation per frame.
+    /// Names: keep in sync with GameHud.uxml; looks: gate-arrow* in GameHud.uss.
     /// </summary>
     [DefaultExecutionOrder(500)] // after TopDownFollowCamera.LateUpdate (the arrow follows the final camera)
     [RequireComponent(typeof(UIDocument))]
@@ -22,22 +24,24 @@ namespace SurvivorSouls.UI.Hud
         private const string RootName = "gate-arrow";
         private const string IconName = "gate-arrow-icon";
         private const string TrailName = "gate-arrow-trail";
-        private const string DistanceName = "gate-arrow-dist";
         private const string HiddenClass = "hud-hidden";
-        private const int MaxCachedMetres = 999;
+        private const string SkillRowName = "skill-row";
+        /// <summary>Screen.dpi is 0 on some devices: use the iPhone 14 Pro Max density (KAN-176).</summary>
+        public const float FallbackDpi = 460f;
+        /// <summary>HUD elements the arrow keeps clear of (KAN-176). The skill row uses its icons, not its full-width box.</summary>
+        private static readonly string[] ZoneNames = { "xp", "timer", "boss", "btn-pause", "player-hp", "run-souls", "lbl-test-mode" };
+        private const int MaxZones = 32;
 
         [SerializeField] private ObjectiveArrow objective;
         [SerializeField] private Camera worldCamera;
         [SerializeField] private Texture2D arrowTexture;
 
         [Header("Layout (panel units, 1080 x 1920 reference)")]
-        [SerializeField, Min(16f)] private float size = 150f;
-        [Tooltip("Gap between the safe-area edge and the arrow.")]
-        [SerializeField, Min(0f)] private float edgeInset = 22f;
-        [Tooltip("Kept clear at the top: XP bar, timer / boss bar, health row, skill row.")]
-        [SerializeField, Min(0f)] private float topReserve = 400f;
-        [Tooltip("Kept clear at the bottom: the idle joystick (bottom margin + ring) and the drag hint.")]
-        [SerializeField, Min(0f)] private float bottomReserve = 560f;
+        [SerializeField, Min(16f)] private float size = 110f;
+        [Tooltip("Physical gap (mm) between the safe-area edge and the arrow's outer edge (KAN-176).")]
+        [SerializeField, Range(0f, 10f)] private float edgeMillimetres = 2.5f;
+        [Tooltip("Extra gap (panel units) kept around every HUD no-go zone.")]
+        [SerializeField, Min(0f)] private float zoneGap = 12f;
         [Tooltip("The gate counts as on screen once it is this far inside the view (arrow hides).")]
         [SerializeField, Min(0f)] private float enterInset = 110f;
         [Tooltip("An on-screen gate counts as off screen again once it is less than this far inside the view.")]
@@ -55,18 +59,19 @@ namespace SurvivorSouls.UI.Hud
         [SerializeField, Range(0f, 1f)] private float farOpacity = 0.72f;
         [SerializeField, Min(1f)] private float nearDistance = 40f;
         [SerializeField, Min(1f)] private float farDistance = 140f;
-        [SerializeField] private bool showDistance = true;
-
-        private static string[] _metres;
 
         private UIDocument _document;
-        private VisualElement _root, _icon;
+        private JoystickView _joystick;
+        private VisualElement _root, _icon, _skillRow;
         private readonly VisualElement[] _trail = new VisualElement[2];
-        private Label _distance;
+        private readonly VisualElement[] _zoneElements = new VisualElement[7];
+        private readonly Rect[] _zones = new Rect[MaxZones];
+        private EventCallback<GeometryChangedEvent> _onGeometry;
+        private int _hudZoneCount, _zoneCount, _skillCount = -1;
+        private bool _zonesDirty = true;
         private Vector2 _pos;
         private float _angle, _alpha;
         private bool _onScreen, _placed, _drawnVisible = true, _drawnOpen = true;
-        private int _drawnMetres = -1;
 
         /// <summary>Tests and dev tools: the arrow is drawn this frame (fading in or shown).</summary>
         public bool Visible => _alpha > 0.01f;
@@ -76,17 +81,37 @@ namespace SurvivorSouls.UI.Hud
         public float Angle => _angle;
         /// <summary>Tests: the gate is inside the view, so the arrow hides.</summary>
         public bool GateOnScreen => _onScreen;
-        /// <summary>Tests: the rectangle the arrow centre moves on (panel units).</summary>
+        /// <summary>Tests: the rectangle the arrow centre moves on (panel units): the safe area shrunk by the mm gap + half the arrow.</summary>
         public Rect EdgeRect { get; private set; }
+        /// <summary>Tests: the mm gap in panel units this frame.</summary>
+        public float EdgeInset { get; private set; }
+        /// <summary>Tests: arrow width / height in panel units.</summary>
+        public float Size => size;
+        /// <summary>Tests: the no-go zones used this frame (padded by zoneGap), panel units.</summary>
+        public Rect[] Zones => _zones;
+        public int ZoneCount => _zoneCount;
 
-        private void Awake() => _document = GetComponent<UIDocument>();
+        private void Awake()
+        {
+            _document = GetComponent<UIDocument>();
+            _joystick = GetComponent<JoystickView>();
+            _onGeometry = _ => _zonesDirty = true;
+        }
 
         private void OnEnable()
         {
             var root = _document.rootVisualElement;
             _root = root.Q(RootName);
             _icon = root.Q(IconName);
-            _distance = root.Q<Label>(DistanceName);
+            _skillRow = root.Q(SkillRowName);
+            for (int i = 0; i < ZoneNames.Length; i++)
+            {
+                _zoneElements[i] = root.Q(ZoneNames[i]);
+                _zoneElements[i]?.RegisterCallback(_onGeometry);
+            }
+            _skillRow?.RegisterCallback(_onGeometry);
+            root.RegisterCallback(_onGeometry); // panel resize / rotation
+            _zonesDirty = true;
             for (int i = 0; i < _trail.Length; i++) _trail[i] = root.Q(TrailName + (i + 1));
             if (arrowTexture != null)
             {
@@ -102,6 +127,13 @@ namespace SurvivorSouls.UI.Hud
             _placed = false;
             _alpha = 0f;
             SetVisible(false);
+        }
+
+        private void OnDisable()
+        {
+            for (int i = 0; i < _zoneElements.Length; i++) _zoneElements[i]?.UnregisterCallback(_onGeometry);
+            _skillRow?.UnregisterCallback(_onGeometry);
+            _document.rootVisualElement?.UnregisterCallback(_onGeometry);
         }
 
         /// <summary>Tests: wiring without the scene builder.</summary>
@@ -154,7 +186,9 @@ namespace SurvivorSouls.UI.Hud
             dir.Normalize();
 
             EdgeRect = AllowedRect(panelSize);
+            RefreshZones();
             Vector2 point = EdgeMarker.ProjectToEdge(knightPanel, dir, EdgeRect);
+            point = EdgeMarker.AvoidZones(point, EdgeRect, size * 0.5f, _zones, _zoneCount);
             float angle = EdgeMarker.Angle(dir);
             if (!_placed)
             {
@@ -171,20 +205,51 @@ namespace SurvivorSouls.UI.Hud
             return true;
         }
 
-        /// <summary>Safe area (notch, home bar) minus the HUD band at the top and the joystick band at the bottom.</summary>
+        /// <summary>Safe area (notch, home bar) shrunk by the mm gap + half the arrow: the arrow's outer edge hugs the screen edge.</summary>
         private Rect AllowedRect(Vector2 panelSize)
         {
             Rect safe = Screen.safeArea; // pixels, origin bottom-left
             float sx = panelSize.x / Screen.width, sy = panelSize.y / Screen.height;
-            float half = size * 0.5f;
-            float xMin = safe.xMin * sx + edgeInset + half;
-            float xMax = safe.xMax * sx - edgeInset - half;
-            float yMin = (Screen.height - safe.yMax) * sy + topReserve + half;
-            float yMax = (Screen.height - safe.yMin) * sy - bottomReserve - half;
+            float dpi = Screen.dpi > 1f ? Screen.dpi : FallbackDpi;
+            EdgeInset = EdgeMarker.MillimetresToPanel(edgeMillimetres, dpi, sx);
+            float inset = EdgeInset + size * 0.5f;
+            float xMin = safe.xMin * sx + inset;
+            float xMax = safe.xMax * sx - inset;
+            float yMin = (Screen.height - safe.yMax) * sy + inset;
+            float yMax = (Screen.height - safe.yMin) * sy - inset;
             if (xMax < xMin) xMin = xMax = panelSize.x * 0.5f;
             if (yMax < yMin) yMin = yMax = panelSize.y * 0.5f;
             return Rect.MinMaxRect(xMin, yMin, xMax, yMax);
         }
+
+        /// <summary>
+        /// HUD zones are re-read only after a layout change (GeometryChangedEvent, a new skill icon); the idle joystick slot
+        /// is a struct copy every frame. No allocation.
+        /// </summary>
+        private void RefreshZones()
+        {
+            int skills = _skillRow != null ? _skillRow.childCount : 0;
+            if (skills != _skillCount) { _skillCount = skills; _zonesDirty = true; }
+            if (_zonesDirty)
+            {
+                _zonesDirty = false;
+                _hudZoneCount = 0;
+                for (int i = 0; i < ZoneNames.Length; i++) AddZone(_zoneElements[i]);
+                for (int i = 0; i < skills && _hudZoneCount < MaxZones - 1; i++) AddZone(_skillRow[i]);
+            }
+            _zoneCount = _hudZoneCount;
+            if (_joystick != null && _joystick.IdleBounds.width > 0f) _zones[_zoneCount++] = Pad(_joystick.IdleBounds);
+        }
+
+        private void AddZone(VisualElement e)
+        {
+            if (e == null || _hudZoneCount >= MaxZones - 1 || e.resolvedStyle.display == DisplayStyle.None) return;
+            Rect r = e.worldBound;
+            if (float.IsNaN(r.width) || float.IsNaN(r.height) || r.width < 1f || r.height < 1f) return;
+            _zones[_hudZoneCount++] = Pad(r);
+        }
+
+        private Rect Pad(Rect r) => Rect.MinMaxRect(r.xMin - zoneGap, r.yMin - zoneGap, r.xMax + zoneGap, r.yMax + zoneGap);
 
         private void Draw()
         {
@@ -217,24 +282,6 @@ namespace SurvivorSouls.UI.Hud
                     _trail[i].style.opacity = Mathf.Sin(phase * Mathf.PI) * 0.95f;
                 }
             }
-
-            if (_distance == null) return;
-            if (!showDistance)
-            {
-                _distance.style.display = DisplayStyle.None;
-                return;
-            }
-            int metres = Mathf.Clamp(Mathf.RoundToInt(distance), 0, MaxCachedMetres);
-            if (metres != _drawnMetres)
-            {
-                _drawnMetres = metres;
-                _distance.text = MetresText(metres);
-            }
-            // Inner side of the arrow, upright (not rotated with it).
-            Vector2 inward = new Vector2(Mathf.Sin(_angle * Mathf.Deg2Rad), -Mathf.Cos(_angle * Mathf.Deg2Rad)) * -(half + 26f);
-            Vector2 label = _pos + inward;
-            _distance.style.translate = new Translate(label.x - 60f, label.y - 18f);
-            _distance.style.opacity = _alpha * (open ? 1f : lockedOpacity) * far;
         }
 
         private void SetVisible(bool visible)
@@ -242,18 +289,6 @@ namespace SurvivorSouls.UI.Hud
             if (visible == _drawnVisible) return;
             _drawnVisible = visible;
             _root?.EnableInClassList(HiddenClass, !visible);
-            _distance?.EnableInClassList(HiddenClass, !visible);
-        }
-
-        /// <summary>"42 m", cached (no allocation per frame).</summary>
-        public static string MetresText(int metres)
-        {
-            if (_metres == null)
-            {
-                _metres = new string[MaxCachedMetres + 1];
-                for (int i = 0; i <= MaxCachedMetres; i++) _metres[i] = i + " m";
-            }
-            return _metres[Mathf.Clamp(metres, 0, MaxCachedMetres)];
         }
     }
 }

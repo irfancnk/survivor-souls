@@ -47,6 +47,9 @@ namespace SurvivorSouls.UI.Hud
 
         public void SetJoystick(FloatingJoystick value) => joystick = value;
 
+        /// <summary>Panel units: the idle ring plus its chevrons (KAN-176: the gate arrow keeps clear of it). Zero until laid out.</summary>
+        public Rect IdleBounds { get; private set; }
+
         /// <summary>
         /// Target opacity of the chevron facing <paramref name="side"/>: idle when not touching; while touching,
         /// faint at no drag and <c>clamp01(dot(dir, side))</c> at full drag, lerped by drag length.
@@ -93,7 +96,10 @@ namespace SurvivorSouls.UI.Hud
 
             float dt = Time.unscaledDeltaTime;
             bool touching = joystick.IsTouching;
-            Vector2 target = touching ? ToPanel(panel, joystick.Origin) : IdleCentre(panel, radius);
+            Vector2 idle = IdleCentre(panel, radius);
+            float reach = radius * 1.25f; // chevrons sit just outside the ring
+            IdleBounds = new Rect(idle.x - reach, idle.y - reach, reach * 2f, reach * 2f);
+            Vector2 target = touching ? ToPanel(panel, joystick.Origin) : idle;
             _centre = touching || !_placed ? target : Vector2.Lerp(_centre, target, Ease(returnTime, dt));
             _placed = true;
 
