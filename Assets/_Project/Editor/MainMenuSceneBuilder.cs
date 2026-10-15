@@ -450,7 +450,8 @@ namespace SurvivorSouls.Editor
             if (doc.visualTreeAsset == null) throw new System.InvalidOperationException($"UXML missing: {UxmlPath}");
             go.AddComponent<MainMenuController>().Setup(realmCatalog,
                 Economy.EconomyBuilder.LoadOrCreateGemRewards(), // welcome shards (KAN-97)
-                Economy.EconomyBuilder.LoadOrCreateSoulTree()); // soul tree page (KAN-98)
+                Economy.EconomyBuilder.LoadOrCreateSoulTree(), // soul tree page (KAN-98)
+                Economy.EconomyBuilder.LoadOrCreateStoreCatalog()); // store page (KAN-99)
         }
 
         // ---------------------------------------------------------------- Realms (KAN-20)

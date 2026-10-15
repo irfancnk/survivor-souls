@@ -14,8 +14,9 @@ namespace SurvivorSouls.UI.MainMenu
     /// No game logic here: Play delegates to SceneLoader, settings delegate to GameSettings.
     /// PLAY opens the Realm selection page (KAN-20, <see cref="RealmSelectScreen"/>); its START begins a run in that
     /// Realm. Without a catalog PLAY starts Realm 1 at once. SOUL TREE opens the soul tree page (KAN-98,
-    /// <see cref="SoulTreeScreen"/>); without a tree asset the button is hidden. Back / Esc closes the top layer (sheet,
-    /// page, settings).
+    /// <see cref="SoulTreeScreen"/>); without a tree asset the button is hidden. STORE opens the store page (KAN-99,
+    /// <see cref="StoreScreen"/>, Ember Shard packs through <see cref="StoreProvider"/> + shard offers); without a catalog
+    /// the button is hidden. Back / Esc closes the top layer (sheet, page, settings).
     /// Test Mode (KAN-144): a settings row (dev builds, or after 7 taps on the settings title: <see cref="TestModeReveal"/>)
     /// switches <see cref="TestMode"/>; a "TEST MODE" tag shows top left while it is on.
     /// </summary>
@@ -42,6 +43,7 @@ namespace SurvivorSouls.UI.MainMenu
         private const string WalletName = "lbl-wallet-souls";
         private const string GemsName = "lbl-wallet-gems";
         private const string SoulTreeButtonName = "btn-soul-tree";
+        private const string StoreButtonName = "btn-store";
 
         [SerializeField, Min(0.5f)] private float toastSeconds = 2f;
         [Tooltip("Realms on the selection page (Data/Realms/RealmCatalog.asset). Null = PLAY starts Realm 1.")]
@@ -50,11 +52,14 @@ namespace SurvivorSouls.UI.MainMenu
         [SerializeField] private GemRewardConfig gems;
         [Tooltip("Soul tree page (Data/Economy/SoulTree.asset, KAN-98). Null = no SOUL TREE button.")]
         [SerializeField] private SoulTree soulTree;
+        [Tooltip("Store page content (Data/Economy/StoreCatalog.asset, KAN-99). Null = no STORE button.")]
+        [SerializeField] private StoreCatalog storeCatalog;
 
         private UIDocument _document;
         private SafeAreaPadding _safeArea;
         private SafeAreaPadding _realmSafeArea;
         private SafeAreaPadding _treeSafeArea;
+        private SafeAreaPadding _storeSafeArea;
         private VisualElement _overlay;
         private Label _toast;
         private Label _wallet;
@@ -66,12 +71,20 @@ namespace SurvivorSouls.UI.MainMenu
         private TestModeReveal _testReveal;
         private RealmSelectScreen _realmSelect;
         private SoulTreeScreen _soulTreeScreen;
+        private StoreScreen _storeScreen;
         private bool _loading;
 
         /// <summary>The Realm selection page (null until enabled or without a catalog).</summary>
         public RealmSelectScreen RealmSelect => _realmSelect;
         /// <summary>The soul tree page (null until enabled or without a tree asset).</summary>
         public SoulTreeScreen SoulTreePage => _soulTreeScreen;
+        /// <summary>The store page (null until enabled or without a catalog).</summary>
+        public StoreScreen StorePage => _storeScreen;
+        /// <summary>
+        /// Real-money provider of the store (KAN-99). Sandbox <see cref="MockPurchaseProvider"/> until StoreKit / Play
+        /// Billing are wired. Tests set their own before the object is enabled.
+        /// </summary>
+        public IPurchaseProvider StoreProvider { get; set; }
         /// <summary>The settings overlay is showing.</summary>
         public bool SettingsOpen => _overlay != null && !_overlay.ClassListContains(HiddenClass);
         /// <summary>The Test Mode row shows in the settings (tests, screenshots).</summary>
@@ -93,11 +106,12 @@ namespace SurvivorSouls.UI.MainMenu
         private bool? _devBuildForTestMode; // null = the build flag (read on enable, not in a field initializer)
 
         /// <summary>Wiring for tests and code-built menus (call before the object is enabled).</summary>
-        public void Setup(RealmCatalog catalog, GemRewardConfig gemRewards = null, SoulTree tree = null)
+        public void Setup(RealmCatalog catalog, GemRewardConfig gemRewards = null, SoulTree tree = null, StoreCatalog store = null)
         {
             realms = catalog;
             gems = gemRewards;
             soulTree = tree;
+            storeCatalog = store;
         }
 
         private void Awake()
@@ -151,6 +165,20 @@ namespace SurvivorSouls.UI.MainMenu
                 }
                 else treeButton.AddToClassList(HiddenClass);
             }
+            StoreProvider ??= new MockPurchaseProvider();
+            _storeScreen = storeCatalog != null && root.Q(StoreScreen.ScreenName) != null
+                ? new StoreScreen(root, new ShardStore(storeCatalog, StoreProvider))
+                : null;
+            var storeButton = root.Q<Button>(StoreButtonName);
+            if (storeButton != null)
+            {
+                if (_storeScreen != null)
+                {
+                    storeButton.clicked += OpenStore;
+                    _storeScreen.Bought += () => Haptics.Light();
+                }
+                else storeButton.AddToClassList(HiddenClass);
+            }
             _play.Focus();
         }
 
@@ -186,15 +214,17 @@ namespace SurvivorSouls.UI.MainMenu
             _safeArea?.Refresh();
             _realmSafeArea?.Refresh();
             _treeSafeArea?.Refresh();
+            _storeSafeArea?.Refresh();
             // Esc on desktop; Android's back button arrives as Escape too.
             if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame) Back();
         }
 
-        /// <summary>Closes the top layer: Realm sheet / page, soul tree sheet / page, then settings. False when nothing was open.</summary>
+        /// <summary>Closes the top layer: Realm sheet / page, soul tree sheet / page, store sheet / page, then settings. False when nothing was open.</summary>
         public bool Back()
         {
             if (_realmSelect != null && _realmSelect.Back()) return true;
             if (_soulTreeScreen != null && _soulTreeScreen.Back()) return true;
+            if (_storeScreen != null && _storeScreen.Back()) return true;
             if (_overlay != null && !_overlay.ClassListContains(HiddenClass))
             {
                 CloseSettings();
@@ -219,6 +249,15 @@ namespace SurvivorSouls.UI.MainMenu
             _treeSafeArea ??= new SafeAreaPadding(_soulTreeScreen.Page);
             _soulTreeScreen.Open();
             _treeSafeArea.Refresh(force: true);
+        }
+
+        /// <summary>Opens the store page (STORE). Dev screenshots call it too.</summary>
+        public void OpenStore()
+        {
+            if (_storeScreen == null) return;
+            _storeSafeArea ??= new SafeAreaPadding(_storeScreen.Page);
+            _storeScreen.Open();
+            _storeSafeArea.Refresh(force: true);
         }
 
         private void OnApplicationPause(bool paused)

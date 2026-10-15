@@ -80,6 +80,9 @@ namespace SurvivorSouls.Dev
     /// Soul tree (KAN-98): <c>-ss-tree-levels &lt;id&gt;:&lt;n&gt;[,id:n...]</c> sets those node levels (all others 0) after load;
     /// in the Game scene the Knight's permanent bonuses are applied again. <c>-ss-soul-tree</c> opens the main menu's tree
     /// page, <c>-ss-soul-node &lt;id&gt;</c> also opens that node's detail sheet.
+    /// Store (KAN-99): <c>-ss-store</c> opens the main menu's store page, <c>-ss-store-tab items</c> shows the Items tab,
+    /// <c>-ss-store-item &lt;id&gt;</c> opens a pack's (product id) or offer's sheet, <c>-ss-store-buy</c> presses its buy button
+    /// (sandbox provider: the result toast shows).
     /// <c>-ss-enemy &lt;Id&gt;[+Id...][,count[,radius]]</c> (KAN-104; radius KAN-106) places count (default 3) enemies of each roster type (e.g.
     /// GraveyardLaborer, prefab <c>Enemy_&lt;Id&gt;</c>) in an arc ~5 m ahead of the Knight after load and turns the crossbow off,
     /// so they walk in and attack. Only types the scene's wave table or the spawner's extra types (KAN-105 ranged zombies)
@@ -122,6 +125,10 @@ namespace SurvivorSouls.Dev
         private bool _realms;
         private bool _soulTree;
         private string _soulNode;
+        private bool _store;
+        private string _storeTab;
+        private string _storeItem;
+        private bool _storeBuy;
         private string _treeLevels;
         private int _realmDetail;
         private string _best;
@@ -183,6 +190,11 @@ namespace SurvivorSouls.Dev
             shot._soulNode = GetArg("-ss-soul-node");
             shot._soulTree = !string.IsNullOrEmpty(shot._soulNode) || Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-soul-tree") >= 0;
             shot._treeLevels = GetArg("-ss-tree-levels");
+            shot._storeTab = GetArg("-ss-store-tab");
+            shot._storeItem = GetArg("-ss-store-item");
+            shot._storeBuy = Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-store-buy") >= 0;
+            shot._store = shot._storeBuy || !string.IsNullOrEmpty(shot._storeTab) || !string.IsNullOrEmpty(shot._storeItem)
+                || Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-store") >= 0;
             shot._boss = GetArg("-ss-boss");
             shot._bossAttack = GetArg("-ss-boss-attack");
             shot._bossStay = Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-boss-stay") >= 0;
@@ -276,6 +288,7 @@ namespace SurvivorSouls.Dev
             if (_settings) OpenSettings();
             if (_treeLevels != null) SetTreeLevels(_treeLevels);
             if (_soulTree) OpenSoulTree();
+            if (_store) OpenStore();
 
             float release = Mathf.Clamp(_release, 0f, _delay);
             float xpLead = _xp > 0 ? Mathf.Min(XpLead, _delay - release) : 0f;
@@ -386,6 +399,25 @@ namespace SurvivorSouls.Dev
             if (!string.IsNullOrEmpty(_soulNode) && !menu.SoulTreePage.OpenDetail(_soulNode))
                 Debug.LogWarning($"[DevScreenshot] -ss-soul-node: no node '{_soulNode}'");
             Debug.Log($"[DevScreenshot] Soul tree open, detail={menu.SoulTreePage.Selected?.DisplayName ?? "none"} canBuy={menu.SoulTreePage.CanBuy}");
+        }
+
+        /// <summary>Main menu: opens the store page (tab, item sheet, buy press from the -ss-store-* args).</summary>
+        private void OpenStore()
+        {
+            var menu = FindAnyObjectByType<SurvivorSouls.UI.MainMenu.MainMenuController>();
+            if (menu == null || menu.StorePage == null)
+            {
+                Debug.LogWarning("[DevScreenshot] -ss-store: no main menu with a store page in the scene");
+                return;
+            }
+            var page = menu.StorePage;
+            menu.OpenStore();
+            if (!string.IsNullOrEmpty(_storeTab)) page.ShowTab(_storeTab);
+            if (!string.IsNullOrEmpty(_storeItem) && !page.OpenDetail(_storeItem))
+                Debug.LogWarning($"[DevScreenshot] -ss-store-item: no pack or offer '{_storeItem}'");
+            string bought = _storeBuy ? $" buy={page.BuySelected()} toast='{page.ToastText}'" : "";
+            Debug.Log($"[DevScreenshot] Store open, tab={page.Tab} detail={page.SelectedPack?.Title ?? page.SelectedOffer?.Title ?? "none"} " +
+                      $"canBuy={page.CanBuy}{bought} shards={SurvivorSouls.Core.GemWallet.Balance} souls={SurvivorSouls.Core.SoulWallet.Balance}");
         }
 
         /// <summary>Waits for the boss to rise, sets its health share and puts the Knight in slam range in front of it.</summary>

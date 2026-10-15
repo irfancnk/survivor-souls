@@ -1,0 +1,76 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <Style src="Store.uss" />
+    <!-- Store page (KAN-99). Instanced by MainMenu.uxml, driven by StoreScreen.
+         Pack and offer cards are built in code from the StoreCatalog asset (classes sp-pack*, sp-offer*). -->
+    <ui:VisualElement name="sp-screen" class="sp-screen sp-screen--closed ss-hidden">
+        <ui:VisualElement name="sp-safe" class="sp-safe" picking-mode="Ignore">
+            <ui:VisualElement class="sp-header">
+                <ui:VisualElement class="sp-header__bar">
+                    <ui:Button name="sp-back" text="BACK" class="sp-back" />
+                    <ui:VisualElement class="sp-pills" picking-mode="Ignore">
+                        <ui:VisualElement name="sp-souls-pill" class="ss-wallet sp-pill" picking-mode="Ignore">
+                            <ui:VisualElement class="ss-wallet__gem" picking-mode="Ignore" />
+                            <ui:Label name="sp-souls" text="0" class="ss-wallet__value" picking-mode="Ignore" />
+                        </ui:VisualElement>
+                        <ui:VisualElement name="sp-shards-pill" class="ss-wallet ss-wallet--gems sp-pill" picking-mode="Ignore">
+                            <ui:VisualElement class="ss-wallet__gem ss-wallet__gem--ember" picking-mode="Ignore" />
+                            <ui:Label name="sp-shards" text="0" class="ss-wallet__value ss-wallet__value--gems" picking-mode="Ignore" />
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+                <ui:Label text="STORE" class="sp-title" />
+                <ui:Label text="Ember Shards and wares for the long road." class="sp-subtitle" />
+                <ui:VisualElement class="sp-tabs">
+                    <ui:Button name="sp-tab-shards" text="EMBER SHARDS" class="sp-tab sp-tab--active" />
+                    <ui:Button name="sp-tab-items" text="ITEMS" class="sp-tab" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <ui:ScrollView name="sp-list" mode="Vertical" horizontal-scroller-visibility="Hidden" vertical-scroller-visibility="Hidden" class="sp-list">
+                <ui:Label text="SHARD PACKS" class="sp-section" />
+                <ui:VisualElement name="sp-packs" class="sp-packs" />
+                <ui:Label name="sp-sandbox" text="SANDBOX STORE: no real money is charged." class="sp-sandbox" />
+                <ui:Label text="SPEND SHARDS" class="sp-section" />
+                <ui:VisualElement name="sp-offers" class="sp-offers" />
+            </ui:ScrollView>
+
+            <!-- Items tab: placeholder until the item store (KAN-90). -->
+            <ui:VisualElement name="sp-items" class="sp-items ss-hidden">
+                <ui:VisualElement class="sp-items__crest" picking-mode="Ignore" />
+                <ui:Label text="THE SMITH IS ON THE ROAD" class="sp-items__title" />
+                <ui:Label text="Gear and wares arrive in a later update. Keep your Shards close." class="sp-items__text" />
+            </ui:VisualElement>
+
+            <ui:Label name="sp-toast" text="" class="sp-toast ss-hidden" picking-mode="Ignore" />
+        </ui:VisualElement>
+
+        <ui:VisualElement name="sp-veil" class="sp-veil sp-veil--closed ss-hidden" />
+        <ui:VisualElement name="sp-detail" class="sp-detail sp-detail--closed ss-hidden">
+            <ui:VisualElement class="sp-detail__head" picking-mode="Ignore">
+                <ui:VisualElement name="sp-detail-icon" class="sp-icon sp-detail__icon" picking-mode="Ignore" />
+                <ui:VisualElement class="sp-detail__titles" picking-mode="Ignore">
+                    <ui:Label name="sp-detail-name" text="Item" class="sp-detail__name" />
+                    <ui:Label name="sp-detail-kind" text="SHARD PACK" class="sp-detail__kind" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+            <ui:Label name="sp-detail-desc" text="" class="sp-detail__desc" />
+            <ui:VisualElement class="sp-detail__rows">
+                <ui:VisualElement class="sp-row">
+                    <ui:Label text="YOU GET" class="sp-row__key" />
+                    <ui:Label name="sp-detail-get" text="" class="sp-row__value sp-row__value--get" />
+                </ui:VisualElement>
+                <ui:VisualElement name="sp-row-extra" class="sp-row">
+                    <ui:Label name="sp-detail-extra-key" text="BONUS" class="sp-row__key" />
+                    <ui:Label name="sp-detail-extra" text="" class="sp-row__value" />
+                </ui:VisualElement>
+                <ui:VisualElement class="sp-row">
+                    <ui:Label name="sp-detail-price-key" text="PRICE" class="sp-row__key" />
+                    <ui:Label name="sp-detail-price" text="" class="sp-row__value" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+            <ui:Label name="sp-detail-note" text="" class="sp-detail__note ss-hidden" />
+            <ui:Button name="sp-buy" text="BUY" class="ss-button ss-button--primary sp-buy" />
+            <ui:Button name="sp-detail-back" text="BACK" class="ss-button sp-detail__back" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

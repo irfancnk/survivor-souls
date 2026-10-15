@@ -1,0 +1,618 @@
+/* Store page (KAN-99). Same palette as MainMenu.uss (its :root variables, .ss-button, .ss-wallet and .ss-hidden apply
+   here too: this tree is instanced inside MainMenu.uxml). Reference 1080x1920 portrait, match width.
+   Open / close: StoreScreen toggles the *--closed classes; transitions fade and slide (like SoulTree.uss). */
+
+.sp-screen {
+    position: absolute;
+    left: 0; right: 0; top: 0; bottom: 0;
+    background-color: rgb(9, 11, 17); /* opaque: the menu title must not show through */
+    opacity: 1;
+    translate: 0 0;
+    transition-property: opacity, translate;
+    transition-duration: 0.22s;
+    transition-timing-function: ease-out-cubic;
+}
+
+.sp-screen--closed {
+    opacity: 0;
+    translate: 0 60px;
+}
+
+.sp-safe {
+    flex-grow: 1;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* ---------- Header ---------- */
+
+.sp-header {
+    width: 940px;
+    margin-top: 56px;
+    margin-bottom: 10px;
+    flex-direction: column;
+    align-items: center;
+}
+
+.sp-header__bar {
+    width: 100%;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+}
+
+.unity-button.sp-back {
+    height: 96px;
+    min-width: 220px;
+    margin: 0;
+    padding: 0 30px;
+    font-size: 34px;
+    letter-spacing: 8px;
+    -unity-font-style: bold;
+    color: var(--ss-ash);
+    background-color: rgba(20, 22, 30, 0.7);
+    background-image: none;
+    border-width: 2px;
+    border-color: rgba(232, 196, 120, 0.22);
+    border-radius: 4px;
+    transition-property: scale, border-color, color;
+    transition-duration: 0.12s;
+}
+
+.unity-button.sp-back:hover {
+    color: var(--ss-gold-bright);
+    border-color: var(--ss-gold);
+}
+
+.unity-button.sp-back:active {
+    scale: 0.96 0.96;
+}
+
+.sp-pills {
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+.sp-pill {
+    scale: 1 1;
+    transition-property: scale;
+    transition-duration: 0.14s;
+}
+
+/* Balance just changed: the pill swells once. */
+.sp-pill--pop {
+    scale: 1.12 1.12;
+}
+
+.sp-title {
+    font-size: 62px;
+    letter-spacing: 14px;
+    padding-left: 14px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    color: var(--ss-gold);
+    margin: 0;
+    text-shadow: 0 4px 12px rgba(0, 0, 0, 0.85);
+}
+
+.sp-subtitle {
+    margin-top: 12px;
+    font-size: 30px;
+    white-space: normal;
+    -unity-text-align: middle-center;
+    -unity-font-style: italic;
+    color: var(--ss-ash-dim);
+}
+
+/* ---------- Tabs ---------- */
+
+.sp-tabs {
+    width: 100%;
+    flex-direction: row;
+    margin-top: 26px;
+    border-bottom-width: 2px;
+    border-color: rgba(232, 196, 120, 0.22);
+}
+
+.unity-button.sp-tab {
+    flex-grow: 1;
+    flex-basis: 0;
+    height: 96px;
+    margin: 0;
+    padding: 0;
+    font-size: 32px;
+    letter-spacing: 6px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    color: var(--ss-ash-dim);
+    background-color: rgba(0, 0, 0, 0);
+    background-image: none;
+    border-width: 0;
+    border-bottom-width: 6px;
+    border-color: rgba(0, 0, 0, 0);
+    border-radius: 0;
+    transition-property: color, border-color;
+    transition-duration: 0.12s;
+}
+
+.unity-button.sp-tab--active {
+    color: var(--ss-gold-bright);
+    border-color: var(--ss-ember);
+}
+
+/* ---------- Shards tab ---------- */
+
+.sp-list {
+    flex-grow: 1;
+    width: 100%;
+}
+
+.sp-list .unity-scroll-view__content-container {
+    align-items: center;
+    padding-top: 6px;
+    padding-bottom: 60px;
+}
+
+.sp-section {
+    width: 940px;
+    margin: 28px 0 14px 0;
+    font-size: 28px;
+    letter-spacing: 8px;
+    -unity-font-style: bold;
+    color: var(--ss-ash-dim);
+}
+
+.sp-packs {
+    width: 960px;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.unity-button.sp-pack {
+    width: 300px;
+    height: 360px;
+    margin: 0 10px 20px 10px;
+    padding: 18px 12px 16px 12px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    background-color: rgba(26, 18, 18, 0.92);
+    background-image: none;
+    border-width: 2px;
+    border-color: rgba(255, 120, 84, 0.35);
+    border-radius: 8px;
+    -unity-text-align: middle-center;
+    scale: 1 1;
+    transition-property: scale, border-color, background-color;
+    transition-duration: 0.12s;
+}
+
+.unity-button.sp-pack:active {
+    scale: 0.96 0.96;
+}
+
+.unity-button.sp-pack--selected,
+.unity-button.sp-offer--selected {
+    border-color: var(--ss-gold-bright);
+    background-color: rgba(48, 30, 22, 0.95);
+}
+
+/* Just bought: the card swells once. */
+.unity-button.sp-pack--bought,
+.unity-button.sp-offer--bought {
+    scale: 1.08 1.08;
+}
+
+.sp-badge {
+    position: absolute;
+    top: -14px;
+    padding: 4px 16px;
+    font-size: 20px;
+    letter-spacing: 3px;
+    -unity-font-style: bold;
+    color: rgb(30, 14, 8);
+    background-color: var(--ss-gold-bright);
+    border-radius: 4px;
+}
+
+/* Pack icon: a cluster of ember diamonds (more diamonds = bigger pack). */
+.sp-shard-cluster {
+    height: 120px;
+    width: 220px;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-content: center;
+    align-items: center;
+}
+
+.sp-shard {
+    width: 40px;
+    height: 40px;
+    margin: 6px;
+    rotate: 45deg;
+    border-radius: 7px;
+    border-width: 3px;
+    border-color: rgb(255, 214, 170);
+    background-color: rgb(232, 84, 52);
+}
+
+.sp-pack__amount {
+    margin: 0;
+    padding: 0;
+    font-size: 54px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    color: rgb(255, 222, 196);
+}
+
+.sp-pack__bonus {
+    margin: 0;
+    padding: 0;
+    height: 30px;
+    font-size: 24px;
+    letter-spacing: 2px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    color: var(--ss-gold-bright);
+}
+
+.sp-pack__price {
+    width: 240px;
+    margin: 0;
+    padding: 10px 0;
+    font-size: 32px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    color: var(--ss-gold-bright);
+    background-color: rgba(150, 70, 28, 0.82);
+    border-radius: 6px;
+}
+
+.sp-sandbox {
+    width: 940px;
+    margin: 4px 0 0 0;
+    font-size: 24px;
+    letter-spacing: 1px;
+    -unity-font-style: italic;
+    -unity-text-align: middle-center;
+    white-space: normal;
+    color: var(--ss-ash-dim);
+}
+
+.sp-offers {
+    width: 940px;
+    flex-direction: column;
+}
+
+.unity-button.sp-offer {
+    height: 190px;
+    margin: 0 0 18px 0;
+    padding: 0 26px;
+    flex-direction: row;
+    align-items: center;
+    background-color: rgba(20, 22, 30, 0.92);
+    background-image: none;
+    border-width: 2px;
+    border-color: rgba(232, 196, 120, 0.3);
+    border-radius: 8px;
+    -unity-text-align: middle-left;
+    scale: 1 1;
+    transition-property: scale, border-color, background-color;
+    transition-duration: 0.12s;
+}
+
+.unity-button.sp-offer:active {
+    scale: 0.97 0.97;
+}
+
+.sp-icon {
+    width: 124px;
+    height: 124px;
+    border-radius: 62px;
+    border-width: 3px;
+    border-color: rgba(232, 196, 120, 0.5);
+    background-color: rgb(30, 26, 22);
+    align-items: center;
+    justify-content: center;
+}
+
+/* Offer glyphs inside .sp-icon: a soul gem (bundles) or a chest (reliquary), drawn with boxes. */
+.sp-glyph-soul {
+    width: 52px;
+    height: 52px;
+    rotate: 45deg;
+    border-radius: 8px;
+    border-width: 3px;
+    border-color: rgb(226, 244, 255);
+    background-color: rgb(156, 210, 255);
+}
+
+.sp-glyph-soul--big {
+    width: 66px;
+    height: 66px;
+}
+
+.sp-glyph-chest {
+    width: 76px;
+    height: 56px;
+    border-radius: 8px;
+    border-width: 4px;
+    border-color: var(--ss-gold);
+    background-color: rgb(92, 56, 32);
+    align-items: center;
+    justify-content: center;
+}
+
+.sp-glyph-chest__lock {
+    width: 16px;
+    height: 20px;
+    border-radius: 3px;
+    background-color: var(--ss-gold-bright);
+}
+
+.sp-offer__texts {
+    flex-grow: 1;
+    flex-shrink: 1;
+    margin: 0 20px 0 28px;
+}
+
+.sp-offer__name {
+    margin: 0;
+    padding: 0;
+    font-size: 36px;
+    -unity-font-style: bold;
+    color: var(--ss-gold-bright);
+}
+
+.sp-offer__reward {
+    margin: 6px 0 0 0;
+    padding: 0;
+    font-size: 28px;
+    white-space: normal;
+    color: rgb(190, 228, 255);
+}
+
+.sp-offer__cost {
+    min-width: 170px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    padding: 14px 18px;
+    background-color: rgba(150, 70, 28, 0.82);
+    border-radius: 6px;
+}
+
+.sp-offer__gem {
+    width: 22px;
+    height: 22px;
+    rotate: 45deg;
+    margin-right: 12px;
+    border-radius: 4px;
+    border-width: 2px;
+    border-color: rgb(255, 214, 170);
+    background-color: rgb(232, 84, 52);
+}
+
+.sp-offer__price {
+    margin: 0;
+    padding: 0;
+    font-size: 32px;
+    -unity-font-style: bold;
+    color: var(--ss-gold-bright);
+}
+
+/* Can't afford: muted cost chip. */
+.sp-offer--poor .sp-offer__cost {
+    background-color: rgba(60, 60, 66, 0.6);
+}
+
+.sp-offer--poor .sp-offer__price {
+    color: var(--ss-ash-dim);
+}
+
+/* ---------- Items tab placeholder ---------- */
+
+.sp-items {
+    flex-grow: 1;
+    width: 860px;
+    align-items: center;
+    justify-content: center;
+    padding-bottom: 200px;
+}
+
+.sp-items__crest {
+    width: 150px;
+    height: 150px;
+    rotate: 45deg;
+    border-radius: 12px;
+    border-width: 4px;
+    border-color: rgba(232, 196, 120, 0.4);
+    background-color: rgba(30, 26, 22, 0.9);
+    margin-bottom: 60px;
+}
+
+.sp-items__title {
+    font-size: 40px;
+    letter-spacing: 8px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    white-space: normal;
+    color: var(--ss-gold);
+}
+
+.sp-items__text {
+    margin-top: 18px;
+    font-size: 30px;
+    -unity-font-style: italic;
+    -unity-text-align: middle-center;
+    white-space: normal;
+    color: var(--ss-ash-dim);
+}
+
+/* ---------- Toast (purchase result) ---------- */
+
+.sp-toast {
+    position: absolute;
+    bottom: 90px;
+    left: 70px;
+    right: 70px;
+    -unity-text-align: middle-center;
+    white-space: normal;
+    font-size: 36px;
+    -unity-font-style: bold;
+    color: var(--ss-gold-bright);
+    background-color: var(--ss-panel-solid);
+    padding: 24px 28px;
+    border-width: 2px;
+    border-color: var(--ss-line);
+    border-radius: 6px;
+}
+
+/* ---------- Detail sheet ---------- */
+
+.sp-veil {
+    position: absolute;
+    left: 0; right: 0; top: 0; bottom: 0;
+    background-color: rgba(0, 0, 0, 0.7);
+    opacity: 1;
+    transition-property: opacity;
+    transition-duration: 0.2s;
+}
+
+.sp-veil--closed {
+    opacity: 0;
+}
+
+.sp-detail {
+    position: absolute;
+    left: 40px;
+    right: 40px;
+    bottom: 40px;
+    padding: 40px 0 36px 0;
+    background-color: rgb(16, 18, 26); /* opaque: cards behind must not show through */
+    border-width: 2px;
+    border-top-width: 8px;
+    border-color: var(--ss-line);
+    border-top-color: var(--ss-ember);
+    border-radius: 8px;
+    opacity: 1;
+    translate: 0 0;
+    transition-property: opacity, translate;
+    transition-duration: 0.24s;
+    transition-timing-function: ease-out-cubic;
+}
+
+.sp-detail--closed {
+    opacity: 0;
+    translate: 0 240px;
+}
+
+.sp-detail__head {
+    flex-direction: row;
+    align-items: center;
+    margin: 0 48px;
+}
+
+.sp-detail__icon {
+    width: 150px;
+    height: 150px;
+    border-radius: 75px;
+}
+
+.sp-detail__titles {
+    flex-shrink: 1;
+    margin-left: 34px;
+}
+
+.sp-detail__name {
+    font-size: 56px;
+    letter-spacing: 2px;
+    -unity-font-style: bold;
+    white-space: normal;
+    color: var(--ss-gold-bright);
+    margin: 0;
+    padding: 0;
+}
+
+.sp-detail__kind {
+    font-size: 26px;
+    letter-spacing: 8px;
+    -unity-font-style: bold;
+    color: var(--ss-ember);
+    margin: 8px 0 0 0;
+    padding: 0;
+}
+
+.sp-detail__desc {
+    font-size: 32px;
+    white-space: normal;
+    -unity-font-style: italic;
+    color: var(--ss-ash);
+    margin: 26px 48px 0 48px;
+    padding: 0;
+}
+
+.sp-detail__rows {
+    margin: 26px 48px 0 48px;
+    border-top-width: 1px;
+    border-color: var(--ss-line);
+}
+
+.sp-row {
+    flex-direction: row;
+    padding: 14px 0;
+    border-bottom-width: 1px;
+    border-color: rgba(232, 196, 120, 0.16);
+}
+
+.sp-row__key {
+    width: 200px;
+    font-size: 26px;
+    letter-spacing: 5px;
+    -unity-font-style: bold;
+    color: var(--ss-ash-dim);
+    -unity-text-align: middle-left;
+    margin: 0;
+    padding: 0;
+}
+
+.sp-row__value {
+    flex-shrink: 1;
+    flex-grow: 1;
+    font-size: 32px;
+    white-space: normal;
+    color: var(--ss-ash);
+    -unity-text-align: middle-left;
+    margin: 0;
+    padding: 0;
+}
+
+.sp-row__value--get {
+    color: var(--ss-gold-bright);
+    -unity-font-style: bold;
+}
+
+.sp-detail__note {
+    margin: 22px 48px 0 48px;
+    font-size: 30px;
+    white-space: normal;
+    -unity-text-align: middle-center;
+    color: var(--ss-gold);
+}
+
+.unity-button.sp-buy {
+    margin: 30px 48px 0 48px;
+}
+
+.unity-button.sp-buy:disabled {
+    opacity: 0.35;
+}
+
+.unity-button.sp-detail__back {
+    margin: 18px 48px 0 48px;
+    height: 104px;
+    font-size: 36px;
+}
