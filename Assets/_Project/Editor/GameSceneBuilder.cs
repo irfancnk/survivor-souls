@@ -52,6 +52,7 @@ namespace SurvivorSouls.Editor
         private const string Root = "Assets/_Project";
         private const string ScenePath = Root + "/Scenes/" + SceneNames.Game + ".unity";
         private const string HudUxmlPath = Root + "/UI/Hud/GameHud.uxml";
+        private const string GateArrowTexturePath = Root + "/Art/UI/T_UI_GateArrow.png"; // Tools/Blender/build_gate_arrow.py (KAN-63)
         private const string HudPanelSettingsPath = Root + "/UI/Hud/GameHudPanelSettings.asset";
         private const string ThemePath = Root + "/UI/Theme/SurvivorSoulsTheme.tss";
         private const string RealmCatalogPath = Root + "/Data/Realms/RealmCatalog.asset"; // made by MainMenuSceneBuilder (KAN-55)
@@ -246,9 +247,8 @@ namespace SurvivorSouls.Editor
             disable.AddRange(player.GetComponents<ProceduralLocomotion>());
             disable.AddRange(player.GetComponents<SoulCollector>()); // wisps stop flying to a dead Knight
             var arrow = player.GetComponent<ObjectiveArrow>();
-            if (arrow != null) disable.Add(arrow); // else its LateUpdate re-shows the arrow
+            if (arrow != null) disable.Add(arrow); // no target: the HUD gate arrow fades out (KAN-63)
             var hide = new List<Object>();
-            if (arrow != null && new SerializedObject(arrow).FindProperty("arrow").objectReferenceValue is Transform a) hide.Add(a.gameObject);
             SetArray(so.FindProperty("disableOnDeath"), disable);
             SetArray(so.FindProperty("hideOnDeath"), hide);
             so.FindProperty("model").objectReferenceValue = model;
@@ -378,6 +378,12 @@ namespace SurvivorSouls.Editor
             SetRef(progression.Flow, "choice", choice);
             SetRef(go.AddComponent<SkillHud>(), "skills", skills);
             SetRef(go.AddComponent<TimerHud>(), "timer", timer); // countdown under the XP bar + toasts (KAN-39)
+            var gateArrow = go.AddComponent<GateArrowHud>(); // gold arrow on the screen edge, points to the gate (KAN-63)
+            SetRef(gateArrow, "objective", player.GetComponent<ObjectiveArrow>());
+            SetRef(gateArrow, "worldCamera", camera);
+            var gateArrowTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(GateArrowTexturePath);
+            if (gateArrowTexture == null) throw new System.InvalidOperationException($"Gate arrow sprite missing: {GateArrowTexturePath}");
+            SetRef(gateArrow, "arrowTexture", gateArrowTexture);
             SetRef(go.AddComponent<ChamberTransitionHud>(), "transition", transition); // white fade + "CHAMBER II" card (KAN-40)
             var victory = go.AddComponent<RealmVictoryHud>(); // "REALM CLEARED" after the last Chamber's portal (KAN-47)
             SetRef(victory, "transition", transition);
