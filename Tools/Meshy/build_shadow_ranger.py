@@ -29,7 +29,7 @@ STRING = [BOW[0], NOCK, BOW[-1]]
 ARROW = [NOCK, (0.53, -0.46, 1.39)]
 HAND = (0.47, -0.42, 1.38)
 FACE = dict(x=(-0.13, 0.11), z=(1.30, 1.55))      # head box for the shadow paint (skin texels only)
-MASK_Z = (1.275, 1.447)                             # face cloth / cowl: into the collar up to just under the eyes
+MASK_Z = (1.275, 1.428)                             # face cloth / cowl: into the collar up to the nose bridge (eyes free)
 CHIN_Z = 1.372                                      # below this the cloth drapes straight down from the chin line
 
 
@@ -158,7 +158,7 @@ for poly in body.data.polygons:
 has = ~np.isnan(zmap)
 z = np.where(has, zmap, 0)
 # height ramp: brow 1.49 -> 0.86, eyes 1.45 -> 0.80, nose 1.42 -> 0.62, chin 1.37 -> 0.45, neck 1.32 -> 0.55
-ramp = np.interp(z, [1.30, 1.34, 1.37, 1.42, 1.45, 1.49, 1.56], [0.60, 0.72, 0.85, 0.88, 0.90, 0.92, 0.93])   # any skin left between cowl and hood reads as shadow
+ramp = np.interp(z, [1.30, 1.34, 1.37, 1.42, 1.45, 1.49, 1.56], [0.60, 0.72, 0.80, 0.66, 0.50, 0.68, 0.86])   # eyes stay readable in the hood shadow
 r, g, bb = px[..., 0], px[..., 1], px[..., 2]
 skin = np.clip((r - bb - 0.02) / 0.10, 0, 1) * np.clip((r - 0.12) / 0.15, 0, 1)
 shade = np.where(has, ramp * skin, 0).astype(np.float32)
@@ -275,7 +275,7 @@ for r in range(rows):
 # top edge: a soft V below the nose bridge
 for cidx in range(cols):
     u = abs(cidx - (cols - 1) / 2) / ((cols - 1) / 2)
-    grid[rows - 1][cidx] = grid[rows - 1][cidx] + Vector((0, 0, 0.004 * (1 - u) - 0.010 * u * u))
+    grid[rows - 1][cidx] = grid[rows - 1][cidx] + Vector((0, 0, 0.004 * (1 - u) - 0.016 * u * u))
 verts = [mwi @ p for row in grid for p in row]
 faces = [(r * cols + c, r * cols + c + 1, (r + 1) * cols + c + 1, (r + 1) * cols + c)
          for r in range(rows - 1) for c in range(cols - 1)]
@@ -846,10 +846,25 @@ if STAGE != "A":
     # A ground pass lifts / lowers the hips so the lowest body point sits on the floor (z = 0) once he lands.
     _gi2 = {g.name: g.index for g in body.vertex_groups}
 
-    def lowest_point():
+    _gn = {g.index: g.name for g in body.vertex_groups}
+    _LEGB = ("Foot", "ToeBase", "Toe_End")                   # boots (plus anything below 22 cm at rest) vs trunk
+    LEG_IDX, TOP_IDX = [], []
+    for v in body.data.vertices:
+        if v.index % 3:
+            continue
+        dom = _gn[max(v.groups, key=lambda g: g.weight).group] if v.groups else ""
+        lw = {_gn[g.group][:4] for g in v.groups if g.weight > 0.15 and _gn[g.group].endswith(("UpLeg", "Leg"))}
+        pr = body.matrix_world @ v.co
+        if len(lw) > 1 or (lw and pr.z < 0.75 and (pr.y > 0.12 or abs(pr.x) > 0.30)):
+            continue                                        # long coat skirt round the legs: may brush the floor
+        boot = dom.replace("Left", "").replace("Right", "") in _LEGB or pr.z < 0.22
+        (LEG_IDX if boot else TOP_IDX).append(v.index)
+
+    def lowest_point(idx=None):
         dg = bpy.context.evaluated_depsgraph_get()
         eb = body.evaluated_get(dg); m = eb.to_mesh(); bmw = body.matrix_world
-        z = min((bmw @ v.co).z for v in list(m.vertices)[::3])
+        vs = m.vertices
+        z = min((bmw @ vs[i].co).z for i in (idx if idx is not None else LEG_IDX + TOP_IDX))
         eb.to_mesh_clear()
         return z
 
@@ -874,33 +889,51 @@ if STAGE != "A":
         return smooth(max(0.0, min(1.0, (f - a) / float(b - a))))
 
     def death_pose(f):
+        """Grounded collapse: hit jolt, knees buckle (feet planted, leg IK), sits down hard, back slaps the floor,
+        small bounce, legs slide out and settle. Some body part touches the floor on every frame."""
         reset_pose()
+        feet0 = {sd: joint(sd + "Foot").copy() for sd in ("Left", "Right")}
         twist([("Spine02", -4), ("Spine01", -5), ("Spine", -5)]); twist([("neck", 6), ("Head", 7)])
         carry_bow(0.0, lean_deg=18)
         Sr = joint("RightArm")
         two_bone("RightArm", "RightForeArm", "RightHand", Sr + Vector((-0.10, -0.06, -0.40)), Sr + Vector((-0.35, 0.3, -0.1)))
         relax_right_hand(0.9)
         across, upv, fwdv = body_axes()
-        hit = seg(f, 0, 4) * (1 - 0.4 * seg(f, 6, 14))          # jolt back, partly recovers
-        buckle = seg(f, 4, 14)
-        fall = seg(f, 11, 30) ** 1.35                            # accelerates like a real fall
-        land = seg(f, 30, 33)
-        bounce = math.sin(seg(f, 30, 38) * math.pi) * (1 - seg(f, 33, 40))
-        settle = seg(f, 36, 48)
-        # whole body tips backwards round the hips; legs give way under him
-        rot_world("Hips", Matrix.Rotation(math.radians(-84 * fall - 3 * bounce), 3, across))
-        rot_world("Hips", Matrix.Rotation(math.radians(14 * fall), 3, upv))          # twists a little as he goes
-        move_hips(-0.20 * buckle)
+        fh = Vector((fwdv.x, fwdv.y, 0)).normalized(); ah = Vector((across.x, across.y, 0)).normalized()
+        hit = seg(f, 0, 4) * (1 - 0.5 * seg(f, 6, 14))          # jolt back, partly recovers
+        buckle = seg(f, 3, 15)                                   # knees give way
+        sit = seg(f, 13, 23) ** 1.6                              # drops onto the backside, accelerating
+        lie = seg(f, 19, 30) ** 1.5                              # back tips over onto the floor
+        bounce = math.sin(seg(f, 30, 37) * math.pi) * (1 - seg(f, 32, 40))
+        settle = seg(f, 34, 48)
+        fall = lie
+        # pelvis tips back; torso follows; a small twist as he goes
+        tip = 6 * hit + 10 * buckle + 72 * lie - 3 * bounce
+        rot_world("Hips", Matrix.Rotation(math.radians(-tip), 3, across))
+        rot_world("Hips", Matrix.Rotation(math.radians(10 * lie), 3, upv))
+        # hips height: 0.98 standing -> 0.62 crouched -> 0.16 sitting (the ground pass refines it)
+        hz = feet0["Left"].z + 0.86 - 0.36 * buckle - 0.46 * sit
+        move_hips(hz - joint("Hips").z)
         a2, u2, f2 = body_axes()
-        # legs: knees buckle, then flop half straight as he lands
-        for side in ("Left", "Right"):
-            k = 1.0 if side == "Left" else 0.8
-            bend(side + "UpLeg", side + "Leg", f2, k * (38 * buckle - 18 * fall + 6 * settle))
-            bend(side + "Leg", side + "Foot", -f2, k * (70 * buckle - 35 * fall))
-        # torso: hit jolt back, then curls a little on the fall, head snaps back and rolls to the side on landing
-        bend("Spine01", "Spine", -f2, 12 * hit - 6 * fall)
-        bend("Spine", "neck", -f2, 8 * hit)
-        bend("Head", "head_end", -f2, 22 * hit - 10 * fall + 8 * bounce)
+        # legs: feet stay planted while the knees buckle, then slide out forward and splay as he lies down
+        def legs(raise_z=0.0):
+            for sd, sg in (("Left", 1.0), ("Right", -1.0)):
+                k = 1.0 if sd == "Left" else 0.85
+                d = 0.10 * buckle + 0.22 * sit + 0.50 * k * lie
+                ft = feet0[sd] + fh * d + ah * sg * 0.08 * lie
+                ft.z = feet0[sd].z - 0.03 * lie + raise_z
+                knee = (joint(sd + "UpLeg") + ft) * 0.5 + fh * 0.5 + Vector((0, 0, 0.35 * (1 - 0.75 * lie))) + ah * sg * 0.15
+                two_bone(sd + "UpLeg", sd + "Leg", sd + "Foot", ft, knee)
+                toe = joint(sd + "ToeBase") - joint(sd + "Foot")
+                flat = (fh + Vector((0, 0, -0.15))).normalized()
+                up = (Vector((0, 0, 1)) + fh * 0.4 + ah * sg * 0.6).normalized()
+                want = flat.lerp(up, seg(f, 22, 40)).normalized()
+                rot_world(sd + "Foot", toe.normalized().rotation_difference(want).to_matrix())
+        legs()
+        # torso: hit jolt back, chin tucks on the fall, head snaps back when the back lands, rolls to the side
+        bend("Spine01", "Spine", -f2, 12 * hit - 8 * sit + 8 * lie)
+        bend("Spine", "neck", -f2, 8 * hit - 6 * sit)
+        bend("Head", "head_end", -f2, 22 * hit - 18 * sit + 14 * lie + 8 * bounce)
         rot_world("Head", Matrix.Rotation(math.radians(28 * settle), 3, (joint("head_end") - joint("Head")).normalized()))
         # arms fling out with the hit, fall open at his sides
         bend("LeftArm", "LeftForeArm", a2, 35 * hit + 45 * fall)
@@ -922,8 +955,24 @@ if STAGE != "A":
             orient_bow(up_c.lerp(up_f, t).normalized(), bk_c.lerp(bk_f, t).normalized())
         # ground: never below the floor; once landed, rest on it
         z = lowest_point()
-        if z < 0.0 or f >= 31:
-            move_hips(-z + 0.004 + 0.025 * bounce)
+        if f < 22:
+            if z < 0.0:
+                move_hips(-z + 0.004)
+        else:
+            # from the sit on he rests on the floor: the torso / hips / arms set the height, then the legs are
+            # re-planted so they lie on the floor too (no knees propping him up, no leg under the floor)
+            zt = lowest_point(TOP_IDX)
+            move_hips(-zt + 0.004 + 0.025 * bounce)
+            rz = 0.0
+            for _ in range(3):
+                legs(rz)
+                zl = lowest_point(LEG_IDX)
+                if f < 26 and zl >= 0.0:
+                    break
+                rz -= zl - 0.004
+            z = lowest_point()
+            if z < 0.0:
+                move_hips(-z + 0.004)
         upd()
 
     act_d = bpy.data.actions.new("Death"); arm.animation_data.action = act_d
