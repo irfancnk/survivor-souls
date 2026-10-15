@@ -83,7 +83,8 @@ namespace SurvivorSouls.Editor.Boss
             return reward;
         }
 
-        private static GroundTelegraph CreateTelegraph(GameArtKit kit, Transform parent)
+        /// <summary>One red circle warning (ring + growing disc) under <paramref name="parent"/>. Also used by the ranged zombies (KAN-105).</summary>
+        public static GroundTelegraph CreateTelegraph(GameArtKit kit, Transform parent, string name = "Telegraph")
         {
             var ringTex = TextureFactory.Write(RingTexturePath, TextureSize, TextureSize, RingPixel, TextureFactory.Kind.Color,
                 wrap: TextureWrapMode.Clamp, maxSize: TextureSize);
@@ -93,7 +94,7 @@ namespace SurvivorSouls.Editor.Boss
             var ringMat = EditorAssetUtil.ParticleMaterial(ArtDir + "/M_FX_TelegraphRing.mat", ringTex, additive: false);
             var discMat = EditorAssetUtil.ParticleMaterial(ArtDir + "/M_FX_TelegraphDisc.mat", discTex, additive: false);
 
-            var go = new GameObject("Telegraph");
+            var go = new GameObject(name);
             go.transform.SetParent(parent, false);
             var fill = Flat("Fill", go.transform, kit.Quad, discMat);
             var ring = Flat("Ring", go.transform, kit.Quad, ringMat);
@@ -106,8 +107,11 @@ namespace SurvivorSouls.Editor.Boss
             return telegraph;
         }
 
-        /// <summary>Lane warnings (KAN-61): <see cref="LineTelegraph.MaxLanes"/> lanes, each an edge quad + a fill quad.</summary>
-        private static LineTelegraph CreateLanes(GameArtKit kit, Transform parent)
+        /// <summary>
+        /// Lane warnings (KAN-61): <paramref name="lanes"/> lanes (default <see cref="LineTelegraph.MaxLanes"/>), each an edge
+        /// quad + a fill quad. Also the aim lines of the ranged zombies (KAN-105).
+        /// </summary>
+        public static LineTelegraph CreateLanes(GameArtKit kit, Transform parent, int lanes = LineTelegraph.MaxLanes, string name = "Lane Telegraph")
         {
             var edgeTex = TextureFactory.Write(LaneTexturePath, LaneTextureWidth, LaneTextureHeight, LanePixel, TextureFactory.Kind.Color,
                 wrap: TextureWrapMode.Clamp, maxSize: LaneTextureHeight);
@@ -116,11 +120,12 @@ namespace SurvivorSouls.Editor.Boss
             var edgeMat = EditorAssetUtil.ParticleMaterial(ArtDir + "/M_FX_TelegraphLane.mat", edgeTex, additive: false);
             var fillMat = EditorAssetUtil.ParticleMaterial(ArtDir + "/M_FX_TelegraphLaneFill.mat", fillTex, additive: false);
 
-            var go = new GameObject("Lane Telegraph");
+            var go = new GameObject(name);
             go.transform.SetParent(parent, false);
-            var edges = new Renderer[LineTelegraph.MaxLanes];
-            var fills = new Renderer[LineTelegraph.MaxLanes];
-            for (int i = 0; i < LineTelegraph.MaxLanes; i++)
+            lanes = Mathf.Clamp(lanes, 1, LineTelegraph.MaxLanes);
+            var edges = new Renderer[lanes];
+            var fills = new Renderer[lanes];
+            for (int i = 0; i < lanes; i++)
             {
                 fills[i] = Flat("Fill " + i, go.transform, kit.Quad, fillMat);
                 edges[i] = Flat("Edge " + i, go.transform, kit.Quad, edgeMat);

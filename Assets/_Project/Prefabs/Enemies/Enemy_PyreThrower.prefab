@@ -74,6 +74,7 @@ GameObject:
   m_Component:
   - component: {fileID: 9068720183637518192}
   - component: {fileID: 5959471082069176258}
+  - component: {fileID: 3072802602202853967}
   m_Layer: 0
   m_Name: Enemy_PyreThrower
   m_TagString: Untagged
@@ -135,6 +136,46 @@ MonoBehaviour:
   deathState: Death
   hitHold: 0.4
   deathHold: 0.9
+  holdMin: 6
+  holdMax: 10
+--- !u!114 &3072802602202853967
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 888595980849825278}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4116ccc39990a4d92a37b4ae371d491e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Combat.RangedAttack
+  settings:
+    kind: 1
+    lobbed: 1
+    windUp: 0.5
+    lockShare: 0
+    cooldown: 2.6
+    pattern: 010000000100000003000000i
+    spread: 2.6
+    speed: 9
+    range: 11
+    flightTime: 1.1
+    arcHeight: 3.2
+    blockable: 0
+    leadTime: 1.6
+    maxLead: 3.5
+    damageShare: 0.12
+    hitRadius: 1.6
+    laneWidth: 0
+    hazard:
+      kind: 0
+      radius: 1.6
+      life: 3
+      dps: 8
+      slow: 0
+    maxHazards: 0
+    needsLineOfFire: 0
 --- !u!1 &1060820820574364084
 GameObject:
   m_ObjectHideFlags: 0

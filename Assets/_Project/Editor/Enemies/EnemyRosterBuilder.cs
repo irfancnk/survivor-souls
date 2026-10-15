@@ -397,6 +397,7 @@ namespace SurvivorSouls.Editor.Enemies
                 so.FindProperty("knockbackScale").floatValue = spec.Knockback;
                 so.FindProperty("deathHold").floatValue = spec.Boss ? BossDeathPlayTime : DeathPlayTime;
                 so.ApplyModifiedPropertiesWithoutUndo();
+                RangedEnemyBuilder.ConfigurePrefab(root, enemy, spec.Id, kit.Palette); // hold band + attack + bow (KAN-105)
                 PrefabUtility.SaveAsPrefabAsset(root, spec.PrefabPath);
                 return (height, radius);
             }

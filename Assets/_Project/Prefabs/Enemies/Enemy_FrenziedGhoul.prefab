@@ -598,6 +598,8 @@ MonoBehaviour:
   deathState: Death
   hitHold: 0.4
   deathHold: 0.9
+  holdMin: 0
+  holdMax: 0
 --- !u!1 &5058329069439645975
 GameObject:
   m_ObjectHideFlags: 0

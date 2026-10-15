@@ -1164,3 +1164,5 @@ MonoBehaviour:
   deathState: Death
   hitHold: 0.4
   deathHold: 0.9
+  holdMin: 0
+  holdMax: 0

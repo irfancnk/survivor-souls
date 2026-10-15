@@ -200,6 +200,7 @@ GameObject:
   m_Component:
   - component: {fileID: 9223083160559909611}
   - component: {fileID: 3407614011995091446}
+  - component: {fileID: 7341550401264441442}
   m_Layer: 0
   m_Name: Enemy_BileSpitter
   m_TagString: Untagged
@@ -261,6 +262,46 @@ MonoBehaviour:
   deathState: Death
   hitHold: 0.4
   deathHold: 0.9
+  holdMin: 5
+  holdMax: 8
+--- !u!114 &7341550401264441442
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2189249249919450907}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4116ccc39990a4d92a37b4ae371d491e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Combat.RangedAttack
+  settings:
+    kind: 2
+    lobbed: 1
+    windUp: 0.7
+    lockShare: 0
+    cooldown: 3
+    pattern: 01000000i
+    spread: 0
+    speed: 7
+    range: 9
+    flightTime: 0
+    arcHeight: 1.1
+    blockable: 1
+    leadTime: 0
+    maxLead: 0
+    damageShare: 0
+    hitRadius: 1.4
+    laneWidth: 0
+    hazard:
+      kind: 1
+      radius: 1.4
+      life: 5
+      dps: 12
+      slow: 0.3
+    maxHazards: 3
+    needsLineOfFire: 0
 --- !u!1 &2227825583862441858
 GameObject:
   m_ObjectHideFlags: 0

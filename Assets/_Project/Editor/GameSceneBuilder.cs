@@ -106,6 +106,7 @@ namespace SurvivorSouls.Editor
             var chamberSetup = ChamberBuilder.CreateSetup(timer.gameObject, world, spawner); // per-Chamber difficulty + layout seed (KAN-46)
             ChamberBuilder.CreateHordeScaler(timer.gameObject, spawner, player.GetComponent<PlayerStats>(), timer); // zombie health to power + tiers (KAN-92)
             var boss = BossBuilder.Create(kit, health, timer, spawner, progression.Souls); // boss Chambers: fight, slam, reward (KAN-58)
+            RangedEnemyBuilder.CreateScene(kit, health); // ranged zombie shots, hazards, warnings (KAN-105)
             SetRef(game, "boss", boss); // slam camera shake
             var hearts = boss.GetComponent<BossHearts>();
             SetRef(game, "hearts", hearts); // haptic tap on a heart pickup (KAN-60)
@@ -197,6 +198,10 @@ namespace SurvivorSouls.Editor
             SetRef(spawner, "waves", waves);
             SetRef(spawner, "player", player.transform);
             SetRef(spawner, "world", world);
+            // Ranged zombies (KAN-105) are in the build but not in the waves yet (spawn tables: KAN-112).
+            var extras = new SerializedObject(spawner);
+            SetArray(extras.FindProperty("extraTypes"), RangedEnemyBuilder.Ids.Select(EnemyRosterBuilder.LoadPrefab).ToArray());
+            extras.ApplyModifiedPropertiesWithoutUndo();
             return (shooter, spawner);
         }
 
