@@ -6,6 +6,7 @@ using SurvivorSouls.Gameplay.Characters;
 using SurvivorSouls.Gameplay.Combat;
 using UnityEditor;
 using UnityEditor.Animations;
+using UnityEditor.Rendering.Universal.ShaderGUI;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -275,6 +276,10 @@ namespace SurvivorSouls.Editor.Enemies
             else mat.DisableKeyword("_EMISSION");
             // URP keeps _EMISSION only with an emissive GI flag (BaseShaderGUI: AnyEmissive); realtime = no bake cost (KAN-109).
             mat.globalIlluminationFlags = emission != null ? MaterialGlobalIlluminationFlags.RealtimeEmissive : MaterialGlobalIlluminationFlags.EmissiveIsBlack;
+            // Same keyword pass as the URP Simple Lit inspector (ShaderGUI.ValidateMaterial), which the editor runs on these
+            // materials: _SpecularHighlights 1 is URP "NoSpecular", so it drops the _SPECULAR_COLOR that SimpleLitMaterial set.
+            // Without this pass every rebuild added the keyword and the next editor / test session removed it again (KAN-157).
+            BaseShaderGUI.SetMaterialKeywords(mat, SimpleLitGUI.SetMaterialKeywords);
             EditorUtility.SetDirty(mat);
             return mat;
         }
