@@ -35,12 +35,16 @@ namespace SurvivorSouls.Editor.Boss
     /// shared mesh + the Realm snow-cap props material, a capsule collider each for the rubble); menus "Boss: Lobbed",
     /// "Boss: Summon", "Boss: Teleport" (same sample rule). KAN-121: menus "Boss: Shockwave", "Boss: Homing", "Boss: Beams"
     /// (same sample rule; the rings use the shared circle pool, the orbs the bolt pool, the beams the lane telegraph).
+    /// KAN-109: The Pyre Lord asset (<see cref="PyreLordDataPath"/>, never overwritten) sits in the fight's library: not in
+    /// Realm 1's rotation, picked by the dev flag <c>-ss-boss-type PyreLord</c> or the menu "Boss: Next Fight Pyre Lord";
+    /// a Realm 2 boss once KAN-57 lands. Its slam and meteors leave burning patches (shared ground hazard pool, fire look).
     /// </summary>
     public static class BossBuilder
     {
         private const string DataDir = "Assets/_Project/Data/Boss";
         public const string BossDataPath = DataDir + "/Boss_Realm1_Warden.asset";
         public const string ButcherDataPath = DataDir + "/Boss_Realm1_Butcher.asset";
+        public const string PyreLordDataPath = DataDir + "/Boss_PyreLord.asset";
         public const string BossRulesPath = "Assets/_Project/Data/Chamber/ChamberRules_Boss.asset";
         private const string ArtDir = "Assets/_Project/Art/Boss";
         private const string RingTexturePath = ArtDir + "/T_TelegraphRing.png";
@@ -62,6 +66,7 @@ namespace SurvivorSouls.Editor.Boss
         {
             var data = LoadOrCreateData();
             var butcher = LoadOrCreateButcher();
+            var pyreLord = LoadOrCreatePyreLord();
             var rules = LoadOrCreateRules();
             var root = new GameObject("Boss");
             var telegraph = CreateTelegraph(kit, root.transform);
@@ -83,6 +88,9 @@ namespace SurvivorSouls.Editor.Boss
             var list = so.FindProperty("bosses");
             list.arraySize = 1;
             list.GetArrayElementAtIndex(0).objectReferenceValue = butcher; // Realm 1 boss Chambers (KAN-108)
+            var library = so.FindProperty("library");
+            library.arraySize = 1;
+            library.GetArrayElementAtIndex(0).objectReferenceValue = pyreLord; // KAN-109: -ss-boss-type PyreLord, Realm 2 later
             so.ApplyModifiedPropertiesWithoutUndo();
             BossHeartsBuilder.Create(kit, root, fight, player); // healing hearts during the fight (KAN-60)
             return fight;
@@ -402,6 +410,62 @@ namespace SurvivorSouls.Editor.Boss
             return data;
         }
 
+        /// <summary>
+        /// The Pyre Lord (KAN-109, Docs/ENEMY_ROSTER.md 3.13): 4.5 m roster body with baked lava glow, 9000 HP (Chamber 1
+        /// terms), a fire caster that keeps its distance. Phase 1: fireball fan (7 bolts over 70 deg) at range, fire nova (ring
+        /// of 16 with two gaps of two bolts) at mid range, flame slam up close (circle r 4 m round the body, leaves a burning
+        /// patch r 2.2 m for 3 s). Phase 2 (50 %): roar, then the fire spiral (2 arms, 3 s) and the meteor rain (6 circles,
+        /// each leaves a small burning patch) join. Never overwritten: edit the asset.
+        /// </summary>
+        public static BossAttack[] PyreLordAttacks()
+        {
+            var nova = BossAttack.Sample(BossFight.Move.Nova);
+            nova.gaps = 2; // two doors of two missing bolts: a clear way through at any distance
+            nova.clip = "CastNova";
+            var spiral = BossAttack.Sample(BossFight.Move.Spiral);
+            spiral.clip = "CastNova";
+            var rain = BossAttack.Sample(BossFight.Move.Rain).WithBurn(radius: 1f, life: 2f, dpsShare: 0.05f);
+            rain.clip = "CastFan";
+            return new[]
+            {
+                BossAttack.Slam("Flame Slam", BossPhases.Both, range: 3.5f, radius: 4f, reach: 0f, telegraph: 1.1f, damage: 0.2f,
+                    recover: 0.9f, cooldown: 3.4f, priority: 1, clip: "Slam").WithBurn(radius: 2.2f, life: 3f, dpsShare: 0.05f),
+                BossAttack.Fan("Fireball Fan", BossPhases.Both, maxRange: 14f, bolts: 7, spread: 70f, telegraph: 0.9f, speed: 9f,
+                    distance: 15f, laneWidth: 0.6f, hitRadius: 0.6f, damage: 0.12f, recover: 0.6f, cooldown: 2.6f, weight: 2f,
+                    clip: "CastFan"),
+                nova,
+                spiral,
+                rain,
+            };
+        }
+
+        private static BossData LoadOrCreatePyreLord()
+        {
+            var body = EnemyRosterBuilder.LoadPrefab("PyreLord");
+            if (body == null) throw new System.InvalidOperationException("Boss body missing: Enemy_PyreLord (EnemyRosterBuilder)");
+            var data = AssetDatabase.LoadAssetAtPath<BossData>(PyreLordDataPath);
+            if (data != null)
+            {
+                if (data.Prefab == null)
+                {
+                    var so = new SerializedObject(data);
+                    so.FindProperty("prefab").objectReferenceValue = body;
+                    so.ApplyModifiedPropertiesWithoutUndo();
+                    EditorUtility.SetDirty(data);
+                }
+                AssetDatabase.ForceReserializeAssets(new[] { PyreLordDataPath });
+                return data;
+            }
+            EditorAssetUtil.EnsureFolder(DataDir);
+            // 9000 HP x Chamber 5 health (x1.6): a 10-pick Knight kills it in ~90 s (BossIntroTests balance check).
+            data = BossData.CreateWithAttacks(body, PyreLordAttacks(), health: 9000f, firstAttackDelay: 1.5f, introTime: 2.4f,
+                victoryBeat: 1.8f, roarClip: "Roar", phaseRoar: 1.2f, displayName: "THE PYRE LORD",
+                title: "Ember King of the Cinder Throne");
+            AssetDatabase.CreateAsset(data, PyreLordDataPath);
+            AssetDatabase.SaveAssets();
+            return data;
+        }
+
         private static ChamberRules LoadOrCreateRules()
         {
             var rules = AssetDatabase.LoadAssetAtPath<ChamberRules>(BossRulesPath);
@@ -502,6 +566,14 @@ namespace SurvivorSouls.Editor.Boss
             foreach (var a in fight.Attacks)
                 if (a.type == move) return; // it has one: busy right now, try again
             fight.ForceAttack(fight.AddAttack(BossAttack.Sample(move)));
+        }
+
+        /// <summary>KAN-109: the next boss Chamber (this run, after a jump or a portal) gets The Pyre Lord. Play mode only.</summary>
+        [MenuItem("Survivor Souls/Debug/Boss: Next Fight Pyre Lord")]
+        private static void NextPyreLord()
+        {
+            BossFight.ForcedBoss = BossFight.ForcedBoss == "PyreLord" ? null : "PyreLord";
+            Debug.Log($"[BossBuilder] forced boss: {BossFight.ForcedBoss ?? "none (Realm list)"}");
         }
 
         [MenuItem("Survivor Souls/Debug/Boss: Print Attacks")]

@@ -45,6 +45,8 @@ namespace SurvivorSouls.Editor.Enemies
         {
             public string Id, Move, Attack;
             public bool Boss;
+            /// <summary>KAN-109: bake an emission map from the lava cracks of the base colour (<see cref="LavaEmissionBaker"/>).</summary>
+            public bool LavaGlow;
             public float Health, Speed, Dps, Knockback = 1f, SpeedJitter = 0.08f, ScaleJitter = 0.04f;
             public int Xp;
             public string ArtDir => $"{(Boss ? BossesArt : EnemiesArt)}/{Id}";
@@ -63,6 +65,12 @@ namespace SurvivorSouls.Editor.Enemies
         /// </summary>
         private static Spec Boss(string id, string move, string attack, float hp, float speed) =>
             new Spec { Id = id, Move = move, Attack = attack, Health = hp, Speed = speed, Dps = 30f, Xp = 0, Knockback = 0.1f, Boss = true, SpeedJitter = 0f, ScaleJitter = 0f };
+
+        private static Spec Lava(Spec spec)
+        {
+            spec.LavaGlow = true;
+            return spec;
+        }
 
         /// <summary>
         /// Melee tiers 1-4 (the four reference sheets) first: they join the waves. Specials melee on contact (8 dps) on top
@@ -83,7 +91,7 @@ namespace SurvivorSouls.Editor.Enemies
             Zombie("GraveBrute", "Walk", "Slam", 520f, 1.25f, 26f, 25, knock: 0f),
             Zombie("HexboundShaman", "Walking", "Cast", 130f, 1.5f, 8f, 12),
             Boss("AshgraveButcher", "Walk", "Chop", 8000f, 1.55f),
-            Boss("PyreLord", "Walk", "Slam", 9000f, 1.4f),
+            Lava(Boss("PyreLord", "Walk", "Slam", 9000f, 1.4f)),
             Boss("RottingColossus", "Walk", "Slam", 11000f, 1.2f),
             Boss("BoneMatriarch", "Walking", "CastOrbs", 7000f, 1.3f),
         };
@@ -253,6 +261,7 @@ namespace SurvivorSouls.Editor.Enemies
         private static Material BuildMaterial(Spec spec)
         {
             string tex = $"{spec.ArtDir}/T_{spec.Id}";
+            if (spec.LavaGlow) LavaEmissionBaker.Ensure(tex + "_BaseColor.jpg", tex + "_Emission.jpg"); // KAN-109
             ConfigureTexture(tex + "_BaseColor.jpg", false);
             ConfigureTexture(tex + "_Normal.png", true);
             ConfigureTexture(tex + "_Emission.jpg", false);

@@ -53,6 +53,9 @@ MonoBehaviour:
     obstacle: 0
     turn: 0
     summon: 
+    burnRadius: 0
+    burnLife: 0
+    burnDps: 0
     clip: Chop
   - label: Cleaver Spin
     type: 4
@@ -80,6 +83,9 @@ MonoBehaviour:
     obstacle: 0
     turn: 0
     summon: 
+    burnRadius: 0
+    burnLife: 0
+    burnDps: 0
     clip: Spin
   - label: Charge
     type: 2
@@ -107,6 +113,9 @@ MonoBehaviour:
     obstacle: 0
     turn: 0
     summon: 
+    burnRadius: 0
+    burnLife: 0
+    burnDps: 0
     clip: Charge
   - label: Chain Hook
     type: 3
@@ -134,6 +143,9 @@ MonoBehaviour:
     obstacle: 0
     turn: 0
     summon: 
+    burnRadius: 0
+    burnLife: 0
+    burnDps: 0
     clip: Chop
   - label: Triple Charge
     type: 2
@@ -161,6 +173,9 @@ MonoBehaviour:
     obstacle: 0
     turn: 0
     summon: 
+    burnRadius: 0
+    burnLife: 0
+    burnDps: 0
     clip: Charge
   roarClip: Roar
   phaseRoar: 1.2
