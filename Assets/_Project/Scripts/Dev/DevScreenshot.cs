@@ -59,7 +59,8 @@ namespace SurvivorSouls.Dev
     /// and the boss starts that attack at once (charge: below the phase 2 share, e.g. <c>-ss-boss 0.4</c>, for the look of
     /// phase 2; the debug start works in phase 1 too). KAN-108: also <c>slam|lane|spin</c> (first attack of that type, this
     /// phase first) or an index into the boss's attack list (e.g. <c>3</c> = the Butcher's chain hook); the Knight stands
-    /// inside that attack's range.
+    /// inside that attack's range. KAN-116: also <c>nova|spiral|rain</c>; a boss without that type gets the sample entry
+    /// (<c>BossAttack.Sample</c>, Pyre Lord numbers) added to its fight for the shot.
     /// <c>-ss-hearts &lt;n&gt;</c> (KAN-60, boss Chamber): drops n healing hearts ahead of the Knight right after load (cap
     /// permitting); each shows its ground glow for 1 s, then floats.
     /// Main menu (KAN-20): <c>-ss-realms</c> opens the Realm selection page, <c>-ss-realm &lt;id&gt;</c> also opens that
@@ -310,6 +311,9 @@ namespace SurvivorSouls.Dev
             if (boss.Health > target) boss.TakeDamage(boss.Health - target, Vector3.zero, DamageKind.Burst);
             var b = boss.transform;
             int index = BossAttackIndex(fight, attack);
+            if (index < 0 && Enum.TryParse(attack, true, out SurvivorSouls.Gameplay.Boss.BossFight.Move move)
+                && !int.TryParse(attack, NumberStyles.Integer, CultureInfo.InvariantCulture, out _))
+                index = fight.AddAttack(SurvivorSouls.Gameplay.Boss.BossAttack.Sample(move)); // KAN-116: try a type this boss lacks
             float distance = index >= 0 ? BossAttackDistance(fight.Attacks[index]) : 2.6f;
             Teleport(b.position + b.forward * distance);
             Debug.Log($"[DevScreenshot] Boss {fight.Data.DisplayName} hp={boss.Health:F0}/{boss.MaxHealth:F0} phase={fight.Phase} at {b.position}");
@@ -348,6 +352,8 @@ namespace SurvivorSouls.Dev
         {
             float want = a.type == SurvivorSouls.Gameplay.Boss.BossFight.Move.Slam || a.type == SurvivorSouls.Gameplay.Boss.BossFight.Move.Spin ? 2.6f
                 : a.type == SurvivorSouls.Gameplay.Boss.BossFight.Move.Lane ? Mathf.Max(3.5f, (a.minRange + a.maxRange) * 0.5f)
+                : a.type == SurvivorSouls.Gameplay.Boss.BossFight.Move.Nova || a.type == SurvivorSouls.Gameplay.Boss.BossFight.Move.Spiral ? 5f
+                : a.type == SurvivorSouls.Gameplay.Boss.BossFight.Move.Rain ? 6f
                 : 8f;
             return Mathf.Clamp(want, a.minRange + 0.3f, Mathf.Max(a.minRange + 0.3f, a.maxRange - 0.3f));
         }

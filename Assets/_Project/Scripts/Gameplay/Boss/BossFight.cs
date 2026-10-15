@@ -46,6 +46,10 @@ namespace SurvivorSouls.Gameplay.Boss
     /// hits a pillar or the wall. Each attack plays its own animator state (<see cref="BossAttack.clip"/>); the intro and the
     /// phase 2 roar play <see cref="BossData.RoarClip"/>. Which boss a boss Chamber gets: <see cref="bosses"/> (the first boss
     /// Chamber of the Realm the first entry, the next the second, round), else <see cref="data"/>.
+    /// KAN-116: bullet and area types. <b>Nova</b> (a ring of bolts from the body, optional gaps) and <b>Spiral</b> (turning
+    /// arms of bolts for a few seconds) warn with a circle around the body, then fire <see cref="BossProjectiles"/>; one ring
+    /// or one whole spiral hits once. <b>Rain</b> drops circles one by one near the Knight (shared
+    /// <see cref="EnemyTelegraphs"/> pool), each warns, then hits inside it. Spiral and Rain run in <see cref="Attack.Casting"/>.
     /// </summary>
     public sealed class BossFight : MonoBehaviour
     {
@@ -69,6 +73,8 @@ namespace SurvivorSouls.Gameplay.Boss
             Dashing = 3,
             /// <summary>KAN-108: the spin circle is live and follows the Knight.</summary>
             Spinning = 4,
+            /// <summary>KAN-116: the boss stands and casts (spiral arms firing, rain circles falling).</summary>
+            Casting = 5,
         }
 
         /// <summary>The boss's attack patterns (KAN-22).</summary>
@@ -81,6 +87,12 @@ namespace SurvivorSouls.Gameplay.Boss
             Lane = 3,
             /// <summary>KAN-108: a damage circle around the boss that follows the Knight for a while.</summary>
             Spin = 4,
+            /// <summary>KAN-116: a ring of bolts from the body (optional gaps).</summary>
+            Nova = 5,
+            /// <summary>KAN-116: turning arms of bolts for a few seconds.</summary>
+            Spiral = 6,
+            /// <summary>KAN-116: ground circles that fall one by one near the Knight.</summary>
+            Rain = 7,
         }
 
         private const float SpawnClearRadius = 1.4f; // free ground the boss body needs
@@ -97,6 +109,12 @@ namespace SurvivorSouls.Gameplay.Boss
         private const float RedashPause = 0.25f;    // multi-charge: seconds between a dash end and the next warning
         private const float RoarCooldown = 0.3f;    // chase after the phase 2 roar before the next attack
         private const int NeverUsed = 1000;         // "attacks since last use" of an attack never used yet
+        /// <summary>Most bolts in one nova ring (the bolt pool caps it too).</summary>
+        public const int MaxRingBolts = 48;
+        /// <summary>Bolts missing per nova gap.</summary>
+        public const int GapBolts = 2;
+        /// <summary>Most rain circles in one cast (the shared circle pool caps it too).</summary>
+        public const int MaxRain = 16;
 
         [SerializeField] private BossData data;
         [Tooltip("KAN-108: bosses of this Realm's boss Chambers in order (round). Empty = data above.")]
@@ -110,8 +128,10 @@ namespace SurvivorSouls.Gameplay.Boss
         [SerializeField] private GroundTelegraph telegraph;
         [Tooltip("Lane warnings of the fan and the charge (KAN-61).")]
         [SerializeField] private LineTelegraph lines;
-        [Tooltip("Fan bolts (KAN-61).")]
+        [Tooltip("Fan bolts (KAN-61), nova and spiral bolts (KAN-116).")]
         [SerializeField] private BossProjectiles projectiles;
+        [Tooltip("KAN-116: circle pool of the rain. Empty = the scene's EnemyTelegraphs.Current (the ranged zombies' pool).")]
+        [SerializeField] private EnemyTelegraphs circles;
 
         private Enemy _boss;
         private float _bossHealthMultiplier = 1f; // BossData health over the body's type health, x the Chamber multiplier
@@ -136,6 +156,15 @@ namespace SurvivorSouls.Gameplay.Boss
         private float _pullLeft;
         private Vector3 _pullDir;
         private readonly Vector3[] _fanDirs = new Vector3[LineTelegraph.MaxLanes];
+        private readonly Vector3[] _ringDirs = new Vector3[MaxRingBolts];
+        private float _castLeft, _shotWait, _spiralAngle;
+        private int _spiralFired;
+        private readonly GroundTelegraph[] _rain = new GroundTelegraph[MaxRain];
+        private readonly Vector3[] _rainAt = new Vector3[MaxRain];
+        private readonly float[] _rainAge = new float[MaxRain];
+        private int _rainPlaced, _rainLive;
+        private float _rainNext;
+        private EnemyTelegraphs _rainPool;
         private PlayerMover _mover;
         private bool _moverChecked;
         private bool _knightHeld;
@@ -176,6 +205,14 @@ namespace SurvivorSouls.Gameplay.Boss
         public event Action<Vector3, float> SpinHit;
         /// <summary>KAN-108: an attack starts its wind-up (index into <see cref="Attacks"/>).</summary>
         public event Action<int> AttackStarted;
+        /// <summary>KAN-116: a nova ring flew (boss ground point, bolts fired).</summary>
+        public event Action<Vector3, int> NovaFired;
+        /// <summary>KAN-116: a spiral ended (boss ground point, bolts fired in all).</summary>
+        public event Action<Vector3, int> SpiralFired;
+        /// <summary>KAN-116: a rain circle appeared (centre, radius).</summary>
+        public event Action<Vector3, float> RainWarned;
+        /// <summary>KAN-116: a rain circle struck (centre, damage dealt; 0 = dodged).</summary>
+        public event Action<Vector3, float> RainStruck;
 
         public BossData Data => data;
         /// <summary>The attack list of the fight (KAN-108).</summary>
@@ -205,6 +242,10 @@ namespace SurvivorSouls.Gameplay.Boss
         public GroundTelegraph Telegraph => telegraph;
         public LineTelegraph Lines => lines;
         public BossProjectiles Projectiles => projectiles;
+        /// <summary>KAN-116: rain circles warning or striking right now.</summary>
+        public int RainLive => _rainLive;
+        /// <summary>KAN-116: bolts the current (or last) spiral fired.</summary>
+        public int SpiralBolts => _spiralFired;
         /// <summary>The Knight is held by the intro (no move, no damage).</summary>
         public bool KnightHeld => _knightHeld;
         /// <summary>The victory beat is over (portal open, reward given).</summary>
@@ -215,8 +256,10 @@ namespace SurvivorSouls.Gameplay.Boss
         /// <summary>Tests: wiring without the scene builder.</summary>
         public void Setup(BossData bossData, ChamberRules rules, SurvivalTimer survivalTimer, EnemySpawner enemySpawner,
             PlayerHealth playerHealth, SoulWispField soulField, GroundTelegraph groundTelegraph,
-            LineTelegraph laneTelegraph = null, BossProjectiles bolts = null, BossData[] roster = null)
+            LineTelegraph laneTelegraph = null, BossProjectiles bolts = null, BossData[] roster = null,
+            EnemyTelegraphs circlePool = null)
         {
+            circles = circlePool;
             data = bossData;
             bosses = roster ?? new BossData[0];
             bossRules = rules;
@@ -240,6 +283,7 @@ namespace SurvivorSouls.Gameplay.Boss
             if (Active == this) Active = null;
             Enemy.Damaged -= OnEnemyDamaged;
             HoldKnight(false);
+            CancelRain();
         }
 
         private void Start() => Begin(ChamberSetup.Current);
@@ -406,6 +450,16 @@ namespace SurvivorSouls.Gameplay.Boss
                 case Attack.Spinning:
                     TickSpin(dt, playerDead);
                     break;
+                case Attack.Casting:
+                    if (playerDead)
+                    {
+                        CancelRain();
+                        EndAttack(0f);
+                        break;
+                    }
+                    if (CurrentMove == Move.Spiral) TickSpiral(dt);
+                    else TickRain(dt);
+                    break;
                 case Attack.Recover:
                     _time += dt;
                     TickPull(dt);
@@ -416,7 +470,7 @@ namespace SurvivorSouls.Gameplay.Boss
             }
         }
 
-        private static bool UsesCircle(Move move) => move == Move.Slam || move == Move.Spin;
+        private static bool UsesCircle(Move move) => move == Move.Slam || move == Move.Spin || move == Move.Nova || move == Move.Spiral;
 
         private void Release()
         {
@@ -427,6 +481,8 @@ namespace SurvivorSouls.Gameplay.Boss
                 case Move.Charge: BeginDash(); break;
                 case Move.Lane: StrikeLane(); break;
                 case Move.Spin: BeginSpin(); break;
+                case Move.Nova: ReleaseNova(); break;
+                case Move.Spiral: BeginSpiral(); break;
             }
         }
 
@@ -476,6 +532,11 @@ namespace SurvivorSouls.Gameplay.Boss
                 case Move.Fan: return a.count > 0 && lines != null && projectiles != null;
                 case Move.Charge:
                 case Move.Lane: return lines != null;
+                case Move.Nova:
+                case Move.Spiral: return a.count > 0 && projectiles != null;
+                case Move.Rain:
+                    var pool = RainPool;
+                    return a.count > 0 && pool != null && pool.FreeCircles() > 0;
                 default: return true;
             }
         }
@@ -493,6 +554,9 @@ namespace SurvivorSouls.Gameplay.Boss
                     break;
                 case Move.Lane: BeginLane(index); break;
                 case Move.Spin: BeginSpinWindUp(index); break;
+                case Move.Nova:
+                case Move.Spiral: BeginCastWindUp(index); break;
+                case Move.Rain: BeginRain(index); break;
                 default: return false;
             }
             return true;
@@ -800,6 +864,195 @@ namespace SurvivorSouls.Gameplay.Boss
         /// <summary>Spin damage dealt in the current (or last) spin.</summary>
         public float SpinDealt => _spinDealt;
 
+        // ------------------------------------------------------------ Nova, Spiral, Rain (KAN-116)
+
+        /// <summary>Nova / spiral wind-up: the boss stands, a circle of <see cref="BossAttack.reach"/> m fills around it.</summary>
+        private void BeginCastWindUp(int index)
+        {
+            var a = _attacks[index];
+            Vector3 from = _boss.transform.position;
+            _attackDir = FaceKnight();
+            _attackOrigin = new Vector3(from.x, player.transform.position.y, from.z);
+            if (telegraph != null) telegraph.Show(_attackOrigin, Mathf.Max(0.5f, a.reach));
+            BeginWindUp(index);
+            SlamWarned?.Invoke(_attackOrigin, a.reach);
+        }
+
+        private void ReleaseNova()
+        {
+            int n = RingDirections(_ringDirs, _attack.count, _attack.gaps, UnityEngine.Random.value * 360f);
+            int fired = projectiles.FireVolley(_attackOrigin, _ringDirs, n, _attack.speed, _attack.length,
+                data.DamageFor(_attack.damage, player != null ? player.Max : 0f), _attack.radius);
+            if (telegraph != null) telegraph.Flash();
+            BeginRecover(_attack.recover, _attack.cooldown);
+            NovaFired?.Invoke(_attackOrigin, fired);
+        }
+
+        /// <summary>
+        /// Fills <paramref name="buffer"/> with a ring of <paramref name="count"/> evenly spaced ground directions starting at
+        /// <paramref name="startDegrees"/> (clockwise from +Z), minus <paramref name="gaps"/> evenly spaced gaps of
+        /// <see cref="GapBolts"/> bolts. Returns the directions written. The first gap starts at slot 0.
+        /// </summary>
+        public static int RingDirections(Vector3[] buffer, int count, int gaps, float startDegrees)
+        {
+            count = Mathf.Clamp(count, 0, Mathf.Min(MaxRingBolts, buffer.Length));
+            if (count == 0) return 0;
+            gaps = Mathf.Clamp(gaps, 0, count / (GapBolts + 1)); // always bolts between the gaps
+            float step = 360f / count;
+            int n = 0;
+            for (int i = 0; i < count; i++)
+            {
+                if (InGap(i, count, gaps)) continue;
+                float rad = (startDegrees + i * step) * Mathf.Deg2Rad;
+                buffer[n++] = new Vector3(Mathf.Sin(rad), 0f, Mathf.Cos(rad));
+            }
+            return n;
+        }
+
+        private static bool InGap(int slot, int count, int gaps)
+        {
+            for (int g = 0; g < gaps; g++)
+            {
+                int first = g * count / gaps;
+                if (slot >= first && slot < first + GapBolts) return true;
+            }
+            return false;
+        }
+
+        private void BeginSpiral()
+        {
+            if (telegraph != null) telegraph.Flash();
+            CurrentAttack = Attack.Casting;
+            _castLeft = _attack.duration;
+            _shotWait = 0f;
+            _spiralFired = 0;
+            Vector3 d = _attackDir;
+            _spiralAngle = Mathf.Atan2(d.x, d.z) * Mathf.Rad2Deg; // the first arm fires at the Knight
+            projectiles.NewVolley(); // the whole spiral hits once
+            _time = 0f;
+        }
+
+        private void TickSpiral(float dt)
+        {
+            float interval = Mathf.Max(0.05f, _attack.interval);
+            int arms = Mathf.Clamp(_attack.count, 1, MaxRingBolts);
+            float damage = data.DamageFor(_attack.damage, player.Max);
+            _shotWait -= dt;
+            while (_shotWait <= 0f && _castLeft > 0f)
+            {
+                for (int k = 0; k < arms; k++)
+                {
+                    float rad = (_spiralAngle + k * 360f / arms) * Mathf.Deg2Rad;
+                    if (projectiles.Fire(_attackOrigin, new Vector3(Mathf.Sin(rad), 0f, Mathf.Cos(rad)), _attack.speed, _attack.length,
+                        damage, _attack.radius)) _spiralFired++;
+                }
+                _shotWait += interval;
+            }
+            _spiralAngle += _attack.spread * dt;
+            float face = _spiralAngle * Mathf.Deg2Rad;
+            _boss.transform.rotation = Quaternion.LookRotation(new Vector3(Mathf.Sin(face), 0f, Mathf.Cos(face)), Vector3.up);
+            _castLeft -= dt;
+            if (_castLeft > 0f) return;
+            BeginRecover(_attack.recover, _attack.cooldown);
+            SpiralFired?.Invoke(_attackOrigin, _spiralFired);
+        }
+
+        /// <summary>The rain's circle pool: the wired one, else the scene's ranged-zombie pool.</summary>
+        private EnemyTelegraphs RainPool => circles != null ? circles : EnemyTelegraphs.Current;
+
+        /// <summary>Rain: the boss stands and casts; circles fall one by one near the Knight (each warns, then hits).</summary>
+        private void BeginRain(int index)
+        {
+            FaceKnight();
+            BeginWindUp(index); // the wind-up time is each circle's warning
+            CurrentAttack = Attack.Casting;
+            _rainPool = RainPool;
+            _rainPlaced = 0;
+            _rainLive = 0;
+            _rainNext = 0f;
+        }
+
+        private void TickRain(float dt)
+        {
+            _time += dt;
+            int count = Mathf.Min(_attack.count, MaxRain);
+            while (_rainPlaced < count && _time >= _rainNext)
+            {
+                PlaceRain(_rainPlaced++);
+                _rainNext += Mathf.Max(0f, _attack.interval);
+            }
+            for (int i = 0; i < _rainPlaced; i++)
+            {
+                var circle = _rain[i];
+                if (circle == null) continue;
+                _rainAge[i] += dt;
+                if (_rainAge[i] < _windUp)
+                {
+                    circle.SetProgress(_rainAge[i] / _windUp);
+                    continue;
+                }
+                float dealt = 0f;
+                if (player != null && !player.IsDead && PlanarDistance(player.transform.position, _rainAt[i]) <= _attack.radius)
+                    dealt = player.TakeDamage(data.DamageFor(_attack.damage, player.Max));
+                circle.Flash();
+                if (_rainPool != null) _rainPool.Release(circle);
+                _rain[i] = null;
+                _rainLive--;
+                RainStruck?.Invoke(_rainAt[i], dealt);
+            }
+            if (_rainPlaced >= count && _rainLive == 0) BeginRecover(_attack.recover, _attack.cooldown);
+        }
+
+        /// <summary>Rain circle <paramref name="i"/>: on the Knight (the first) or within the scatter of it. None free = skipped.</summary>
+        private void PlaceRain(int i)
+        {
+            _rain[i] = null;
+            _rainAge[i] = 0f;
+            var circle = _rainPool != null ? _rainPool.RentCircle() : null;
+            if (circle == null) return;
+            Vector3 at = player.transform.position;
+            if (i > 0)
+            {
+                Vector2 off = UnityEngine.Random.insideUnitCircle * _attack.reach;
+                at += new Vector3(off.x, 0f, off.y);
+            }
+            if (!float.IsInfinity(Enemy.LandMaxZ)) at.z = Mathf.Min(at.z, Enemy.LandMaxZ - _attack.radius * 0.5f);
+            _rainAt[i] = at;
+            _rain[i] = circle;
+            _rainLive++;
+            circle.Show(at, _attack.radius);
+            RainWarned?.Invoke(at, _attack.radius);
+        }
+
+        /// <summary>Hides and returns every live rain circle (Knight died, boss died, fight disabled).</summary>
+        private void CancelRain()
+        {
+            for (int i = 0; i < MaxRain; i++)
+            {
+                var circle = _rain[i];
+                if (circle == null) continue;
+                circle.Hide();
+                if (_rainPool != null) _rainPool.Release(circle);
+                _rain[i] = null;
+            }
+            _rainLive = 0;
+        }
+
+        /// <summary>
+        /// Debug menu and dev screenshots (KAN-116): adds <paramref name="entry"/> to this fight's list (a copy; the asset
+        /// stays as it is) and returns its index. Allocates: not for gameplay.
+        /// </summary>
+        public int AddAttack(in BossAttack entry)
+        {
+            int n = _attacks.Length;
+            Array.Resize(ref _attacks, n + 1);
+            Array.Resize(ref _lastUsed, n + 1);
+            Array.Resize(ref _failed, n + 1);
+            _attacks[n] = entry;
+            _lastUsed[n] = -NeverUsed;
+            return n;
+        }
+
         private void BeginRecover(float seconds, float cooldown)
         {
             CurrentAttack = Attack.Recover;
@@ -854,7 +1107,8 @@ namespace SurvivorSouls.Gameplay.Boss
                 HoldKnight(false);
                 IntroEnded?.Invoke();
             }
-            if (CurrentAttack == Attack.WindUp || CurrentAttack == Attack.Spinning) HideWarnings();
+            if (CurrentAttack == Attack.WindUp || CurrentAttack == Attack.Spinning || CurrentAttack == Attack.Casting) HideWarnings();
+            CancelRain();
             _pullLeft = 0f;
             if (projectiles != null) projectiles.Clear(); // the fight is over: no bolt lands after the kill
             CurrentAttack = Attack.Chase;

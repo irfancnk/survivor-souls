@@ -6,7 +6,7 @@ using UnityEngine;
 namespace SurvivorSouls.Gameplay.Boss
 {
     /// <summary>
-    /// Boss fan bolts (KAN-61). No GameObject per bolt: a struct array (fixed capacity, swap-remove), drawn as billboards
+    /// Boss fan bolts (KAN-61), nova rings and spirals (KAN-116). No GameObject per bolt: a struct array (fixed capacity, swap-remove), drawn as billboards
     /// of ONE particle system through <see cref="ParticleSystem.SetParticles(ParticleSystem.Particle[], int)"/>: a hot
     /// ember head and two fading ghosts behind it (a cheap trail). One draw call for any count, no lights, no allocation.
     /// <list type="bullet">
@@ -83,27 +83,42 @@ namespace SurvivorSouls.Gameplay.Boss
         /// </summary>
         public int FireVolley(Vector3 origin, Vector3[] directions, int count, float speed, float distance, float damage, float hitRadius)
         {
+            NewVolley();
+            int fired = 0;
+            for (int i = 0; i < count; i++)
+                if (Fire(origin, directions[i], speed, distance, damage, hitRadius)) fired++;
+            return fired;
+        }
+
+        /// <summary>
+        /// Starts a new volley: the bolts <see cref="Fire"/> adds from now on share one hit (KAN-116: a whole spiral is one
+        /// volley, so its stream of bolts never stacks into an instant kill).
+        /// </summary>
+        public void NewVolley()
+        {
             Allocate();
             _volley++;
-            int fired = 0;
-            Vector3 start = new Vector3(origin.x, origin.y + FlightHeight, origin.z);
-            for (int i = 0; i < count && _count < capacity; i++)
+        }
+
+        /// <summary>
+        /// One bolt into the current volley from <paramref name="origin"/> (ground point under the boss) along
+        /// <paramref name="direction"/>. False when the pool is full or the direction is zero.
+        /// </summary>
+        public bool Fire(Vector3 origin, Vector3 direction, float speed, float distance, float damage, float hitRadius)
+        {
+            Allocate();
+            direction.y = 0f;
+            if (_count >= capacity || direction.sqrMagnitude < 0.0001f) return false;
+            _bolts[_count++] = new Projectile
             {
-                Vector3 dir = directions[i];
-                dir.y = 0f;
-                if (dir.sqrMagnitude < 0.0001f) continue;
-                _bolts[_count++] = new Projectile
-                {
-                    Position = start,
-                    Velocity = dir.normalized * speed,
-                    Left = distance,
-                    Damage = damage,
-                    HitRadius = hitRadius,
-                    Volley = _volley,
-                };
-                fired++;
-            }
-            return fired;
+                Position = new Vector3(origin.x, origin.y + FlightHeight, origin.z),
+                Velocity = direction.normalized * speed,
+                Left = distance,
+                Damage = damage,
+                HitRadius = hitRadius,
+                Volley = _volley,
+            };
+            return true;
         }
 
         /// <summary>Removes every bolt (boss died, fight over).</summary>
