@@ -132,6 +132,11 @@ namespace SurvivorSouls.Gameplay.Boss
         public const float VanishTime = 0.35f;
         private const float VanishScale = 0.05f;
         private const float MinTeleportMove = 3f;   // a teleport always moves the boss at least this far
+        /// <summary>
+        /// Teleport points within this many metres sideways of the Knight come first: the portrait view is only ~11 m wide,
+        /// so the warning circle and the boss stay on screen (in front of or behind the Knight).
+        /// </summary>
+        public const float TeleportMaxSide = 4f;
         private const float SummonClearRadius = 0.5f;
 
         [SerializeField] private BossData data;
@@ -1300,8 +1305,9 @@ namespace SurvivorSouls.Gameplay.Boss
         }
 
         /// <summary>
-        /// A walkable ground point <paramref name="distance"/> m from the Knight (random side, 12 tries round it), on land, at
-        /// least 3 m from where the boss stands. False when there is none.
+        /// A walkable ground point <paramref name="distance"/> m from the Knight, on land, at least 3 m from where the boss
+        /// stands: in front of or behind the Knight first (at most <see cref="TeleportMaxSide"/> m sideways, so it stays on the
+        /// portrait screen), else any side. 24 tries per pass from a random start. False when there is none.
         /// </summary>
         private bool FindTeleportPoint(float distance, out Vector3 point)
         {
@@ -1309,16 +1315,19 @@ namespace SurvivorSouls.Gameplay.Boss
             Vector3 from = _boss.transform.position;
             var walk = Enemy.Walkability;
             float start = UnityEngine.Random.value * 360f;
-            for (int i = 0; i < SpawnTries; i++)
-            {
-                float rad = (start + i * 360f / SpawnTries) * Mathf.Deg2Rad;
-                Vector3 p = Clamp(knight + new Vector3(Mathf.Sin(rad), 0f, Mathf.Cos(rad)) * Mathf.Max(1f, distance));
-                p.y = knight.y;
-                if (walk != null && walk.IsBlocked(p, SpawnClearRadius)) continue;
-                if (PlanarDistance(p, from) < MinTeleportMove) continue;
-                point = p;
-                return true;
-            }
+            const int tries = SpawnTries * 2;
+            for (int pass = 0; pass < 2; pass++)
+                for (int i = 0; i < tries; i++)
+                {
+                    float rad = (start + i * 360f / tries) * Mathf.Deg2Rad;
+                    Vector3 p = Clamp(knight + new Vector3(Mathf.Sin(rad), 0f, Mathf.Cos(rad)) * Mathf.Max(1f, distance));
+                    p.y = knight.y;
+                    if (pass == 0 && Mathf.Abs(p.x - knight.x) > TeleportMaxSide) continue;
+                    if (walk != null && walk.IsBlocked(p, SpawnClearRadius)) continue;
+                    if (PlanarDistance(p, from) < MinTeleportMove) continue;
+                    point = p;
+                    return true;
+                }
             point = from;
             return false;
         }

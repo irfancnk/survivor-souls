@@ -452,6 +452,8 @@ namespace SurvivorSouls.Tests
             Assert.That(Planar(_telegraph.Centre, to), Is.LessThan(0.01f), "the circle warns where it comes back");
             Assert.That(Planar(to, _player.transform.position), Is.EqualTo(7f).Within(0.01f), "7 m from the Knight");
             Assert.That(Planar(to, Vector3.zero), Is.GreaterThanOrEqualTo(3f), "a real move");
+            Assert.That(Mathf.Abs(to.x - _player.transform.position.x), Is.LessThanOrEqualTo(BossFight.TeleportMaxSide + 1e-3f),
+                "in front of or behind the Knight: stays on the portrait screen");
             Assert.That(_fight.Boss.transform.localScale.x, Is.EqualTo(size.x).Within(1e-4f), "full size early in the wind-up");
 
             Run(_fight.WindUpTime - 3f * Frame);
