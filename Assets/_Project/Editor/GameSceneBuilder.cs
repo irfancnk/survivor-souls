@@ -138,6 +138,7 @@ namespace SurvivorSouls.Editor
             SetRef(choice.GetComponent<CombatHud>(), "chestRewards", chests.GetComponent<SurvivorSouls.Gameplay.Chests.ChestRewards>()); // "+N SHARDS" pop (KAN-97)
             SetRef(audio, "skillHud", choice.GetComponent<SkillHud>()); // chime when a skill slot glows after a level-up (KAN-74)
             SetRef(audio, "boss", boss); // boss groans + slam thud
+            CreateChargeSounds(audio.gameObject, sfx, boss); // charge growl, dash, stop / crash (KAN-168)
             SetRef(audio, "hearts", hearts); // heal swell (KAN-60)
             SetRef(choice.gameObject.AddComponent<BossHud>(), "fight", boss); // boss bar in the timer's place
             SetRef(choice.gameObject.AddComponent<BossBannerHud>(), "fight", boss); // name at the intro, "felled" at the kill (KAN-62)
@@ -295,6 +296,20 @@ namespace SurvivorSouls.Editor
             so.FindProperty("ambience").objectReferenceValue = sfx.Ambience;
             so.ApplyModifiedPropertiesWithoutUndo();
             return audio;
+        }
+
+        /// <summary>Boss charge voices (KAN-168): growl loop that rises with the lane fill, scrape, dash, stop thud, wall crash.</summary>
+        private static void CreateChargeSounds(GameObject host, SfxBuilder.Set sfx, BossFight boss)
+        {
+            var sounds = host.AddComponent<ChargeSounds>();
+            var so = new SerializedObject(sounds);
+            so.FindProperty("boss").objectReferenceValue = boss;
+            so.FindProperty("rumble").objectReferenceValue = sfx.ChargeRumble;
+            SetClips(so.FindProperty("scrapes"), sfx.ChargeScrapes);
+            SetClips(so.FindProperty("dashes"), sfx.ChargeDashes);
+            SetClips(so.FindProperty("stops"), sfx.ChargeStops);
+            SetClips(so.FindProperty("crashes"), sfx.ChargeCrashes);
+            so.ApplyModifiedPropertiesWithoutUndo();
         }
 
         private static void SetClips(SerializedProperty array, AudioClip[] clips)

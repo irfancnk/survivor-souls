@@ -266,6 +266,8 @@ namespace SurvivorSouls.Gameplay.Boss
         public event Action<Vector3, int> FanFired;
         /// <summary>A charge winds up: start, direction, lane length.</summary>
         public event Action<Vector3, Vector3, float> ChargeWarned;
+        /// <summary>KAN-168: a charge dash starts moving (start, direction), right after its warning.</summary>
+        public event Action<Vector3, Vector3> DashStarted;
         /// <summary>A charge dash ended: where the boss stopped, damage dealt to the Knight (0 = dodged).</summary>
         public event Action<Vector3, float> Charged;
         /// <summary>KAN-108: a lane attack winds up: start, direction, length (after pillars), width.</summary>
@@ -330,6 +332,8 @@ namespace SurvivorSouls.Gameplay.Boss
         public float FightTime => _clock;
         /// <summary>Seconds of the current (or last) warning, after the phase 2 factor and the 0.6 s floor.</summary>
         public float WindUpTime => _windUp;
+        /// <summary>KAN-168: share of the current warning gone by, 0..1 (0 when no attack is winding up).</summary>
+        public float WindUpProgress => CurrentAttack == Attack.WindUp && _windUp > 0f ? Mathf.Clamp01(_time / _windUp) : 0f;
         /// <summary>The boss body (null until it spawns).</summary>
         public Enemy Boss => _boss;
         /// <summary>Boss health 0..1 (1 before it spawns, 0 once defeated).</summary>
@@ -933,6 +937,7 @@ namespace SurvivorSouls.Gameplay.Boss
             _dashHit = false;
             _dashDealt = 0f;
             _time = 0f;
+            DashStarted?.Invoke(_attackOrigin, _attackDir);
         }
 
         private void TickDash(float dt)

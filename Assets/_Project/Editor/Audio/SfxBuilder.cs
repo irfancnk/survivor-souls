@@ -28,6 +28,10 @@ namespace SurvivorSouls.Editor.Audio
             public AudioClip[] HeartHeals;
             /// <summary>Level-up re-roll (KAN-67): cards flip to a new offer.</summary>
             public AudioClip[] Rerolls;
+            /// <summary>Boss charge (KAN-168): heavy foot-scrape at the warning, dash whoosh + clank + grunt, stop thud, wall crash.</summary>
+            public AudioClip[] ChargeScrapes, ChargeDashes, ChargeStops, ChargeCrashes;
+            /// <summary>Boss charge wind-up growl (KAN-168): seamless loop, pitch raised with the lane fill at runtime.</summary>
+            public AudioClip ChargeRumble;
             public AudioClip Ambience, PortalHum;
             /// <summary>Skill card reveal per tier (KAN-37), index = SkillRarity: Common, Rare, Epic, Legendary.</summary>
             public AudioClip[] RarityReveals;
@@ -58,6 +62,10 @@ namespace SurvivorSouls.Editor.Audio
                 PortalOpens = Many("sfx_portal_open", 1, PortalOpen),
                 PortalEnters = Many("sfx_portal_enter", 1, PortalEnter),
                 ChamberArrives = Many("sfx_chamber_arrive", 1, ChamberArrive),
+                ChargeScrapes = Many("sfx_charge_scrape", 1, ChargeScrape),
+                ChargeDashes = Many("sfx_charge_dash", 2, ChargeDash),
+                ChargeStops = Many("sfx_charge_stop", 1, ChargeStop),
+                ChargeCrashes = Many("sfx_charge_crash", 1, ChargeCrash),
             };
             set.RarityReveals = new[]
             {
@@ -68,6 +76,7 @@ namespace SurvivorSouls.Editor.Audio
             };
             set.Ambience = Save("amb_shore_wind_surf_loop", AmbienceRate, ShoreAmbience(AmbienceRate, 24f, 9), ambience: true);
             set.PortalHum = Save("amb_portal_hum_loop", AmbienceRate, PortalHum(AmbienceRate, 4f, 13), ambience: true);
+            set.ChargeRumble = Save("amb_charge_rumble_loop", AmbienceRate, ChargeRumble(AmbienceRate, 2f, 17), ambience: false);
             return set;
         }
 
@@ -479,6 +488,141 @@ namespace SurvivorSouls.Editor.Audio
             for (int n = 0; n < ratio.Length; n++)
                 Sweep(b, 0.08f, len - 0.1f, f * ratio[n], f * ratio[n] * 0.998f, amp[n], decay[n], 1);
             return Normalize(b, 0.8f);
+        }
+
+        // ------------------------------------------------------------ Boss charge (KAN-168)
+
+        /// <summary>
+        /// Boss charge wind-up growl (seamless 2 s loop): two low saws (55 + 82.5 Hz) through a low-pass with a throat
+        /// flutter (7 Hz), a deep noise rumble under it. The tail is crossfaded into the start, so it loops without a seam.
+        /// The runtime raises its pitch and volume with the lane fill.
+        /// </summary>
+        private static float[] ChargeRumble(int rate, float seconds, int seed)
+        {
+            var rng = new System.Random(seed);
+            int n = (int)(rate * seconds);
+            var b = new float[n];
+            var growl = new Biquad(); growl.SetLowPass(380f, 1.4f, rate);
+            var rumble = new Biquad(); rumble.SetLowPass(110f, 0.8f, rate);
+            double p1 = 0, p2 = 0;
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)rate;
+                p1 += 55f / rate;
+                p2 += 82.5f / rate;
+                float flutter = 0.65f + 0.35f * Mathf.Sin(t * Mathf.PI * 2f * 7f);
+                float saw = Saw(p1) * 0.6f + Saw(p2) * 0.35f;
+                b[i] = growl.Process(saw) * flutter + rumble.Process(Noise(rng)) * 1.6f;
+            }
+            int fade = rate / 4;
+            for (int i = 0; i < fade; i++)
+            {
+                float w = i / (float)fade;
+                b[i] = b[i] * w + b[n - fade + i] * (1f - w);
+            }
+            var loop = new float[n - fade];
+            Array.Copy(b, loop, loop.Length);
+            float max = 1e-6f;
+            foreach (float x in loop) max = Mathf.Max(max, Mathf.Abs(x));
+            for (int i = 0; i < loop.Length; i++) loop[i] *= 0.7f / max;
+            return loop;
+        }
+
+        /// <summary>Heavy foot plants and scrapes back through grit as the boss braces (~0.55 s): low thud, gritty scrape, crunch.</summary>
+        private static float[] ChargeScrape(int seed)
+        {
+            var rng = new System.Random(seed * 4111);
+            float len = 0.55f;
+            var b = new float[(int)(Rate * len)];
+            Sweep(b, 0f, 0.25f, 92f, 58f, 0.8f, 14f, 2);                       // foot plant
+            NoiseBurst(b, 0f, 0.12f, 0.45f, 70f, 420f, 24f, rng);
+            var bp = new Biquad();
+            float grit = 1f;
+            for (int i = (int)(Rate * 0.04f); i < b.Length; i++)
+            {
+                float t = i / (float)Rate, k = (t - 0.04f) / (len - 0.04f);
+                if (i % (Rate / 180) == 0) grit = 0.45f + (float)rng.NextDouble() * 0.9f;  // uneven ground
+                float env = Mathf.SmoothStep(0f, 1f, k / 0.15f) * (1f - k) * (1f - k);
+                bp.SetBandPass(Mathf.Lerp(1400f, 650f, k), 1.1f, Rate);
+                b[i] += bp.Process(Noise(rng)) * env * grit * 0.7f;
+            }
+            for (int i = 0; i < 6; i++)                                         // stones kicked
+                Click(b, 0.06f + (float)rng.NextDouble() * 0.35f, 0.005f, 0.18f, 3200f, rng);
+            return Normalize(b, 0.8f);
+        }
+
+        /// <summary>
+        /// The dash (~0.75 s): heavy whoosh (band-passed noise swelling up and down), armour clank (clicks + inharmonic
+        /// plate ring) and a short low grunt (saw through two formants).
+        /// </summary>
+        private static float[] ChargeDash(int seed)
+        {
+            var rng = new System.Random(seed * 4219);
+            float len = 0.75f;
+            var b = new float[(int)(Rate * len)];
+            float v = 1f + (float)(rng.NextDouble() - 0.5) * 0.1f;
+            var bp = new Biquad();
+            for (int i = 0; i < b.Length; i++)
+            {
+                float t = i / (float)Rate, k = t / len;
+                float env = Mathf.Sin(Mathf.Min(1f, k / 0.85f) * Mathf.PI);
+                bp.SetBandPass(Mathf.Lerp(260f, 900f, Mathf.Sin(k * Mathf.PI)) * v, 0.9f, Rate);
+                b[i] += bp.Process(Noise(rng)) * env * env * 1.1f;
+            }
+            float[] plate = { 1240f, 1873f, 2650f };
+            for (int n = 0; n < plate.Length; n++)                              // armour plates knock and ring
+                Sweep(b, 0.015f, 0.3f, plate[n] * v, plate[n] * v * 0.995f, 0.12f / (n + 1), 16f, 1);
+            Click(b, 0.01f, 0.006f, 0.45f, 4200f, rng);
+            Click(b, 0.1f, 0.006f, 0.3f, 3800f, rng);
+            var f1 = new Biquad(); var f2 = new Biquad();                       // grunt
+            f1.SetBandPass(520f, 5f, Rate); f2.SetBandPass(950f, 6f, Rate);
+            double phase = 0;
+            int g0 = (int)(Rate * 0.02f), g1 = (int)(Rate * 0.32f);
+            for (int i = g0; i < g1; i++)
+            {
+                float k = (i - g0) / (float)(g1 - g0);
+                phase += Mathf.Lerp(98f, 72f, k) * v / Rate;
+                float src = Saw(phase) * 0.5f + Noise(rng) * 0.3f;
+                float env = Mathf.SmoothStep(0f, 1f, k / 0.12f) * (1f - k);
+                b[i] += (f1.Process(src) + f2.Process(src) * 0.5f) * env * 1.3f;
+            }
+            return Normalize(b, 0.85f);
+        }
+
+        /// <summary>The dash ends on open ground (~0.6 s): dull thud, skid through snow and grit.</summary>
+        private static float[] ChargeStop(int seed)
+        {
+            var rng = new System.Random(seed * 4327);
+            var b = new float[(int)(Rate * 0.6f)];
+            Sweep(b, 0f, 0.35f, 86f, 42f, 0.9f, 10f, 2);
+            NoiseBurst(b, 0f, 0.18f, 0.55f, 60f, 480f, 16f, rng);
+            NoiseBurst(b, 0.01f, 0.4f, 0.28f, 450f, 2600f, 8f, rng);           // skid
+            for (int i = 0; i < 4; i++)
+                Click(b, 0.03f + (float)rng.NextDouble() * 0.2f, 0.005f, 0.14f, 3000f, rng);
+            return Normalize(b, 0.85f);
+        }
+
+        /// <summary>
+        /// The dash slams into a pillar or the wall (~1 s): crack, very low heavy thud, stone debris that trickles down,
+        /// one short armour ring.
+        /// </summary>
+        private static float[] ChargeCrash(int seed)
+        {
+            var rng = new System.Random(seed * 4421);
+            float len = 1f;
+            var b = new float[(int)(Rate * len)];
+            Click(b, 0f, 0.008f, 0.8f, 5000f, rng);                             // stone cracks
+            Sweep(b, 0f, 0.6f, 72f, 32f, 1f, 6f, 2);                           // body hits stone
+            NoiseBurst(b, 0f, 0.35f, 0.7f, 40f, 360f, 9f, rng);
+            NoiseBurst(b, 0.005f, 0.25f, 0.25f, 800f, 3400f, 14f, rng);
+            Sweep(b, 0.01f, 0.35f, 1520f, 1505f, 0.08f, 12f, 1);               // armour ring
+            for (int i = 0; i < 12; i++)                                        // debris falls, fewer and softer
+            {
+                float k = i / 12f;
+                Click(b, 0.06f + k * 0.75f + (float)rng.NextDouble() * 0.05f, 0.006f, 0.3f * (1f - k) + 0.05f,
+                    2400f + (float)rng.NextDouble() * 2600f, rng);
+            }
+            return Normalize(b, 0.92f);
         }
 
         /// <summary>
