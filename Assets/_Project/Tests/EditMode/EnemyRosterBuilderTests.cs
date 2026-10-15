@@ -91,6 +91,29 @@ namespace SurvivorSouls.Tests
                     Is.EqualTo(EnemyRosterBuilder.HitPlayTime).Within(0.01f));
         }
 
+        /// <summary>
+        /// KAN-162: every roster controller and the Warden's zombie controller carry a still Stand pose (the walk clip at
+        /// speed 0), so a boss recovers standing instead of looping its move clip in place. The bosses also have Roar (crash).
+        /// </summary>
+        [Test]
+        public void Controller_HasTheStillStandPose([ValueSource(nameof(StandControllers))] string path)
+        {
+            var controller = AssetDatabase.LoadAssetAtPath<AnimatorController>(path);
+            Assert.That(controller, Is.Not.Null, path);
+            var stand = State(controller, Enemy.StandState);
+            Assert.That(stand, Is.Not.Null, "Stand state");
+            Assert.That(stand.speed, Is.EqualTo(0f), "still pose");
+            Assert.That(stand.motion, Is.SameAs(controller.layers[0].stateMachine.defaultState.motion), "the walk clip");
+            var spec = EnemyRosterBuilder.Roster.FirstOrDefault(s => s.ControllerPath == path);
+            if (spec != null && spec.Boss) Assert.That(State(controller, "Roar"), Is.Not.Null, "crash pose");
+        }
+
+        private static string[] StandControllers =>
+            Ids.Select(id => EnemyRosterBuilder.Find(id).ControllerPath)
+                .Append(AssetDatabase.GetAssetPath(AssetDatabase.LoadAssetAtPath<Enemy>("Assets/_Project/Prefabs/Combat/Enemy_ZombieBoss.prefab")
+                    .Animator.runtimeAnimatorController))
+                .ToArray();
+
         [Test]
         public void Prefab_SizeMatchesTheRosterDoc([ValueSource(nameof(Ids))] string id)
         {
