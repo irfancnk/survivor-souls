@@ -263,7 +263,7 @@ namespace SurvivorSouls.Editor
             for (int i = 0; i < values.Count; i++) array.GetArrayElementAtIndex(i).objectReferenceValue = values[i];
         }
 
-        /// <summary>Procedural sound set (shots, impacts, marker ticks, deaths, snow footsteps, soul chimes, level-up, boon pick, portal horn, wind + surf ambience) on one audio object.</summary>
+        /// <summary>Procedural sound set (shots, impacts, marker ticks, deaths, soul chimes, level-up, boon pick, portal horn, wind + surf ambience) on one audio object.</summary>
         private static GameAudio CreateAudio(SfxBuilder.Set sfx, AutoShooter shooter, PlayerMover mover, PlayerHealth health,
             ProgressionBuilder.Result progression, SkillManager skills, SurvivalTimer timer, ChamberTransition transition)
         {
@@ -293,7 +293,7 @@ namespace SurvivorSouls.Editor
             SetClips(so.FindProperty("shots"), sfx.Shots);
             SetClips(so.FindProperty("impacts"), sfx.Impacts);
             SetClips(so.FindProperty("deaths"), sfx.Deaths);
-            SetClips(so.FindProperty("footsteps"), sfx.Footsteps);
+            SetClips(so.FindProperty("footsteps"), System.Array.Empty<AudioClip>()); // KAN-15: footsteps removed (hook kept for KAN-32 / KAN-81)
             SetClips(so.FindProperty("hitMarkers"), sfx.HitMarkers);
             SetClips(so.FindProperty("killMarkers"), sfx.KillMarkers);
             so.FindProperty("ambience").objectReferenceValue = sfx.Ambience;
