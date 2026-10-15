@@ -48,9 +48,13 @@ namespace SurvivorSouls.Gameplay.Skills
         [SerializeField] private Guarantee[] guarantees = new Guarantee[0];
         [Tooltip("Pity (KAN-37): at least one Rare or better card in every N offers in a row. 0 = off.")]
         [SerializeField, Min(0)] private int pityOffers = 3;
+        [Tooltip("Re-rolls of the level-up offer per run (KAN-67). Unused ones carry to the next level-up; a new run resets them.")]
+        [SerializeField, Min(0)] private int rerollsPerRun = 2;
 
         public IReadOnlyList<Tier> Tiers => tiers;
         public int PityOffers => pityOffers;
+        /// <summary>Level-up re-rolls the player gets at the start of a run (KAN-67); more come from <c>RunState.AddRerolls</c>.</summary>
+        public int RerollsPerRun => rerollsPerRun;
 
         /// <summary>The tier whose odds apply at <paramref name="level"/>: highest fromLevel at or below it, else the lowest tier.</summary>
         public Tier ActiveTier(int level)
@@ -116,11 +120,12 @@ namespace SurvivorSouls.Gameplay.Skills
         }
 
         /// <summary>Code-side setup (asset builder, tests).</summary>
-        public void Configure(Tier[] tierTable, Guarantee[] guaranteeTable = null, int pity = 3)
+        public void Configure(Tier[] tierTable, Guarantee[] guaranteeTable = null, int pity = 3, int rerolls = 2)
         {
             tiers = tierTable ?? new Tier[0];
             guarantees = guaranteeTable ?? new Guarantee[0];
             pityOffers = Mathf.Max(0, pity);
+            rerollsPerRun = Mathf.Max(0, rerolls);
         }
     }
 }

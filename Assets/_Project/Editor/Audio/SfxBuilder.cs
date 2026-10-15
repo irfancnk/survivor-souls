@@ -26,6 +26,8 @@ namespace SurvivorSouls.Editor.Audio
             public AudioClip[] SkillUpgrades;
             /// <summary>Boss fight healing heart picked up (KAN-60).</summary>
             public AudioClip[] HeartHeals;
+            /// <summary>Level-up re-roll (KAN-67): cards flip to a new offer.</summary>
+            public AudioClip[] Rerolls;
             public AudioClip Ambience, PortalHum;
             /// <summary>Skill card reveal per tier (KAN-37), index = SkillRarity: Common, Rare, Epic, Legendary.</summary>
             public AudioClip[] RarityReveals;
@@ -52,6 +54,7 @@ namespace SurvivorSouls.Editor.Audio
                 ChestOpens = Many("sfx_chest_open", 1, ChestOpen),
                 SkillUpgrades = Many("sfx_skill_upgrade", 1, SkillUpgrade),
                 HeartHeals = Many("sfx_heart_heal", 1, HeartHeal),
+                Rerolls = Many("sfx_card_reroll", 1, CardReroll),
                 PortalOpens = Many("sfx_portal_open", 1, PortalOpen),
                 PortalEnters = Many("sfx_portal_enter", 1, PortalEnter),
                 ChamberArrives = Many("sfx_chamber_arrive", 1, ChamberArrive),
@@ -235,6 +238,31 @@ namespace SurvivorSouls.Editor.Audio
             for (int i = 0; i < 9; i++)                                        // ember crackle
                 Click(b, 0.12f + (float)rng.NextDouble() * 0.45f, 0.004f, 0.12f + (float)rng.NextDouble() * 0.1f, 4200f, rng);
             return Normalize(b, 0.8f);
+        }
+
+        /// <summary>
+        /// Level-up re-roll (KAN-67, ~0.45 s): three quick card flicks (paper snaps) over an airy whoosh rising then falling,
+        /// and a soft wooden die knock with a faint A5 ring at the end, as the new cards open.
+        /// </summary>
+        private static float[] CardReroll(int seed)
+        {
+            var rng = new System.Random(seed * 1171);
+            float len = 0.5f;
+            var b = new float[(int)(Rate * len)];
+            var bp = new Biquad();
+            for (int i = 0; i < (int)(Rate * 0.34f); i++)                      // whoosh: band sweeps up then down
+            {
+                float t = i / (float)Rate, k = t / 0.34f;
+                float env = Mathf.Sin(k * Mathf.PI);
+                bp.SetBandPass(Mathf.Lerp(700f, 3600f, Mathf.Sin(k * Mathf.PI)), 1.1f, Rate);
+                b[i] += bp.Process(Noise(rng)) * env * env * 0.7f;
+            }
+            for (int i = 0; i < 3; i++)                                        // card flicks
+                NoiseBurst(b, 0.04f + i * 0.06f, 0.03f, 0.35f, 2200f, 7500f, 120f, rng);
+            NoiseBurst(b, 0.3f, 0.06f, 0.4f, 150f, 1400f, 60f, rng);             // die knock
+            Sweep(b, 0.3f, 0.12f, 220f, 180f, 0.3f, 30f, 2);                     // knock body
+            Sweep(b, 0.31f, 0.19f, 880f, 880f, 0.07f, 14f, 1);                   // A5 ring
+            return Normalize(b, 0.7f);
         }
 
         /// <summary>

@@ -64,6 +64,27 @@ namespace SurvivorSouls.Gameplay.Chamber
         /// menu banks once, later calls bank nothing. Reset by <see cref="NewRun"/>.
         /// </summary>
         public static bool SoulsBanked { get; private set; }
+        /// <summary>Level-up re-rolls spent this run (KAN-67). Survives Chamber reloads, reset by <see cref="NewRun"/>.</summary>
+        public static int RerollsUsed { get; private set; }
+        /// <summary>Re-rolls given this run on top of the per-run count (<see cref="AddRerolls"/>: debug now, relics / rewards later).</summary>
+        public static int BonusRerolls { get; private set; }
+
+        /// <summary>Re-rolls left this run when the run starts with <paramref name="perRun"/> (<c>SkillProgression.RerollsPerRun</c>).</summary>
+        public static int RerollsLeft(int perRun) => Mathf.Max(0, Mathf.Max(0, perRun) + BonusRerolls - RerollsUsed);
+
+        /// <summary>Gives <paramref name="count"/> more re-rolls for the rest of this run (a future skill, relic or reward; debug).</summary>
+        public static void AddRerolls(int count)
+        {
+            if (count > 0) BonusRerolls += count;
+        }
+
+        /// <summary>Spends one re-roll. False (nothing spent) when none is left.</summary>
+        public static bool TryUseReroll(int perRun)
+        {
+            if (RerollsLeft(perRun) <= 0) return false;
+            RerollsUsed++;
+            return true;
+        }
 
         /// <summary>Start of a run: Chamber 1 of <paramref name="realm"/>, nothing carried. <paramref name="seed"/> 0 = random.</summary>
         public static void NewRun(int realm = 1, int seed = 0)
@@ -73,6 +94,8 @@ namespace SurvivorSouls.Gameplay.Chamber
             RunSeed = seed != 0 ? seed : NewSeed();
             _carry = null;
             SoulsBanked = false;
+            RerollsUsed = 0;
+            BonusRerolls = 0;
         }
 
         /// <summary>True once per run: the caller banks the souls now. False when this run was already banked.</summary>

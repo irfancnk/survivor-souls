@@ -617,6 +617,85 @@
     background-color: rgba(48, 40, 30, 0.98);
 }
 
+/* Re-roll (KAN-67): rounded stone button under the cards, gold rim, white die with 3 pips, count in soul blue.
+   Disabled (0 left / no other skill) = dimmed, no rim glow. 96 px tall = well above the 48 dp touch minimum. */
+.skills__actions {
+    flex-shrink: 0;
+    flex-direction: row;
+    justify-content: center;
+    margin-top: 44px;
+}
+
+.unity-button.skills__reroll {
+    flex-direction: row;
+    align-items: center;
+    height: 104px;
+    min-width: 400px;
+    margin: 0;
+    padding: 0 40px 0 28px;
+    border-radius: 52px;
+    border-width: 3px;
+    border-color: rgba(232, 196, 120, 0.85);
+    background-color: rgba(26, 22, 20, 0.94);
+    background-image: none;
+    transition-property: background-color, scale;
+    transition-duration: 0.08s;
+}
+
+.unity-button.skills__reroll:hover {
+    background-color: rgba(36, 30, 26, 0.96);
+}
+
+.unity-button.skills__reroll:active {
+    background-color: rgba(60, 46, 30, 0.98);
+    scale: 0.96 0.96;
+}
+
+.unity-button.skills__reroll:disabled {
+    opacity: 0.42;
+    border-color: rgba(150, 146, 138, 0.5);
+}
+
+.skills__die {
+    width: 52px;
+    height: 52px;
+    margin-right: 20px;
+    border-radius: 12px;
+    background-color: rgb(236, 228, 210);
+    border-width: 2px;
+    border-color: rgb(120, 96, 60);
+    rotate: -12deg;
+}
+
+.skills__die-pip {
+    position: absolute;
+    width: 11px;
+    height: 11px;
+    border-radius: 6px;
+    background-color: rgb(110, 22, 18);
+}
+
+.skills__die-pip--a { left: 7px; top: 7px; }
+.skills__die-pip--b { left: 18px; top: 18px; }
+.skills__die-pip--c { left: 29px; top: 29px; }
+
+.skills__reroll-text {
+    font-size: 40px;
+    letter-spacing: 6px;
+    -unity-font-style: bold;
+    color: rgb(255, 228, 170);
+    padding: 0;
+    margin: 0;
+}
+
+.skills__reroll-count {
+    margin-left: 18px;
+    padding: 0;
+    font-size: 40px;
+    -unity-font-style: bold;
+    color: var(--hud-soul-glow);
+}
+
 /* Single-class rules so the rarity classes below (same specificity, later) override the defaults. */
 .skill-card { --card-rim: rgb(150, 146, 138); --card-glow: rgb(222, 216, 204); }
 .skill-card--common { --card-rim: rgb(150, 146, 138); --card-glow: rgb(222, 216, 204); }

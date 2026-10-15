@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using SurvivorSouls.Core;
+using SurvivorSouls.Gameplay.Chamber;
 using SurvivorSouls.Gameplay.Progression;
 using SurvivorSouls.Gameplay.Skills;
 using UnityEngine;
@@ -23,6 +25,12 @@ namespace SurvivorSouls.UI.Hud
     /// Rare chest: skills--chest-rare), owned skills from <see cref="SkillManager.RollUpgrades"/> only, badge
     /// "LV N → N+k" and the text of level N+k (k = the chest's levels, capped at max), a pick calls
     /// <see cref="SkillManager.Upgrade(SkillDefinition, int)"/> and raises <see cref="Upgraded"/>.
+    /// Re-roll (KAN-67, level-up only, hidden on the chest screen): button under the cards with the re-rolls left this run
+    /// (<see cref="SkillManager.RerollsLeft"/>, kept in <see cref="RunState"/>). A tap spends one, rolls a new offer without
+    /// the cards on screen (<see cref="SkillManager.Roll"/> with exclude), flips the cards shut and open again on the new
+    /// skills (tier reveal plays again) and raises <see cref="Rerolled"/> (whoosh) + a light haptic. Taps count after
+    /// <see cref="armDelay"/>, one per <see cref="rerollCooldown"/>, never during a flip. Disabled at 0 left, or with a hint
+    /// when no other skill could be offered. Key R re-rolls on desktop.
     /// </summary>
     [RequireComponent(typeof(UIDocument))]
     public sealed class SkillChoiceScreen : LevelUpChoice
@@ -30,6 +38,11 @@ namespace SurvivorSouls.UI.Hud
         private const string ScreenName = "skill-choice";
         private const string TitleName = "skill-choice-title";
         private const string SubName = "skill-choice-sub";
+        private const string RerollName = "skill-reroll";
+        private const string RerollTextName = "skill-reroll-text";
+        private const string RerollCountName = "skill-reroll-count";
+        public const string RerollText = "RE-ROLL";
+        public const string RerollNoneText = "NO OTHER BOONS";
         private const string ChestClass = "skills--chest";
         private const string RareChestClass = "skills--chest-rare";
         public const string BoonSubtitle = "CHOOSE AN EMBER BOON";
@@ -62,6 +75,13 @@ namespace SurvivorSouls.UI.Hud
         [Tooltip("Unscaled seconds for one shine sweep across a Legendary card (plus a short rest).")]
         [SerializeField, Min(0.1f)] private float shinePeriod = 2f;
         [SerializeField, Min(0.05f)] private float burstTime = 0.55f;
+        [Tooltip("Re-roll (KAN-67): unscaled seconds the old cards take to flip shut.")]
+        [SerializeField, Min(0.01f)] private float flipOut = 0.15f;
+        [Tooltip("Re-roll: unscaled seconds a new card takes to flip open.")]
+        [SerializeField, Min(0.01f)] private float flipIn = 0.2f;
+        [SerializeField, Min(0f)] private float flipStagger = 0.05f;
+        [Tooltip("Re-roll: a second tap within this many unscaled seconds is ignored (one tap = one re-roll).")]
+        [SerializeField, Min(0f)] private float rerollCooldown = 0.3f;
 
         private sealed class Card
         {
@@ -80,11 +100,24 @@ namespace SurvivorSouls.UI.Hud
         public event Action<SkillDefinition, int, int> Upgraded;
         /// <summary>A card landed on screen (once per card per offer): card index, its skill. GameAudio plays the tier sound.</summary>
         public event Action<int, SkillDefinition> CardRevealed;
+        /// <summary>A re-roll was spent (KAN-67): re-rolls left this run. GameAudio plays the whoosh.</summary>
+        public event Action<int> Rerolled;
 
         private readonly List<SkillDefinition> _options = new List<SkillDefinition>(MaxCards);
+        private readonly List<SkillDefinition> _next = new List<SkillDefinition>(MaxCards);
         private readonly Card[] _cards = new Card[MaxCards];
         private VisualElement _screen;
         private Label _title, _sub;
+        private Button _reroll;
+        private Label _rerollText, _rerollCount;
+        private int _level;
+        private bool _rerollPossible;
+        private int _shownLeft = -1;
+        private float _rerollAt;
+        private float _flip = -1f;
+        private bool _flipDeal;
+        private float _dealAt;
+        private float _armAt;
         private bool _upgradeMode;
         private int _levels = 1;
         private Action _onDone;
@@ -97,8 +130,20 @@ namespace SurvivorSouls.UI.Hud
         public bool IsUpgrade => IsShowing && _upgradeMode;
         public string Title => _title?.text;
         public string Subtitle => _sub?.text;
-        public bool IsArmed => _age >= armDelay && _picked < 0;
+        public bool IsArmed => _age >= armDelay && _age >= _armAt && _picked < 0 && _flip < 0f;
         public IReadOnlyList<SkillDefinition> Options => _options;
+        /// <summary>Re-rolls left this run (KAN-67).</summary>
+        public int RerollsLeft => skills != null ? skills.RerollsLeft : 0;
+        /// <summary>The re-roll button is shown: open as a level-up pick (not the chest screen).</summary>
+        public bool RerollShown => IsShowing && !_upgradeMode && _reroll != null;
+        /// <summary>A tap on re-roll would work now: level-up pick, armed, no flip, one left, another skill could be offered.</summary>
+        public bool CanReroll => IsShowing && !_upgradeMode && _picked < 0 && _flip < 0f && _age >= armDelay && _rerollPossible && RerollsLeft > 0;
+        /// <summary>The cards are flipping to a new offer (old ones shutting).</summary>
+        public bool IsFlipping => _flip >= 0f;
+        /// <summary>Re-roll button label and count as shown (tests, screenshots).</summary>
+        public string RerollLabel => _rerollText?.text;
+        public string RerollCountLabel => _rerollCount?.text;
+        public bool RerollEnabled => _reroll != null && _reroll.enabledSelf;
         public SkillRarityStyles Styles => styles;
 
         /// <summary>Tier name, gems, sound and flags for <paramref name="rarity"/> (asset entry or built-in default).</summary>
@@ -120,6 +165,10 @@ namespace SurvivorSouls.UI.Hud
             _screen = root?.Q(ScreenName);
             _title = root?.Q<Label>(TitleName);
             _sub = root?.Q<Label>(SubName);
+            _reroll = root?.Q<Button>(RerollName);
+            _rerollText = root?.Q<Label>(RerollTextName);
+            _rerollCount = root?.Q<Label>(RerollCountName);
+            if (_reroll != null) _reroll.clicked += OnRerollClicked;
             for (int i = 0; i < MaxCards; i++)
             {
                 var button = root?.Q<Button>(CardPrefix + i);
@@ -171,6 +220,7 @@ namespace SurvivorSouls.UI.Hud
             _pickAge = 0f;
             _upgradeMode = false;
             _levels = 1;
+            _level = level;
             if (skills == null || skills.Roll(choices, level, _options) == 0)
             {
                 Close(); // nothing left to offer: the level still counts, the run goes on
@@ -201,9 +251,15 @@ namespace SurvivorSouls.UI.Hud
         private void Open(string title, string subtitle, bool chest, bool rare)
         {
             _age = 0f;
+            _flip = -1f;
+            _flipDeal = false;
+            _dealAt = 0f;
+            _armAt = 0f;
+            _rerollAt = float.NegativeInfinity;
             if (_title != null) _title.text = title;
             if (_sub != null) _sub.text = subtitle;
             for (int i = 0; i < MaxCards; i++) Fill(_cards[i], i < _options.Count ? _options[i] : null);
+            RefreshReroll();
             if (_screen == null) return;
             _screen.EnableInClassList(ChestClass, chest);
             _screen.EnableInClassList(RareChestClass, chest && rare);
@@ -226,6 +282,57 @@ namespace SurvivorSouls.UI.Hud
             return true;
         }
 
+        private void OnRerollClicked() => Reroll();
+
+        /// <summary>
+        /// Spends one re-roll (KAN-67): new offer without the cards on screen, cards flip to it. False when not possible now
+        /// (<see cref="CanReroll"/>) or within <see cref="rerollCooldown"/> of the last one (double tap).
+        /// </summary>
+        public bool Reroll()
+        {
+            if (!CanReroll || _age - _rerollAt < rerollCooldown) return false;
+            if (skills.Roll(choices, _level, _next, _options) == 0) return false;
+            if (!RunState.TryUseReroll(skills.Progression != null ? skills.Progression.RerollsPerRun : 0)) return false;
+            _rerollAt = _age;
+            _flip = 0f;
+            Haptics.Light();
+            Rerolled?.Invoke(RerollsLeft);
+            RefreshRerollCount();
+            return true;
+        }
+
+        /// <summary>Old cards shut: show the new offer and flip it open (tier reveal again).</summary>
+        private void SwapOffer()
+        {
+            _flip = -1f;
+            _options.Clear();
+            _options.AddRange(_next);
+            _flipDeal = true;
+            _dealAt = _age;
+            _armAt = _age + flipIn * 0.5f;
+            for (int i = 0; i < MaxCards; i++) Fill(_cards[i], i < _options.Count ? _options[i] : null);
+            RefreshReroll();
+        }
+
+        /// <summary>Shows / hides the button, checks if another skill could be offered, sets text, count and enabled.</summary>
+        private void RefreshReroll()
+        {
+            _rerollPossible = !_upgradeMode && skills != null && skills.OfferableCount(_level) > _options.Count;
+            if (_reroll == null) return;
+            _reroll.style.display = _upgradeMode ? DisplayStyle.None : DisplayStyle.Flex;
+            if (_rerollText != null) _rerollText.text = _rerollPossible ? RerollText : RerollNoneText;
+            RefreshRerollCount();
+        }
+
+        private void RefreshRerollCount()
+        {
+            if (_reroll == null) return;
+            int left = RerollsLeft;
+            _shownLeft = left;
+            if (_rerollCount != null) _rerollCount.text = $"x{left}";
+            _reroll.SetEnabled(_rerollPossible && left > 0);
+        }
+
         private void Update() => Tick(Time.unscaledDeltaTime);
 
         /// <summary>Advances the open/pick animation. Public for tests (Update calls it with unscaled time).</summary>
@@ -233,6 +340,12 @@ namespace SurvivorSouls.UI.Hud
         {
             if (_age < 0f) return;
             _age += dt;
+            if (_flip >= 0f)
+            {
+                _flip += dt;
+                if (_flip >= flipOut) SwapOffer();
+            }
+            if (_reroll != null && !_upgradeMode && RerollsLeft != _shownLeft) RefreshRerollCount(); // debug / bonus re-rolls
             if (_picked < 0) ReadKeys();
             if (_picked >= 0)
             {
@@ -253,6 +366,7 @@ namespace SurvivorSouls.UI.Hud
             if (kb.digit1Key.wasPressedThisFrame) Choose(0);
             else if (kb.digit2Key.wasPressedThisFrame) Choose(1);
             else if (kb.digit3Key.wasPressedThisFrame) Choose(2);
+            else if (kb.rKey.wasPressedThisFrame) Reroll();
         }
 
         private void Close()
@@ -322,14 +436,17 @@ namespace SurvivorSouls.UI.Hud
             float fade = outK < 0.55f ? 1f : 1f - (outK - 0.55f) / 0.45f; // whole screen fades over the last part
             _screen.style.opacity = veil * fade;
 
+            // Re-roll flip (KAN-67): old cards shut along X, new ones open with a small overshoot; no rise.
+            float shut = _flip >= 0f ? Mathf.Cos(Mathf.Clamp01(_flip / flipOut) * Mathf.PI * 0.5f) : 1f;
             for (int i = 0; i < _options.Count && i < MaxCards; i++)
             {
                 var card = _cards[i];
                 if (card == null) continue;
-                float t = Mathf.Clamp01((_age - veilIn * 0.5f - i * cardStagger) / cardIn);
-                float rise = EaseOutBack(t);
-                float opacity = t;
+                float t = Mathf.Clamp01((_age - CardStart(i)) / CardLength);
+                float rise = _flipDeal ? 1f : EaseOutBack(t);
+                float opacity = _flipDeal ? 1f : t;
                 float scale = 0.9f + 0.1f * rise;
+                float flipX = (_flipDeal ? Mathf.Max(0f, EaseOutBack(t)) : 1f) * shut;
                 if (_picked >= 0)
                 {
                     if (i == _picked) scale *= 1f + 0.09f * Mathf.Sin(Mathf.Min(1f, outK * 1.6f) * Mathf.PI);
@@ -341,10 +458,16 @@ namespace SurvivorSouls.UI.Hud
                 }
                 card.Root.style.opacity = opacity;
                 card.Root.style.translate = new Translate(0f, (1f - rise) * cardRise);
-                card.Root.style.scale = new Scale(new Vector3(scale, scale, 1f));
+                card.Root.style.scale = new Scale(new Vector3(scale * flipX, scale, 1f));
                 AnimateTier(card, i, t);
             }
         }
+
+        /// <summary>Age at which card <paramref name="index"/> starts landing: rise-in on open, flip-open after a re-roll.</summary>
+        private float CardStart(int index) =>
+            _flipDeal ? _dealAt + index * flipStagger : veilIn * 0.5f + index * cardStagger;
+
+        private float CardLength => _flipDeal ? flipIn : cardIn;
 
         /// <summary>Reveal event once the card has landed, Legendary shine sweep and the ring + sparks burst.</summary>
         private void AnimateTier(Card card, int index, float t)
@@ -357,7 +480,7 @@ namespace SurvivorSouls.UI.Hud
             }
             var style = card.Style;
             if (style == null) return;
-            if (card.Revealed) card.RevealAge = _age - (veilIn * 0.5f + index * cardStagger + cardIn * RevealAt);
+            if (card.Revealed) card.RevealAge = _age - (CardStart(index) + CardLength * RevealAt);
 
             if (style.shine && card.Shine != null)
             {

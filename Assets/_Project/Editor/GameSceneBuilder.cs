@@ -277,6 +277,7 @@ namespace SurvivorSouls.Editor
             so.FindProperty("transition").objectReferenceValue = transition;
             SetClips(so.FindProperty("boonPicks"), sfx.BoonPicks);
             SetClips(so.FindProperty("chestDrops"), sfx.ChestDrops);
+            SetClips(so.FindProperty("rerolls"), sfx.Rerolls);
             SetClips(so.FindProperty("chestOpens"), sfx.ChestOpens);
             SetClips(so.FindProperty("skillUpgrades"), sfx.SkillUpgrades);
             SetClips(so.FindProperty("heartHeals"), sfx.HeartHeals);

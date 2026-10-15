@@ -81,6 +81,7 @@ namespace SurvivorSouls.Gameplay.Skills
         private readonly List<float> _weights = new List<float>(32);
         private readonly List<SkillDefinition> _forced = new List<SkillDefinition>(4);
         private readonly Dictionary<SkillDefinition, int> _upgradeOffers = new Dictionary<SkillDefinition, int>(16);
+        private readonly float[] _tierBefore = new float[RarityCount], _tierAfter = new float[RarityCount];
         private SkillContext _context;
         private System.Random _rng;
         private int _dryOffers;
@@ -312,8 +313,13 @@ namespace SurvivorSouls.Gameplay.Skills
         /// Fills <paramref name="results"/> with up to <paramref name="count"/> distinct skills that can still be taken at
         /// <paramref name="level"/>. Weighted by rarity odds times the skill's own weight, without replacement. Zero-weight
         /// skills only fill slots nothing else can. Fewer results when the pool runs dry. No allocation.
+        /// Re-roll (KAN-67): <paramref name="exclude"/> = the offer on screen. Those skills are left out while enough others
+        /// remain to fill <paramref name="count"/> cards (else as many as possible are left out, in order), and the level's
+        /// guaranteed skill is not forced again. Same tier odds (weights rescaled per tier, <see cref="ExcludeShown"/>) and
+        /// the same pity rule as a normal roll: a re-roll counts as one more offer for the pity counter, so it never makes
+        /// Epic / Legendary likelier than a normal offer.
         /// </summary>
-        public int Roll(int count, int level, List<SkillDefinition> results)
+        public int Roll(int count, int level, List<SkillDefinition> results, IReadOnlyList<SkillDefinition> exclude = null)
         {
             results.Clear();
             _lastRollPity = false;
@@ -331,7 +337,8 @@ namespace SurvivorSouls.Gameplay.Skills
             foreach (var s in _pool)
                 if (CanOffer(s)) _candidates.Add(s);
 
-            var guaranteed = progression.GuaranteedAt(level);
+            bool reroll = exclude != null && exclude.Count > 0;
+            var guaranteed = reroll ? null : progression.GuaranteedAt(level);
             if (guaranteed != null && guaranteed.DampsRepeats(GetLevel(guaranteed))) guaranteed = null; // no forced repeat
             if (guaranteed != null && CanOffer(guaranteed))
             {
@@ -342,6 +349,7 @@ namespace SurvivorSouls.Gameplay.Skills
             _weights.Clear();
             foreach (var s in _candidates)
                 _weights.Add(progression.RarityWeight(level, s.Rarity) * s.Weight * s.RepeatOfferWeight(GetLevel(s)));
+            if (reroll) ExcludeShown(exclude, count);
 
             while (results.Count < count && _candidates.Count > 0)
             {
@@ -375,6 +383,49 @@ namespace SurvivorSouls.Gameplay.Skills
             ApplyPity(results, guaranteed);
             return results.Count;
         }
+
+        /// <summary>
+        /// Re-roll (KAN-67): drops the shown skills from the candidates (in order, while more than <paramref name="count"/>
+        /// remain), then scales the weights left in each tier back to that tier's total before the drop, so the tier odds
+        /// stay those of a normal roll (the shown cards are mostly Common; without this a re-roll would lean Rare+).
+        /// A tier with nothing left loses its share.
+        /// </summary>
+        private void ExcludeShown(IReadOnlyList<SkillDefinition> exclude, int count)
+        {
+            for (int r = 0; r < RarityCount; r++) _tierBefore[r] = _tierAfter[r] = 0f;
+            for (int i = 0; i < _candidates.Count; i++) _tierBefore[(int)_candidates[i].Rarity] += _weights[i];
+            for (int e = 0; e < exclude.Count && _candidates.Count > count; e++)
+            {
+                int i = _candidates.IndexOf(exclude[e]);
+                if (i < 0) continue;
+                _candidates.RemoveAt(i);
+                _weights.RemoveAt(i);
+            }
+            for (int i = 0; i < _candidates.Count; i++) _tierAfter[(int)_candidates[i].Rarity] += _weights[i];
+            for (int i = 0; i < _candidates.Count; i++)
+            {
+                int r = (int)_candidates[i].Rarity;
+                if (_tierAfter[r] > 0f) _weights[i] *= _tierBefore[r] / _tierAfter[r];
+            }
+        }
+
+        /// <summary>
+        /// Skills a level-up roll at <paramref name="level"/> could offer right now (unlocked, not maxed, repeat rules).
+        /// The re-roll button (KAN-67) only works when this is more than the cards on screen. No allocation.
+        /// </summary>
+        public int OfferableCount(int level)
+        {
+            if (progression == null) return 0;
+            _pool.Clear();
+            progression.CollectPool(level, _pool);
+            int n = 0;
+            foreach (var s in _pool)
+                if (CanOffer(s)) n++;
+            return n;
+        }
+
+        /// <summary>Re-rolls left this run (KAN-67): the table's per-run count plus bonuses minus the ones spent.</summary>
+        public int RerollsLeft => SurvivorSouls.Gameplay.Chamber.RunState.RerollsLeft(progression != null ? progression.RerollsPerRun : 0);
 
         /// <summary>
         /// Chest upgrade screen (KAN-73): fills <paramref name="results"/> with up to <paramref name="count"/> distinct OWNED
@@ -489,19 +540,28 @@ namespace SurvivorSouls.Gameplay.Skills
         /// <summary>
         /// Debug view of the odds table (KAN-37): rolls <paramref name="offers"/> offers of <paramref name="count"/> cards at
         /// <paramref name="level"/> with the current owned skills and pity rule, then puts the pity counter back. Uses the
-        /// run's random stream (so call it from debug tools, not from gameplay).
+        /// run's random stream (so call it from debug tools, not from gameplay). <paramref name="reroll"/> (KAN-67): every
+        /// offer is re-rolled once (without its cards, as the re-roll button does) and only the re-rolled offers are counted,
+        /// so the tier shares can be compared with a plain roll.
         /// </summary>
-        public OfferStats SimulateOffers(int offers, int level, int count = 3)
+        public OfferStats SimulateOffers(int offers, int level, int count = 3, bool reroll = false)
         {
             var stats = new OfferStats { Level = level };
             int savedDry = _dryOffers;
             _forced.Clear();
             _dryOffers = 0;
             var offer = new List<SkillDefinition>(count);
+            var shown = reroll ? new List<SkillDefinition>(count) : null;
             int dry = 0;
             for (int n = 0; n < offers; n++)
             {
                 if (Roll(count, level, offer) == 0) break;
+                if (reroll)
+                {
+                    shown.Clear();
+                    shown.AddRange(offer);
+                    if (Roll(count, level, offer, shown) == 0) break;
+                }
                 stats.Offers++;
                 bool rarePlus = false;
                 foreach (var s in offer)

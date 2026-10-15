@@ -56,6 +56,7 @@ namespace SurvivorSouls.Audio
         [SerializeField] private AudioClip[] levelUps;
         [SerializeField] private AudioClip[] boonPicks;
         [SerializeField] private AudioClip[] chestDrops;
+        [SerializeField] private AudioClip[] rerolls;
         [SerializeField] private AudioClip[] chestOpens;
         [Tooltip("Owned skill levelled up: HUD glow chime (KAN-74).")]
         [SerializeField] private AudioClip[] skillUpgrades;
@@ -164,6 +165,7 @@ namespace SurvivorSouls.Audio
             {
                 skillChoice.CardRevealed += OnCardRevealed;
                 skillChoice.Upgraded += OnSkillUpgraded;
+                skillChoice.Rerolled += OnRerolled;
             }
             if (skillHud != null) skillHud.UpgradeShown += OnUpgradeShown;
             if (chests != null)
@@ -217,6 +219,7 @@ namespace SurvivorSouls.Audio
             {
                 skillChoice.CardRevealed -= OnCardRevealed;
                 skillChoice.Upgraded -= OnSkillUpgraded;
+                skillChoice.Rerolled -= OnRerolled;
             }
             if (skillHud != null) skillHud.UpgradeShown -= OnUpgradeShown;
             if (chests != null)
@@ -305,6 +308,9 @@ namespace SurvivorSouls.Audio
 
         /// <summary>HUD slot glow after a level-up (KAN-74): one chime per batch, however many slots glow.</summary>
         private void OnUpgradeShown(int slots) => Play(skillUpgrades, skillUpgradeVolume, 0.02f);
+
+        /// <summary>Level-up re-roll (KAN-67): card whoosh + die knock; the new cards' tier sounds follow as they open.</summary>
+        private void OnRerolled(int left) => Play(rerolls, boonPickVolume * 0.85f, 0.03f);
 
         private void OnChestDropped(ReliquaryChest chest) => Play(chestDrops, boonPickVolume * 0.8f, 0.04f);
 

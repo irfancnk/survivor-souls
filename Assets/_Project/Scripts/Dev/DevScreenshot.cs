@@ -39,6 +39,9 @@ namespace SurvivorSouls.Dev
     /// <c>-ss-power-curve</c> prints the power curve (KAN-75: 200 simulated runs, levels 1-20, live base numbers) to the log after load.
     /// <c>-ss-upgrade id,id,...</c> chest-upgrades those owned skills (+1 each) 0.3 s before the capture: HUD slot glow + new pips (KAN-74).
     /// <c>-ss-offer id,id,id</c> makes the next level-up offer those cards (KAN-37 tier look; use with -ss-xp).
+    /// <c>-ss-reroll &lt;n&gt;</c> (KAN-67, with -ss-xp) taps the level-up re-roll n times once the cards are in (0.5 s apart,
+    /// the capture follows the last flip); logs each new offer and the re-rolls left. n above the re-rolls left shows the
+    /// disabled "x0" button.
     /// <c>-ss-horde &lt;n&gt;</c> places n enemies (wave table mix of the last phase) on a ring 4-11 m round the player after
     /// load, from the spawner's pools (perf runs; KAN-30). <c>-ss-immortal</c> turns off contact damage on the player.
     /// <c>-ss-hold &lt;n&gt;</c> keeps at least n enemies alive: every second, missing ones are spawned off screen (perf soak).
@@ -113,6 +116,7 @@ namespace SurvivorSouls.Dev
         private int _chests;
         private string _openChest;
         private string _offer;
+        private int _rerolls;
         private int _horde;
         private float _hordePower;
         private bool _hordeTiers;
@@ -174,6 +178,7 @@ namespace SurvivorSouls.Dev
             shot._upgrade = GetArg("-ss-upgrade");
             shot._chests = int.TryParse(GetArg("-ss-chests"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int ch) ? ch : 0;
             shot._offer = GetArg("-ss-offer");
+            shot._rerolls = int.TryParse(GetArg("-ss-reroll"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int rr) ? rr : 0;
             shot._openChest = GetArg("-ss-open-chest");
             shot._xp = int.TryParse(GetArg("-ss-xp"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int x) ? x : 0;
             shot._horde = int.TryParse(GetArg("-ss-horde"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int h) ? h : 0;
@@ -312,6 +317,7 @@ namespace SurvivorSouls.Dev
             {
                 FindAnyObjectByType<SurvivorSouls.Gameplay.Progression.XpManager>()?.AddXp(_xp);
                 yield return new WaitForSecondsRealtime(xpLead);
+                if (_rerolls > 0) yield return Reroll(_rerolls);
             }
             if (release > 0f)
             {
@@ -888,6 +894,26 @@ namespace SurvivorSouls.Dev
             Debug.Log(chest != null
                 ? $"[DevScreenshot] Open chest {tier}: choices={chest.Choices} upgrades={chest.Upgrades}"
                 : "[DevScreenshot] -ss-open-chest: ground full");
+        }
+
+        /// <summary>-ss-reroll n: taps the level-up re-roll n times (KAN-67), waiting for each flip to settle.</summary>
+        private static IEnumerator Reroll(int count)
+        {
+            var screen = FindAnyObjectByType<SurvivorSouls.UI.Hud.SkillChoiceScreen>();
+            if (screen == null || !screen.IsShowing)
+            {
+                Debug.LogWarning("[DevScreenshot] -ss-reroll: no level-up screen open (use -ss-xp)");
+                yield break;
+            }
+            for (int i = 0; i < count; i++)
+            {
+                bool ok = screen.Reroll();
+                yield return new WaitForSecondsRealtime(0.5f);
+                var names = new System.Text.StringBuilder();
+                foreach (var s in screen.Options) names.Append(s.Id).Append(' ');
+                Debug.Log($"[DevScreenshot] Re-roll {i + 1}: {(ok ? "done" : "refused")}, left={screen.RerollsLeft}, " +
+                          $"offer={names}button='{screen.RerollLabel} {screen.RerollCountLabel}' enabled={screen.RerollEnabled}");
+            }
         }
 
         private static void ForceOffer(string ids)

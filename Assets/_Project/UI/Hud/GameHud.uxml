@@ -144,6 +144,18 @@
                 <ui:Label text="NEW" class="skill-card__badge" picking-mode="Ignore" />
             </ui:Button>
         </ui:VisualElement>
+        <!-- Re-roll (KAN-67): level-up only (hidden on the chest screen); die + text + re-rolls left this run. -->
+        <ui:VisualElement class="skills__actions" picking-mode="Ignore">
+            <ui:Button name="skill-reroll" class="skills__reroll">
+                <ui:VisualElement class="skills__die" picking-mode="Ignore">
+                    <ui:VisualElement class="skills__die-pip skills__die-pip--a" picking-mode="Ignore" />
+                    <ui:VisualElement class="skills__die-pip skills__die-pip--b" picking-mode="Ignore" />
+                    <ui:VisualElement class="skills__die-pip skills__die-pip--c" picking-mode="Ignore" />
+                </ui:VisualElement>
+                <ui:Label name="skill-reroll-text" text="RE-ROLL" class="skills__reroll-text" picking-mode="Ignore" />
+                <ui:Label name="skill-reroll-count" text="x2" class="skills__reroll-count" picking-mode="Ignore" />
+            </ui:Button>
+        </ui:VisualElement>
     </ui:VisualElement>
 
     <!-- Death screen: hidden until PlayerDeath.Finished, then fades in. -->

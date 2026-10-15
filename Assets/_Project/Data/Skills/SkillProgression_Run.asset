@@ -59,3 +59,4 @@ MonoBehaviour:
   - level: 3
     skill: {fileID: 11400000, guid: 294a5fab8c80549f4813b03d1ace8fa4, type: 2}
   pityOffers: 3
+  rerollsPerRun: 2

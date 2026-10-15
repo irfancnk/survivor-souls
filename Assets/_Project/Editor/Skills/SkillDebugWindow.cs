@@ -51,7 +51,17 @@ namespace SurvivorSouls.Editor.Skills
             Debug.Log($"[Skills] Granted {pick.Id} -> {manager.GetLevel(pick)}/{pick.MaxLevel}");
         }
 
+        /// <summary>KAN-67: +1 level-up re-roll for the rest of this run (an open level-up screen shows it at once).</summary>
+        [MenuItem("Survivor Souls/Debug/Add Re-roll")]
+        private static void AddReroll()
+        {
+            SurvivorSouls.Gameplay.Chamber.RunState.AddRerolls(1);
+            var manager = FindManager();
+            Debug.Log($"[Skills] Re-roll added: {(manager != null ? manager.RerollsLeft : 0)} left this run");
+        }
+
         [MenuItem("Survivor Souls/Debug/Grant Random Skill", true)]
+        [MenuItem("Survivor Souls/Debug/Add Re-roll", true)]
         [MenuItem("Survivor Souls/Debug/Level Up Now", true)]
         private static bool InPlayMode() => Application.isPlaying;
 
@@ -110,20 +120,22 @@ namespace SurvivorSouls.Editor.Skills
             if (table == null) { Debug.LogWarning($"[Skills] Missing {SkillsBuilder.ProgressionPath}"); return; }
             var lines = OddsLevels.Select(l => SimulateFresh(table, l).ToString());
             Debug.Log($"[Skills] Offer odds, {OddsRolls} offers per level, no skills owned:\n" + string.Join("\n", lines));
+            var rerolled = OddsLevels.Select(l => SimulateFresh(table, l, reroll: true).ToString());
+            Debug.Log($"[Skills] Re-rolled offer odds (KAN-67), {OddsRolls} re-rolls per level, no skills owned:\n" + string.Join("\n", rerolled));
         }
 
         /// <summary>
         /// Rolls <see cref="OddsRolls"/> offers at <paramref name="level"/> on a throw-away SkillManager (nothing owned, no
         /// scene needed), so the numbers show the table itself.
         /// </summary>
-        public static SkillManager.OfferStats SimulateFresh(SkillProgression table, int level, int seed = 37)
+        public static SkillManager.OfferStats SimulateFresh(SkillProgression table, int level, int seed = 37, bool reroll = false)
         {
             var go = new GameObject("Skill Odds (temp)") { hideFlags = HideFlags.HideAndDontSave };
             try
             {
                 var manager = go.AddComponent<SkillManager>();
                 manager.Setup(table, null, null, null, go.transform, seed);
-                return manager.SimulateOffers(OddsRolls, level);
+                return manager.SimulateOffers(OddsRolls, level, reroll: reroll);
             }
             finally
             {
