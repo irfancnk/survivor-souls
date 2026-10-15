@@ -280,6 +280,8 @@ namespace SurvivorSouls.Editor
             SetClips(so.FindProperty("boonPicks"), sfx.BoonPicks);
             SetClips(so.FindProperty("chestDrops"), sfx.ChestDrops);
             SetClips(so.FindProperty("rerolls"), sfx.Rerolls);
+            SetClips(so.FindProperty("reelTicks"), sfx.ReelTicks); // skill pick slot-machine roll (KAN-159)
+            SetClips(so.FindProperty("reelStops"), sfx.ReelStops);
             SetClips(so.FindProperty("chestOpens"), sfx.ChestOpens);
             SetClips(so.FindProperty("skillUpgrades"), sfx.SkillUpgrades);
             SetClips(so.FindProperty("heartHeals"), sfx.HeartHeals);

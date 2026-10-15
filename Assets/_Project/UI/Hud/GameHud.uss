@@ -811,6 +811,62 @@
     -unity-background-image-tint-color: var(--card-glow);
 }
 
+/* Slot-machine roll (KAN-159): while a card rolls, its plate clips the two moving icons (current + next skill, moved in
+   code), the rim stays neutral (no tier class) and tier, gems, text, pips and badge wait for the stop. visibility keeps
+   the layout, so the card does not change size when they appear. */
+.skill-card__reel {
+    position: absolute;
+    left: 19px;
+    top: 19px;
+    display: none;
+}
+
+.skill-card--rolling .skill-card__reel {
+    display: flex;
+}
+
+.skill-card--rolling .skill-card__plate {
+    overflow: hidden;
+}
+
+.skill-card--rolling .skill-card__rarity,
+.skill-card--rolling .skill-card__marks,
+.skill-card--rolling .skill-card__desc,
+.skill-card--rolling .skill-card__pips,
+.skill-card--rolling .skill-card__badge {
+    visibility: hidden;
+}
+
+/* The real name keeps its place (and the card height) but is see-through; the reel name (absolute in the card, top set
+   in code to the name's slot) runs over it on one line. */
+.skill-card--rolling .skill-card__name {
+    color: rgba(0, 0, 0, 0);
+    -unity-text-outline-color: rgba(0, 0, 0, 0);
+}
+
+.skill-card__reel-name {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    display: none;
+    overflow: hidden;
+    text-overflow: clip;
+    font-size: 30px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    white-space: nowrap;
+    color: rgb(255, 236, 196);
+    -unity-text-outline-width: 1px;
+    -unity-text-outline-color: rgba(0, 0, 0, 0.9);
+    margin: 0;
+    padding: 0;
+}
+
+.skill-card--rolling .skill-card__reel-name {
+    display: flex;
+}
+
 .skill-card__name {
     font-size: 38px;
     -unity-font-style: bold;

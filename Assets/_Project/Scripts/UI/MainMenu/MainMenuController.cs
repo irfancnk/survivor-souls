@@ -36,6 +36,7 @@ namespace SurvivorSouls.UI.MainMenu
         private const string VibrationName = "tgl-vibration";
         private const string FpsName = "tgl-fps";
         private const string ReloadRingName = "tgl-reload-ring";
+        private const string FastRevealName = "tgl-fast-reveal";
         public const string TestModeToggleName = "tgl-test-mode";
         public const string TestModeTagName = "lbl-test-mode";
         public const string SettingsTitleName = "lbl-settings-title";
@@ -401,6 +402,13 @@ namespace SurvivorSouls.UI.MainMenu
             var reloadRing = root.Q<Toggle>(ReloadRingName);
             reloadRing.SetValueWithoutNotify(GameSettings.ReloadRing);
             reloadRing.RegisterValueChangedCallback(e => GameSettings.ReloadRing = e.newValue);
+
+            var fastReveal = root.Q<Toggle>(FastRevealName); // KAN-159: skill pick without the slot-machine roll
+            if (fastReveal != null)
+            {
+                fastReveal.SetValueWithoutNotify(GameSettings.FastSkillReveal);
+                fastReveal.RegisterValueChangedCallback(e => GameSettings.FastSkillReveal = e.newValue);
+            }
         }
 
         private void ShowToast(string message, float seconds = 0f)

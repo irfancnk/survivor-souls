@@ -583,7 +583,7 @@ namespace SurvivorSouls.Tests
             Assert.That(screen.Title, Is.EqualTo("RELIQUARY"));
             Assert.That(screen.Options.All(s => skills.GetLevel(s) > 0), Is.True, "owned skills only");
 
-            screen.Tick(0.5f);
+            screen.Tick(1.5f); // the scene's pick rolls first (KAN-159): last reel stops at 1 s, picks arm 0.4 s later
             var pick = screen.Options[0];
             int before = skills.GetLevel(pick);
             Assert.That(screen.Choose(0), Is.True);
