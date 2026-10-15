@@ -139,6 +139,7 @@ namespace SurvivorSouls.Editor
             SetRef(audio, "skillHud", choice.GetComponent<SkillHud>()); // chime when a skill slot glows after a level-up (KAN-74)
             SetRef(audio, "boss", boss); // boss groans + slam thud
             CreateChargeSounds(audio.gameObject, sfx, boss); // charge growl, dash, stop / crash (KAN-168)
+            BossBuilder.CreateLaneSmoke(kit, boss.transform.parent); // smoke wisps along every warning lane (KAN-167)
             SetRef(audio, "hearts", hearts); // heal swell (KAN-60)
             SetRef(choice.gameObject.AddComponent<BossHud>(), "fight", boss); // boss bar in the timer's place
             SetRef(choice.gameObject.AddComponent<BossBannerHud>(), "fight", boss); // name at the intro, "felled" at the kill (KAN-62)

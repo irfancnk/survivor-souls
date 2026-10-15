@@ -10,6 +10,11 @@ namespace SurvivorSouls.Gameplay.Boss
     /// frame. Lanes are made by the builder (up to <see cref="MaxLanes"/>); unused ones stay disabled.
     /// KAN-121: <see cref="Hold"/> keeps the full lanes bright (live beams) and <see cref="Turn"/> turns them round the
     /// origin, until <see cref="Flash"/> fades them or <see cref="Hide"/>.
+    /// KAN-167: the look is the TelegraphLane shader (burnt scorch, cracks that widen and glow with the fill, ember
+    /// chevrons that flow from the attacker to the far end, dark torn outline, a sigil at the far end): the block also
+    /// carries the quad length, lane width, progress and the "snap" of the last <see cref="snapTime"/> s. While a lane
+    /// warns, dark-red smoke wisps rise along its sides through the scene's one shared <see cref="LaneSmoke"/> (wide lanes
+    /// smoke more than thin fan / aim lanes).
     /// </summary>
     public sealed class LineTelegraph : MonoBehaviour
     {
@@ -17,6 +22,10 @@ namespace SurvivorSouls.Gameplay.Boss
         public const int MaxLanes = 9;
 
         private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
+        private static readonly int SpanId = Shader.PropertyToID("_Span");
+        private static readonly int LaneWidthId = Shader.PropertyToID("_LaneWidth");
+        private static readonly int ProgressId = Shader.PropertyToID("_Progress");
+        private static readonly int SnapId = Shader.PropertyToID("_Snap");
 
         [Tooltip("Full-length lane quads (built lying flat: local Y = along the lane).")]
         [SerializeField] private Renderer[] edges = new Renderer[0];
@@ -28,6 +37,12 @@ namespace SurvivorSouls.Gameplay.Boss
         [SerializeField, Min(0.05f)] private float flashTime = 0.3f;
         [Tooltip("Height above the ground (no z-fight with the floor; just over the circle telegraph).")]
         [SerializeField, Min(0f)] private float lift = 0.06f;
+        [Tooltip("KAN-167: seconds before the attack goes when the lane flashes and its cracks snap wide.")]
+        [SerializeField, Min(0.01f)] private float snapTime = 0.15f;
+        [Tooltip("KAN-167: smoke wisps per second per metre of lane width at the end of the wind-up (a third at the start).")]
+        [SerializeField, Min(0f)] private float smokePerMetre = 7f;
+        [Tooltip("KAN-167: most wisps one lane telegraph emits in one frame.")]
+        [SerializeField, Min(0)] private int maxSmokePerFrame = 2;
 
         private readonly Vector3[] _dirs = new Vector3[MaxLanes];
         private readonly float[] _lengths = new float[MaxLanes];
@@ -36,6 +51,8 @@ namespace SurvivorSouls.Gameplay.Boss
         private float _length = 1f, _width = 1f;
         private float _flash = -1f;
         private bool _held;
+        private float _snap;
+        private float _smokeDebt;
 
         /// <summary>A warning or its hit flash is on screen.</summary>
         public bool IsShowing { get; private set; }
@@ -43,6 +60,8 @@ namespace SurvivorSouls.Gameplay.Boss
         public bool IsHeld => _held;
         /// <summary>0 = just shown, 1 = the attack goes.</summary>
         public float Progress { get; private set; }
+        /// <summary>KAN-167: 0 until the last <see cref="snapTime"/> s of the warning, then up to 1 (flash + cracks snap).</summary>
+        public float Snap => _snap;
         /// <summary>Lanes in the current warning.</summary>
         public int LaneCount { get; private set; }
         /// <summary>Longest lane of the current warning.</summary>
@@ -95,6 +114,8 @@ namespace SurvivorSouls.Gameplay.Boss
             _width = Mathf.Max(0.05f, width);
             _flash = -1f;
             _held = false;
+            _snap = 0f;
+            _smokeDebt = 0f;
             IsShowing = true;
             for (int i = 0; i < MaxLanes; i++)
             {
@@ -113,11 +134,21 @@ namespace SurvivorSouls.Gameplay.Boss
             SetProgress(0f);
         }
 
-        /// <summary>Wind-up 0..1: the fills grow from the boss to the lane ends; the edges pulse faster near the end.</summary>
-        public void SetProgress(float progress)
+        /// <summary>
+        /// Wind-up 0..1: the fills grow from the boss to the lane ends; the edges pulse faster near the end. Without the
+        /// seconds left, the snap starts at 88 % of the warning.
+        /// </summary>
+        public void SetProgress(float progress) => SetProgress(progress, -1f);
+
+        /// <summary>
+        /// Wind-up 0..1 with the <paramref name="secondsLeft"/> of the warning (KAN-167: the lane snaps in the last
+        /// <see cref="snapTime"/> s; negative = unknown, then by progress).
+        /// </summary>
+        public void SetProgress(float progress, float secondsLeft)
         {
             if (!IsShowing || _flash >= 0f || _held) return;
             Progress = Mathf.Clamp01(progress);
+            _snap = secondsLeft >= 0f ? 1f - Mathf.Clamp01(secondsLeft / snapTime) : Mathf.InverseLerp(0.88f, 1f, Progress);
             float eased = Eased();
             float pulse = 0.75f + 0.25f * Mathf.Sin(Time.time * Mathf.Lerp(8f, 26f, Progress));
             var e = edgeColor;
@@ -129,6 +160,26 @@ namespace SurvivorSouls.Gameplay.Boss
                 Place(fills[i], _dirs[i], Mathf.Max(0.05f, eased * _lengths[i]));
                 Paint(edges[i], e);
                 Paint(fills[i], f);
+            }
+            Smoke(eased);
+        }
+
+        /// <summary>KAN-167: wisps along the lane sides, over the filled part; more as the warning fills.</summary>
+        private void Smoke(float eased)
+        {
+            var smoke = LaneSmoke.Active;
+            if (smoke == null || LaneCount == 0) return;
+            _smokeDebt += Time.deltaTime * smokePerMetre * _width * Mathf.Lerp(0.33f, 1f, Progress);
+            int count = Mathf.Min((int)_smokeDebt, maxSmokePerFrame);
+            _smokeDebt -= count;
+            if (_smokeDebt > maxSmokePerFrame) _smokeDebt = maxSmokePerFrame; // a long frame never bursts later
+            for (int n = 0; n < count; n++)
+            {
+                int i = Random.Range(0, LaneCount);
+                Vector3 dir = _dirs[i];
+                Vector3 side = new Vector3(dir.z, 0f, -dir.x) * (_width * 0.45f * (Random.value < 0.5f ? -1f : 1f));
+                Vector3 at = _origin + dir * (Random.Range(0.1f, 1f) * Mathf.Max(0.05f, eased * _lengths[i])) + side;
+                smoke.Emit(at, Progress);
             }
         }
 
@@ -178,6 +229,7 @@ namespace SurvivorSouls.Gameplay.Boss
             _flash = -1f;
             _held = false;
             Progress = 0f;
+            _snap = 0f;
             LaneCount = 0;
             for (int i = 0; i < edges.Length; i++) SetEnabled(edges[i], false);
             for (int i = 0; i < fills.Length; i++) SetEnabled(fills[i], false);
@@ -220,11 +272,16 @@ namespace SurvivorSouls.Gameplay.Boss
             if (r != null && r.enabled != on) r.enabled = on;
         }
 
+        /// <summary>Colour + the shader's lane values (KAN-167); the quad's length is its Y scale (<see cref="Place"/>).</summary>
         private void Paint(Renderer r, Color c)
         {
             if (r == null) return;
             _mpb ??= new MaterialPropertyBlock();
             _mpb.SetColor(BaseColorId, c);
+            _mpb.SetFloat(SpanId, r.transform.localScale.y);
+            _mpb.SetFloat(LaneWidthId, _width);
+            _mpb.SetFloat(ProgressId, Progress);
+            _mpb.SetFloat(SnapId, _snap);
             r.SetPropertyBlock(_mpb);
         }
     }

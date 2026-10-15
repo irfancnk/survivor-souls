@@ -618,7 +618,7 @@ namespace SurvivorSouls.Gameplay.Boss
                         if (telegraph != null) telegraph.SetProgress(progress);
                         if (CurrentMove == Move.Teleport) ScaleBoss(Mathf.Clamp01((_windUp - _time) / Mathf.Min(VanishTime, _windUp * 0.5f)));
                     }
-                    else if (lines != null) lines.SetProgress(progress);
+                    else if (lines != null) lines.SetProgress(progress, _windUp - _time); // KAN-167: snap in the last 0.15 s
                     if (_time < _windUp) break;
                     Release();
                     break;

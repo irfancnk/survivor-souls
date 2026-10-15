@@ -21,19 +21,16 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: M_FX_TelegraphLane
-  m_Shader: {fileID: 4800000, guid: 0406db5a14f94604a8c57ccfbc9f3b46, type: 3}
+  m_Shader: {fileID: 4800000, guid: 1ab8b1496b1ab4e52ab3dfb4faae40cd, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
-  m_ValidKeywords:
-  - _SURFACE_TYPE_TRANSPARENT
-  m_InvalidKeywords:
-  - _FLIPBOOKBLENDING_OFF
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
   m_CustomRenderQueue: 3000
-  stringTagMap:
-    RenderType: Transparent
+  stringTagMap: {}
   disabledShaderPasses:
   - DepthOnly
   - SHADOWCASTER
@@ -62,7 +59,10 @@ Material:
     - _CameraFadingEnabled: 0
     - _CameraFarFadeDistance: 2
     - _CameraNearFadeDistance: 1
+    - _ChevronSpacing: 1.3
+    - _ChevronSweep: 0.35
     - _ColorMode: 0
+    - _CrackScale: 1.4
     - _Cull: 2
     - _Cutoff: 0.5
     - _DistortionBlend: 0.5
@@ -73,21 +73,34 @@ Material:
     - _DstBlendAlpha: 10
     - _FlipbookBlending: 0
     - _FlipbookMode: 0
+    - _FlowSpeed: 2.6
+    - _LaneWidth: 2
     - _Mode: 0
+    - _Part: 1
+    - _Progress: 0
     - _QueueOffset: 0
+    - _Snap: 0
     - _SoftParticlesEnabled: 0
     - _SoftParticlesFarFadeDistance: 1
     - _SoftParticlesNearFadeDistance: 0
+    - _Span: 8
     - _SrcBlend: 5
     - _SrcBlendAlpha: 1
     - _Surface: 1
+    - _Tint: 0.25
+    - _Torn: 0.12
     - _ZWrite: 0
     m_Colors:
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
     - _BaseColorAddSubDiff: {r: 0, g: 0, b: 0, a: 0}
     - _CameraFadeParams: {r: 0, g: Infinity, b: 0, a: 0}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
+    - _Ember: {r: 1, g: 0.41999996, b: 0.07999996, a: 1}
+    - _EmberHot: {r: 1, g: 0.8, b: 0.45, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
+    - _Outline: {r: 0.059999965, g: 0.01, b: 0.01, a: 0.9}
+    - _ScorchDark: {r: 0.12999997, g: 0.02, b: 0.015, a: 1}
+    - _ScorchRust: {r: 0.41999996, g: 0.07999996, b: 0.03, a: 1}
     - _SoftParticleFadeParams: {r: 0, g: 0, b: 0, a: 0}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

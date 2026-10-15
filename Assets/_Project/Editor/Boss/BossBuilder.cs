@@ -167,8 +167,10 @@ namespace SurvivorSouls.Editor.Boss
                 wrap: TextureWrapMode.Clamp, maxSize: LaneTextureHeight);
             var fillTex = TextureFactory.Write(LaneFillTexturePath, LaneTextureWidth, LaneTextureHeight, LaneFillPixel, TextureFactory.Kind.Color,
                 wrap: TextureWrapMode.Clamp, maxSize: LaneTextureHeight);
-            var edgeMat = EditorAssetUtil.ParticleMaterial(ArtDir + "/M_FX_TelegraphLane.mat", edgeTex, additive: false);
-            var fillMat = EditorAssetUtil.ParticleMaterial(ArtDir + "/M_FX_TelegraphLaneFill.mat", fillTex, additive: false);
+            // KAN-167: the look is the TelegraphLane shader (no texture fetch); the textures stay as the chevron reference
+            // of the KAN-166 direction test.
+            var edgeMat = LaneMaterial(ArtDir + "/M_FX_TelegraphLane.mat", part: 1f);
+            var fillMat = LaneMaterial(ArtDir + "/M_FX_TelegraphLaneFill.mat", part: 0f);
 
             var go = new GameObject(name);
             go.transform.SetParent(parent, false);
@@ -187,6 +189,64 @@ namespace SurvivorSouls.Editor.Boss
             SetArray(so.FindProperty("fills"), fills);
             so.ApplyModifiedPropertiesWithoutUndo();
             return lines;
+        }
+
+        private const string LaneShader = "SurvivorSouls/TelegraphLane";
+
+        /// <summary>Lane material (KAN-167): <paramref name="part"/> 0 = scorch fill, 1 = torn outline + far-end sigil.</summary>
+        private static Material LaneMaterial(string path, float part)
+        {
+            var mat = EditorAssetUtil.LoadOrCreateMaterial(path, LaneShader);
+            mat.shaderKeywords = new string[0]; // drop the old Particles/Unlit keywords
+            mat.SetFloat("_Part", part);
+            mat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+            EditorUtility.SetDirty(mat);
+            return mat;
+        }
+
+        /// <summary>
+        /// Lane smoke (KAN-167): one shared particle system for every lane telegraph in the scene (<see cref="LaneSmoke"/>);
+        /// lanes emit wisps, no emission module. Dark red, rises slowly, grows and fades; at most 64 alive.
+        /// </summary>
+        public static LaneSmoke CreateLaneSmoke(GameArtKit kit, Transform parent)
+        {
+            var mat = EditorAssetUtil.ParticleMaterial(ArtDir + "/M_FX_LaneSmoke.mat", kit.SoftDot, additive: false);
+            var go = new GameObject("Lane Smoke");
+            go.transform.SetParent(parent, false);
+            var ps = go.AddComponent<ParticleSystem>();
+            ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            var main = ps.main;
+            main.playOnAwake = true;
+            main.loop = true;
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+            main.startLifetime = new ParticleSystem.MinMaxCurve(1f, 1.6f);
+            main.startSpeed = 0f;
+            main.startSize = 0.6f;
+            main.maxParticles = 64;
+            main.scalingMode = ParticleSystemScalingMode.Hierarchy;
+            var emission = ps.emission;
+            emission.enabled = false;
+            var shape = ps.shape;
+            shape.enabled = false;
+            var size = ps.sizeOverLifetime;
+            size.enabled = true;
+            size.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 0.7f, 1f, 1.8f));
+            var colour = ps.colorOverLifetime;
+            colour.enabled = true;
+            var fade = new Gradient();
+            fade.SetKeys(new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(new Color(0.55f, 0.5f, 0.5f), 1f) },
+                new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(1f, 0.2f), new GradientAlphaKey(0.6f, 0.6f), new GradientAlphaKey(0f, 1f) });
+            colour.color = fade;
+            var rot = ps.rotationOverLifetime;
+            rot.enabled = true;
+            rot.z = new ParticleSystem.MinMaxCurve(-0.6f, 0.6f);
+            var r = go.GetComponent<ParticleSystemRenderer>();
+            r.sharedMaterial = mat;
+            r.renderMode = ParticleSystemRenderMode.Billboard;
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            r.receiveShadows = false;
+            r.sortingOrder = 2; // over the lane outline
+            return go.AddComponent<LaneSmoke>();
         }
 
         private static void SetArray(SerializedProperty prop, Object[] items)
