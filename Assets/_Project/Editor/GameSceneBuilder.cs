@@ -7,6 +7,7 @@ using SurvivorSouls.Editor.Boss;
 using SurvivorSouls.Editor.Chamber;
 using SurvivorSouls.Editor.Chests;
 using SurvivorSouls.Editor.Combat;
+using SurvivorSouls.Editor.Enemies;
 using SurvivorSouls.Editor.Effects;
 using SurvivorSouls.Editor.Progression;
 using SurvivorSouls.Editor.Skills;
@@ -63,6 +64,7 @@ namespace SurvivorSouls.Editor
             var archerPrefab = ArcherModelBuilder.BuildPrefab(kit.Palette, kit.BlobShadow, kit.Quad);
             if (MeshyCharacterImporter.SourceExists) archerPrefab = MeshyCharacterImporter.BuildPrefab(kit.BlobShadow, kit.Quad);
             CombatBuilder.Build(kit);
+            EnemyRosterBuilder.Build(kit); // 15 Meshy enemies (KAN-104): prefabs, controllers, materials
             var panelSettings = CreatePanelSettings();
             var sfx = SfxBuilder.Build(); // before the world: the exit portal tile needs its hum clip
 
@@ -190,7 +192,9 @@ namespace SurvivorSouls.Editor
             SetRef(player.AddComponent<CrossbowRecoil>(), "rig", player.GetComponentInChildren<HumanoidRig>());
 
             var spawner = new GameObject("Enemies").AddComponent<EnemySpawner>();
-            SetRef(spawner, "waves", CombatBuilder.LoadOrCreateWaves(enemy));
+            var waves = CombatBuilder.LoadOrCreateWaves(enemy);
+            EnemyRosterBuilder.AddMeleeTiers(waves, enemy); // one-time: Shambler slots -> the 4 melee tiers (KAN-104)
+            SetRef(spawner, "waves", waves);
             SetRef(spawner, "player", player.transform);
             SetRef(spawner, "world", world);
             return (shooter, spawner);
