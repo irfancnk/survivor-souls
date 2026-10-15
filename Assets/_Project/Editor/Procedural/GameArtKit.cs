@@ -38,7 +38,7 @@ namespace SurvivorSouls.Editor.Procedural
                 smoothness: 0.25f, specColor: new Color(0.18f, 0.17f, 0.16f));
             var (groundAlbedo, groundNormal) = MakeStone("T_GrassDirt", GroundSample);
             kit.OuterGround = EditorAssetUtil.SimpleLitMaterial($"{MatDir}/M_OuterGround.mat", groundAlbedo, Color.white, groundNormal,
-                smoothness: 0.1f, specColor: new Color(0.04f, 0.04f, 0.04f));
+                smoothness: 0.1f, specColor: new Color(0.04f, 0.04f, 0.04f), specular: false); // open ground: 0.04 highlight is invisible, skip its pixel cost (KAN-158)
 
             kit.Grass = EditorAssetUtil.LoadOrCreateMaterial($"{MatDir}/M_Grass.mat", "SurvivorSouls/Grass");
             kit.Grass.enableInstancing = false; // one static mesh per tile; SRP Batcher handles it

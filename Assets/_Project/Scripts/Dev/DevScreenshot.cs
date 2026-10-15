@@ -43,7 +43,7 @@ namespace SurvivorSouls.Dev
     /// the capture follows the last flip); logs each new offer and the re-rolls left. n above the re-rolls left shows the
     /// disabled "x0" button.
     /// <c>-ss-horde &lt;n&gt;</c> places n enemies (wave table mix of the last phase) on a ring 4-11 m round the player after
-    /// load, from the spawner's pools (perf runs; KAN-30). <c>-ss-immortal</c> turns off contact damage on the player.
+    /// load, from the spawner's pools (perf runs; KAN-30). <c>-ss-immortal</c> turns off all damage on the player (KAN-44).
     /// <c>-ss-hold &lt;n&gt;</c> keeps at least n enemies alive: every second, missing ones are spawned off screen (perf soak).
     /// <c>-ss-timer &lt;seconds&gt;</c> sets the Chamber survival clock after load (KAN-39; 0 = the portal opens now).
     /// <c>-ss-portal</c> walks the Knight into the portal right after load (KAN-40): pull, white fade, next Chamber,
@@ -278,7 +278,11 @@ namespace SurvivorSouls.Dev
 
             if (_souls > 0) DropSouls(_souls);
             if (_immortal)
+            {
                 foreach (var c in FindObjectsByType<ContactDamageReceiver>()) c.enabled = false;
+                // KAN-44: melee clip hits, specials, projectiles and hazards (KAN-104+) bypass contact damage.
+                foreach (var h in FindObjectsByType<PlayerHealth>()) h.Invulnerable = true;
+            }
             if (_hordePower > 0f) SetHordePower(_hordePower);
             if (_horde > 0) PlaceHorde(_horde);
             if (_hordeTiers) PlaceTierLineup();
