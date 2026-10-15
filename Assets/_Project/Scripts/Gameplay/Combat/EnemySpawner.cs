@@ -340,6 +340,9 @@ namespace SurvivorSouls.Gameplay.Combat
         /// <summary>Types in the build outside the wave table (see the field tooltip).</summary>
         public IReadOnlyList<Enemy> ExtraTypes => extraTypes;
 
+        /// <summary>Tests and tools: replaces <see cref="ExtraTypes"/> (pooled on demand, no prewarm).</summary>
+        public void SetExtraTypes(Enemy[] types) => extraTypes = types ?? new Enemy[0];
+
         /// <summary>Takes <paramref name="prefab"/> from its pool and starts it at <paramref name="position"/>. Public for tests and boss spawners.</summary>
         public Enemy SpawnAt(Enemy prefab, Vector3 position)
         {

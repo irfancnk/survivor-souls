@@ -131,9 +131,17 @@ namespace SurvivorSouls.Gameplay.World
             if (had) cc.enabled = true;
         }
 
+        /// <summary>
+        /// KAN-119: obstacles that come and go during the fight (boss boulder rubble, set by BossBoulders while enabled). The
+        /// arena's walkability asks them too, so enemies, boss bolts and charges treat rubble like a pillar.
+        /// </summary>
+        public static IWalkability Obstacles;
+
         /// <inheritdoc />
         public bool IsBlocked(Vector3 position, float bodyRadius)
         {
+            var obstacles = Obstacles;
+            if (obstacles != null && obstacles.IsBlocked(position, bodyRadius)) return true;
             Vector3 c = transform.position;
             float dx = position.x - c.x, dz = position.z - c.z;
             float reach = radius - bodyRadius;
@@ -187,6 +195,7 @@ namespace SurvivorSouls.Gameplay.World
         {
             Active = null;
             Entered = null;
+            Obstacles = null;
         }
     }
 }

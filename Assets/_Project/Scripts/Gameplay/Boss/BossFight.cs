@@ -50,6 +50,11 @@ namespace SurvivorSouls.Gameplay.Boss
     /// arms of bolts for a few seconds) warn with a circle around the body, then fire <see cref="BossProjectiles"/>; one ring
     /// or one whole spiral hits once. <b>Rain</b> drops circles one by one near the Knight (shared
     /// <see cref="EnemyTelegraphs"/> pool), each warns, then hits inside it. Spiral and Rain run in <see cref="Attack.Casting"/>.
+    /// KAN-119: <b>Lobbed</b> (boulders thrown one by one at the Knight; each landing circle warns from the throw, the first
+    /// already in the wind-up; a boulder leaves rubble that blocks the ground for a while, <see cref="BossBoulders"/>),
+    /// <b>Summon</b> (enemies of a spawner type rise on a ring round the boss; circles warn where; never more than the
+    /// entry's count alive) and <b>Teleport</b> (a circle warns at a walkable point near the Knight; the boss shrinks away,
+    /// reappears there and grows back).
     /// </summary>
     public sealed class BossFight : MonoBehaviour
     {
@@ -93,6 +98,12 @@ namespace SurvivorSouls.Gameplay.Boss
             Spiral = 6,
             /// <summary>KAN-116: ground circles that fall one by one near the Knight.</summary>
             Rain = 7,
+            /// <summary>KAN-119: boulders lobbed at the Knight one by one; each leaves rubble for a while.</summary>
+            Lobbed = 8,
+            /// <summary>KAN-119: enemies of a spawner type rise round the boss.</summary>
+            Summon = 9,
+            /// <summary>KAN-119: the boss vanishes and reappears at a walkable point near the Knight.</summary>
+            Teleport = 10,
         }
 
         private const float SpawnClearRadius = 1.4f; // free ground the boss body needs
@@ -115,6 +126,13 @@ namespace SurvivorSouls.Gameplay.Boss
         public const int GapBolts = 2;
         /// <summary>Most rain circles in one cast (the shared circle pool caps it too).</summary>
         public const int MaxRain = 16;
+        /// <summary>Most summons of one boss alive at once (and per cast).</summary>
+        public const int MaxSummons = 8;
+        /// <summary>Seconds the boss takes to shrink away before a teleport (and to grow back after it).</summary>
+        public const float VanishTime = 0.35f;
+        private const float VanishScale = 0.05f;
+        private const float MinTeleportMove = 3f;   // a teleport always moves the boss at least this far
+        private const float SummonClearRadius = 0.5f;
 
         [SerializeField] private BossData data;
         [Tooltip("KAN-108: bosses of this Realm's boss Chambers in order (round). Empty = data above.")]
@@ -132,6 +150,8 @@ namespace SurvivorSouls.Gameplay.Boss
         [SerializeField] private BossProjectiles projectiles;
         [Tooltip("KAN-116: circle pool of the rain. Empty = the scene's EnemyTelegraphs.Current (the ranged zombies' pool).")]
         [SerializeField] private EnemyTelegraphs circles;
+        [Tooltip("KAN-119: boulders of the lobbed attack. Empty = the scene's BossBoulders.Current.")]
+        [SerializeField] private BossBoulders boulders;
 
         private Enemy _boss;
         private float _bossHealthMultiplier = 1f; // BossData health over the body's type health, x the Chamber multiplier
@@ -165,6 +185,20 @@ namespace SurvivorSouls.Gameplay.Boss
         private int _rainPlaced, _rainLive;
         private float _rainNext;
         private EnemyTelegraphs _rainPool;
+        private GroundTelegraph _throwCircle;   // the first boulder's landing circle while the throw winds up
+        private EnemyTelegraphs _throwPool;
+        private Vector3 _throwTarget;
+        private int _thrown;
+        private Enemy[] _summonTypes = new Enemy[0]; // per attack: the resolved summon prefab
+        private readonly Enemy[] _summoned = new Enemy[MaxSummons];
+        private readonly GroundTelegraph[] _summonCircles = new GroundTelegraph[MaxSummons];
+        private readonly Vector3[] _summonAt = new Vector3[MaxSummons];
+        private int _summonPlanned;
+        private EnemyTelegraphs _summonPool;
+        private Vector3 _teleportFrom, _teleportTo;
+        private Vector3 _bossScale = Vector3.one;
+        private bool _scaled;
+        private float _growLeft;
         private PlayerMover _mover;
         private bool _moverChecked;
         private bool _knightHeld;
@@ -213,6 +247,16 @@ namespace SurvivorSouls.Gameplay.Boss
         public event Action<Vector3, float> RainWarned;
         /// <summary>KAN-116: a rain circle struck (centre, damage dealt; 0 = dodged).</summary>
         public event Action<Vector3, float> RainStruck;
+        /// <summary>KAN-119: a boulder left the boss's hand (landing centre, impact radius).</summary>
+        public event Action<Vector3, float> BoulderThrown;
+        /// <summary>KAN-119: a summon winds up (boss ground point, enemies coming).</summary>
+        public event Action<Vector3, int> SummonWarned;
+        /// <summary>KAN-119: summons rose (boss ground point, enemies spawned).</summary>
+        public event Action<Vector3, int> Summoned;
+        /// <summary>KAN-119: a teleport winds up (from, to).</summary>
+        public event Action<Vector3, Vector3> TeleportWarned;
+        /// <summary>KAN-119: the boss reappeared (from, to, damage dealt on arrival).</summary>
+        public event Action<Vector3, Vector3, float> Teleported;
 
         public BossData Data => data;
         /// <summary>The attack list of the fight (KAN-108).</summary>
@@ -246,6 +290,23 @@ namespace SurvivorSouls.Gameplay.Boss
         public int RainLive => _rainLive;
         /// <summary>KAN-116: bolts the current (or last) spiral fired.</summary>
         public int SpiralBolts => _spiralFired;
+        /// <summary>KAN-119: boulders the current (or last) lobbed attack threw.</summary>
+        public int Thrown => _thrown;
+        /// <summary>KAN-119: the boulder pool of the lobbed attack (wired, else the scene's).</summary>
+        public BossBoulders Boulders => boulders != null ? boulders : BossBoulders.Current;
+        /// <summary>KAN-119: summons of this boss still alive.</summary>
+        public int SummonsAlive
+        {
+            get
+            {
+                int n = 0;
+                for (int i = 0; i < MaxSummons; i++)
+                    if (_summoned[i] != null && _summoned[i].IsAlive) n++;
+                return n;
+            }
+        }
+        /// <summary>KAN-119: where the current (or last) teleport goes.</summary>
+        public Vector3 TeleportTarget => _teleportTo;
         /// <summary>The Knight is held by the intro (no move, no damage).</summary>
         public bool KnightHeld => _knightHeld;
         /// <summary>The victory beat is over (portal open, reward given).</summary>
@@ -257,9 +318,10 @@ namespace SurvivorSouls.Gameplay.Boss
         public void Setup(BossData bossData, ChamberRules rules, SurvivalTimer survivalTimer, EnemySpawner enemySpawner,
             PlayerHealth playerHealth, SoulWispField soulField, GroundTelegraph groundTelegraph,
             LineTelegraph laneTelegraph = null, BossProjectiles bolts = null, BossData[] roster = null,
-            EnemyTelegraphs circlePool = null)
+            EnemyTelegraphs circlePool = null, BossBoulders boulderPool = null)
         {
             circles = circlePool;
+            boulders = boulderPool;
             data = bossData;
             bosses = roster ?? new BossData[0];
             bossRules = rules;
@@ -284,6 +346,8 @@ namespace SurvivorSouls.Gameplay.Boss
             Enemy.Damaged -= OnEnemyDamaged;
             HoldKnight(false);
             CancelRain();
+            CancelPending();
+            RestoreScale();
         }
 
         private void Start() => Begin(ChamberSetup.Current);
@@ -299,6 +363,8 @@ namespace SurvivorSouls.Gameplay.Boss
             _lastUsed = new int[_attacks.Length];
             for (int i = 0; i < _lastUsed.Length; i++) _lastUsed[i] = -NeverUsed;
             _failed = new int[_attacks.Length];
+            _summonTypes = new Enemy[_attacks.Length];
+            for (int i = 0; i < _attacks.Length; i++) _summonTypes[i] = ResolveSummon(_attacks[i]);
             _picks = 0;
             _index = -1;
             if (timer != null && bossRules != null) timer.UseRules(bossRules);
@@ -436,9 +502,19 @@ namespace SurvivorSouls.Gameplay.Boss
                     }
                     _time += dt;
                     float progress = _time / _windUp;
-                    if (UsesCircle(CurrentMove))
+                    if (CurrentMove == Move.Lobbed)
+                    {
+                        if (_throwCircle != null) _throwCircle.SetProgress(_time / (_windUp + Flight(_attack)));
+                    }
+                    else if (CurrentMove == Move.Summon)
+                    {
+                        for (int i = 0; i < _summonPlanned; i++)
+                            if (_summonCircles[i] != null) _summonCircles[i].SetProgress(progress);
+                    }
+                    else if (UsesCircle(CurrentMove))
                     {
                         if (telegraph != null) telegraph.SetProgress(progress);
+                        if (CurrentMove == Move.Teleport) ScaleBoss(Mathf.Clamp01((_windUp - _time) / Mathf.Min(VanishTime, _windUp * 0.5f)));
                     }
                     else if (lines != null) lines.SetProgress(progress);
                     if (_time < _windUp) break;
@@ -458,11 +534,13 @@ namespace SurvivorSouls.Gameplay.Boss
                         break;
                     }
                     if (CurrentMove == Move.Spiral) TickSpiral(dt);
+                    else if (CurrentMove == Move.Lobbed) TickLobbed(dt);
                     else TickRain(dt);
                     break;
                 case Attack.Recover:
                     _time += dt;
                     TickPull(dt);
+                    TickGrow(dt);
                     if (_time < _recover) break;
                     if (CurrentMove == Move.Charge && _dashesLeft > 0 && !playerDead && TryBeginCharge(_index, true)) break;
                     EndAttack(_pendingCooldown);
@@ -470,7 +548,8 @@ namespace SurvivorSouls.Gameplay.Boss
             }
         }
 
-        private static bool UsesCircle(Move move) => move == Move.Slam || move == Move.Spin || move == Move.Nova || move == Move.Spiral;
+        private static bool UsesCircle(Move move) =>
+            move == Move.Slam || move == Move.Spin || move == Move.Nova || move == Move.Spiral || move == Move.Teleport;
 
         private void Release()
         {
@@ -483,6 +562,9 @@ namespace SurvivorSouls.Gameplay.Boss
                 case Move.Spin: BeginSpin(); break;
                 case Move.Nova: ReleaseNova(); break;
                 case Move.Spiral: BeginSpiral(); break;
+                case Move.Lobbed: ReleaseLobbed(); break;
+                case Move.Summon: ReleaseSummon(); break;
+                case Move.Teleport: ReleaseTeleport(); break;
             }
         }
 
@@ -500,7 +582,7 @@ namespace SurvivorSouls.Gameplay.Boss
                 for (int i = 0; i < _attacks.Length; i++)
                 {
                     var a = _attacks[i];
-                    if (!a.InPhase(Phase) || !a.InRange(distance) || !CanUse(a) || _lastUsed[i] == FailedPick) continue;
+                    if (!a.InPhase(Phase) || !a.InRange(distance) || !CanUse(i) || _lastUsed[i] == FailedPick) continue;
                     float score = a.weight * Mathf.Min(NeverUsed, _picks - _lastUsed[i]);
                     if (a.priority < bestPriority || (a.priority == bestPriority && score <= bestScore)) continue;
                     best = i;
@@ -524,9 +606,10 @@ namespace SurvivorSouls.Gameplay.Boss
                 if (_lastUsed[i] == FailedPick) _lastUsed[i] = _failed[i];
         }
 
-        /// <summary>The scene has what the attack needs (lanes for lane attacks, bolts for the fan).</summary>
-        private bool CanUse(in BossAttack a)
+        /// <summary>The scene has what attack <paramref name="index"/> needs (lanes for lane attacks, bolts for the fan, ...).</summary>
+        private bool CanUse(int index)
         {
+            var a = _attacks[index];
             switch (a.type)
             {
                 case Move.Fan: return a.count > 0 && lines != null && projectiles != null;
@@ -537,6 +620,11 @@ namespace SurvivorSouls.Gameplay.Boss
                 case Move.Rain:
                     var pool = RainPool;
                     return a.count > 0 && pool != null && pool.FreeCircles() > 0;
+                case Move.Lobbed:
+                    var circlePool = RainPool;
+                    return a.count > 0 && Boulders != null && circlePool != null && circlePool.FreeCircles() > 0;
+                case Move.Summon:
+                    return a.count > 0 && spawner != null && _summonTypes[index] != null && SummonsAlive < Mathf.Min(a.count, MaxSummons);
                 default: return true;
             }
         }
@@ -557,6 +645,11 @@ namespace SurvivorSouls.Gameplay.Boss
                 case Move.Nova:
                 case Move.Spiral: BeginCastWindUp(index); break;
                 case Move.Rain: BeginRain(index); break;
+                case Move.Lobbed: BeginLobbed(index); break;
+                case Move.Summon: BeginSummon(index); break;
+                case Move.Teleport:
+                    if (!TryBeginTeleport(index)) return false;
+                    break;
                 default: return false;
             }
             return true;
@@ -583,7 +676,7 @@ namespace SurvivorSouls.Gameplay.Boss
         public bool ForceAttack(int index)
         {
             if (Current != Stage.Fighting || CurrentAttack != Attack.Chase || player == null || player.IsDead) return false;
-            if (_boss == null || !_boss.IsAlive || index < 0 || index >= _attacks.Length || !CanUse(_attacks[index])) return false;
+            if (_boss == null || !_boss.IsAlive || index < 0 || index >= _attacks.Length || !CanUse(index)) return false;
             return Begin(index);
         }
 
@@ -1038,6 +1131,261 @@ namespace SurvivorSouls.Gameplay.Boss
             _rainLive = 0;
         }
 
+        // ------------------------------------------------------------ Lobbed, Summon, Teleport (KAN-119)
+
+        /// <summary>Boulder flight time with the warning floor: a landing circle shown at the throw warns at least 0.6 s.</summary>
+        private static float Flight(in BossAttack a) => Mathf.Max(BossData.MinTelegraph, a.duration);
+
+        /// <summary>Lobbed: the boss winds up; the first boulder's landing circle shows on the Knight already.</summary>
+        private void BeginLobbed(int index)
+        {
+            var a = _attacks[index];
+            Vector3 from = _boss.transform.position;
+            _attackDir = FaceKnight();
+            _attackOrigin = new Vector3(from.x, player.transform.position.y, from.z);
+            _throwPool = RainPool;
+            _throwTarget = ClampToLand(player.transform.position, a.radius);
+            _throwCircle = _throwPool != null ? _throwPool.RentCircle() : null;
+            if (_throwCircle != null) _throwCircle.Show(_throwTarget, a.radius);
+            _thrown = 0;
+            BeginWindUp(index);
+        }
+
+        private void ReleaseLobbed()
+        {
+            var circle = _throwCircle;
+            _throwCircle = null; // the boulder owns it now
+            ThrowBoulder(_throwTarget, circle, _windUp / (_windUp + Flight(_attack)));
+            CurrentAttack = Attack.Casting;
+            _shotWait = Mathf.Max(0.1f, _attack.interval);
+            _time = 0f;
+        }
+
+        private void TickLobbed(float dt)
+        {
+            int count = Mathf.Max(1, _attack.count);
+            _shotWait -= dt;
+            if (_thrown < count && _shotWait <= 0f)
+            {
+                FaceKnight();
+                Vector3 target = ClampToLand(player.transform.position, _attack.radius);
+                var circle = _throwPool != null ? _throwPool.RentCircle() : null;
+                if (circle != null) // no free circle: no boulder (nothing lands without its warning)
+                {
+                    circle.Show(target, _attack.radius);
+                    ThrowBoulder(target, circle, 0f);
+                }
+                else _thrown++;
+                _shotWait += Mathf.Max(0.1f, _attack.interval);
+            }
+            var rocks = Boulders;
+            if (_thrown >= count && (rocks == null || rocks.Flying == 0)) BeginRecover(_attack.recover, _attack.cooldown);
+        }
+
+        /// <summary>One boulder to <paramref name="target"/> with its (rented) circle; the circle goes back when it cannot fly.</summary>
+        private void ThrowBoulder(Vector3 target, GroundTelegraph circle, float progressStart)
+        {
+            _thrown++;
+            var rocks = Boulders;
+            bool thrown = rocks != null && rocks.Throw(_attackOrigin, target, Flight(_attack), _attack.radius,
+                data.DamageFor(_attack.damage, player != null ? player.Max : 0f), _attack.width, _attack.obstacle, circle,
+                _throwPool, progressStart);
+            if (!thrown && circle != null)
+            {
+                circle.Hide();
+                if (_throwPool != null) _throwPool.Release(circle);
+            }
+            if (thrown) BoulderThrown?.Invoke(target, _attack.radius);
+        }
+
+        private static Vector3 ClampToLand(Vector3 p, float radius)
+        {
+            if (!float.IsInfinity(Enemy.LandMaxZ)) p.z = Mathf.Min(p.z, Enemy.LandMaxZ - radius * 0.5f);
+            return p;
+        }
+
+        /// <summary>The spawner type of a summon entry (prefab <c>Enemy_&lt;id&gt;</c>, else the id as the name). Null = none.</summary>
+        private Enemy ResolveSummon(in BossAttack a)
+        {
+            if (a.type != Move.Summon || spawner == null || string.IsNullOrEmpty(a.summon)) return null;
+            var type = spawner.FindType("Enemy_" + a.summon);
+            return type != null ? type : spawner.FindType(a.summon);
+        }
+
+        /// <summary>Summon: the boss stands (roar clip); circles warn on a ring round it where the missing summons will rise.</summary>
+        private void BeginSummon(int index)
+        {
+            var a = _attacks[index];
+            Vector3 from = _boss.transform.position;
+            _attackDir = FaceKnight();
+            _attackOrigin = new Vector3(from.x, player.transform.position.y, from.z);
+            int want = Mathf.Min(a.count, MaxSummons) - SummonsAlive;
+            _summonPool = RainPool;
+            _summonPlanned = 0;
+            float baseAngle = Mathf.Atan2(_attackDir.x, _attackDir.z) * Mathf.Rad2Deg;
+            float ring = Mathf.Max(1f, a.reach);
+            var walk = Enemy.Walkability;
+            for (int k = 0; k < want; k++)
+            {
+                float rad = (baseAngle + 360f * (k + 0.5f) / want) * Mathf.Deg2Rad; // none right on the Knight's line
+                var dir = new Vector3(Mathf.Sin(rad), 0f, Mathf.Cos(rad));
+                Vector3 p = Clamp(_attackOrigin + dir * ring);
+                if (walk != null && walk.IsBlocked(p, SummonClearRadius))
+                {
+                    p = Clamp(_attackOrigin + dir * (ring * 0.6f)); // a pillar or the wall: closer in
+                    if (walk.IsBlocked(p, SummonClearRadius)) continue;
+                }
+                int n = _summonPlanned++;
+                _summonAt[n] = p;
+                var circle = _summonPool != null ? _summonPool.RentCircle() : null;
+                _summonCircles[n] = circle;
+                if (circle != null) circle.Show(p, 0.9f);
+            }
+            BeginWindUp(index);
+            SummonWarned?.Invoke(_attackOrigin, _summonPlanned);
+        }
+
+        private void ReleaseSummon()
+        {
+            var type = _index >= 0 && _index < _summonTypes.Length ? _summonTypes[_index] : null;
+            int spawned = 0;
+            for (int i = 0; i < _summonPlanned; i++)
+            {
+                var circle = _summonCircles[i];
+                if (circle != null)
+                {
+                    circle.Flash();
+                    if (_summonPool != null) _summonPool.Release(circle);
+                    _summonCircles[i] = null;
+                }
+                if (type == null || spawner == null) continue;
+                int slot = FreeSummonSlot();
+                if (slot < 0) break;
+                _summoned[slot] = spawner.SpawnAt(type, _summonAt[i]);
+                spawned++;
+            }
+            _summonPlanned = 0;
+            BeginRecover(_attack.recover, _attack.cooldown);
+            Summoned?.Invoke(_attackOrigin, spawned);
+        }
+
+        private int FreeSummonSlot()
+        {
+            for (int i = 0; i < MaxSummons; i++)
+                if (_summoned[i] == null || !_summoned[i].IsAlive) return i;
+            return -1;
+        }
+
+        /// <summary>A summon died: its pooled body may come back as a plain horde enemy, so it no longer counts.</summary>
+        private void ForgetSummon(Enemy enemy)
+        {
+            for (int i = 0; i < MaxSummons; i++)
+                if (_summoned[i] == enemy) _summoned[i] = null;
+        }
+
+        /// <summary>Teleport: a circle warns at a walkable point <see cref="BossAttack.length"/> m from the Knight. False = none.</summary>
+        private bool TryBeginTeleport(int index)
+        {
+            var a = _attacks[index];
+            if (!FindTeleportPoint(a.length, out var to)) return false;
+            Vector3 from = _boss.transform.position;
+            FaceKnight();
+            _teleportFrom = from;
+            _teleportTo = to;
+            if (!_scaled) _bossScale = _boss.transform.localScale;
+            if (telegraph != null) telegraph.Show(to, Mathf.Max(0.5f, a.radius));
+            BeginWindUp(index);
+            TeleportWarned?.Invoke(from, to);
+            return true;
+        }
+
+        /// <summary>
+        /// A walkable ground point <paramref name="distance"/> m from the Knight (random side, 12 tries round it), on land, at
+        /// least 3 m from where the boss stands. False when there is none.
+        /// </summary>
+        private bool FindTeleportPoint(float distance, out Vector3 point)
+        {
+            Vector3 knight = player.transform.position;
+            Vector3 from = _boss.transform.position;
+            var walk = Enemy.Walkability;
+            float start = UnityEngine.Random.value * 360f;
+            for (int i = 0; i < SpawnTries; i++)
+            {
+                float rad = (start + i * 360f / SpawnTries) * Mathf.Deg2Rad;
+                Vector3 p = Clamp(knight + new Vector3(Mathf.Sin(rad), 0f, Mathf.Cos(rad)) * Mathf.Max(1f, distance));
+                p.y = knight.y;
+                if (walk != null && walk.IsBlocked(p, SpawnClearRadius)) continue;
+                if (PlanarDistance(p, from) < MinTeleportMove) continue;
+                point = p;
+                return true;
+            }
+            point = from;
+            return false;
+        }
+
+        private void ReleaseTeleport()
+        {
+            Vector3 at = _boss.transform.position;
+            _boss.transform.position = new Vector3(_teleportTo.x, at.y, _teleportTo.z);
+            FaceKnight();
+            float dealt = 0f;
+            if (_attack.damage > 0f && player != null && !player.IsDead
+                && PlanarDistance(player.transform.position, _teleportTo) <= _attack.radius)
+                dealt = player.TakeDamage(data.DamageFor(_attack.damage, player.Max));
+            if (telegraph != null) telegraph.Flash();
+            BeginRecover(Mathf.Max(_attack.recover, VanishTime), _attack.cooldown);
+            _growLeft = VanishTime;
+            Teleported?.Invoke(_teleportFrom, _teleportTo, dealt);
+        }
+
+        /// <summary>Boss size as a share of its own (the teleport vanish); never quite 0.</summary>
+        private void ScaleBoss(float share)
+        {
+            if (!_scaled)
+            {
+                if (share >= 1f) return;
+                _bossScale = _boss.transform.localScale;
+                _scaled = true;
+            }
+            _boss.transform.localScale = _bossScale * Mathf.Max(VanishScale, Mathf.Clamp01(share));
+        }
+
+        private void TickGrow(float dt)
+        {
+            if (_growLeft <= 0f) return;
+            _growLeft -= dt;
+            if (_growLeft > 0f) ScaleBoss(1f - _growLeft / VanishTime);
+            else RestoreScale();
+        }
+
+        private void RestoreScale()
+        {
+            _growLeft = 0f;
+            if (!_scaled) return;
+            _scaled = false;
+            if (_boss != null) _boss.transform.localScale = _bossScale;
+        }
+
+        /// <summary>Hides and returns the circles of a throw or summon still winding up (Knight died, boss died, disabled).</summary>
+        private void CancelPending()
+        {
+            if (_throwCircle != null)
+            {
+                _throwCircle.Hide();
+                if (_throwPool != null) _throwPool.Release(_throwCircle);
+                _throwCircle = null;
+            }
+            for (int i = 0; i < _summonPlanned; i++)
+            {
+                var circle = _summonCircles[i];
+                if (circle == null) continue;
+                circle.Hide();
+                if (_summonPool != null) _summonPool.Release(circle);
+                _summonCircles[i] = null;
+            }
+            _summonPlanned = 0;
+        }
+
         /// <summary>
         /// Debug menu and dev screenshots (KAN-116): adds <paramref name="entry"/> to this fight's list (a copy; the asset
         /// stays as it is) and returns its index. Allocates: not for gameplay.
@@ -1048,7 +1396,9 @@ namespace SurvivorSouls.Gameplay.Boss
             Array.Resize(ref _attacks, n + 1);
             Array.Resize(ref _lastUsed, n + 1);
             Array.Resize(ref _failed, n + 1);
+            Array.Resize(ref _summonTypes, n + 1);
             _attacks[n] = entry;
+            _summonTypes[n] = ResolveSummon(entry);
             _lastUsed[n] = -NeverUsed;
             return n;
         }
@@ -1073,12 +1423,14 @@ namespace SurvivorSouls.Gameplay.Boss
             _dashesLeft = 0;
             _pullLeft = 0f;
             _time = 0f;
+            RestoreScale();
         }
 
         private void HideWarnings()
         {
             if (telegraph != null) telegraph.Hide();
             if (lines != null) lines.Hide();
+            CancelPending();
         }
 
         private void EnterPhase2()
@@ -1096,6 +1448,7 @@ namespace SurvivorSouls.Gameplay.Boss
 
         private void OnEnemyDamaged(Enemy enemy, float amount, bool killed)
         {
+            if (killed && enemy != _boss) ForgetSummon(enemy);
             if (enemy != _boss || (Current != Stage.Fighting && Current != Stage.Intro)) return;
             if (!killed)
             {
@@ -1109,8 +1462,12 @@ namespace SurvivorSouls.Gameplay.Boss
             }
             if (CurrentAttack == Attack.WindUp || CurrentAttack == Attack.Spinning || CurrentAttack == Attack.Casting) HideWarnings();
             CancelRain();
+            CancelPending();
+            RestoreScale();
             _pullLeft = 0f;
             if (projectiles != null) projectiles.Clear(); // the fight is over: no bolt lands after the kill
+            var rocks = Boulders;
+            if (rocks != null) rocks.Clear(); // no boulder lands after the kill; the rubble goes too
             CurrentAttack = Attack.Chase;
             _deathPoint = enemy.transform.position;
             SetStage(Stage.Defeated);

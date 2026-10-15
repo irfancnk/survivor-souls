@@ -38,6 +38,16 @@ namespace SurvivorSouls.Gameplay.Boss
     /// <see cref="interval"/> s, each within <see cref="reach"/> m of where the Knight stands then (the first right on it).
     /// Each warns <see cref="telegraph"/> s, then hits inside its circle. Circles come from the shared
     /// <see cref="SurvivorSouls.Gameplay.Combat.EnemyTelegraphs"/> pool.</item>
+    /// <item><b>Lobbed</b> (KAN-119): <see cref="count"/> boulders, one every <see cref="interval"/> s, each lobbed at where
+    /// the Knight stands then; flight <see cref="duration"/> s (0.6 s floor), landing circle of <see cref="radius"/> m (shown
+    /// from the throw; the first one already during the wind-up). A boulder that lands leaves rubble of <see cref="width"/> m
+    /// radius for <see cref="obstacle"/> s (0 = none): it blocks the Knight, enemies, bolts and charges. Each boulder hits once.</item>
+    /// <item><b>Summon</b> (KAN-119): <see cref="count"/> enemies of type <see cref="summon"/> (roster id, e.g. FrenziedGhoul;
+    /// a spawner type) rise on a ring of <see cref="reach"/> m round the boss; circles warn where. Summons still alive count:
+    /// only the missing ones come (never more than <see cref="count"/> alive).</item>
+    /// <item><b>Teleport</b> (KAN-119): a circle of <see cref="radius"/> m warns at a walkable point <see cref="length"/> m from
+    /// the Knight; the boss shrinks away, reappears there and grows back. <see cref="damage"/> above 0 hits inside the circle
+    /// on arrival.</item>
     /// </list>
     /// </summary>
     [Serializable]
@@ -75,6 +85,10 @@ namespace SurvivorSouls.Gameplay.Boss
         [Min(0f)] public float stun;
         [Tooltip("Nova: gaps in the ring (two bolts missing each).")]
         [Min(0)] public int gaps;
+        [Tooltip("Lobbed: seconds the rubble of a boulder stays (0 = no rubble).")]
+        [Min(0f)] public float obstacle;
+        [Tooltip("Summon: roster id of the summoned type (e.g. FrenziedGhoul). Must be a type of the scene's spawner.")]
+        public string summon;
         [Tooltip("Animator state the body plays for this attack (wind-up and strike). Empty or missing = its Attack state.")]
         public string clip;
 
@@ -170,9 +184,40 @@ namespace SurvivorSouls.Gameplay.Boss
                 telegraph = telegraph, damage = damage, recover = recover, cooldown = cooldown, clip = clip,
             };
 
+        public static BossAttack Lobbed(string label, BossPhases phases, float minRange, float maxRange, int boulders,
+            float impactRadius, float flight, float interval, float rubbleRadius, float rubbleLife, float telegraph, float damage,
+            float recover, float cooldown, int priority = 0, float weight = 1f, string clip = null) =>
+            new BossAttack
+            {
+                label = label, type = BossFight.Move.Lobbed, phases = phases, priority = priority, weight = weight,
+                minRange = minRange, maxRange = maxRange, count = boulders, radius = impactRadius, duration = flight,
+                interval = interval, width = rubbleRadius, obstacle = rubbleLife, telegraph = telegraph, damage = damage,
+                recover = recover, cooldown = cooldown, clip = clip,
+            };
+
+        public static BossAttack Summon(string label, BossPhases phases, float minRange, float maxRange, string type, int count,
+            float ring, float telegraph, float recover, float cooldown, int priority = 0, float weight = 1f, string clip = null) =>
+            new BossAttack
+            {
+                label = label, type = BossFight.Move.Summon, phases = phases, priority = priority, weight = weight,
+                minRange = minRange, maxRange = maxRange, summon = type, count = count, reach = ring, telegraph = telegraph,
+                recover = recover, cooldown = cooldown, clip = clip,
+            };
+
+        public static BossAttack Teleport(string label, BossPhases phases, float minRange, float maxRange, float distance,
+            float warnRadius, float telegraph, float damage, float recover, float cooldown, int priority = 0, float weight = 1f,
+            string clip = null) =>
+            new BossAttack
+            {
+                label = label, type = BossFight.Move.Teleport, phases = phases, priority = priority, weight = weight,
+                minRange = minRange, maxRange = maxRange, length = distance, radius = warnRadius, telegraph = telegraph,
+                damage = damage, recover = recover, cooldown = cooldown, clip = clip,
+            };
+
         /// <summary>
         /// Pyre Lord style numbers (Docs/ENEMY_ROSTER.md 3.13) for a type: the debug menu and dev screenshots add it to a
-        /// boss that lacks that type; KAN-109 starts its list from these. Other types: a plain slam.
+        /// boss that lacks that type; KAN-109 starts its list from these. KAN-119: Lobbed and Summon are Rotting Colossus
+        /// numbers (3.14), Teleport is the Bone Matriarch's (3.15); KAN-110 / KAN-111 start from these. Other types: a plain slam.
         /// </summary>
         public static BossAttack Sample(BossFight.Move type)
         {
@@ -188,6 +233,15 @@ namespace SurvivorSouls.Gameplay.Boss
                 case BossFight.Move.Rain:
                     return Rain("Meteor Rain", BossPhases.Phase2, 3f, 16f, circles: 6, radius: 1.6f, scatter: 2.5f, interval: 0.35f,
                         telegraph: 1f, damage: 0.15f, recover: 0.8f, cooldown: 3.5f);
+                case BossFight.Move.Lobbed:
+                    return Lobbed("Corpse Boulder", BossPhases.Both, 3f, 14f, boulders: 1, impactRadius: 2.5f, flight: 1.1f,
+                        interval: 0.6f, rubbleRadius: 0.9f, rubbleLife: 8f, telegraph: 0.8f, damage: 0.2f, recover: 0.9f, cooldown: 3f);
+                case BossFight.Move.Summon:
+                    return Summon("Summon Ghouls", BossPhases.Phase2, 0f, 30f, "FrenziedGhoul", count: 4, ring: 2.6f, telegraph: 1.2f,
+                        recover: 0.8f, cooldown: 4f);
+                case BossFight.Move.Teleport:
+                    return Teleport("Teleport", BossPhases.Phase2, 0f, 30f, distance: 7f, warnRadius: 1.6f, telegraph: 0.8f, damage: 0f,
+                        recover: 0.4f, cooldown: 2f);
                 default:
                     return Slam("Slam", BossPhases.Both, 4f, 3f, 1.6f, 1f, 0.22f, 0.7f, 3.2f);
             }

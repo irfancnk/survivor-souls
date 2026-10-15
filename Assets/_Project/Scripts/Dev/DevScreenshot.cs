@@ -61,6 +61,7 @@ namespace SurvivorSouls.Dev
     /// phase first) or an index into the boss's attack list (e.g. <c>3</c> = the Butcher's chain hook); the Knight stands
     /// inside that attack's range. KAN-116: also <c>nova|spiral|rain</c>; a boss without that type gets the sample entry
     /// (<c>BossAttack.Sample</c>, Pyre Lord numbers) added to its fight for the shot.
+    /// KAN-119: also <c>lobbed|summon|teleport</c> (samples: Rotting Colossus boulder / ghoul summon, Bone Matriarch teleport).
     /// <c>-ss-hearts &lt;n&gt;</c> (KAN-60, boss Chamber): drops n healing hearts ahead of the Knight right after load (cap
     /// permitting); each shows its ground glow for 1 s, then floats.
     /// Main menu (KAN-20): <c>-ss-realms</c> opens the Realm selection page, <c>-ss-realm &lt;id&gt;</c> also opens that
