@@ -246,9 +246,18 @@ namespace SurvivorSouls.UI.Hud
             _prefix.style.display = string.IsNullOrEmpty(line.prefix) ? DisplayStyle.None : DisplayStyle.Flex;
             _suffix.style.display = !_timed || string.IsNullOrEmpty(line.suffix) ? DisplayStyle.None : DisplayStyle.Flex;
             _time.style.display = _timed ? DisplayStyle.Flex : DisplayStyle.None;
+            // Labels drop edge spaces: a space at the end of the prefix / start of the suffix becomes a gap (no string work).
+            _time.style.marginLeft = EndsWithSpace(line.prefix) ? WordGap : 0f;
+            _time.style.marginRight = StartsWithSpace(line.suffix) ? WordGap : 0f;
             _drawnSeconds = -1;
             UpdateTime();
         }
+
+        private const float WordGap = 10f;
+
+        private static bool EndsWithSpace(string s) => !string.IsNullOrEmpty(s) && s[s.Length - 1] == ' ';
+
+        private static bool StartsWithSpace(string s) => !string.IsNullOrEmpty(s) && s[0] == ' ';
 
         private void LateUpdate() => Tick(Time.unscaledDeltaTime);
 

@@ -68,8 +68,8 @@ namespace SurvivorSouls.Gameplay.Chamber
         [SerializeField, Min(0f)] private float sealInterval = 1.5f;
         [SerializeField, Min(0.05f)] private float sealPulseTime = 0.7f;
         [SerializeField, Min(0)] private int sealEmbers = 16;
-        [Tooltip("Local height (m) above the trigger point where the HUD bubble's tail points (just over the lintel).")]
-        [SerializeField] private float bubbleHeight = 4.4f;
+        [Tooltip("Local height (m) above the trigger point where the HUD bubble's tail points (over the gold beacon above the arch).")]
+        [SerializeField] private float bubbleHeight = 7.4f;
 
         private MaterialPropertyBlock _mpb;
         private float _progress;
