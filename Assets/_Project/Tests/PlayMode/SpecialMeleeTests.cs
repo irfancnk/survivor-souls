@@ -276,7 +276,7 @@ namespace SurvivorSouls.Tests
         {
             var ghoul = Spawn("FrenziedGhoul", Vector3.zero);
             var leap = ghoul.GetComponent<GhoulLeap>();
-            PlaceKnight(new Vector3(0f, 0f, 8f)); // too far
+            PlaceKnight(new Vector3(0f, 0f, 5.6f)); // too far: a 5 m leap from here would land short
             Run(2f, leap);
             Assert.That(leap.CurrentPhase, Is.EqualTo(SpecialAttack.Phase.Idle));
             PlaceKnight(new Vector3(0f, 0f, 3f)); // too close
@@ -316,7 +316,7 @@ namespace SurvivorSouls.Tests
         {
             var ghoul = Spawn("FrenziedGhoul", Vector3.zero);
             var leap = ghoul.GetComponent<GhoulLeap>();
-            PlaceKnight(new Vector3(0f, 0f, 5f));
+            PlaceKnight(new Vector3(0f, 0f, 4.8f));
             RunUntilWindUp(leap);
             PlaceKnight(new Vector3(1.6f, 0f, 3.5f)); // side-step out of the 1 m lane
             Run(1.2f, leap);
@@ -328,7 +328,7 @@ namespace SurvivorSouls.Tests
             var otherLeap = other.GetComponent<GhoulLeap>();
             other.transform.position = Vector3.zero;
             Enemy.Walkability = new PillarAhead();
-            PlaceKnight(new Vector3(0f, 0f, 5f));
+            PlaceKnight(new Vector3(0f, 0f, 4.8f));
             Run(3f, otherLeap);
             Assert.That(otherLeap.CurrentPhase, Is.EqualTo(SpecialAttack.Phase.Idle), "a pillar 1.5 m ahead: no leap");
             Assert.That(otherLeap.Attacks, Is.EqualTo(0));
@@ -339,7 +339,7 @@ namespace SurvivorSouls.Tests
         {
             var ghoul = Spawn("FrenziedGhoul", Vector3.zero);
             var leap = ghoul.GetComponent<GhoulLeap>();
-            PlaceKnight(new Vector3(0f, 0f, 5f));
+            PlaceKnight(new Vector3(0f, 0f, 4.8f));
             RunUntilWindUp(leap);
             Assert.That(_warnings.RentedLines(), Is.EqualTo(1));
             ghoul.TakeDamage(ghoul.MaxHealth + 1f, Vector3.back);
@@ -349,7 +349,7 @@ namespace SurvivorSouls.Tests
 
             var second = Spawn("FrenziedGhoul", new Vector3(10f, 0f, 0f));
             var leap2 = second.GetComponent<GhoulLeap>();
-            PlaceKnight(new Vector3(10f, 0f, 5f));
+            PlaceKnight(new Vector3(10f, 0f, 4.8f));
             RunUntilWindUp(leap2);
             Run(0.75f, leap2);
             Assert.That(leap2.IsLeaping, Is.True);

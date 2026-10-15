@@ -28,10 +28,10 @@ namespace SurvivorSouls.Editor.Enemies
             cloud = new HazardSpec { kind = HazardKind.Toxic, radius = 2.2f, life = 6f, dps = 15f },
         };
 
-        /// <summary>Frenzied Ghoul (3.9): at 4-6 m crouch 0.6 s + lane, leap 5 m in 0.35 s, 10 %, stun 0.8 s.</summary>
+        /// <summary>Frenzied Ghoul (3.9): at 4-5 m crouch 0.6 s + lane, leap 5 m in 0.35 s, 10 %, stun 0.8 s. The doc says 4-6 m, but from 6 m a 5 m leap lands short of a Knight standing in the lane.</summary>
         public static readonly GhoulLeap.Settings GhoulSpec = new GhoulLeap.Settings
         {
-            minRange = 4f, maxRange = 6f, crouch = 0.6f, leapDistance = 5f, minLeap = 3f, leapTime = 0.35f, arcHeight = 0.8f,
+            minRange = 4f, maxRange = 5f, crouch = 0.6f, leapDistance = 5f, minLeap = 3f, leapTime = 0.35f, arcHeight = 0.8f,
             laneWidth = 1f, hitPadding = 0.25f, damageShare = 0.1f, stun = 0.8f, cooldown = 3f,
         };
 

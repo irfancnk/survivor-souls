@@ -615,7 +615,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Combat.GhoulLeap
   settings:
     minRange: 4
-    maxRange: 6
+    maxRange: 5
     crouch: 0.6
     leapDistance: 5
     minLeap: 3

@@ -17,6 +17,7 @@ namespace SurvivorSouls.Gameplay.Combat
     /// <item>Stun: it lands and staggers for <see cref="Settings.stun"/> s (the punish window), then sprints again.</item>
     /// </list>
     /// Crouch is 0.6 s, not the 0.5 s of the roster doc: every warning shows at least <see cref="SpecialAttack.MinTelegraph"/> s.
+    /// Shipped band 4-5 m (doc 4-6 m): a 5 m leap from 6 m lands short of a Knight standing in the lane.
     /// </summary>
     public sealed class GhoulLeap : SpecialAttack
     {
@@ -78,7 +79,9 @@ namespace SurvivorSouls.Gameplay.Combat
         public bool IsLeaping => _phase == Phase.Strike;
         /// <summary>Staggered after a landing (punish window).</summary>
         public bool IsStunned => _phase == Phase.Recover;
-        protected override float SpawnCooldown => settings.cooldown;
+        /// <summary>A fresh Ghoul leaps on its first pass through the band (at 4.2 m/s it crosses 4-6 m in under half a second).</summary>
+        protected override float SpawnCooldown => FirstLeapCooldown;
+        public const float FirstLeapCooldown = 0.5f;
 
         /// <summary>Tests and tools: sets the attack without the builder.</summary>
         public void Configure(in Settings value) => settings = value;
