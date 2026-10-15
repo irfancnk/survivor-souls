@@ -529,6 +529,15 @@
   - Verified: compile 0 errors / 0 new warnings, Game scene rebuild exit 0 (fileID churn only, not committed), 3 full PlayMode runs in a row 627 pass / 2 skipped / 0 fail, EditMode 90 pass, mac dev build + screenshot run without exceptions, iOS dev export + xcodebuild + install + launch on iPhone 14 Pro Max OK.
   - Found: Heroes/ShadowRanger + Pets art is on main without `.meta` files (every checkout makes new GUIDs): KAN-156.
 
+- 2026-10-15: Hero + pet art `.meta` files committed with fixed import settings (KAN-156, branch `feat/kan-156-hero-pet-metas`, from main fa91518). Scheduled-task run.
+  - `Editor/Characters/HeroPetArtImporter` (menu Survivor Souls/Characters/Configure Hero + Pet Import; GameSceneBuilder runs it after EnemyRosterBuilder). Every folder under `Art/Characters/Heroes/` and `Pets/`: `SK_<Id>.fbx` Generic, no animation, no imported materials, Mesh LODs on; `A_<Id>_<Clip>.fbx` Generic, one clip named `<Clip>`, full take; Idle / Walk / Walking / Running / Hover loop, Shoot / Cast play once; `T_<Id>_*` max 1024, `*_Normal` as normal map. Same rules as the enemy roster. New hero / pet = drop SK_ / A_ / T_ files in a new folder, rebuild.
+  - Committed 36 metas (folders, FBX, textures): ShadowRanger, CinderSeraph, GargoyleFamiliar, LanternSprite. GUIDs are now fixed for KAN-153 / KAN-150 prefabs.
+  - Import report: ShadowRanger 21.1k tris (LOD0, over the 5-8k hero budget; Mesh LODs cut it at distance), Idle 2.0 s, Running 0.67 s, Walking 1.0 s, Shoot 1.0 s. Pets 3.1k-5.2k tris; Cast 2.3-3.5 s, Hover 1.8-14 s.
+  - Tests `Tests/EditMode/HeroPetArtImporterTests` (14 cases): dirs found, SK_ settings, clip names + loop flags + length, texture size + type, loop rule.
+  - Note for the Meshy session: a re-export with the same file names keeps the GUIDs. Do not delete the `.meta` files when you replace an FBX.
+  - Verified: compile 0 errors / 0 new warnings, Game scene rebuild exit 0 (fileID churn only, not committed: KAN-157), EditMode 104 pass, PlayMode 627 pass / 2 skipped / 0 fail, mac dev build + Game screenshot run without exceptions (35 draw calls, no visible change: editor-only ticket), iOS dev export + xcodebuild + install + launch on iPhone 14 Pro Max OK.
+  - Follow-ups: KAN-157 (scene rebuild rewrites generated assets with new fileIDs). Shadow Ranger LOD0 tri budget noted on KAN-153.
+
 ## DECISIONS
 - Design language: Archero / Archero 2 (menus, loop, chests, daily/weekly quests, gear merge, talents, energy). Look: Dark Souls, realistic, not dismal. User decision 2026-10-11.
 - Naming map: energy=Estus, gold=Souls, gems=Ember Shards, chests=Reliquaries, daily=Oaths, weekly=Pilgrimage, chapter=Realm, room=Chamber. See GAME_PLAN sec 2.
