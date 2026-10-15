@@ -116,7 +116,7 @@ namespace SurvivorSouls.Editor
             var mat = LoadOrCreateMaterial(name, "Universal Render Pipeline/Simple Lit");
             mat.SetColor("_BaseColor", color);
             mat.SetFloat("_Smoothness", smoothness);
-            EditorUtility.SetDirty(mat);
+            EditorAssetUtil.ValidateSimpleLit(mat); // validated state: opening the menu materials changes nothing (KAN-158)
             return mat;
         }
 

@@ -64,10 +64,8 @@ namespace SurvivorSouls.Tests
             var arrowHolder = Track(new GameObject("Arrow Holder"));
             arrowHolder.SetActive(false);
             arrowHolder.transform.SetParent(_player, false);
-            var arrowMesh = new GameObject("Arrow").transform;
-            arrowMesh.SetParent(arrowHolder.transform, false);
             _arrow = arrowHolder.AddComponent<ObjectiveArrow>();
-            _arrow.Setup(_world, arrowMesh);
+            _arrow.Setup(_world);
             arrowHolder.SetActive(true);
 
             _sun = Track(new GameObject("Sun")).AddComponent<Light>();
@@ -226,17 +224,20 @@ namespace SurvivorSouls.Tests
 
             _player.position = ArenaCentre + new Vector3(0f, 0f, -10f);
             yield return null;
-            Assert.That(_arrow.Showing, Is.False, "locked portal: no arrow during the fight");
+            Assert.That(_arrow.HasTarget, Is.False, "locked portal: no arrow during the fight");
+            Assert.That(_arrow.Open, Is.False);
 
             timer.Complete();
             for (int i = 0; i < 400 && gate.State != PortalState.Open; i++) gate.Tick(1f / 60f);
             Assert.That(gate.State, Is.EqualTo(PortalState.Open));
             yield return null;
-            Assert.That(_arrow.Showing, Is.True, "open portal: the arrow leads to it");
+            Assert.That(_arrow.HasTarget, Is.True, "open portal: the arrow leads to it");
+            Assert.That(_arrow.Open, Is.True);
+            Assert.That(Vector3.Distance(_arrow.Target, gate.TriggerPosition), Is.LessThan(0.01f));
 
             _player.position = gate.TriggerPosition + new Vector3(0f, 0f, -3f);
             yield return null;
-            Assert.That(_arrow.Showing, Is.False, "hidden close to the portal");
+            Assert.That(_arrow.HasTarget, Is.False, "no target at the portal");
         }
 
         // ------------------------------------------------------------ Real scene

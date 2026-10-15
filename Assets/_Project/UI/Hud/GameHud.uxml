@@ -78,6 +78,15 @@
         </ui:VisualElement>
     </ui:VisualElement>
 
+    <!-- Gate arrow on the screen edge (GateArrowHud, KAN-63): position, rotation, scale, opacity and the baked arrow
+         sprite set in code. Two trailing chevrons behind the tail (open portal only) + distance label. Never blocks touches. -->
+    <ui:VisualElement name="gate-arrow" class="gate-arrow hud-hidden" picking-mode="Ignore">
+        <ui:VisualElement name="gate-arrow-trail2" class="gate-arrow__trail gate-arrow__trail--far" picking-mode="Ignore" />
+        <ui:VisualElement name="gate-arrow-trail1" class="gate-arrow__trail" picking-mode="Ignore" />
+        <ui:VisualElement name="gate-arrow-icon" class="gate-arrow__icon" picking-mode="Ignore" />
+    </ui:VisualElement>
+    <ui:Label name="gate-arrow-dist" text="" class="gate-arrow__dist hud-hidden" picking-mode="Ignore" />
+
     <!-- Small bar over the Knight, placed in code at a world point. -->
     <ui:VisualElement name="player-overhead" class="hud-overhead" picking-mode="Ignore">
         <ui:VisualElement name="player-overhead-fill" class="hud-overhead__fill" picking-mode="Ignore" />

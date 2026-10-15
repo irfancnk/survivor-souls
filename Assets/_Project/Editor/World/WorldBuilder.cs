@@ -834,10 +834,9 @@ namespace SurvivorSouls.Editor.World
             marker.FindProperty("marker").objectReferenceValue = markerGo.GetComponent<MeshRenderer>();
             marker.ApplyModifiedPropertiesWithoutUndo();
 
-            var arrow = ArrowObject("Objective Arrow", player, 1.3f);
+            // Gate target only: the HUD draws the arrow on the screen edge (GateArrowHud, KAN-63), nothing under the Knight.
             var obj = new SerializedObject(player.gameObject.AddComponent<ObjectiveArrow>());
             obj.FindProperty("world").objectReferenceValue = world;
-            obj.FindProperty("arrow").objectReferenceValue = arrow.transform;
             obj.ApplyModifiedPropertiesWithoutUndo();
         }
 

@@ -1374,3 +1374,49 @@
     border-color: rgba(120, 200, 255, 0.55);
     border-radius: 6px;
 }
+
+/* ------------------------------------------------------------ Gate arrow (GateArrowHud, KAN-63) */
+/* Placed in code: width / height = size, translate = edge point, rotate = toward the gate, scale = pulse. The sprite is
+   the Blender arrow baked tip-up (T_UI_GateArrow.png, ember glow included). */
+.gate-arrow {
+    position: absolute;
+    left: 0; top: 0;
+    width: 150px;
+    height: 150px;
+}
+
+.gate-arrow__icon {
+    position: absolute;
+    left: 0; top: 0; right: 0; bottom: 0;
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+/* Two small arrows behind the tail (local "down" = away from the gate); opacity animated in code. */
+.gate-arrow__trail {
+    position: absolute;
+    left: 27%; width: 46%;
+    top: 84%; height: 46%;
+    -unity-background-scale-mode: scale-to-fit;
+    opacity: 0;
+}
+
+.gate-arrow__trail--far {
+    top: 118%;
+    left: 32%; width: 36%;
+    height: 36%;
+}
+
+.gate-arrow__dist {
+    position: absolute;
+    left: 0; top: 0;
+    width: 120px;
+    height: 36px;
+    margin: 0;
+    padding: 0;
+    font-size: 32px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    color: rgb(250, 222, 160);
+    -unity-text-outline-width: 3px;
+    -unity-text-outline-color: rgba(0, 0, 0, 0.85);
+}

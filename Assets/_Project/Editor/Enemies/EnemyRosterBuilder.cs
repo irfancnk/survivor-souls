@@ -269,18 +269,17 @@ namespace SurvivorSouls.Editor.Enemies
             var normal = AssetDatabase.LoadAssetAtPath<Texture2D>(tex + "_Normal.png");
             var emission = AssetDatabase.LoadAssetAtPath<Texture2D>(tex + "_Emission.jpg");
             if (baseMap == null) throw new System.InvalidOperationException($"{spec.Id}: base colour texture missing");
-            var mat = EditorAssetUtil.SimpleLitMaterial(spec.MaterialPath, baseMap, Color.white, normalMap: normal, smoothness: 0.15f);
+            var mat = EditorAssetUtil.SimpleLitMaterial(spec.MaterialPath, baseMap, Color.white, normalMap: normal, smoothness: 0.15f,
+                specular: false); // characters: no highlight (KAN-158)
             mat.SetTexture("_EmissionMap", emission);
             mat.SetColor("_EmissionColor", emission != null ? Color.white : Color.black);
             if (emission != null) mat.EnableKeyword("_EMISSION");
             else mat.DisableKeyword("_EMISSION");
             // URP keeps _EMISSION only with an emissive GI flag (BaseShaderGUI: AnyEmissive); realtime = no bake cost (KAN-109).
             mat.globalIlluminationFlags = emission != null ? MaterialGlobalIlluminationFlags.RealtimeEmissive : MaterialGlobalIlluminationFlags.EmissiveIsBlack;
-            // Same keyword pass as the URP Simple Lit inspector (ShaderGUI.ValidateMaterial), which the editor runs on these
-            // materials: _SpecularHighlights 1 is URP "NoSpecular", so it drops the _SPECULAR_COLOR that SimpleLitMaterial set.
-            // Without this pass every rebuild added the keyword and the next editor / test session removed it again (KAN-157).
-            BaseShaderGUI.SetMaterialKeywords(mat, SimpleLitGUI.SetMaterialKeywords);
-            EditorUtility.SetDirty(mat);
+            // Emission changed after SimpleLitMaterial: run the URP inspector pass again, so the editor / a test session
+            // finds nothing to change (KAN-157, KAN-158).
+            EditorAssetUtil.ValidateSimpleLit(mat);
             return mat;
         }
 
