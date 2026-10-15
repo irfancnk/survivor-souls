@@ -51,7 +51,7 @@ info["verts"] = sum(len(o.data.vertices) for o in meshes)
 info["bones"] = len(arm.data.bones)
 info["root_bone"] = arm.data.bones[0].name
 for o in meshes:
-    o.name = f"{name}_Mesh"
+    o.name = f"{name}_Bow" if o.name.startswith("Bow") else f"{name}_Mesh"  # Shadow Ranger: separate rigid bow mesh
 arm.name = f"{name}_Rig"
 select([arm] + meshes)
 bpy.ops.export_scene.fbx(filepath=os.path.join(out, f"SK_{name}.fbx"), object_types={'ARMATURE', 'MESH'},
