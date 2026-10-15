@@ -44,7 +44,7 @@ namespace SurvivorSouls.Gameplay.Boss
     /// list is built from its old fields, so it plays as above). New types: <b>Lane</b> (cleaver chop, chain hook that drags
     /// the Knight in), <b>Spin</b> (a damage circle that follows the Knight), multi-dash <b>Charge</b> with a stun when a dash
     /// hits a pillar or the wall. Each attack plays its own animator state (<see cref="BossAttack.clip"/>); the intro and the
-    /// phase 2 roar play <see cref="BossData.RoarClip"/>. Which boss a boss Chamber gets: <see cref="bosses"/> (the first boss
+    /// phase 2 roar play <see cref="BossData.RoarClip"/>. Which boss a boss Chamber gets: <see cref="rotation"/> (KAN-112 asset; the first boss
     /// Chamber of the Realm the first entry, the next the second, round), else <see cref="data"/>.
     /// KAN-116: bullet and area types. <b>Nova</b> (a ring of bolts from the body, optional gaps) and <b>Spiral</b> (turning
     /// arms of bolts for a few seconds) warn with a circle around the body, then fire <see cref="BossProjectiles"/>; one ring
@@ -159,8 +159,8 @@ namespace SurvivorSouls.Gameplay.Boss
         public const int BurnOwner = -109;
 
         [SerializeField] private BossData data;
-        [Tooltip("KAN-108: bosses of this Realm's boss Chambers in order (round). Empty = data above.")]
-        [SerializeField] private BossData[] bosses = new BossData[0];
+        [Tooltip("KAN-112: bosses of this Realm's boss Chambers in order (round), a data asset. Empty = data above.")]
+        [SerializeField] private BossRotation rotation;
         [Tooltip("KAN-109: other bosses in the build (Realm 2+ candidates). Never fought unless picked by the dev flag "
             + "-ss-boss-type (ForcedBoss) or a tool.")]
         [SerializeField] private BossData[] library = new BossData[0];
@@ -380,7 +380,7 @@ namespace SurvivorSouls.Gameplay.Boss
             circles = circlePool;
             boulders = boulderPool;
             data = bossData;
-            bosses = roster ?? new BossData[0];
+            rotation = roster != null ? BossRotation.Create(roster) : null;
             bossRules = rules;
             timer = survivalTimer;
             spawner = enemySpawner;
@@ -442,24 +442,26 @@ namespace SurvivorSouls.Gameplay.Boss
 
         /// <summary>
         /// Boss of boss Chamber <paramref name="chamber"/>: the n-th boss Chamber of the Realm (from the difficulty asset, else
-        /// every 5th) gets <see cref="bosses"/>[n mod count]. Null = no list (keep <see cref="data"/>).
+        /// every 5th) gets <see cref="rotation"/>'s n-th boss (round). Null = no list (keep <see cref="data"/>).
         /// </summary>
         public BossData BossFor(int chamber)
         {
             var forced = FindBoss(ForcedBoss);
             if (forced != null) return forced;
-            if (bosses == null || bosses.Length == 0) return null;
+            if (rotation == null || rotation.Count == 0) return null;
             var setup = FindAnyObjectByType<ChamberSetup>(); // once per boss Chamber
             var difficulty = setup != null ? setup.Difficulty : null;
             int ordinal = 0;
             for (int c = 1; c < chamber; c++)
                 if (difficulty != null ? difficulty.TypeOf(c) == ChamberType.Boss : c % 5 == 0) ordinal++;
-            var pick = bosses[ordinal % bosses.Length];
-            return pick != null ? pick : null;
+            return rotation.For(ordinal);
         }
 
         /// <summary>The boss list per boss Chamber (KAN-108).</summary>
-        public BossData[] Bosses => bosses;
+        public BossData[] Bosses => rotation != null ? rotation.Bosses : Array.Empty<BossData>();
+
+        /// <summary>The boss list asset (KAN-112). Null = every boss Chamber fights <see cref="data"/>.</summary>
+        public BossRotation Rotation => rotation;
 
         /// <summary>KAN-109: other bosses in the build (see <see cref="ForcedBoss"/>).</summary>
         public BossData[] Library => library;
@@ -474,7 +476,7 @@ namespace SurvivorSouls.Gameplay.Boss
         public BossData FindBoss(string id)
         {
             if (string.IsNullOrEmpty(id)) return null;
-            var hit = FindIn(bosses, id) ?? FindIn(library, id);
+            var hit = FindIn(Bosses, id) ?? FindIn(library, id);
             return hit != null ? hit : Matches(data, id) ? data : null;
         }
 

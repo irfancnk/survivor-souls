@@ -27,7 +27,8 @@ namespace SurvivorSouls.Editor.Boss
     /// Called by GameSceneBuilder.
     /// KAN-62: <see cref="BossReward"/> (guaranteed Rare chest or skill pick after the victory beat) via <see cref="CreateReward"/>.
     /// KAN-108: The Butcher of Ashgrave asset (<see cref="ButcherDataPath"/>, attack list, never overwritten) is the Realm 1
-    /// boss of every boss Chamber (<see cref="BossFight"/>'s boss list); the Warden asset stays as the old reference fight.
+    /// boss of the first boss Chamber; the Warden asset stays as the old reference fight. KAN-112: the boss order is the
+    /// <see cref="BossRotation"/> asset (<see cref="RotationPath"/>): Butcher Chamber 5, Rotting Colossus Chamber 10.
     /// Debug menus (Play mode): "Survivor Souls/Debug/Boss: Kill", "Boss: Half Health" (= phase 2), "Boss: Health 25 %",
     /// "Boss: Health 10 %", "Boss: Fan", "Boss: Charge", "Boss: Jump To Boss Chamber" (any Chamber; reloads the scene).
     /// KAN-116: "Boss: Nova", "Boss: Spiral", "Boss: Rain" (a boss without that type gets the sample entry first); bolt pool 64.
@@ -38,8 +39,8 @@ namespace SurvivorSouls.Editor.Boss
     /// KAN-109: The Pyre Lord asset (<see cref="PyreLordDataPath"/>, never overwritten) sits in the fight's library: not in
     /// Realm 1's rotation, picked by the dev flag <c>-ss-boss-type PyreLord</c> or the menu "Boss: Next Fight Pyre Lord";
     /// a Realm 2 boss once KAN-57 lands. Its slam and meteors leave burning patches (shared ground hazard pool, fire look).
-    /// KAN-110: The Rotting Colossus asset (<see cref="ColossusDataPath"/>, never overwritten) joins the library the same way:
-    /// <c>-ss-boss-type RottingColossus</c> or the menu "Boss: Next Fight Rotting Colossus".
+    /// KAN-110: The Rotting Colossus asset (<see cref="ColossusDataPath"/>, never overwritten): Realm 1's second boss since
+    /// KAN-112 (rotation); also <c>-ss-boss-type RottingColossus</c> or the menu "Boss: Next Fight Rotting Colossus".
     /// KAN-111: The Bone Matriarch asset (<see cref="MatriarchDataPath"/>, never overwritten) joins the library the same way:
     /// <c>-ss-boss-type BoneMatriarch</c> or the menu "Boss: Next Fight Bone Matriarch". Her body is tuned by
     /// <see cref="ConfigurePrefab"/> (called by <see cref="EnemyRosterBuilder"/>): no contact damage, a 6-9 m hold band and a
@@ -54,6 +55,8 @@ namespace SurvivorSouls.Editor.Boss
         public const string ColossusDataPath = DataDir + "/Boss_RottingColossus.asset";
         public const string MatriarchDataPath = DataDir + "/Boss_BoneMatriarch.asset";
         public const string MatriarchId = "BoneMatriarch";
+        /// <summary>KAN-112: Realm 1 boss order (Butcher Chamber 5, Rotting Colossus Chamber 10). Never overwritten.</summary>
+        public const string RotationPath = DataDir + "/BossRotation_Realm1.asset";
         /// <summary>KAN-111: the Matriarch keeps this far from the Knight (m): hard to reach, never melee.</summary>
         public const float MatriarchHoldMin = 6f, MatriarchHoldMax = 9f;
         public const string BossRulesPath = "Assets/_Project/Data/Chamber/ChamberRules_Boss.asset";
@@ -98,14 +101,11 @@ namespace SurvivorSouls.Editor.Boss
             so.FindProperty("lines").objectReferenceValue = lines;
             so.FindProperty("projectiles").objectReferenceValue = bolts;
             so.FindProperty("boulders").objectReferenceValue = boulders;
-            var list = so.FindProperty("bosses");
-            list.arraySize = 1;
-            list.GetArrayElementAtIndex(0).objectReferenceValue = butcher; // Realm 1 boss Chambers (KAN-108)
+            so.FindProperty("rotation").objectReferenceValue = LoadOrCreateRotation(butcher, colossus); // KAN-112: Realm 1 boss Chambers
             var library = so.FindProperty("library");
-            library.arraySize = 3;
+            library.arraySize = 2;
             library.GetArrayElementAtIndex(0).objectReferenceValue = pyreLord; // KAN-109: -ss-boss-type PyreLord, Realm 2 later
-            library.GetArrayElementAtIndex(1).objectReferenceValue = colossus; // KAN-110: -ss-boss-type RottingColossus
-            library.GetArrayElementAtIndex(2).objectReferenceValue = matriarch; // KAN-111: -ss-boss-type BoneMatriarch
+            library.GetArrayElementAtIndex(1).objectReferenceValue = matriarch; // KAN-111: -ss-boss-type BoneMatriarch
             so.ApplyModifiedPropertiesWithoutUndo();
             BossHeartsBuilder.Create(kit, root, fight, player); // healing hearts during the fight (KAN-60)
             return fight;
@@ -631,6 +631,29 @@ namespace SurvivorSouls.Editor.Boss
                 ? animator.transform.parent
                 : throw new System.InvalidOperationException("BoneMatriarch: model node above the rig missing");
             model.gameObject.AddComponent<HoverBob>().Configure(0.3f, 0.12f, 2.6f);
+        }
+
+        /// <summary>
+        /// KAN-112: Realm 1 boss rotation asset: the 1st boss Chamber (5) fights the Butcher, the 2nd (10, the Realm's
+        /// end) the Rotting Colossus, the heavier fight with the most HP. Pyre Lord and Bone Matriarch stay in the library
+        /// for later Realms (KAN-57). An existing asset is kept as it is (designer edits); only empty slots are filled.
+        /// </summary>
+        public static BossRotation LoadOrCreateRotation(BossData first, BossData second)
+        {
+            var rotation = AssetDatabase.LoadAssetAtPath<BossRotation>(RotationPath);
+            if (rotation != null)
+            {
+                var list = rotation.Bosses;
+                bool dirty = false;
+                for (int i = 0; i < list.Length; i++)
+                    if (list[i] == null) { list[i] = i == 0 ? first : second; dirty = true; }
+                if (dirty) EditorUtility.SetDirty(rotation);
+                return rotation;
+            }
+            rotation = BossRotation.Create(new[] { first, second });
+            AssetDatabase.CreateAsset(rotation, RotationPath);
+            AssetDatabase.SaveAssets();
+            return rotation;
         }
 
         private static ChamberRules LoadOrCreateRules()
