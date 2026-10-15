@@ -66,6 +66,7 @@ namespace SurvivorSouls.Editor
             if (MeshyCharacterImporter.SourceExists) archerPrefab = MeshyCharacterImporter.BuildPrefab(kit.BlobShadow, kit.Quad);
             CombatBuilder.Build(kit);
             EnemyRosterBuilder.Build(kit); // 15 Meshy enemies (KAN-104): prefabs, controllers, materials
+            HeroPetArtImporter.Configure(); // Meshy hero + pet art import settings (KAN-156), before KAN-150 / KAN-153 use it
             var panelSettings = CreatePanelSettings();
             var sfx = SfxBuilder.Build(); // before the world: the exit portal tile needs its hum clip
 
