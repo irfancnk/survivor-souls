@@ -112,20 +112,22 @@ namespace SurvivorSouls.Gameplay.Combat
         /// <summary>
         /// Weighted enemy pick from a phase; <paramref name="roll"/> in [0, 1). KAN-112: only entries open in
         /// <paramref name="chamber"/>, and no shooter when <paramref name="shooters"/> is false (cap reached). Null when the
-        /// phase has no usable entry.
+        /// phase has no usable entry. KAN-155: with <paramref name="stocked"/>, only types it accepts (the spawner passes
+        /// "pool not empty", so a luck streak on one type moves to another type instead of instantiating mid-fight).
         /// </summary>
-        public static Enemy PickEnemy(in Phase phase, float roll, int chamber = int.MaxValue, bool shooters = true)
+        public static Enemy PickEnemy(in Phase phase, float roll, int chamber = int.MaxValue, bool shooters = true,
+                                      Predicate<Enemy> stocked = null)
         {
             if (phase.enemies == null) return null;
             float total = 0f;
             foreach (var e in phase.enemies)
-                if (Usable(e, chamber, shooters)) total += e.weight;
+                if (Usable(e, chamber, shooters, stocked)) total += e.weight;
             if (total <= 0f) return null;
             float r = roll * total;
             Enemy last = null;
             foreach (var e in phase.enemies)
             {
-                if (!Usable(e, chamber, shooters) || e.weight <= 0f) continue;
+                if (!Usable(e, chamber, shooters, stocked) || e.weight <= 0f) continue;
                 last = e.prefab;
                 if (r < e.weight) return e.prefab;
                 r -= e.weight;
@@ -133,8 +135,8 @@ namespace SurvivorSouls.Gameplay.Combat
             return last;
         }
 
-        private static bool Usable(in EnemyEntry e, int chamber, bool shooters) =>
-            e.prefab != null && e.OpenIn(chamber) && (shooters || !IsShooter(e.prefab));
+        private static bool Usable(in EnemyEntry e, int chamber, bool shooters, Predicate<Enemy> stocked) =>
+            e.prefab != null && e.OpenIn(chamber) && (shooters || !IsShooter(e.prefab)) && (stocked == null || stocked(e.prefab));
 
         /// <summary>Editor builder / tests: sets the whole table.</summary>
         public void Configure(float firstDelay, int prewarm, Phase[] newPhases)

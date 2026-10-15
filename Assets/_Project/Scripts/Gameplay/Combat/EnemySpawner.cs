@@ -90,11 +90,13 @@ namespace SurvivorSouls.Gameplay.Combat
         {
             public int Attempts, Candidates, RejectedOnScreen, RejectedBlocked, RejectedCrowded, RejectedRange;
             public int NoPoint, Spawned, Recycled, OnScreenSpawns;
+            /// <summary>KAN-155: picks moved to another type because the picked type's pool was empty.</summary>
+            public int PoolSwaps;
 
             public override string ToString() =>
                 $"attempts={Attempts} candidates={Candidates} rejectedOnScreen={RejectedOnScreen} blocked={RejectedBlocked} " +
                 $"crowded={RejectedCrowded} range={RejectedRange} noPoint={NoPoint} spawned={Spawned} recycled={Recycled} " +
-                $"onScreenSpawns={OnScreenSpawns}";
+                $"onScreenSpawns={OnScreenSpawns} poolSwaps={PoolSwaps}";
         }
 
         private struct Candidate
@@ -144,6 +146,7 @@ namespace SurvivorSouls.Gameplay.Combat
         private int _chamber = 1; // KAN-112: Chamber of the Realm, gates wave entries
         private float _dynamicMul = 1f;
         private HordeScaling _scaling;
+        private Predicate<Enemy> _hasStock; // cached: no delegate allocation per spawn (KAN-155)
 
         /// <summary>An enemy was put into the world: position, true when it was a recycle (moved back in) rather than a spawn.</summary>
         public event Action<Enemy, Vector3, bool> Placed;
@@ -218,7 +221,11 @@ namespace SurvivorSouls.Gameplay.Combat
         /// <summary>The scene's spawner (casters raise their dead through it, KAN-107). Set while enabled.</summary>
         public static EnemySpawner Current { get; private set; }
 
-        private void Awake() => _releaseAction = Release;
+        private void Awake()
+        {
+            _releaseAction = Release;
+            _hasStock = HasStock;
+        }
 
         private void OnEnable() => Current = this;
 
@@ -259,6 +266,7 @@ namespace SurvivorSouls.Gameplay.Combat
             if (_started) return;
             _started = true;
             _releaseAction ??= Release;
+            _hasStock ??= HasStock;
             if (_walk == null && world != null) _walk = world;
             if (viewCamera == null) viewCamera = Camera.main;
             Enemy.Walkability = _walk;
@@ -334,7 +342,19 @@ namespace SurvivorSouls.Gameplay.Combat
             int shooters = ShootersInUse, maxShooters = waves.MaxShootersOf(maxAlive);
             for (int i = 0; i < rules.maxSpawnsPerFrame && _pending > 0 && _live.Count < maxAlive; i++)
             {
-                var prefab = EnemyWaveTable.PickEnemy(phase, Random.value, _chamber, shooters < maxShooters);
+                float roll = Random.value;
+                bool shooterOk = shooters < maxShooters;
+                var prefab = EnemyWaveTable.PickEnemy(phase, roll, _chamber, shooterOk);
+                if (prefab != null && !HasStock(prefab))
+                {
+                    // KAN-155: this type's pool is dry (luck streak + dying bodies); take a stocked type of the phase instead.
+                    var swap = EnemyWaveTable.PickEnemy(phase, roll, _chamber, shooterOk, _hasStock);
+                    if (swap != null)
+                    {
+                        prefab = swap;
+                        _stats.PoolSwaps++;
+                    }
+                }
                 if (prefab == null)
                 {
                     _pending = 0;
@@ -650,6 +670,9 @@ namespace SurvivorSouls.Gameplay.Combat
             _created++;
             return enemy;
         }
+
+        /// <summary>True when <paramref name="prefab"/> has a pooled body ready (no Instantiate to spawn it).</summary>
+        private bool HasStock(Enemy prefab) => _pools.TryGetValue(prefab, out var pool) && pool.Count > 0;
 
         private Enemy Take(Enemy prefab)
         {
