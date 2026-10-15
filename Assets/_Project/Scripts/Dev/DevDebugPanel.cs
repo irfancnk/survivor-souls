@@ -433,14 +433,20 @@ namespace SurvivorSouls.Dev
                 row.Level.style.unityTextAlign = TextAnchor.MiddleCenter;
                 var minus = MakeButton(SkillRowPrefix + skill.Id + "-minus", "-", () => SetSkillLevel(skill, CurrentLevel(skill) - 1));
                 var plus = MakeButton(SkillRowPrefix + skill.Id + "-plus", "+", () => SetSkillLevel(skill, CurrentLevel(skill) + 1));
-                minus.style.width = plus.style.width = 110f;
-                minus.style.flexGrow = plus.style.flexGrow = 0;
+                foreach (var b in new[] { minus, plus })
+                {
+                    b.style.flexGrow = 0;
+                    b.style.flexShrink = 0;
+                    b.style.flexBasis = 120f; // fixed square-ish touch target (MakeButton's basis 0 shares a row)
+                    b.style.fontSize = 44f;
+                }
                 line.Add(minus);
                 line.Add(row.Level);
                 line.Add(plus);
                 box.Add(line);
                 row.Slider = new SliderInt(0, skill.MaxLevel) { name = SkillRowPrefix + skill.Id + "-slider", pageSize = 1 };
                 row.Slider.style.height = 60f;
+                row.Slider.style.marginTop = 6f;
                 row.Slider.RegisterValueChangedCallback(e => SetSkillLevel(skill, e.newValue));
                 box.Add(row.Slider);
                 _skillList.Add(box);
