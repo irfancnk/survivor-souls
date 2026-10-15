@@ -8,6 +8,8 @@ namespace SurvivorSouls.Gameplay.Boss
     /// end while the attack winds up (<see cref="SetProgress"/>, when). The hit flashes the lanes bright, then they fade.
     /// Same colours and look as <see cref="GroundTelegraph"/>; colour through one MaterialPropertyBlock, no allocation per
     /// frame. Lanes are made by the builder (up to <see cref="MaxLanes"/>); unused ones stay disabled.
+    /// KAN-121: <see cref="Hold"/> keeps the full lanes bright (live beams) and <see cref="Turn"/> turns them round the
+    /// origin, until <see cref="Flash"/> fades them or <see cref="Hide"/>.
     /// </summary>
     public sealed class LineTelegraph : MonoBehaviour
     {
@@ -33,9 +35,12 @@ namespace SurvivorSouls.Gameplay.Boss
         private Vector3 _origin;
         private float _length = 1f, _width = 1f;
         private float _flash = -1f;
+        private bool _held;
 
         /// <summary>A warning or its hit flash is on screen.</summary>
         public bool IsShowing { get; private set; }
+        /// <summary>KAN-121: the lanes are live beams (full, bright, no fade).</summary>
+        public bool IsHeld => _held;
         /// <summary>0 = just shown, 1 = the attack goes.</summary>
         public float Progress { get; private set; }
         /// <summary>Lanes in the current warning.</summary>
@@ -89,6 +94,7 @@ namespace SurvivorSouls.Gameplay.Boss
             _length = Mathf.Max(0.1f, length);
             _width = Mathf.Max(0.05f, width);
             _flash = -1f;
+            _held = false;
             IsShowing = true;
             for (int i = 0; i < MaxLanes; i++)
             {
@@ -110,7 +116,7 @@ namespace SurvivorSouls.Gameplay.Boss
         /// <summary>Wind-up 0..1: the fills grow from the boss to the lane ends; the edges pulse faster near the end.</summary>
         public void SetProgress(float progress)
         {
-            if (!IsShowing || _flash >= 0f) return;
+            if (!IsShowing || _flash >= 0f || _held) return;
             Progress = Mathf.Clamp01(progress);
             float eased = Eased();
             float pulse = 0.75f + 0.25f * Mathf.Sin(Time.time * Mathf.Lerp(8f, 26f, Progress));
@@ -126,12 +132,42 @@ namespace SurvivorSouls.Gameplay.Boss
             }
         }
 
+        /// <summary>KAN-121: the lanes go live: full length, hit colour, no fade until <see cref="Flash"/> or <see cref="Hide"/>.</summary>
+        public void Hold()
+        {
+            if (!IsShowing) return;
+            Progress = 1f;
+            _flash = -1f;
+            _held = true;
+            for (int i = 0; i < LaneCount; i++)
+            {
+                Place(fills[i], _dirs[i], _lengths[i]);
+                Paint(fills[i], flashColor);
+                Paint(edges[i], edgeColor);
+            }
+        }
+
+        /// <summary>KAN-121: turns every lane <paramref name="degrees"/> round the origin (clockwise seen from above when positive).</summary>
+        public void Turn(float degrees)
+        {
+            if (!IsShowing || LaneCount == 0) return;
+            var q = Quaternion.Euler(0f, degrees, 0f);
+            float length = _flash >= 0f || _held ? 1f : Eased();
+            for (int i = 0; i < LaneCount; i++)
+            {
+                _dirs[i] = q * _dirs[i];
+                Place(edges[i], _dirs[i], _lengths[i]);
+                Place(fills[i], _dirs[i], Mathf.Max(0.05f, length * _lengths[i]));
+            }
+        }
+
         /// <summary>The attack goes: full lanes flash bright, then fade out and hide.</summary>
         public void Flash()
         {
             if (!IsShowing) return;
             Progress = 1f;
             _flash = 0f;
+            _held = false;
             for (int i = 0; i < LaneCount; i++) Place(fills[i], _dirs[i], _lengths[i]);
         }
 
@@ -140,6 +176,7 @@ namespace SurvivorSouls.Gameplay.Boss
         {
             IsShowing = false;
             _flash = -1f;
+            _held = false;
             Progress = 0f;
             LaneCount = 0;
             for (int i = 0; i < edges.Length; i++) SetEnabled(edges[i], false);

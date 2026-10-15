@@ -6,7 +6,8 @@ using UnityEngine;
 namespace SurvivorSouls.Gameplay.Boss
 {
     /// <summary>
-    /// Boss fan bolts (KAN-61), nova rings and spirals (KAN-116). No GameObject per bolt: a struct array (fixed capacity, swap-remove), drawn as billboards
+    /// Boss fan bolts (KAN-61), nova rings and spirals (KAN-116), homing orbs (KAN-121: a bolt with a turn rate steers
+    /// towards the living Knight, at most that many degrees per second, at its own speed). No GameObject per bolt: a struct array (fixed capacity, swap-remove), drawn as billboards
     /// of ONE particle system through <see cref="ParticleSystem.SetParticles(ParticleSystem.Particle[], int)"/>: a hot
     /// ember head and two fading ghosts behind it (a cheap trail). One draw call for any count, no lights, no allocation.
     /// <list type="bullet">
@@ -30,6 +31,7 @@ namespace SurvivorSouls.Gameplay.Boss
             public float Left;     // metres still to fly
             public float Damage;
             public float HitRadius;
+            public float Turn;     // radians per second towards the Knight (0 = straight)
             public int Volley;
         }
 
@@ -57,6 +59,7 @@ namespace SurvivorSouls.Gameplay.Boss
         public int Count => _count;
         public int Capacity => capacity;
         public Vector3 PositionOf(int i) => _bolts[i].Position;
+        public Vector3 VelocityOf(int i) => _bolts[i].Velocity;
 
         /// <summary>Tests and tools: wiring without the builder.</summary>
         public void Setup(PlayerHealth knight, ParticleSystem sprites = null, int boltCapacity = 32)
@@ -102,9 +105,11 @@ namespace SurvivorSouls.Gameplay.Boss
 
         /// <summary>
         /// One bolt into the current volley from <paramref name="origin"/> (ground point under the boss) along
-        /// <paramref name="direction"/>. False when the pool is full or the direction is zero.
+        /// <paramref name="direction"/>. <paramref name="turnDegrees"/> above 0 makes it a homing orb (KAN-121). False when
+        /// the pool is full or the direction is zero.
         /// </summary>
-        public bool Fire(Vector3 origin, Vector3 direction, float speed, float distance, float damage, float hitRadius)
+        public bool Fire(Vector3 origin, Vector3 direction, float speed, float distance, float damage, float hitRadius,
+            float turnDegrees = 0f)
         {
             Allocate();
             direction.y = 0f;
@@ -116,6 +121,7 @@ namespace SurvivorSouls.Gameplay.Boss
                 Left = distance,
                 Damage = damage,
                 HitRadius = hitRadius,
+                Turn = Mathf.Max(0f, turnDegrees) * Mathf.Deg2Rad,
                 Volley = _volley,
             };
             return true;
@@ -145,6 +151,7 @@ namespace SurvivorSouls.Gameplay.Boss
             for (int i = _count - 1; i >= 0; i--)
             {
                 ref var b = ref _bolts[i];
+                if (b.Turn > 0f && canHit) Steer(ref b, knight, dt);
                 Vector3 step = b.Velocity * dt;
                 float stepLength = step.magnitude;
                 Vector3 from = b.Position;
@@ -168,6 +175,21 @@ namespace SurvivorSouls.Gameplay.Boss
                 }
                 if (b.Left <= 0f) Remove(i);
             }
+        }
+
+        /// <summary>
+        /// Turns a homing orb's ground velocity towards the Knight by at most its turn rate (speed kept). Yaw maths, not
+        /// RotateTowards: a Knight right behind the orb must not tip it out of the ground plane.
+        /// </summary>
+        private static void Steer(ref Projectile b, Vector3 knight, float dt)
+        {
+            float tx = knight.x - b.Position.x, tz = knight.z - b.Position.z;
+            if (tx * tx + tz * tz < 0.0001f) return;
+            float speed = Mathf.Sqrt(b.Velocity.x * b.Velocity.x + b.Velocity.z * b.Velocity.z);
+            float yaw = Mathf.Atan2(b.Velocity.x, b.Velocity.z);
+            float delta = Mathf.DeltaAngle(yaw * Mathf.Rad2Deg, Mathf.Atan2(tx, tz) * Mathf.Rad2Deg) * Mathf.Deg2Rad;
+            yaw += Mathf.Clamp(delta, -b.Turn * dt, b.Turn * dt);
+            b.Velocity = new Vector3(Mathf.Sin(yaw) * speed, 0f, Mathf.Cos(yaw) * speed);
         }
 
         private void Remove(int i) => _bolts[i] = _bolts[--_count];

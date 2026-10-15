@@ -48,6 +48,16 @@ namespace SurvivorSouls.Gameplay.Boss
     /// <item><b>Teleport</b> (KAN-119): a circle of <see cref="radius"/> m warns at a walkable point <see cref="length"/> m from
     /// the Knight; the boss shrinks away, reappears there and grows back. <see cref="damage"/> above 0 hits inside the circle
     /// on arrival.</item>
+    /// <item><b>Shockwave</b> (KAN-121): a circle of <see cref="radius"/> m warns, centre <see cref="reach"/> m in front of the
+    /// boss; then <see cref="count"/> rings, one every <see cref="interval"/> s, grow from the centre at <see cref="speed"/> m/s
+    /// until their outer edge reaches the circle. A ring band is <see cref="width"/> m wide and hits once as it passes the
+    /// Knight; outside the circle is safe. Rings come from the shared circle pool.</item>
+    /// <item><b>Homing</b> (KAN-121): <see cref="count"/> slow orbs over <see cref="spread"/> degrees at the Knight,
+    /// <see cref="speed"/> m/s, turning at most <see cref="turn"/> degrees per second towards the Knight, <see cref="length"/> m,
+    /// hit radius <see cref="radius"/>. Warning: a circle of <see cref="reach"/> m around the body. One volley hits once.</item>
+    /// <item><b>Beams</b> (KAN-121): <see cref="count"/> lanes evenly round the body (<see cref="length"/> x
+    /// <see cref="width"/>; the Knight starts between two), shown while it winds up, then live: they turn
+    /// <see cref="spread"/> degrees per second (random way) for <see cref="duration"/> s. The whole cast hits once.</item>
     /// </list>
     /// </summary>
     [Serializable]
@@ -87,6 +97,8 @@ namespace SurvivorSouls.Gameplay.Boss
         [Min(0)] public int gaps;
         [Tooltip("Lobbed: seconds the rubble of a boulder stays (0 = no rubble).")]
         [Min(0f)] public float obstacle;
+        [Tooltip("Homing: most degrees per second an orb turns towards the Knight.")]
+        [Min(0f)] public float turn;
         [Tooltip("Summon: roster id of the summoned type (e.g. FrenziedGhoul). Must be a type of the scene's spawner.")]
         public string summon;
         [Tooltip("Animator state the body plays for this attack (wind-up and strike). Empty or missing = its Attack state.")]
@@ -214,10 +226,45 @@ namespace SurvivorSouls.Gameplay.Boss
                 damage = damage, recover = recover, cooldown = cooldown, clip = clip,
             };
 
+        public static BossAttack Shockwave(string label, BossPhases phases, float minRange, float maxRange, int rings,
+            float radius, float reach, float speed, float band, float interval, float telegraph, float damage, float recover,
+            float cooldown, int priority = 0, float weight = 1f, string clip = null) =>
+            new BossAttack
+            {
+                label = label, type = BossFight.Move.Shockwave, phases = phases, priority = priority, weight = weight,
+                minRange = minRange, maxRange = maxRange, count = rings, radius = radius, reach = reach, speed = speed,
+                width = band, interval = interval, telegraph = telegraph, damage = damage, recover = recover,
+                cooldown = cooldown, clip = clip,
+            };
+
+        public static BossAttack Homing(string label, BossPhases phases, float minRange, float maxRange, int orbs, float spread,
+            float turn, float speed, float distance, float hitRadius, float warnRadius, float telegraph, float damage,
+            float recover, float cooldown, int priority = 0, float weight = 1f, string clip = null) =>
+            new BossAttack
+            {
+                label = label, type = BossFight.Move.Homing, phases = phases, priority = priority, weight = weight,
+                minRange = minRange, maxRange = maxRange, count = orbs, spread = spread, turn = turn, speed = speed,
+                length = distance, radius = hitRadius, reach = warnRadius, telegraph = telegraph, damage = damage,
+                recover = recover, cooldown = cooldown, clip = clip,
+            };
+
+        public static BossAttack Beams(string label, BossPhases phases, float minRange, float maxRange, int lanes, float length,
+            float width, float turnSpeed, float duration, float telegraph, float damage, float recover, float cooldown,
+            int priority = 0, float weight = 1f, string clip = null) =>
+            new BossAttack
+            {
+                label = label, type = BossFight.Move.Beams, phases = phases, priority = priority, weight = weight,
+                minRange = minRange, maxRange = maxRange, count = lanes, length = length, width = width, spread = turnSpeed,
+                duration = duration, telegraph = telegraph, damage = damage, recover = recover, cooldown = cooldown,
+                clip = clip,
+            };
+
         /// <summary>
         /// Pyre Lord style numbers (Docs/ENEMY_ROSTER.md 3.13) for a type: the debug menu and dev screenshots add it to a
         /// boss that lacks that type; KAN-109 starts its list from these. KAN-119: Lobbed and Summon are Rotting Colossus
-        /// numbers (3.14), Teleport is the Bone Matriarch's (3.15); KAN-110 / KAN-111 start from these. Other types: a plain slam.
+        /// numbers (3.14), Teleport is the Bone Matriarch's (3.15); KAN-110 / KAN-111 start from these. KAN-121: Shockwave is the
+        /// Colossus double slam (3.14a), Homing and Beams are the Matriarch's skulls and cross beams (3.15a, d). Other types:
+        /// a plain slam.
         /// </summary>
         public static BossAttack Sample(BossFight.Move type)
         {
@@ -242,6 +289,16 @@ namespace SurvivorSouls.Gameplay.Boss
                 case BossFight.Move.Teleport:
                     return Teleport("Teleport", BossPhases.Phase2, 0f, 30f, distance: 7f, warnRadius: 1.6f, telegraph: 0.8f, damage: 0f,
                         recover: 0.4f, cooldown: 2f);
+                case BossFight.Move.Shockwave:
+                    return Shockwave("Double Slam", BossPhases.Both, 0f, 4f, rings: 2, radius: 5.5f, reach: 1.2f, speed: 7f,
+                        band: 0.8f, interval: 0.6f, telegraph: 1f, damage: 0.16f, recover: 1f, cooldown: 3f);
+                case BossFight.Move.Homing:
+                    return Homing("Homing Skulls", BossPhases.Both, 0f, 14f, orbs: 3, spread: 60f, turn: 55f, speed: 3.6f,
+                        distance: 16f, hitRadius: 0.5f, warnRadius: 2.2f, telegraph: 0.8f, damage: 0.12f, recover: 0.6f,
+                        cooldown: 2.5f);
+                case BossFight.Move.Beams:
+                    return Beams("Cross Beams", BossPhases.Phase2, 0f, 30f, lanes: 4, length: 9f, width: 0.9f, turnSpeed: 45f,
+                        duration: 4f, telegraph: 1f, damage: 0.16f, recover: 0.8f, cooldown: 3f);
                 default:
                     return Slam("Slam", BossPhases.Both, 4f, 3f, 1.6f, 1f, 0.22f, 0.7f, 3.2f);
             }

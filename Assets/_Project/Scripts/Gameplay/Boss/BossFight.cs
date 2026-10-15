@@ -55,6 +55,10 @@ namespace SurvivorSouls.Gameplay.Boss
     /// <b>Summon</b> (enemies of a spawner type rise on a ring round the boss; circles warn where; never more than the
     /// entry's count alive) and <b>Teleport</b> (a circle warns at a walkable point near the Knight; the boss shrinks away,
     /// reappears there and grows back).
+    /// KAN-121: <b>Shockwave</b> (a circle warns round the slam point; then rings grow from it one by one, each band hits
+    /// once as it passes the Knight; outside the circle is safe), <b>Homing</b> (slow orbs that turn towards the Knight; the
+    /// whole volley hits once) and <b>Beams</b> (lanes evenly round the body warn, then turn as live beams for a few
+    /// seconds; the whole cast hits once). Shockwave and Beams run in <see cref="Attack.Casting"/>.
     /// </summary>
     public sealed class BossFight : MonoBehaviour
     {
@@ -104,6 +108,12 @@ namespace SurvivorSouls.Gameplay.Boss
             Summon = 9,
             /// <summary>KAN-119: the boss vanishes and reappears at a walkable point near the Knight.</summary>
             Teleport = 10,
+            /// <summary>KAN-121: rings that grow from a slam point one by one (the Colossus double slam).</summary>
+            Shockwave = 11,
+            /// <summary>KAN-121: slow orbs that turn towards the Knight (the Matriarch's skulls).</summary>
+            Homing = 12,
+            /// <summary>KAN-121: lanes round the body that turn as live beams (the Matriarch's cross beams).</summary>
+            Beams = 13,
         }
 
         private const float SpawnClearRadius = 1.4f; // free ground the boss body needs
@@ -138,6 +148,8 @@ namespace SurvivorSouls.Gameplay.Boss
         /// </summary>
         public const float TeleportMaxSide = 4f;
         private const float SummonClearRadius = 0.5f;
+        /// <summary>Most shockwave rings in one attack (the shared circle pool caps it too).</summary>
+        public const int MaxWaves = 4;
 
         [SerializeField] private BossData data;
         [Tooltip("KAN-108: bosses of this Realm's boss Chambers in order (round). Empty = data above.")]
@@ -206,6 +218,14 @@ namespace SurvivorSouls.Gameplay.Boss
         private float _growLeft;
         private PlayerMover _mover;
         private bool _moverChecked;
+        private readonly GroundTelegraph[] _waves = new GroundTelegraph[MaxWaves];
+        private readonly float[] _waveFront = new float[MaxWaves]; // front radius of each ring; -1 = over
+        private readonly bool[] _waveHit = new bool[MaxWaves];
+        private int _wavesStarted, _wavesLive;
+        private float _wavesDealt;
+        private EnemyTelegraphs _wavePool;
+        private float _beamTurn, _beamDealt;
+        private bool _beamHit;
         private bool _knightHeld;
         private bool _victoryDone;
         private Vector3 _deathPoint;
@@ -262,6 +282,16 @@ namespace SurvivorSouls.Gameplay.Boss
         public event Action<Vector3, Vector3> TeleportWarned;
         /// <summary>KAN-119: the boss reappeared (from, to, damage dealt on arrival).</summary>
         public event Action<Vector3, Vector3, float> Teleported;
+        /// <summary>KAN-121: a shockwave ring hit the Knight (where, damage dealt).</summary>
+        public event Action<Vector3, float> WaveHit;
+        /// <summary>KAN-121: the last shockwave ring reached the circle (centre, rings, damage dealt in all).</summary>
+        public event Action<Vector3, int, float> ShockwaveEnded;
+        /// <summary>KAN-121: a homing volley flew (boss ground point, orbs fired).</summary>
+        public event Action<Vector3, int> HomingFired;
+        /// <summary>KAN-121: beams wind up (boss ground point, lanes).</summary>
+        public event Action<Vector3, int> BeamsWarned;
+        /// <summary>KAN-121: the beams went out (boss ground point, damage dealt; 0 = dodged).</summary>
+        public event Action<Vector3, float> BeamsEnded;
 
         public BossData Data => data;
         /// <summary>The attack list of the fight (KAN-108).</summary>
@@ -310,6 +340,12 @@ namespace SurvivorSouls.Gameplay.Boss
                 return n;
             }
         }
+        /// <summary>KAN-121: shockwave rings growing right now.</summary>
+        public int WavesLive => _wavesLive;
+        /// <summary>KAN-121: front radius of shockwave ring <paramref name="i"/> (-1 = not growing).</summary>
+        public float WaveFront(int i) => i >= 0 && i < _wavesStarted && i < MaxWaves ? _waveFront[i] : -1f;
+        /// <summary>KAN-121: degrees per second the live beams turn (sign = way).</summary>
+        public float BeamTurn => _beamTurn;
         /// <summary>KAN-119: where the current (or last) teleport goes.</summary>
         public Vector3 TeleportTarget => _teleportTo;
         /// <summary>The Knight is held by the intro (no move, no damage).</summary>
@@ -351,6 +387,7 @@ namespace SurvivorSouls.Gameplay.Boss
             Enemy.Damaged -= OnEnemyDamaged;
             HoldKnight(false);
             CancelRain();
+            CancelWaves();
             CancelPending();
             RestoreScale();
         }
@@ -535,11 +572,15 @@ namespace SurvivorSouls.Gameplay.Boss
                     if (playerDead)
                     {
                         CancelRain();
+                        CancelWaves();
+                        if (CurrentMove == Move.Beams && lines != null) lines.Hide();
                         EndAttack(0f);
                         break;
                     }
                     if (CurrentMove == Move.Spiral) TickSpiral(dt);
                     else if (CurrentMove == Move.Lobbed) TickLobbed(dt);
+                    else if (CurrentMove == Move.Shockwave) TickWaves(dt);
+                    else if (CurrentMove == Move.Beams) TickBeams(dt);
                     else TickRain(dt);
                     break;
                 case Attack.Recover:
@@ -554,7 +595,8 @@ namespace SurvivorSouls.Gameplay.Boss
         }
 
         private static bool UsesCircle(Move move) =>
-            move == Move.Slam || move == Move.Spin || move == Move.Nova || move == Move.Spiral || move == Move.Teleport;
+            move == Move.Slam || move == Move.Spin || move == Move.Nova || move == Move.Spiral || move == Move.Teleport
+            || move == Move.Shockwave || move == Move.Homing;
 
         private void Release()
         {
@@ -570,6 +612,9 @@ namespace SurvivorSouls.Gameplay.Boss
                 case Move.Lobbed: ReleaseLobbed(); break;
                 case Move.Summon: ReleaseSummon(); break;
                 case Move.Teleport: ReleaseTeleport(); break;
+                case Move.Shockwave: ReleaseShockwave(); break;
+                case Move.Homing: ReleaseHoming(); break;
+                case Move.Beams: BeginBeams(); break;
             }
         }
 
@@ -630,6 +675,11 @@ namespace SurvivorSouls.Gameplay.Boss
                     return a.count > 0 && Boulders != null && circlePool != null && circlePool.FreeCircles() > 0;
                 case Move.Summon:
                     return a.count > 0 && spawner != null && _summonTypes[index] != null && SummonsAlive < Mathf.Min(a.count, MaxSummons);
+                case Move.Shockwave: // every ring shows (no invisible wave)
+                    var wavePool = RainPool;
+                    return a.count > 0 && wavePool != null && wavePool.FreeCircles() >= Mathf.Min(a.count, MaxWaves);
+                case Move.Homing: return a.count > 0 && projectiles != null;
+                case Move.Beams: return a.count > 0 && lines != null && lines.Capacity > 0;
                 default: return true;
             }
         }
@@ -655,6 +705,9 @@ namespace SurvivorSouls.Gameplay.Boss
                 case Move.Teleport:
                     if (!TryBeginTeleport(index)) return false;
                     break;
+                case Move.Shockwave: BeginShockwave(index); break;
+                case Move.Homing: BeginCastWindUp(index); break;
+                case Move.Beams: BeginBeamsWindUp(index); break;
                 default: return false;
             }
             return true;
@@ -1395,6 +1448,174 @@ namespace SurvivorSouls.Gameplay.Boss
             _summonPlanned = 0;
         }
 
+        // ------------------------------------------------------------ Shockwave, Homing, Beams (KAN-121)
+
+        /// <summary>Shockwave: the boss stands; a circle of the attack's radius fills round the slam point.</summary>
+        private void BeginShockwave(int index)
+        {
+            var a = _attacks[index];
+            Vector3 from = _boss.transform.position;
+            Vector3 dir = FaceKnight();
+            _attackOrigin = new Vector3(from.x, player.transform.position.y, from.z) + dir * a.reach;
+            if (telegraph != null) telegraph.Show(_attackOrigin, Mathf.Max(0.5f, a.radius));
+            BeginWindUp(index);
+            SlamWarned?.Invoke(_attackOrigin, a.radius);
+        }
+
+        private void ReleaseShockwave()
+        {
+            if (telegraph != null) telegraph.Flash();
+            CurrentAttack = Attack.Casting;
+            _wavePool = RainPool;
+            _wavesStarted = 0;
+            _wavesLive = 0;
+            _wavesDealt = 0f;
+            _time = 0f;
+        }
+
+        /// <summary>Where a ring's front stops: its band's outer edge on the warning circle.</summary>
+        private float WaveEnd(float half) => Mathf.Max(half, _attack.radius - half);
+
+        private void TickWaves(float dt)
+        {
+            _time += dt;
+            int count = Mathf.Clamp(_attack.count, 1, MaxWaves);
+            float interval = Mathf.Max(0.05f, _attack.interval);
+            while (_wavesStarted < count && _time >= _wavesStarted * interval) StartWave(_wavesStarted++);
+            float half = Mathf.Max(0.05f, _attack.width) * 0.5f;
+            float end = WaveEnd(half);
+            float speed = Mathf.Max(0.5f, _attack.speed);
+            bool canHit = player != null && !player.IsDead;
+            float knight = canHit ? PlanarDistance(player.transform.position, _attackOrigin) : -1f;
+            for (int i = 0; i < _wavesStarted; i++)
+            {
+                float prev = _waveFront[i];
+                if (prev < 0f) continue;
+                float next = Mathf.Min(end, prev + speed * dt);
+                _waveFront[i] = next;
+                if (canHit && !_waveHit[i] && knight >= prev - half && knight <= next + half) // the band swept over the Knight
+                {
+                    _waveHit[i] = true;
+                    float dealt = player.TakeDamage(data.DamageFor(_attack.damage, player.Max));
+                    _wavesDealt += dealt;
+                    canHit = !player.IsDead;
+                    WaveHit?.Invoke(player.transform.position, dealt);
+                }
+                var circle = _waves[i];
+                if (circle != null) circle.ShowWave(_attackOrigin, next, next / end);
+                if (next < end) continue;
+                EndWave(i);
+            }
+            if (_wavesStarted < count || _wavesLive > 0) return;
+            BeginRecover(_attack.recover, _attack.cooldown);
+            ShockwaveEnded?.Invoke(_attackOrigin, count, _wavesDealt);
+        }
+
+        private void StartWave(int i)
+        {
+            _waveFront[i] = 0f;
+            _waveHit[i] = false;
+            _waves[i] = _wavePool != null ? _wavePool.RentCircle() : null;
+            _wavesLive++;
+        }
+
+        private void EndWave(int i)
+        {
+            _waveFront[i] = -1f;
+            _wavesLive--;
+            var circle = _waves[i];
+            if (circle == null) return;
+            circle.Hide();
+            if (_wavePool != null) _wavePool.Release(circle);
+            _waves[i] = null;
+        }
+
+        /// <summary>Hides and returns every growing ring (Knight died, boss died, fight disabled).</summary>
+        private void CancelWaves()
+        {
+            for (int i = 0; i < MaxWaves; i++)
+            {
+                var circle = _waves[i];
+                if (circle != null)
+                {
+                    circle.Hide();
+                    if (_wavePool != null) _wavePool.Release(circle);
+                    _waves[i] = null;
+                }
+                _waveFront[i] = -1f;
+            }
+            _wavesLive = 0;
+        }
+
+        /// <summary>Homing: the orbs leave over the spread aimed at where the Knight stands now; they steer on their own.</summary>
+        private void ReleaseHoming()
+        {
+            Vector3 aim = FaceKnight();
+            int count = Mathf.Clamp(_attack.count, 1, MaxRingBolts);
+            float damage = data.DamageFor(_attack.damage, player != null ? player.Max : 0f);
+            projectiles.NewVolley(); // the whole volley hits once
+            int fired = 0;
+            for (int k = 0; k < count; k++)
+            {
+                float angle = count > 1 ? -_attack.spread * 0.5f + _attack.spread * k / (count - 1) : 0f;
+                if (projectiles.Fire(_attackOrigin, Quaternion.Euler(0f, angle, 0f) * aim, _attack.speed, _attack.length, damage,
+                    _attack.radius, _attack.turn)) fired++;
+            }
+            if (telegraph != null) telegraph.Flash();
+            BeginRecover(_attack.recover, _attack.cooldown);
+            HomingFired?.Invoke(_attackOrigin, fired);
+        }
+
+        /// <summary>Beams: lanes evenly round the body fill (the Knight stands between two of them).</summary>
+        private void BeginBeamsWindUp(int index)
+        {
+            var a = _attacks[index];
+            Vector3 from = _boss.transform.position;
+            _attackDir = FaceKnight();
+            _attackOrigin = new Vector3(from.x, player.transform.position.y, from.z);
+            int lanes = Mathf.Clamp(a.count, 1, Mathf.Min(LineTelegraph.MaxLanes, lines.Capacity));
+            float step = 360f / lanes;
+            // ShowFan centres the lanes on the direction: an odd count would put one on the Knight, so turn half a step.
+            Vector3 dir = lanes % 2 == 1 ? Quaternion.Euler(0f, step * 0.5f, 0f) * _attackDir : _attackDir;
+            lines.ShowFan(_attackOrigin, dir, lanes, step * (lanes - 1), a.length, a.width);
+            BeginWindUp(index);
+            BeamsWarned?.Invoke(_attackOrigin, lanes);
+        }
+
+        private void BeginBeams()
+        {
+            lines.Hold();
+            CurrentAttack = Attack.Casting;
+            _castLeft = Mathf.Max(0f, _attack.duration);
+            _beamTurn = _attack.spread * (UnityEngine.Random.value < 0.5f ? -1f : 1f);
+            _beamHit = false;
+            _beamDealt = 0f;
+            _time = 0f;
+        }
+
+        private void TickBeams(float dt)
+        {
+            lines.Turn(_beamTurn * dt);
+            Vector3 face = lines.LaneDirection(0);
+            if (face.sqrMagnitude > 0.0001f) _boss.transform.rotation = Quaternion.LookRotation(face, Vector3.up);
+            if (!_beamHit && player != null && !player.IsDead)
+            {
+                Vector3 knight = player.transform.position;
+                for (int i = 0; i < lines.LaneCount; i++)
+                {
+                    if (!InLane(_attackOrigin, lines.LaneDirection(i), lines.LaneLength(i), _attack.width, knight)) continue;
+                    _beamHit = true; // the whole cast hits once
+                    _beamDealt = player.TakeDamage(data.DamageFor(_attack.damage, player.Max));
+                    break;
+                }
+            }
+            _castLeft -= dt;
+            if (_castLeft > 0f) return;
+            lines.Flash();
+            BeginRecover(_attack.recover, _attack.cooldown);
+            BeamsEnded?.Invoke(_attackOrigin, _beamDealt);
+        }
+
         /// <summary>
         /// Debug menu and dev screenshots (KAN-116): adds <paramref name="entry"/> to this fight's list (a copy; the asset
         /// stays as it is) and returns its index. Allocates: not for gameplay.
@@ -1471,6 +1692,7 @@ namespace SurvivorSouls.Gameplay.Boss
             }
             if (CurrentAttack == Attack.WindUp || CurrentAttack == Attack.Spinning || CurrentAttack == Attack.Casting) HideWarnings();
             CancelRain();
+            CancelWaves();
             CancelPending();
             RestoreScale();
             _pullLeft = 0f;

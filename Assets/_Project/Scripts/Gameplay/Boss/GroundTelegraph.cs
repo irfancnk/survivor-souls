@@ -7,10 +7,13 @@ namespace SurvivorSouls.Gameplay.Boss
     /// centre to the ring while the attack winds up (<see cref="SetProgress"/>), so the player reads both where and when.
     /// The hit flashes the disc bright, then it fades. Two flat quads (alpha blend, dark red reads on snow and rock),
     /// colour through one MaterialPropertyBlock, no allocation per frame. One per boss; reused for every attack.
+    /// KAN-121: <see cref="ShowWave"/> shows the ring alone, bright, as a moving shockwave front (no disc).
     /// </summary>
     public sealed class GroundTelegraph : MonoBehaviour
     {
         private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
+        /// <summary>Where the ring texture's rim sits, as a share of the quad's half size (BossBuilder.RingPixel).</summary>
+        public const float RimShare = 0.92f;
 
         [SerializeField] private Renderer ring;
         [SerializeField] private Renderer fill;
@@ -53,6 +56,29 @@ namespace SurvivorSouls.Gameplay.Boss
             IsShowing = true;
             SetVisible(true);
             SetProgress(0f);
+        }
+
+        /// <summary>
+        /// KAN-121: a shockwave front: the ring alone with its rim at <paramref name="radius"/> m round <paramref name="centre"/>,
+        /// in the hit colour, fading with <paramref name="fade"/> (0 = fresh, 1 = gone). Call every frame while the wave grows;
+        /// <see cref="Hide"/> ends it.
+        /// </summary>
+        public void ShowWave(Vector3 centre, float radius, float fade)
+        {
+            _radius = Mathf.Max(0.05f, radius);
+            transform.position = new Vector3(centre.x, centre.y + lift, centre.z);
+            if (ring != null)
+            {
+                ring.transform.localScale = Vector3.one * (_radius * 2f / RimShare);
+                if (!ring.enabled) ring.enabled = true;
+            }
+            if (fill != null && fill.enabled) fill.enabled = false;
+            _flash = -1f;
+            IsShowing = true;
+            Progress = 1f;
+            var c = flashColor;
+            c.a = Mathf.Lerp(1f, 0.35f, Mathf.Clamp01(fade));
+            Paint(ring, c);
         }
 
         /// <summary>Moves a showing warning (the Butcher's spin circle follows the boss, KAN-108). Keeps size and progress.</summary>
