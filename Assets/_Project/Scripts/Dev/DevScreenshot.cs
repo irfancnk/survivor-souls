@@ -64,9 +64,9 @@ namespace SurvivorSouls.Dev
     /// Realm's detail sheet. With either, the saved progress of Realms 1-3 is wiped first (repeatable shots); then
     /// <c>-ss-best &lt;realm&gt;:&lt;chamber&gt;</c> records a best Chamber and <c>-ss-cleared &lt;realm&gt;</c> marks a Realm completed.
     /// <c>-ss-wallet &lt;n&gt;</c> (KAN-96) sets the saved Souls wallet to n before the first scene wakes.
-    /// <c>-ss-enemy &lt;Id&gt;[,count]</c> (KAN-104) places count (default 3) enemies of that roster type (e.g. GraveyardLaborer,
-    /// prefab <c>Enemy_&lt;Id&gt;</c>) in an arc 5 m ahead of the Knight after load and turns the crossbow off, so they walk in
-    /// and attack. Only types the scene's wave table holds can be placed (others are not in the build).
+    /// <c>-ss-enemy &lt;Id&gt;[+Id...][,count]</c> (KAN-104) places count (default 3) enemies of each roster type (e.g.
+    /// GraveyardLaborer, prefab <c>Enemy_&lt;Id&gt;</c>) in an arc ~5 m ahead of the Knight after load and turns the crossbow off,
+    /// so they walk in and attack. Only types the scene's wave table holds can be placed (others are not in the build).
     /// Used by tools/agents to verify visuals without a human. Inactive in release builds (Debug.isDebugBuild).
     /// </summary>
     public sealed class DevScreenshot : MonoBehaviour
@@ -505,31 +505,43 @@ namespace SurvivorSouls.Dev
             Debug.Log($"[DevScreenshot] tier lineup: {steps} steps, {HordeTierMaterials.Count} tier materials");
         }
 
-        /// <summary>KAN-104: <c>Id[,count]</c> enemies of one roster type in an arc ahead of the Knight; crossbow off.</summary>
+        /// <summary>KAN-104: <c>Id[+Id...][,count]</c> enemies of roster types in an arc ahead of the Knight; crossbow off.</summary>
         private static void PlaceEnemyType(string arg)
         {
             string[] parts = arg.Split(',');
+            string[] ids = parts[0].Split('+');
             int count = parts.Length > 1 && int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out int c) ? Mathf.Max(1, c) : 3;
             var spawner = FindAnyObjectByType<EnemySpawner>();
             var player = FindAnyObjectByType<PlayerMover>();
             var waves = spawner != null ? spawner.Waves : null;
-            Enemy prefab = null;
-            for (int i = 0; waves != null && i < waves.PhaseCount && prefab == null; i++)
-                foreach (var e in waves.GetPhase(i).enemies)
-                    if (e.prefab != null && e.prefab.name == "Enemy_" + parts[0]) prefab = e.prefab;
-            if (player == null || prefab == null)
+            if (player == null || waves == null)
             {
-                Debug.LogWarning($"[DevScreenshot] -ss-enemy: no '{parts[0]}' in the wave table (or no player)");
+                Debug.LogWarning("[DevScreenshot] -ss-enemy: no player or wave table");
                 return;
             }
             foreach (var shooter in FindObjectsByType<AutoShooter>()) shooter.enabled = false;
-            for (int i = 0; i < count; i++)
+            int total = ids.Length * count, slot = 0;
+            foreach (string id in ids)
             {
-                float t = count > 1 ? i / (float)(count - 1) : 0.5f;
-                float a = Mathf.Lerp(125f, 55f, t) * Mathf.Deg2Rad;
-                spawner.SpawnAt(prefab, player.transform.position + new Vector3(Mathf.Cos(a) * 5f, 0f, Mathf.Sin(a) * 5f));
+                Enemy prefab = null;
+                for (int i = 0; i < waves.PhaseCount && prefab == null; i++)
+                    foreach (var e in waves.GetPhase(i).enemies)
+                        if (e.prefab != null && e.prefab.name == "Enemy_" + id) prefab = e.prefab;
+                if (prefab == null)
+                {
+                    Debug.LogWarning($"[DevScreenshot] -ss-enemy: no '{id}' in the wave table");
+                    slot += count;
+                    continue;
+                }
+                for (int k = 0; k < count; k++, slot++)
+                {
+                    float t = total > 1 ? slot / (float)(total - 1) : 0.5f;
+                    float a = Mathf.Lerp(150f, 30f, t) * Mathf.Deg2Rad;
+                    float r = slot % 2 == 0 ? 4.5f : 5.5f;
+                    spawner.SpawnAt(prefab, player.transform.position + new Vector3(Mathf.Cos(a) * r, 0f, Mathf.Sin(a) * r));
+                }
+                Debug.Log($"[DevScreenshot] enemy {prefab.name} x{count}: height {prefab.Height:F2} m, hit radius {prefab.HitRadius:F2} m");
             }
-            Debug.Log($"[DevScreenshot] enemy {prefab.name} x{count}: height {prefab.Height:F2} m, hit radius {prefab.HitRadius:F2} m");
         }
 
         /// <summary>Tops the field up to <paramref name="count"/> enemies once a second (off-screen spawn points).</summary>
