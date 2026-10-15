@@ -106,7 +106,8 @@ namespace SurvivorSouls.Editor
             var chamberSetup = ChamberBuilder.CreateSetup(timer.gameObject, world, spawner); // per-Chamber difficulty + layout seed (KAN-46)
             ChamberBuilder.CreateHordeScaler(timer.gameObject, spawner, player.GetComponent<PlayerStats>(), timer); // zombie health to power + tiers (KAN-92)
             var boss = BossBuilder.Create(kit, health, timer, spawner, progression.Souls); // boss Chambers: fight, slam, reward (KAN-58)
-            RangedEnemyBuilder.CreateScene(kit, health); // ranged zombie shots, hazards, warnings (KAN-105)
+            var enemyShots = RangedEnemyBuilder.CreateScene(kit, health); // ranged zombie shots, hazards, warnings (KAN-105)
+            ShamanBuilder.CreateScene(enemyShots.transform); // Hexbound Shaman puffs + priority markers (KAN-107)
             SetRef(game, "boss", boss); // slam camera shake
             var hearts = boss.GetComponent<BossHearts>();
             SetRef(game, "hearts", hearts); // haptic tap on a heart pickup (KAN-60)
@@ -202,7 +203,8 @@ namespace SurvivorSouls.Editor
             // Ranged zombies (KAN-105) are in the build but not in the waves yet (spawn tables: KAN-112).
             var extras = new SerializedObject(spawner);
             // KAN-119: boss summons (Rotting Colossus: Frenzied Ghouls; Bone Matriarch: Bone Archers, already a ranged type).
-            SetArray(extras.FindProperty("extraTypes"), RangedEnemyBuilder.Ids.Append("FrenziedGhoul").Select(EnemyRosterBuilder.LoadPrefab).ToArray());
+            // KAN-107: the Hexbound Shaman (not in the waves until KAN-112).
+            SetArray(extras.FindProperty("extraTypes"), RangedEnemyBuilder.Ids.Append("FrenziedGhoul").Append(ShamanBuilder.Id).Select(EnemyRosterBuilder.LoadPrefab).ToArray());
             extras.ApplyModifiedPropertiesWithoutUndo();
             return (shooter, spawner);
         }

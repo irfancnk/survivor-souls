@@ -189,6 +189,7 @@ GameObject:
   m_Component:
   - component: {fileID: 3936825543644102309}
   - component: {fileID: 8638987078726056127}
+  - component: {fileID: 4012756879451912514}
   m_Layer: 0
   m_Name: Enemy_HexboundShaman
   m_TagString: Untagged
@@ -250,8 +251,44 @@ MonoBehaviour:
   deathState: Death
   hitHold: 0.4
   deathHold: 0.9
-  holdMin: 0
-  holdMax: 0
+  holdMin: 8
+  holdMax: 11
+--- !u!114 &4012756879451912514
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1500985136649356202}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 364a0b53c8fd9424db6e10786eec76d9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Combat.HexShaman
+  settings:
+    orbWindUp: 0.7
+    orbCount: 8
+    orbSpeed: 5
+    orbRange: 13
+    orbDamageShare: 0.1
+    orbHitRadius: 0.4
+    orbWarnRadius: 1.6
+    orbCooldown: 5
+    castWindUp: 0.8
+    hexRadius: 6
+    hexBoost: 1.3
+    hexDuration: 5
+    hexMinTargets: 2
+    raiseCount: 2
+    raiseMax: 4
+    raiseRing: 2.2
+    castCooldown: 12
+    blinkTrigger: 3
+    blinkDistance: 6
+    blinkCooldown: 6
+    blinkTime: 0.25
+    recover: 0.4
+  raiseType: {fileID: 5335434802141488015, guid: 64dd4dfba50f345cea746a72f7dd7708, type: 3}
 --- !u!1 &1929337667826611917
 GameObject:
   m_ObjectHideFlags: 0

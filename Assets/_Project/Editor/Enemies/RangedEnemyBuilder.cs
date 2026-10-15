@@ -24,14 +24,14 @@ namespace SurvivorSouls.Editor.Enemies
     /// </summary>
     public static class RangedEnemyBuilder
     {
-        private const string FxDir = "Assets/_Project/Art/EnemyFX";
+        public const string FxDir = "Assets/_Project/Art/EnemyFX";
         private const string BowMeshPath = FxDir + "/SM_BoneBow.asset";
         private const int ShotCapacity = 48;
         private const int HazardCapacity = 24;
         private const int LaneWarnings = 8;
         private const int CircleWarnings = 16;
         private const int LanesPerWarning = 3;
-        private const int FxSize = 128;
+        public const int FxSize = 128;
 
         /// <summary>The ranged types (Docs/ENEMY_ROSTER.md 3.6-3.8): hold band (m) and attack. First guesses in Chamber 1 terms.</summary>
         public static readonly (string id, float holdMin, float holdMax, RangedAttack.Settings attack)[] Specs =
@@ -134,6 +134,7 @@ namespace SurvivorSouls.Editor.Enemies
                 ShotLook(root.transform, "Arrows", "T_EnemyArrow", ArrowPixel, size: 0.2f, new Color(1f, 0.97f, 0.9f), ghosts: 0, spacing: 0f, stretch: true),
                 ShotLook(root.transform, "Fire Pots", "T_FirePot", FirePotPixel, size: 0.62f, Color.white, ghosts: 3, spacing: 0.3f, stretch: false),
                 ShotLook(root.transform, "Acid Globs", "T_AcidGlob", AcidGlobPixel, size: 0.5f, Color.white, ghosts: 2, spacing: 0.26f, stretch: false),
+                ShotLook(root.transform, "Soul Orbs", "T_SoulOrb", ShamanBuilder.SoulOrbPixel, size: 0.6f, Color.white, ghosts: 2, spacing: 0.24f, stretch: false), // KAN-107 Shaman ring
             };
             var so = new SerializedObject(shots);
             so.FindProperty("player").objectReferenceValue = player;
@@ -238,7 +239,7 @@ namespace SurvivorSouls.Editor.Enemies
         }
 
         /// <summary>A particle system the script fills with SetParticles (emission off, never dies, alpha blend so it reads on snow).</summary>
-        private static ParticleSystem ScriptSprites(Transform parent, string name, string texture, System.Func<int, int, Color> pixel, int maxParticles)
+        public static ParticleSystem ScriptSprites(Transform parent, string name, string texture, System.Func<int, int, Color> pixel, int maxParticles)
         {
             var tex = TextureFactory.Write($"{FxDir}/{texture}.png", FxSize, FxSize, pixel, TextureFactory.Kind.Color,
                 wrap: TextureWrapMode.Clamp, maxSize: FxSize);

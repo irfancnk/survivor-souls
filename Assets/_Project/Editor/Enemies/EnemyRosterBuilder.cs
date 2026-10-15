@@ -400,6 +400,7 @@ namespace SurvivorSouls.Editor.Enemies
                 so.ApplyModifiedPropertiesWithoutUndo();
                 RangedEnemyBuilder.ConfigurePrefab(root, enemy, spec.Id, kit.Palette); // hold band + attack + bow (KAN-105)
                 SpecialMeleeBuilder.ConfigurePrefab(root, spec.Id); // burst / leap / slam (KAN-106)
+                ShamanBuilder.ConfigurePrefab(root, enemy, spec.Id); // hold band + orb ring / hex / raise / blink (KAN-107)
                 PrefabUtility.SaveAsPrefabAsset(root, spec.PrefabPath);
                 return (height, radius);
             }
