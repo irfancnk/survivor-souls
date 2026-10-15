@@ -17,6 +17,8 @@ namespace SurvivorSouls.Tests
     /// Keeps the editor's real wallets (Souls KAN-96, Ember Shards + granted bonuses KAN-97) out of the PlayMode suite:
     /// every test that runs the Game scene to a death, a cleared Realm or a menu exit banks souls (and may grant the
     /// first-run shard bonus). Saved before the first test of the assembly, put back after the last.
+    /// Soul tree levels (KAN-98) are saved too and zeroed for the suite: every Game scene test sees the bare Knight, even
+    /// when nodes were bought in the editor.
     /// </summary>
     [SetUpFixture]
     public sealed class WalletPrefsGuard
@@ -28,6 +30,20 @@ namespace SurvivorSouls.Tests
             yield return SoulWallet.KeyBalance;
             yield return SoulWallet.KeyCheck;
             foreach (var k in GemWallet.Keys) yield return k;
+            foreach (var k in TreeKeys()) yield return k;
+        }
+
+        private static IEnumerable<string> TreeKeys()
+        {
+            var tree = UnityEditor.AssetDatabase.LoadAssetAtPath<SurvivorSouls.Gameplay.Meta.SoulTree>("Assets/_Project/Data/Economy/SoulTree.asset");
+            if (tree == null) yield break;
+            foreach (var node in tree.Nodes)
+            {
+                if (node == null) continue;
+                string key = SurvivorSouls.Gameplay.Meta.SoulTreeProgress.KeyOf(node);
+                yield return key;
+                yield return key + ".check";
+            }
         }
 
         [OneTimeSetUp]
@@ -36,6 +52,7 @@ namespace SurvivorSouls.Tests
             _saved.Clear();
             foreach (var k in Keys())
                 if (PlayerPrefs.HasKey(k)) _saved[k] = PlayerPrefs.GetInt(k);
+            foreach (var k in TreeKeys()) PlayerPrefs.DeleteKey(k); // no bought levels during the suite
         }
 
         [OneTimeTearDown]

@@ -480,6 +480,28 @@ namespace SurvivorSouls.Tests
 #endif
         }
 
+        [Test]
+        public void Scaler_PermanentSoulTreeBonusesAreTheBaseline()
+        {
+            // KAN-98: bought soul tree levels make the Knight stronger than the horde; only in-run skills raise zombie health.
+            var s = Track(HordeScaling.Create(exponent: 0.5f, time: 0f, max: 10f));
+            var spawner = Spawner(EnemyWithBody(Color.white));
+            var stats = Stats();
+            var tree = Track(ScriptableObject.CreateInstance<SkillDefinition>());
+            stats.SetSource(tree, new[] { new StatModifier(StatId.Damage, ModifierKind.Percent, 1f) }, 1, permanent: true);
+            var health = Track(new GameObject("Knight")).AddComponent<SurvivorSouls.Gameplay.Player.PlayerHealth>();
+            var timer = Track(new GameObject("Chamber")).AddComponent<SurvivalTimer>();
+            timer.Setup(Track(ChamberRules.Create(120f)), health.transform, health);
+            var scaler = timer.gameObject.AddComponent<HordeScaler>();
+            scaler.Setup(s, spawner, stats, timer);
+            Assert.That(scaler.Power, Is.EqualTo(1f).Within(1e-4f), "x2 damage from the tree: still the run-start Knight");
+            Assert.That(spawner.DynamicHealthMultiplier, Is.EqualTo(1f).Within(1e-4f));
+
+            Give(stats, s, StatId.Damage, ModifierKind.Percent, 1f); // in-run: x3 over bare, x1.5 over the baseline
+            scaler.Refresh();
+            Assert.That(scaler.Power, Is.EqualTo(1.5f).Within(1e-3f));
+        }
+
         // ------------------------------------------------------------ Game scene
 
         [UnityTest]
