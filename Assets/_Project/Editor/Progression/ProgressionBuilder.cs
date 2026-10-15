@@ -9,21 +9,23 @@ using UnityEngine;
 namespace SurvivorSouls.Editor.Progression
 {
     /// <summary>
-    /// Builds the XP system of the Game scene (KAN-21): the XP curve asset, the soul orb mesh and materials (KAN-34: opaque
-    /// gold orb), the "Progression" object (XpManager + LevelUpFlow), the "Souls" object (SoulWispField with its three
-    /// particle systems: opaque mesh orb bodies and additive halos driven by SetParticles, additive motes) and, on the
-    /// player, the SoulCollector and the level-up burst (ring, flash, sparks on unscaled time). Called by
-    /// GameSceneBuilder; re-run is safe (assets are updated in place).
+    /// Builds the XP system of the Game scene (KAN-21): the XP curve asset, the soul crystal materials (KAN-177: Blender
+    /// mesh <c>SM_XpCrystal.fbx</c> from <c>Tools/Blender/build_xp_crystal.py</c>, opaque gold gem shader), the
+    /// "Progression" object (XpManager + LevelUpFlow), the "Souls" object (SoulWispField with its three particle systems:
+    /// opaque mesh crystal bodies and additive halos driven by SetParticles, additive motes; plus the SoulTrail ribbon
+    /// mesh) and, on the player, the SoulCollector and the level-up burst (ring, flash, sparks on unscaled time). Called
+    /// by GameSceneBuilder; re-run is safe (assets are updated in place).
     /// </summary>
     public static class ProgressionBuilder
     {
         private const string DataDir = "Assets/_Project/Data/Progression";
         public const string CurvePath = DataDir + "/XpCurve_Run.asset";
         private const string FxDir = "Assets/_Project/Art/Progression";
-        private const string OrbMeshPath = FxDir + "/Mesh_XpOrb.asset";
-        private const string OrbShader = "SurvivorSouls/XpOrb";
-        private const int OrbSegments = 14; // around
-        private const int OrbRings = 9;     // pole to pole: 14 * 2 + 14 * 7 * 2 = 224 triangles
+        public const string CrystalModelPath = FxDir + "/SM_XpCrystal.fbx"; // Tools/Blender/build_xp_crystal.py
+        private const string CrystalShader = "SurvivorSouls/XpCrystal";
+        private const int TrailCapacity = 40;
+        private const float TrailLife = 0.2f;
+        private const float TrailHeadAlpha = 0.72f;
         private const string RingTexturePath = "Assets/_Project/Art/Textures/Game/T_Ring.png"; // made by GameArtKit
         public const int WispCapacity = 128;
         private const int WispMergeAbove = 24;    // KAN-30 horde: past this many wisps out, close drops pile into one
@@ -50,11 +52,11 @@ namespace SurvivorSouls.Editor.Progression
             EditorAssetUtil.EnsureFolder(FxDir);
             var curve = BuildCurve();
 
-            var orbMesh = EditorAssetUtil.LoadOrCreateMesh(OrbMeshPath);
-            WriteOrb(orbMesh);
-            var orbMat = EditorAssetUtil.LoadOrCreateMaterial(FxDir + "/M_XpOrb.mat", OrbShader);
-            EditorUtility.SetDirty(orbMat);
+            var crystalMesh = LoadCrystalMesh();
+            var crystalMat = EditorAssetUtil.LoadOrCreateMaterial(FxDir + "/M_XpCrystal.mat", CrystalShader);
+            EditorUtility.SetDirty(crystalMat);
             var moteMat = EditorAssetUtil.ParticleMaterial(FxDir + "/M_FX_SoulMote.mat", kit.SoftDot, additive: true);
+            var trailMat = EditorAssetUtil.ParticleMaterial(FxDir + "/M_FX_SoulTrail.mat", kit.SoftDot, additive: false);
             var ringTex = AssetDatabase.LoadAssetAtPath<Texture2D>(RingTexturePath);
             if (ringTex == null) throw new System.InvalidOperationException($"Missing {RingTexturePath} (GameArtKit builds it).");
             var ringMat = EditorAssetUtil.ParticleMaterial(FxDir + "/M_FX_LevelUpRing.mat", ringTex, additive: true);
@@ -69,9 +71,10 @@ namespace SurvivorSouls.Editor.Progression
             result.Collector = player.AddComponent<SoulCollector>();
 
             var soulsGo = new GameObject("Souls");
-            var bodies = Bodies(soulsGo.transform, orbMat, orbMesh);
+            var bodies = Bodies(soulsGo.transform, crystalMat, crystalMesh);
             var halos = Halos(soulsGo.transform, moteMat);
             var motes = Motes(soulsGo.transform, moteMat);
+            var trail = Trail(soulsGo.transform, trailMat);
             result.Souls = soulsGo.AddComponent<SoulWispField>();
             var so = new SerializedObject(result.Souls);
             so.FindProperty("xp").objectReferenceValue = result.Xp;
@@ -79,6 +82,7 @@ namespace SurvivorSouls.Editor.Progression
             so.FindProperty("bodies").objectReferenceValue = bodies;
             so.FindProperty("halos").objectReferenceValue = halos;
             so.FindProperty("motes").objectReferenceValue = motes;
+            so.FindProperty("trail").objectReferenceValue = trail;
             so.FindProperty("capacity").intValue = WispCapacity;
             so.FindProperty("mergeAbove").intValue = WispMergeAbove;
             so.FindProperty("mergeRadius").floatValue = WispMergeRadius;
@@ -102,19 +106,57 @@ namespace SurvivorSouls.Editor.Progression
         }
 
         /// <summary>
-        /// Orb bodies: script-owned opaque mesh particles (SetParticles), no emission, never expire on their own. CPU-built
-        /// mesh particles (no GPU instancing): the XpOrb shader reads world-space vertices, normals and the vertex colour.
+        /// The Blender soul crystal mesh. Import settings: readable (CPU mesh particles), file normals (flat facets, soft
+        /// bevels), no materials, no animation, no rig. Run <c>Tools/Blender/build_xp_crystal.py</c> to rebuild the FBX.
         /// </summary>
-        private static ParticleSystem Bodies(Transform parent, Material mat, Mesh orb)
+        public static Mesh LoadCrystalMesh()
+        {
+            var importer = AssetImporter.GetAtPath(CrystalModelPath) as ModelImporter;
+            if (importer == null)
+                throw new System.InvalidOperationException($"Missing {CrystalModelPath} (run Tools/Blender/build_xp_crystal.py).");
+            bool dirty = !importer.isReadable || importer.materialImportMode != ModelImporterMaterialImportMode.None ||
+                         importer.importAnimation || importer.animationType != ModelImporterAnimationType.None ||
+                         importer.importNormals != ModelImporterNormals.Import || importer.importTangents != ModelImporterTangents.None ||
+                         importer.meshCompression != ModelImporterMeshCompression.Off || importer.importCameras || importer.importLights;
+            if (dirty)
+            {
+                importer.isReadable = true;
+                importer.materialImportMode = ModelImporterMaterialImportMode.None;
+                importer.importAnimation = false;
+                importer.animationType = ModelImporterAnimationType.None;
+                importer.importNormals = ModelImporterNormals.Import;
+                importer.importTangents = ModelImporterTangents.None;
+                importer.meshCompression = ModelImporterMeshCompression.Off;
+                importer.importCameras = false;
+                importer.importLights = false;
+                importer.SaveAndReimport();
+            }
+            var mesh = AssetDatabase.LoadAssetAtPath<Mesh>(CrystalModelPath);
+            if (mesh == null) throw new System.InvalidOperationException($"No mesh in {CrystalModelPath}.");
+            return mesh;
+        }
+
+        /// <summary>
+        /// Crystal bodies: script-owned opaque mesh particles (SetParticles), no emission, never expire on their own. 3D
+        /// rotation (spin + tilt) and 3D size (squash and stretch) per particle. CPU-built mesh particles (no GPU
+        /// instancing): the XpCrystal shader reads world-space vertices, normals, the vertex colour and the mesh UV0 data.
+        /// </summary>
+        private static ParticleSystem Bodies(Transform parent, Material mat, Mesh crystal)
         {
             var ps = ScriptOwned("Wisp Bodies", parent, mat);
+            var main = ps.main;
+            main.startRotation3D = true;
+            main.startSize3D = true;
             var r = ps.GetComponent<ParticleSystemRenderer>();
             r.renderMode = ParticleSystemRenderMode.Mesh;
-            r.mesh = orb;
+            r.mesh = crystal;
             r.alignment = ParticleSystemRenderSpace.World;
             r.enableGPUInstancing = false;
             r.SetActiveVertexStreams(new System.Collections.Generic.List<ParticleSystemVertexStream>
-                { ParticleSystemVertexStream.Position, ParticleSystemVertexStream.Normal, ParticleSystemVertexStream.Color });
+            {
+                ParticleSystemVertexStream.Position, ParticleSystemVertexStream.Normal, ParticleSystemVertexStream.Color,
+                ParticleSystemVertexStream.UV,
+            });
             r.sortMode = ParticleSystemSortMode.None; // opaque: depth sorts
             return ps;
         }
@@ -125,6 +167,27 @@ namespace SurvivorSouls.Editor.Progression
             var ps = ScriptOwned("Wisp Halos", parent, mat);
             ps.GetComponent<ParticleSystemRenderer>().sortMode = ParticleSystemSortMode.None; // additive: order free
             return ps;
+        }
+
+        /// <summary>See-through ribbons behind popping and flying crystals: one world-space mesh, one draw call.</summary>
+        private static SoulTrail Trail(Transform parent, Material mat)
+        {
+            var go = new GameObject("Wisp Trails", typeof(MeshFilter), typeof(MeshRenderer));
+            go.transform.SetParent(parent, false);
+            var r = go.GetComponent<MeshRenderer>();
+            r.sharedMaterial = mat;
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            r.receiveShadows = false;
+            r.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off;
+            r.reflectionProbeUsage = UnityEngine.Rendering.ReflectionProbeUsage.Off;
+            r.motionVectorGenerationMode = MotionVectorGenerationMode.ForceNoMotion;
+            var trail = go.AddComponent<SoulTrail>();
+            var so = new SerializedObject(trail);
+            so.FindProperty("capacity").intValue = TrailCapacity;
+            so.FindProperty("life").floatValue = TrailLife;
+            so.FindProperty("headAlpha").floatValue = TrailHeadAlpha;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            return trail;
         }
 
         private static ParticleSystem ScriptOwned(string name, Transform parent, Material mat)
@@ -252,47 +315,6 @@ namespace SurvivorSouls.Editor.Progression
             r.receiveShadows = false;
             r.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off;
             r.reflectionProbeUsage = UnityEngine.Rendering.ReflectionProbeUsage.Off;
-        }
-
-        /// <summary>
-        /// XP orb: UV sphere, diameter 1 (the particle size is the orb diameter), smooth normals, no UVs (the XpOrb
-        /// shader needs only normals). 224 triangles.
-        /// </summary>
-        private static void WriteOrb(Mesh mesh)
-        {
-            var verts = new System.Collections.Generic.List<Vector3>();
-            var tris = new System.Collections.Generic.List<int>();
-            verts.Add(Vector3.up * 0.5f);
-            for (int ring = 1; ring < OrbRings; ring++)
-            {
-                float polar = Mathf.PI * ring / OrbRings;
-                for (int seg = 0; seg < OrbSegments; seg++)
-                {
-                    float az = Mathf.PI * 2f * seg / OrbSegments;
-                    verts.Add(0.5f * new Vector3(Mathf.Sin(polar) * Mathf.Cos(az), Mathf.Cos(polar), Mathf.Sin(polar) * Mathf.Sin(az)));
-                }
-            }
-            verts.Add(Vector3.down * 0.5f);
-            int bottom = verts.Count - 1;
-            int Ring(int ring, int seg) => 1 + (ring - 1) * OrbSegments + (seg % OrbSegments);
-            for (int seg = 0; seg < OrbSegments; seg++)
-            {
-                tris.AddRange(new[] { 0, Ring(1, seg + 1), Ring(1, seg) });
-                for (int ring = 1; ring < OrbRings - 1; ring++)
-                {
-                    int a0 = Ring(ring, seg), a1 = Ring(ring, seg + 1), b0 = Ring(ring + 1, seg), b1 = Ring(ring + 1, seg + 1);
-                    tris.AddRange(new[] { a0, a1, b1, a0, b1, b0 });
-                }
-                tris.AddRange(new[] { bottom, Ring(OrbRings - 1, seg), Ring(OrbRings - 1, seg + 1) });
-            }
-            var normals = new Vector3[verts.Count];
-            for (int i = 0; i < normals.Length; i++) normals[i] = verts[i].normalized;
-            mesh.Clear();
-            mesh.SetVertices(verts);
-            mesh.SetNormals(normals);
-            mesh.SetTriangles(tris, 0);
-            mesh.RecalculateBounds();
-            EditorUtility.SetDirty(mesh);
         }
 
         private static void SetRef(Object component, string field, Object value)

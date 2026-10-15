@@ -21,6 +21,8 @@ namespace SurvivorSouls.Dev
     /// <c>-ss-closeup &lt;yawDeg&gt;</c> frames the player up close (0 = from the front).
     /// <c>-ss-near-exit</c> moves the player in front of the exit door (open world) or the arena portal (boss Chamber, KAN-59).
     /// <c>-ss-pos x,z</c> moves the player to a world position first (e.g. the shore).
+    /// <c>-ss-exit-offset x,z</c> moves the player to the exit (or arena portal) plus this world offset (KAN-176: gate arrow
+    /// direction shots; offset 0,-40 = gate straight up the screen, 40,0 = gate to the left).
     /// Every capture also logs render stats of the last second: <c>[DevScreenshot] Stats ...</c> (draw calls, batches,
     /// SetPass calls, triangles, average frame ms).
     /// <c>-ss-player-hp &lt;0..1&gt;</c> sets the player's health fraction after load (0 = death screen).
@@ -28,6 +30,9 @@ namespace SurvivorSouls.Dev
     /// <c>-ss-hit-marker &lt;hit|kill&gt;</c> pops a hit (or kill) marker on the nearest enemy just before the capture.
     /// <c>-ss-release &lt;seconds&gt;</c> lets go of the -ss-move stick that long before the capture (e.g. wind trail tail-off).
     /// <c>-ss-souls &lt;n&gt;</c> drops n soul wisps around the player after load (mostly small, some elite, one boss orb).
+    /// <c>-ss-souls-pull &lt;seconds&gt;[,&lt;freeze&gt;]</c> that long after load, every soul crystal flies to the Knight
+    /// (KAN-177 collect arc + trail); with a freeze time, time stops that long after the pull so a later -ss-delay capture
+    /// shows the crystals mid-flight.
     /// <c>-ss-xp &lt;amount&gt;</c> grants that much XP <see cref="XpLead"/> s before the capture (level-up burst + skill cards).
     /// <c>-ss-chests &lt;n&gt;</c> drops n Reliquary chests (KAN-72) ahead of the player after load: Light, then Rare, ...
     /// <c>-ss-open-chest &lt;light|rare&gt;</c> drops that chest at the Knight's feet: the real walk-in pickup opens it
@@ -107,11 +112,14 @@ namespace SurvivorSouls.Dev
         private string _closeup;
         private bool _nearExit;
         private string _pos;
+        private string _exitOffset; // KAN-176
         private string _playerHp;
         private string _counters;
         private string _hitMarker;
         private float _release;
         private int _souls;
+        private float _soulsPull = -1f;
+        private float _soulsFreeze = -1f;
         private int _xp;
         private string _skills;
         private bool _powerCurve;
@@ -172,11 +180,15 @@ namespace SurvivorSouls.Dev
             shot._closeup = GetArg("-ss-closeup");
             shot._nearExit = Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-near-exit") >= 0;
             shot._pos = GetArg("-ss-pos");
+            shot._exitOffset = GetArg("-ss-exit-offset"); // KAN-176
             shot._playerHp = GetArg("-ss-player-hp");
             shot._counters = GetArg("-ss-counters");
             shot._hitMarker = GetArg("-ss-hit-marker");
             shot._release = float.TryParse(GetArg("-ss-release"), NumberStyles.Float, CultureInfo.InvariantCulture, out float r) ? r : 0f;
             shot._souls = int.TryParse(GetArg("-ss-souls"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int n) ? n : 0;
+            string[] pull = (GetArg("-ss-souls-pull") ?? "").Split(',');
+            shot._soulsPull = float.TryParse(pull[0], NumberStyles.Float, CultureInfo.InvariantCulture, out float sp) ? sp : -1f;
+            shot._soulsFreeze = pull.Length > 1 && float.TryParse(pull[1], NumberStyles.Float, CultureInfo.InvariantCulture, out float sf) ? sf : -1f;
             shot._skills = GetArg("-ss-skills");
             shot._powerCurve = Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-power-curve") >= 0;
             shot._volley = Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-volley") >= 0;
@@ -271,6 +283,11 @@ namespace SurvivorSouls.Dev
                 string[] xz = _pos.Split(',');
                 Teleport(new Vector3(float.Parse(xz[0], CultureInfo.InvariantCulture), 0f, float.Parse(xz[1], CultureInfo.InvariantCulture)));
             }
+            if (!string.IsNullOrEmpty(_exitOffset)) // KAN-176: gate arrow direction shots
+            {
+                string[] xz = _exitOffset.Split(',');
+                MoveNearExit(new Vector3(float.Parse(xz[0], CultureInfo.InvariantCulture), 0f, float.Parse(xz[1], CultureInfo.InvariantCulture)));
+            }
             if (!string.IsNullOrEmpty(_counters)) SetCounters(_counters);
             if (!string.IsNullOrEmpty(_playerHp)) SetPlayerHealth(float.Parse(_playerHp, CultureInfo.InvariantCulture));
             if (!string.IsNullOrEmpty(_move))
@@ -281,6 +298,7 @@ namespace SurvivorSouls.Dev
             }
 
             if (_souls > 0) DropSouls(_souls);
+            if (_soulsPull >= 0f) StartCoroutine(PullSouls(_soulsPull, _soulsFreeze));
             if (_immortal)
             {
                 foreach (var c in FindObjectsByType<ContactDamageReceiver>()) c.enabled = false;
@@ -612,12 +630,14 @@ namespace SurvivorSouls.Dev
                       $"mainThreadMs={m / frames * 1e-6f:F2} mainThreadMaxMs={mMax * 1e-6f:F2} enemies={enemies / frames} {QualityTag()}");
         }
 
-        private static void MoveNearExit()
+        private static void MoveNearExit() => MoveNearExit(new Vector3(0f, 0f, -5.5f));
+
+        private static void MoveNearExit(Vector3 offset)
         {
             var arena = SurvivorSouls.Gameplay.World.BossArena.Active; // boss Chamber: the arena portal (KAN-59)
             var world = FindAnyObjectByType<SurvivorSouls.Gameplay.World.WorldStreamer>();
-            if (arena != null) Teleport(arena.ExitPosition + new Vector3(0f, 0f, -5.5f));
-            else if (world != null) Teleport(world.ExitPosition + new Vector3(0f, 0f, -5.5f));
+            if (arena != null) Teleport(arena.ExitPosition + offset);
+            else if (world != null) Teleport(world.ExitPosition + offset);
         }
 
         private static void Teleport(Vector3 position)
@@ -628,6 +648,17 @@ namespace SurvivorSouls.Dev
             cc.enabled = false;
             player.transform.position = position;
             cc.enabled = true;
+        }
+
+        private static IEnumerator PullSouls(float after, float freeze)
+        {
+            yield return new WaitForSeconds(after);
+            var field = FindAnyObjectByType<SurvivorSouls.Gameplay.Progression.SoulWispField>();
+            if (field != null) field.PullAll();
+            Debug.Log($"[DevScreenshot] Souls pulled: {(field != null ? field.Count : 0)} crystals at t={Time.time:F2}");
+            if (freeze < 0f) yield break;
+            yield return new WaitForSeconds(freeze);
+            Time.timeScale = 0f;
         }
 
         private static void DropSouls(int count)

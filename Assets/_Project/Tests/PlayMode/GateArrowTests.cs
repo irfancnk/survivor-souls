@@ -22,7 +22,9 @@ namespace SurvivorSouls.Tests
     /// arrow sits on the allowed edge rectangle (clear of the HUD top band and the joystick), points at the gate, is dim
     /// while the portal is locked and bright once it opens, hides while the gate is on screen and when the Knight dies
     /// (target off), allocates nothing per frame; the baked Blender sprite is under 150 KB.
-    /// Look: Docs/screenshots/game-kan63-*.png.
+    /// KAN-176: the edge rectangle hugs the safe area (2.5 mm + half the arrow), no-go zones push the arrow along the same
+    /// edge (inward only when a whole edge line is blocked), the arrow never overlaps a HUD zone, no distance label.
+    /// Look: Docs/screenshots/game-kan63-*.png, Docs/screenshots/kan176-*.png.
     /// </summary>
     public sealed class GateArrowTests
     {
@@ -79,11 +81,70 @@ namespace SurvivorSouls.Tests
         }
 
         [Test]
-        public void MetresText_IsCached()
+        public void MillimetresToPanel_UsesDpiAndPanelScale()
         {
-            Assert.That(GateArrowHud.MetresText(42), Is.EqualTo("42 m"));
-            Assert.That(GateArrowHud.MetresText(42), Is.SameAs(GateArrowHud.MetresText(42)));
-            Assert.That(GateArrowHud.MetresText(5000), Is.EqualTo("999 m"));
+            // iPhone 14 Pro Max: 460 dpi, 1290 px wide, panel 1080 wide -> 2.5 mm = ~37.9 panel units.
+            Assert.That(EdgeMarker.MillimetresToPanel(2.5f, 460f, 1080f / 1290f), Is.EqualTo(37.9f).Within(0.1f));
+            Assert.That(EdgeMarker.MillimetresToPanel(25.4f, 100f, 1f), Is.EqualTo(100f).Within(0.001f), "1 inch = dpi pixels");
+            Assert.That(EdgeMarker.MillimetresToPanel(0f, 460f, 1f), Is.EqualTo(0f));
+        }
+
+        // KAN-176 no-go zones: Box border = arrow centre line, half = 40 (an 80 px arrow).
+        private const float Half = 40f;
+
+        [Test]
+        public void AvoidZones_FreePoint_StaysPut()
+        {
+            var zones = new[] { Rect.MinMaxRect(0f, 0f, 200f, 200f) };
+            var p = new Vector2(500f, Box.yMax);
+            Assert.That(EdgeMarker.AvoidZones(p, Box, Half, zones, 1), Is.EqualTo(p));
+            Assert.That(EdgeMarker.AvoidZones(p, Box, Half, null, 0), Is.EqualTo(p));
+        }
+
+        [Test]
+        public void AvoidZones_Joystick_SlidesAlongTheBottomEdge_ToTheNearestSide()
+        {
+            var joystick = Rect.MinMaxRect(380f, 1250f, 620f, 1500f);
+            var zones = new[] { joystick };
+            Vector2 left = EdgeMarker.AvoidZones(new Vector2(470f, Box.yMax), Box, Half, zones, 1);
+            Assert.That(left.y, Is.EqualTo(Box.yMax), "stays on the bottom edge (never pulled inward)");
+            Assert.That(left.x, Is.EqualTo(380f - Half).Within(0.1f), "nearest free spot: left of the ring");
+            Vector2 right = EdgeMarker.AvoidZones(new Vector2(560f, Box.yMax), Box, Half, zones, 1);
+            Assert.That(right.x, Is.EqualTo(620f + Half).Within(0.1f), "nearest free spot: right of the ring");
+            Assert.That(EdgeMarker.Free(left, Half, zones, 1) && EdgeMarker.Free(right, Half, zones, 1), Is.True);
+        }
+
+        [Test]
+        public void AvoidZones_SideEdge_SlidesDownBelowTheTopBand()
+        {
+            var zones = new[] { Rect.MinMaxRect(0f, 0f, 1080f, 460f), Rect.MinMaxRect(60f, 460f, 300f, 560f) }; // bars, skill icons
+            Vector2 p = EdgeMarker.AvoidZones(new Vector2(Box.xMin, 430f), Box, Half, zones, 2);
+            Assert.That(p.x, Is.EqualTo(Box.xMin), "stays on the left edge");
+            Assert.That(p.y, Is.EqualTo(560f + Half).Within(0.1f), "just below the skill icons");
+        }
+
+        [Test]
+        public void AvoidZones_FullyBlockedTopEdge_StepsInward_ThenSlidesClearOfTheTimer()
+        {
+            var bars = Rect.MinMaxRect(0f, 0f, 1080f, 470f); // full-width XP + health rows
+            var timer = Rect.MinMaxRect(440f, 470f, 640f, 540f);
+            var zones = new[] { bars, timer };
+            Vector2 p = EdgeMarker.AvoidZones(new Vector2(620f, Box.yMin), Box, Half, zones, 2);
+            Assert.That(p.y, Is.EqualTo(470f + Half).Within(0.1f), "steps inward only past the bars");
+            Assert.That(p.x, Is.EqualTo(640f + Half).Within(0.1f), "then slides along that line clear of the timer");
+            Vector2 straightUp = EdgeMarker.AvoidZones(new Vector2(540f, Box.yMin), Box, Half, zones, 2);
+            Assert.That(EdgeMarker.Free(straightUp, Half, zones, 2), Is.True);
+            Assert.That(straightUp.y, Is.LessThan(560f + Half + 0.5f), "close under the HUD, not pushed deep into the map");
+        }
+
+        [Test]
+        public void AvoidZones_Corner_PicksTheNearestFreeEdge()
+        {
+            var bars = Rect.MinMaxRect(0f, 0f, 1080f, 470f);
+            var zones = new[] { bars };
+            Vector2 p = EdgeMarker.AvoidZones(new Vector2(Box.xMax, Box.yMin), Box, Half, zones, 1);
+            Assert.That(p.x, Is.EqualTo(Box.xMax), "top-right corner: the right edge, just below the bars");
+            Assert.That(p.y, Is.EqualTo(470f + Half).Within(0.1f));
         }
 
         [Test]
@@ -122,16 +183,27 @@ namespace SurvivorSouls.Tests
             Assert.That(hud.GateOnScreen, Is.False, "exit is far at the Chamber start");
             Assert.That(hud.Visible, Is.True, "locked portal: dim arrow already shows");
 
+            Assert.That(hud.GetComponent<UIDocument>().rootVisualElement.Q("gate-arrow-dist"), Is.Null, "no distance label (KAN-176)");
             Rect edge = hud.EdgeRect;
             Vector2 p = hud.Position;
-            float toEdge = Mathf.Min(Mathf.Abs(p.x - edge.xMin), Mathf.Abs(p.x - edge.xMax), Mathf.Abs(p.y - edge.yMin), Mathf.Abs(p.y - edge.yMax));
-            Assert.That(toEdge, Is.LessThan(3f), $"arrow on the edge rectangle ({p} in {edge})");
-            float panelHeight = icon.panel.visualTree.layout.height;
-            if (panelHeight > 1300f) // portrait phone-like panel (a tiny test window collapses the rectangle to the centre)
+            float half = hud.Size * 0.5f;
+            Vector2 panelSize = icon.panel.visualTree.layout.size;
+            if (Mathf.Min(panelSize.x, panelSize.y) > 2f * (hud.EdgeInset + half) + 10f) // a tiny test window collapses the rectangle to the centre
             {
-                Assert.That(edge.yMin, Is.GreaterThan(400f), "clear of the HUD bars and the timer at the top");
-                Assert.That(edge.yMax, Is.LessThan(panelHeight - 470f), "clear of the idle joystick at the bottom");
+                // KAN-176: the rectangle hugs the safe area: outer arrow edge = 2.5 mm (EdgeInset) from it.
+                Rect safe = Screen.safeArea;
+                float sx = panelSize.x / Screen.width, sy = panelSize.y / Screen.height;
+                Assert.That(edge.xMin, Is.EqualTo(safe.xMin * sx + hud.EdgeInset + half).Within(0.5f));
+                Assert.That(edge.yMin, Is.EqualTo((Screen.height - safe.yMax) * sy + hud.EdgeInset + half).Within(0.5f));
+                Assert.That(edge.yMax, Is.EqualTo((Screen.height - safe.yMin) * sy - hud.EdgeInset - half).Within(0.5f));
+                Assert.That(hud.EdgeInset, Is.GreaterThan(0f));
             }
+            Assert.That(hud.ZoneCount, Is.GreaterThanOrEqualTo(4), "XP bar, timer, pause, health (+ souls, joystick) are no-go zones");
+            Assert.That(EdgeMarker.Free(p, half - 1f, hud.Zones, hud.ZoneCount), Is.True, $"arrow {p} overlaps no HUD zone");
+            float toEdge = Mathf.Min(Mathf.Abs(p.x - edge.xMin), Mathf.Abs(p.x - edge.xMax), Mathf.Abs(p.y - edge.yMin), Mathf.Abs(p.y - edge.yMax));
+            bool onEdge = toEdge < 3f;
+            bool againstZone = !EdgeMarker.Free(p, half + 3f, hud.Zones, hud.ZoneCount);
+            Assert.That(onEdge || againstZone, Is.True, $"arrow on the edge rectangle or right against a HUD zone ({p} in {edge})");
 
             var cam = Camera.main;
             Vector3 flat = objective.Target - player.position;
