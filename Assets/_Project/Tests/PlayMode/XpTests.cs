@@ -19,7 +19,9 @@ namespace SurvivorSouls.Tests
     /// stays off when disabled), a full pool merges XP instead of losing it, pickups tap the haptics once per burst,
     /// 60 wisps simulate + render with no GC allocation, and the level-up flow pauses, shows one choice per level in
     /// order and resumes. KAN-34: every tier is a gold orb, bigger tiers have bigger orbs and halos, and each wisp
-    /// renders one orb body plus one larger halo.
+    /// renders one orb body plus one larger halo. KAN-177: the body is the Blender soul crystal; it spins at rest, squashes
+    /// on landing, curves in on pickup (not a straight line), and a see-through trail follows popping and flying crystals
+    /// and fades out after the absorb; trails stay inside their budget and allocate nothing.
     /// </summary>
     public sealed class XpTests
     {
@@ -286,6 +288,146 @@ namespace SurvivorSouls.Tests
                 Color32 c = body[i].startColor;
                 Assert.That(c.r, Is.GreaterThan(c.b), $"orb {i} gold");
             }
+        }
+
+        // ------------------------------------------------------------ KAN-177 crystal motion + trail
+
+        private (ParticleSystem bodies, SoulTrail trail) SetupCrystalRender(int trailCapacity = 40)
+        {
+            var bodies = Track(new GameObject("Bodies")).AddComponent<ParticleSystem>();
+            var main = bodies.main;
+            main.startRotation3D = true;
+            main.startSize3D = true;
+            var motes = Track(new GameObject("Motes")).AddComponent<ParticleSystem>();
+            var halos = Track(new GameObject("Halos")).AddComponent<ParticleSystem>();
+            var trail = Track(new GameObject("Trails", typeof(MeshFilter), typeof(MeshRenderer))).AddComponent<SoulTrail>();
+            trail.Setup(trailCapacity, 0.2f);
+            _field.Setup(_xp, _collector, 128, bodies, motes, halos, trail);
+            return (bodies, trail);
+        }
+
+        private void RunWithTrail(SoulTrail trail, float seconds)
+        {
+            for (float t = 0f; t < seconds; t += Frame)
+            {
+                _field.Tick(Frame);
+                trail.Tick(Frame);
+            }
+        }
+
+        [Test]
+        public void Crystal_SpinsAtRest_AndSquashesOnLanding()
+        {
+            var (bodies, trail) = SetupCrystalRender();
+            _field.DriftEnabled = false;
+            _field.Spawn(new Vector3(10f, 1f, 0f), 10); // out of reach
+            var p = new ParticleSystem.Particle[1];
+            bool squashed = false;
+            for (float t = 0f; t < 1.5f; t += Frame)
+            {
+                RunWithTrail(trail, Frame);
+                bodies.GetParticles(p);
+                if (p[0].startSize3D.y < p[0].startSize3D.x * 0.85f) squashed = true;
+            }
+            Assert.That(squashed, "lands with a squash (shorter than wide)");
+            bodies.GetParticles(p);
+            Assert.That(p[0].startSize3D.y, Is.EqualTo(p[0].startSize3D.x).Within(0.02f), "back to shape at rest");
+            float spinA = p[0].rotation3D.y;
+            RunWithTrail(trail, 0.5f);
+            bodies.GetParticles(p);
+            Assert.That(Mathf.Abs(Mathf.DeltaAngle(spinA, p[0].rotation3D.y)), Is.GreaterThan(15f), "spins while resting");
+        }
+
+        [Test]
+        public void Pickup_CurvesIn_NotAStraightLine()
+        {
+            SetupCrystalRender();
+            _field.DriftEnabled = false;
+            _field.Spawn(new Vector3(9f, 1f, 0f), 10);
+            Run(1.2f); // landed far away
+            Vector3 landed = _field.PositionAt(0);
+            _collector.transform.position = new Vector3(landed.x - 2.4f, 0f, landed.z); // walk up: inside the 2.6 m radius
+            float maxSide = 0f;
+            bool flew = false;
+            for (float t = 0f; t < 2f && _field.Count > 0; t += Frame)
+            {
+                _field.Tick(Frame);
+                if (_field.Count == 0) break;
+                flew |= _field.FlyingInAt(0);
+                maxSide = Mathf.Max(maxSide, Mathf.Abs(_field.PositionAt(0).z - landed.z)); // the straight line keeps z
+            }
+            Assert.That(flew);
+            Assert.That(_field.Count, Is.EqualTo(0), "absorbed");
+            Assert.That(maxSide, Is.GreaterThan(0.2f), "flies an arc to one side");
+            Assert.That(_xp.TotalXp, Is.EqualTo(10));
+        }
+
+        [Test]
+        public void Trail_FollowsPopAndFlight_ThenFadesOut()
+        {
+            var (_, trail) = SetupCrystalRender();
+            _field.DriftEnabled = false;
+            _field.Spawn(new Vector3(10f, 1f, 0f), 10);
+            RunWithTrail(trail, 0.15f);
+            Assert.That(trail.ActiveCount, Is.EqualTo(1), "the drop pops out with a trail");
+            Assert.That(trail.VertexCount, Is.GreaterThan(4));
+            // No camera in the test: ribbons face up. Every triangle must face the viewer (back faces are culled).
+            var mesh = trail.GetComponent<MeshFilter>().sharedMesh;
+            var v = mesh.vertices;
+            var tris = mesh.triangles;
+            Assert.That(tris.Length, Is.GreaterThan(0));
+            for (int i = 0; i < tris.Length; i += 3)
+            {
+                Vector3 n = Vector3.Cross(v[tris[i + 1]] - v[tris[i]], v[tris[i + 2]] - v[tris[i]]);
+                if (n.sqrMagnitude > 1e-10f) Assert.That(n.y, Is.GreaterThan(0f), "front face up (Cross(b - a, c - a) = front normal in Unity)");
+            }
+
+            RunWithTrail(trail, 1.5f); // landed + trail life
+            Assert.That(trail.ActiveCount, Is.EqualTo(0), "a resting crystal has no trail");
+            Assert.That(trail.VertexCount, Is.EqualTo(0));
+
+            Vector3 landed = _field.PositionAt(0);
+            _collector.transform.position = new Vector3(landed.x - 2f, 0f, landed.z);
+            RunWithTrail(trail, 0.12f);
+            Assert.That(_field.Count, Is.EqualTo(1));
+            Assert.That(trail.ActiveCount, Is.EqualTo(1), "flying in with a trail");
+            Assert.That(trail.VertexCount, Is.GreaterThan(4));
+
+            for (float t = 0f; t < 2f && _field.Count > 0; t += Frame) RunWithTrail(trail, Frame);
+            Assert.That(_field.Count, Is.EqualTo(0));
+            Assert.That(trail.ActiveCount, Is.EqualTo(1), "the trail outlives the absorb a moment (no hard cut)");
+            RunWithTrail(trail, trail.Life + 0.1f);
+            Assert.That(trail.ActiveCount, Is.EqualTo(0));
+            Assert.That(trail.VertexCount, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void Trail_BudgetFull_CrystalsStillFlyAndCollect()
+        {
+            var (_, trail) = SetupCrystalRender(trailCapacity: 8);
+            for (int i = 0; i < 30; i++) _field.Spawn(new Vector3(Mathf.Cos(i) * 1.5f, 1f, Mathf.Sin(i) * 1.5f), 10);
+            RunWithTrail(trail, 0.1f);
+            Assert.That(trail.ActiveCount, Is.EqualTo(8), "never more trails than the budget");
+            RunWithTrail(trail, 3f);
+            Assert.That(_field.Count, Is.EqualTo(0));
+            Assert.That(_xp.TotalXp, Is.EqualTo(300));
+            Assert.That(trail.ActiveCount, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void SixtyCrystals_WithTrails_NoGcAlloc()
+        {
+            var (_, trail) = SetupCrystalRender();
+            for (int i = 0; i < 60; i++)
+            {
+                float a = i * 2.4f, d = i % 2 == 0 ? 1.5f : 6f;
+                _field.Spawn(new Vector3(Mathf.Cos(a) * d, 1f, Mathf.Sin(a) * d), 10);
+            }
+            RunWithTrail(trail, Frame); // warm-up
+            Assert.That(() => { _field.Tick(Frame); trail.Tick(Frame); }, Is.Not.AllocatingGCMemory());
+            RunWithTrail(trail, 0.3f);
+            Assert.That(trail.ActiveCount, Is.GreaterThan(10));
+            Assert.That(() => { _field.Tick(Frame); trail.Tick(Frame); }, Is.Not.AllocatingGCMemory());
         }
 
         // ------------------------------------------------------------ Level-up flow
