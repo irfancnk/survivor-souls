@@ -28,6 +28,9 @@ namespace SurvivorSouls.Editor.Combat
         private const string BoltBlazeMeshPath = ArtDir + "/Bolt_BlazeHead_Mesh.asset"; // KAN-200
         private const string BoltBlazeTrailTexPath = ArtDir + "/T_BoltBlazeTrail.png"; // KAN-200
         public const string BoltPrefabPath = PrefabDir + "/Bolt.prefab";
+        private const string ArrowMeshPath = ArtDir + "/Arrow_Ranger_Mesh.asset"; // KAN-227
+        /// <summary>The Shadow Ranger's arrow (KAN-227), set on his HeroDefinition by HeroBuilder.</summary>
+        public const string ArrowPrefabPath = PrefabDir + "/Arrow_Ranger.prefab";
         public const string EnemyPrefabPath = PrefabDir + "/Enemy_Zombie.prefab";
         public const string RunnerPrefabPath = PrefabDir + "/Enemy_ZombieRunner.prefab";
         public const string BrutePrefabPath = PrefabDir + "/Enemy_ZombieBrute.prefab";
@@ -98,6 +101,7 @@ namespace SurvivorSouls.Editor.Combat
             EditorAssetUtil.EnsureFolder(ArtDir);
             EditorAssetUtil.EnsureFolder(PrefabDir);
             BuildBolt(kit);
+            BuildArrow(kit); // KAN-227
             BuildEnemy(kit);
         }
 
@@ -180,7 +184,65 @@ namespace SurvivorSouls.Editor.Combat
             mb.WriteTo(mesh);
             EditorUtility.SetDirty(mesh);
 
-            var root = new GameObject("Bolt");
+            // Thin hot streak: white core fading to amber. Short so it reads as speed, not as a laser.
+            var trailMat = EditorAssetUtil.ParticleMaterial(ArtDir + "/M_FX_BoltTrail.mat", kit.SoftDot, additive: true);
+            SaveProjectile(kit, "Bolt", mesh, BoltPrefabPath, trailMat, 0.16f,
+                new AnimationCurve(new Keyframe(0f, 0.07f), new Keyframe(0.3f, 0.045f), new Keyframe(1f, 0f)),
+                new Gradient
+                {
+                    colorKeys = new[] { new GradientColorKey(new Color(1f, 0.97f, 0.88f), 0f), new GradientColorKey(new Color(1f, 0.72f, 0.35f), 0.4f), new GradientColorKey(new Color(0.9f, 0.4f, 0.15f), 1f) },
+                    alphaKeys = new[] { new GradientAlphaKey(0.95f, 0f), new GradientAlphaKey(0.5f, 0.4f), new GradientAlphaKey(0f, 1f) },
+                }, spin: 900f);
+        }
+
+        /// <summary>
+        /// The Shadow Ranger's arrow (KAN-227), picked per hero (<c>HeroDefinition.Projectile</c>): longer and thinner than the
+        /// Knight's bolt so it reads as a bow arrow from the top-down camera. Points along +Z, origin at the head's base:
+        /// 0.64 m dark bark shaft, small leaf-shaped iron head, three long low black vanes, iron nock. Trail: a thin dark
+        /// smoke streak (alpha blend: an additive trail is invisible on the Realm 1 snow), slow spin (fletched, not rifled).
+        /// </summary>
+        private static void BuildArrow(GameArtKit kit)
+        {
+            var mb = new MeshBuilder();
+            var shaft = PaletteAtlas.For(Swatch.Bark);
+            var iron = PaletteAtlas.For(Swatch.Gunmetal);
+            var vane = PaletteAtlas.For(Swatch.Coal);
+            mb.Tube(new[] { new Vector3(0f, 0f, -0.6f), new Vector3(0f, 0f, 0.01f) }, t => 0.008f, shaft, 0, sides: 5);
+            for (int i = 0; i < 2; i++)
+            {
+                var r = Quaternion.Euler(0f, 0f, i * 90f);
+                DoubleQuad(mb, r * new Vector3(0f, 0.022f, 0.035f), r * new Vector3(0f, 0f, 0.11f), r * new Vector3(0f, -0.022f, 0.035f),
+                    r * new Vector3(0f, 0f, -0.005f), iron);
+            }
+            for (int i = 0; i < 3; i++)
+            {
+                var r = Quaternion.Euler(0f, 0f, i * 120f);
+                DoubleQuad(mb, r * new Vector3(0f, 0.008f, -0.585f), r * new Vector3(0f, 0.008f, -0.43f), r * new Vector3(0f, 0.034f, -0.47f),
+                    r * new Vector3(0f, 0.038f, -0.59f), vane);
+            }
+            mb.Box(new Vector3(0f, 0f, -0.605f), new Vector3(0.02f, 0.02f, 0.016f), Quaternion.identity, iron, 0);
+            var mesh = EditorAssetUtil.LoadOrCreateMesh(ArrowMeshPath);
+            mb.WriteTo(mesh);
+            EditorUtility.SetDirty(mesh);
+
+            var trailMat = EditorAssetUtil.ParticleMaterial(ArtDir + "/M_FX_ArrowTrail.mat", TrailBand(), additive: false);
+            SaveProjectile(kit, "Arrow_Ranger", mesh, ArrowPrefabPath, trailMat, 0.14f,
+                new AnimationCurve(new Keyframe(0f, 0.045f), new Keyframe(0.35f, 0.03f), new Keyframe(1f, 0f)),
+                new Gradient
+                {
+                    colorKeys = new[] { new GradientColorKey(new Color(0.42f, 0.46f, 0.44f), 0f), new GradientColorKey(new Color(0.2f, 0.22f, 0.22f), 0.45f), new GradientColorKey(new Color(0.1f, 0.1f, 0.12f), 1f) },
+                    alphaKeys = new[] { new GradientAlphaKey(0.7f, 0f), new GradientAlphaKey(0.35f, 0.45f), new GradientAlphaKey(0f, 1f) },
+                }, spin: 240f);
+        }
+
+        /// <summary>
+        /// One pooled projectile prefab (<see cref="Bolt"/>): "Mesh" child on the palette, the trail, the KAN-200 Ember Bolts
+        /// hot head (off until a blazing shot) and fire trail material. Shared by the Knight bolt and the hero arrows.
+        /// </summary>
+        private static void SaveProjectile(GameArtKit kit, string name, Mesh mesh, string path, Material trailMaterial, float trailTime,
+            AnimationCurve width, Gradient colors, float spin)
+        {
+            var root = new GameObject(name);
             try
             {
                 var model = new GameObject("Mesh");
@@ -190,17 +252,12 @@ namespace SurvivorSouls.Editor.Combat
                 r.sharedMaterial = kit.Palette;
                 Quiet(r);
 
-                // Thin hot streak: white core fading to amber. Short so it reads as speed, not as a laser.
                 var trail = root.AddComponent<TrailRenderer>();
-                trail.sharedMaterial = EditorAssetUtil.ParticleMaterial(ArtDir + "/M_FX_BoltTrail.mat", kit.SoftDot, additive: true);
-                trail.time = 0.16f;
+                trail.sharedMaterial = trailMaterial;
+                trail.time = trailTime;
                 trail.minVertexDistance = 0.12f;
-                trail.widthCurve = new AnimationCurve(new Keyframe(0f, 0.07f), new Keyframe(0.3f, 0.045f), new Keyframe(1f, 0f));
-                trail.colorGradient = new Gradient
-                {
-                    colorKeys = new[] { new GradientColorKey(new Color(1f, 0.97f, 0.88f), 0f), new GradientColorKey(new Color(1f, 0.72f, 0.35f), 0.4f), new GradientColorKey(new Color(0.9f, 0.4f, 0.15f), 1f) },
-                    alphaKeys = new[] { new GradientAlphaKey(0.95f, 0f), new GradientAlphaKey(0.5f, 0.4f), new GradientAlphaKey(0f, 1f) },
-                };
+                trail.widthCurve = width;
+                trail.colorGradient = colors;
                 trail.shadowCastingMode = ShadowCastingMode.Off;
                 trail.receiveShadows = false;
 
@@ -213,26 +270,31 @@ namespace SurvivorSouls.Editor.Combat
                 hr.sharedMaterial = blazeMat;
                 Quiet(hr);
                 head.SetActive(false);
-                // Trail texture: soft across the ribbon, even along it (the soft dot would fade the trail out along its length).
-                var band = TextureFactory.Write(BoltBlazeTrailTexPath, 4, 32, (x, y) =>
-                {
-                    float a = Mathf.Clamp01((1f - Mathf.Abs((y + 0.5f) / 16f - 1f)) * 1.7f); // full core, soft edges
-                    return new Color(1f, 1f, 1f, a * a * (3f - 2f * a));
-                }, TextureFactory.Kind.Color, mipmaps: false, wrap: TextureWrapMode.Clamp, compress: false);
-                var blazeTrailMat = EditorAssetUtil.ParticleMaterial(ArtDir + "/M_FX_BoltBlazeTrail.mat", band, additive: false);
+                var blazeTrailMat = EditorAssetUtil.ParticleMaterial(ArtDir + "/M_FX_BoltBlazeTrail.mat", TrailBand(), additive: false);
 
                 var bolt = root.AddComponent<Bolt>();
-                SetRef(bolt, "trail", trail);
-                SetRef(bolt, "model", model.transform);
-                SetRef(bolt, "blazeHead", head.transform);
-                SetRef(bolt, "blazeTrailMaterial", blazeTrailMat);
-                PrefabUtility.SaveAsPrefabAsset(root, BoltPrefabPath);
+                var so = new SerializedObject(bolt);
+                so.FindProperty("trail").objectReferenceValue = trail;
+                so.FindProperty("model").objectReferenceValue = model.transform;
+                so.FindProperty("blazeHead").objectReferenceValue = head.transform;
+                so.FindProperty("blazeTrailMaterial").objectReferenceValue = blazeTrailMat;
+                so.FindProperty("spinDegreesPerSecond").floatValue = spin;
+                so.ApplyModifiedPropertiesWithoutUndo();
+                PrefabUtility.SaveAsPrefabAsset(root, path);
             }
             finally
             {
                 Object.DestroyImmediate(root);
             }
         }
+
+        /// <summary>Trail texture: soft across the ribbon, even along it (the soft dot would fade the trail out along its length).</summary>
+        private static Texture2D TrailBand() =>
+            TextureFactory.Write(BoltBlazeTrailTexPath, 4, 32, (x, y) =>
+            {
+                float a = Mathf.Clamp01((1f - Mathf.Abs((y + 0.5f) / 16f - 1f)) * 1.7f); // full core, soft edges
+                return new Color(1f, 1f, 1f, a * a * (3f - 2f * a));
+            }, TextureFactory.Kind.Color, mipmaps: false, wrap: TextureWrapMode.Clamp, compress: false);
 
         /// <summary>
         /// Blazing bolt head (KAN-200): three flat soft-dot layers round the bolt head, seen from the top-down camera: a long

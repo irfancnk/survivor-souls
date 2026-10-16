@@ -1,7 +1,11 @@
 using System.Collections.Generic;
 using NUnit.Framework;
+using SurvivorSouls.Audio;
 using SurvivorSouls.Core;
+using SurvivorSouls.Editor.Audio;
 using SurvivorSouls.Editor.Characters;
+using SurvivorSouls.Editor.Combat;
+using SurvivorSouls.Gameplay.Combat;
 using SurvivorSouls.Gameplay.Heroes;
 using SurvivorSouls.Gameplay.Skills;
 using UnityEditor;
@@ -14,7 +18,9 @@ namespace SurvivorSouls.Tests
     /// profile with clear pros and cons, own model with the bow muzzle and shoot driver); buy (not enough = nothing changes,
     /// enough = charged once, owned after a "restart", picked); Test Mode (every hero free and pickable, nothing charged,
     /// no ownership written, off = back to the Knight); the saved pick (locked heroes cannot be picked, a lost pick = the
-    /// default); a hand-edited ownership flag; the bow shoot phase rule. The editor's real wallet, Test Mode and hero keys
+    /// default); a hand-edited ownership flag; the bow shoot phase rule. KAN-227: the Ranger's own arrow + bow twang (the
+    /// Knight keeps the scene bolt and crossbow shots), the shot-clip override on GameAudio, the 8k hero tri budget.
+    /// The editor's real wallet, Test Mode and hero keys
     /// are saved before each test and put back after it.
     /// </summary>
     public sealed class HeroProgressTests
@@ -138,6 +144,71 @@ namespace SurvivorSouls.Tests
             foreach (var r in model.GetComponentsInChildren<Renderer>(true))
             foreach (var m in r.sharedMaterials)
                 Assert.That(m, Is.Not.Null, $"{r.name}: every slot has a URP material");
+        }
+
+        [Test]
+        public void RangerModel_InsideTheHeroTriBudget()
+        {
+            int tris = 0;
+            foreach (var smr in Ranger.ModelPrefab.GetComponentsInChildren<SkinnedMeshRenderer>(true))
+            {
+                var mesh = smr.sharedMesh;
+                Assert.That(mesh, Is.Not.Null, smr.name);
+                for (int i = 0; i < mesh.subMeshCount; i++) tris += (int)mesh.GetIndexCount(i) / 3; // LOD0 indices
+            }
+            Assert.That(tris, Is.InRange(5000, 8000), "hero budget 5-8k tris (STATE.md DECISIONS), KAN-227 decimate");
+        }
+
+        [Test]
+        public void Ranger_ShootsOwnArrowAndBowTwang_KnightKeepsTheSceneDefaults()
+        {
+            Assert.That(Knight.Projectile, Is.Null, "the Knight fires the scene bolt");
+            Assert.That(Knight.ShotClips, Is.Empty, "the Knight plays the crossbow shots");
+
+            var arrow = Ranger.Projectile;
+            Assert.That(arrow, Is.Not.Null);
+            Assert.That(AssetDatabase.GetAssetPath(arrow), Is.EqualTo(CombatBuilder.ArrowPrefabPath));
+            var bolt = AssetDatabase.LoadAssetAtPath<GameObject>(CombatBuilder.BoltPrefabPath).GetComponent<Bolt>();
+            Assert.That(arrow, Is.Not.SameAs(bolt));
+            var arrowMesh = arrow.transform.Find("Mesh").GetComponent<MeshFilter>().sharedMesh;
+            var boltMesh = bolt.transform.Find("Mesh").GetComponent<MeshFilter>().sharedMesh;
+            Assert.That(arrowMesh.bounds.size.z, Is.GreaterThan(boltMesh.bounds.size.z), "a bow arrow is longer than the bolt");
+            Assert.That(arrowMesh.bounds.size.x, Is.LessThan(boltMesh.bounds.size.x), "and thinner");
+            Assert.That(arrowMesh.triangles.Length / 3, Is.LessThan(200), "cheap pooled projectile");
+            Assert.That(arrow.GetComponent<TrailRenderer>(), Is.Not.Null);
+            Assert.That(arrow.transform.Find("Blaze Head"), Is.Not.Null, "Ember Bolts (KAN-200) still light the arrow head");
+
+            var clips = Ranger.ShotClips;
+            Assert.That(clips.Length, Is.EqualTo(3));
+            foreach (var c in clips)
+            {
+                Assert.That(c.name, Does.StartWith(SfxBuilder.BowTwangName));
+                Assert.That(c.length, Is.InRange(0.3f, 0.7f), "short twang");
+                Assert.That(c.channels, Is.EqualTo(1));
+            }
+        }
+
+        [Test]
+        public void GameAudio_PlayerShots_HeroClipsOverride_EmptyFallsBackToCrossbow()
+        {
+            var go = new GameObject("Audio");
+            _objects.Add(go);
+            var audio = go.AddComponent<GameAudio>();
+            var crossbow = new[] { AudioClip.Create("crossbow", 10, 1, 44100, false) };
+            _objects.Add(crossbow[0]);
+            var so = new SerializedObject(audio);
+            var shots = so.FindProperty("shots");
+            shots.arraySize = 1;
+            shots.GetArrayElementAtIndex(0).objectReferenceValue = crossbow[0];
+            so.ApplyModifiedPropertiesWithoutUndo();
+
+            Assert.That(audio.PlayerShots, Is.EqualTo(crossbow));
+            audio.SetPlayerShots(Ranger.ShotClips);
+            Assert.That(audio.PlayerShots, Is.EqualTo(Ranger.ShotClips));
+            audio.SetPlayerShots(Knight.ShotClips);
+            Assert.That(audio.PlayerShots, Is.EqualTo(crossbow), "empty = back to the crossbow");
+            audio.SetPlayerShots(null);
+            Assert.That(audio.PlayerShots, Is.EqualTo(crossbow));
         }
 
         [Test]

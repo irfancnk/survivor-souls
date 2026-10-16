@@ -14,6 +14,8 @@ namespace SurvivorSouls.Editor.Audio
     public static class SfxBuilder
     {
         public const string Dir = "Assets/_Project/Audio/Sfx";
+        /// <summary>File name stem of the Shadow Ranger bow shots (KAN-227): <c>sfx_bow_twang_01..03.wav</c>.</summary>
+        public const string BowTwangName = "sfx_bow_twang";
         private const int Rate = 44100;
         private const int AmbienceRate = 22050;
 
@@ -56,6 +58,8 @@ namespace SurvivorSouls.Editor.Audio
             /// <summary>Special melee zombies (KAN-132): Bloater swell gurgle + burst pop, Ghoul screech / whoosh / thud, Brute grunt / slam boom, toxic cloud hiss loop.</summary>
             public AudioClip[] MeleeBloaterSwells, MeleeBloaterBursts, MeleeGhoulScreeches, MeleeGhoulWhooshes, MeleeGhoulThuds, MeleeBruteGrunts, MeleeBruteSlams;
             public AudioClip MeleeCloudHiss;
+            /// <summary>Shadow Ranger bow shot (KAN-227): finger release tick, bright string twang with beating, light arrow whoosh.</summary>
+            public AudioClip[] BowTwangs;
         }
 
         [MenuItem("Survivor Souls/Rebuild Sounds")]
@@ -120,6 +124,7 @@ namespace SurvivorSouls.Editor.Audio
             set.MeleeBruteGrunts = Many("sfx_brute_grunt", 2, BruteGrunt);
             set.MeleeBruteSlams = Many("sfx_brute_slam", 2, BruteSlamBoom);
             set.MeleeCloudHiss = Save("sfx_toxic_cloud_hiss_loop", Rate, ToxicHiss(), ambience: false);
+            set.BowTwangs = Many(BowTwangName, 3, BowTwang); // KAN-227
             return set;
         }
 
@@ -144,6 +149,23 @@ namespace SurvivorSouls.Editor.Audio
             NoiseBurst(b, 0.01f, 0.22f, 0.32f, 900f, 3800f, 11f, rng);       // bolt whoosh
             Sweep(b, 0.005f, 0.12f, 820f * v, 610f * v, 0.08f, 30f, 1);      // limb snap ring
             return Normalize(b, 0.9f);
+        }
+
+        /// <summary>
+        /// Bow release (KAN-227): soft finger tick, string twang higher and lighter than the crossbow thrum (two slightly
+        /// detuned partials beat like a real string), short limb thrum, light arrow whoosh. No stock thump: softer overall.
+        /// </summary>
+        private static float[] BowTwang(int seed)
+        {
+            var rng = new System.Random(seed * 131);
+            var b = new float[(int)(Rate * 0.5f)];
+            float v = 1f + (float)(rng.NextDouble() - 0.5) * 0.12f;
+            Click(b, 0f, 0.003f, 0.3f, 6500f, rng);                         // string leaves the fingers
+            Sweep(b, 0.002f, 0.42f, 232f * v, 186f * v, 0.5f, 7f, 3);        // twang (sine + 3 harmonics)
+            Sweep(b, 0.002f, 0.3f, 238f * v, 190f * v, 0.24f, 9f, 1);        // detuned partial: beating
+            Sweep(b, 0f, 0.18f, 98f * v, 72f * v, 0.28f, 14f, 1);           // limb thrum
+            NoiseBurst(b, 0.012f, 0.18f, 0.2f, 1300f, 4600f, 13f, rng);     // arrow whoosh
+            return Normalize(b, 0.8f);
         }
 
         /// <summary>Bolt hit on a hollow body: sharp crack, heavy low thud, short dull rattle.</summary>

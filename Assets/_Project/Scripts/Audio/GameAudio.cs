@@ -152,6 +152,7 @@ namespace SurvivorSouls.Audio
         private float _lastSoul = float.NegativeInfinity;
         private float _lastSoulChime = float.NegativeInfinity;
         private int _soulStreak;
+        private AudioClip[] _heroShots; // KAN-227
 
         private void Awake()
         {
@@ -292,9 +293,18 @@ namespace SurvivorSouls.Audio
             Play(footsteps, footstepVolume * Mathf.Lerp(0.7f, 1f, speed / 5f), 0.08f);
         }
 
-        private void OnFired(Vector3 muzzle, Vector3 direction) => Play(shots, shotVolume, 0.06f);
+        /// <summary>
+        /// The player's shot clips: a hero's own (KAN-227, the Ranger's bow twang, set by HeroLoadout) or the crossbow shots.
+        /// Boss volleys keep the crossbow shots.
+        /// </summary>
+        public AudioClip[] PlayerShots => _heroShots != null && _heroShots.Length > 0 ? _heroShots : shots;
+
+        /// <summary>Hero shot clips (null / empty = back to the crossbow shots).</summary>
+        public void SetPlayerShots(AudioClip[] clips) => _heroShots = clips;
+
+        private void OnFired(Vector3 muzzle, Vector3 direction) => Play(PlayerShots, shotVolume, 0.06f);
         private void OnFollowUpFired(Vector3 muzzle, Vector3 direction) =>
-            Play(shots, shotVolume * followUpShotShare, 0.04f, followUpShotPitch);
+            Play(PlayerShots, shotVolume * followUpShotShare, 0.04f, followUpShotPitch);
         private void OnHit(Vector3 point, Vector3 direction) => Play(impacts, impactVolume, 0.1f);
 
         private void OnDamaged(Enemy enemy, float amount, bool killed)

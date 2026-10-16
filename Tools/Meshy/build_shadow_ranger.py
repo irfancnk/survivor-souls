@@ -1056,6 +1056,39 @@ if STAGE != "A":
     bpy.ops.object.mode_set(mode='OBJECT')
     sc.frame_start, sc.frame_end = 0, 30
 
+    # ---------------- B6b decimate the body to the hero budget (KAN-227: 19.8k -> ~6k tris; hero 5-8k with bow / mask)
+    # Last, so the anchor search, carry and clip checks above ran on the full mesh and the clips stay the same. Collapse
+    # keeps UVs and interpolates the deform weights; Decimate goes first in the stack (before Armature) to apply on the
+    # rest mesh. Face, hood, draw shoulder + hands get 3x weight in the collapse cost (they read at the hero camera and
+    # the draw arm passes the hood: a coarse shoulder there pokes into it; the carried bow limb grazes the left thigh).
+    KEEP_GROUPS = ("Head", "head_end", "headfront", "neck", "RightShoulder", "RightArm", "LeftHand", "RightHand", "LeftUpLeg")
+    BODY_TRIS = int(ARGS[ARGS.index("--body-tris") + 1]) if "--body-tris" in ARGS else 6000
+    tris0 = sum(len(p.vertices) - 2 for p in body.data.polygons)
+    if tris0 > BODY_TRIS:
+        keep = body.vertex_groups.new(name="DecimateKeep")
+        _kg = [body.vertex_groups[n].index for n in KEEP_GROUPS if n in body.vertex_groups]
+        for v in body.data.vertices:
+            w = sum(g.weight for g in v.groups if g.group in _kg)
+            if w > 0.05:
+                keep.add([v.index], min(1.0, w), 'REPLACE')
+        dec = body.modifiers.new("Decimate", 'DECIMATE')
+        dec.decimate_type = 'COLLAPSE'; dec.use_collapse_triangulate = True
+        dec.vertex_group = keep.name; dec.invert_vertex_group = True; dec.vertex_group_factor = 3.0
+        ratio = BODY_TRIS / tris0
+        for _ in range(6):                       # the vertex group weighting moves the result off the ratio: refine
+            dec.ratio = ratio
+            upd()
+            got = len(body.evaluated_get(bpy.context.evaluated_depsgraph_get()).data.polygons)
+            if abs(got - BODY_TRIS) < BODY_TRIS * 0.02:
+                break
+            ratio *= BODY_TRIS / max(got, 1)
+        bpy.context.view_layer.objects.active = body
+        bpy.ops.object.select_all(action='DESELECT'); body.select_set(True)
+        bpy.ops.object.modifier_move_to_index(modifier=dec.name, index=0)
+        bpy.ops.object.modifier_apply(modifier=dec.name)
+        body.vertex_groups.remove(body.vertex_groups["DecimateKeep"])     # the old handle is stale after the apply
+        print(f"B6b body decimated {tris0} -> {sum(len(p.vertices) - 2 for p in body.data.polygons)} tris (ratio {ratio:.3f})")
+
     blend = os.path.join(JOB, "ShadowRanger.blend")
     bpy.ops.wm.save_as_mainfile(filepath=blend)
     print("SAVED", blend)

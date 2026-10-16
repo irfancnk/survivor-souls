@@ -123,6 +123,7 @@ namespace SurvivorSouls.Editor
             var hearts = boss.GetComponent<BossHearts>();
             SetRef(game, "hearts", hearts); // haptic tap on a heart pickup (KAN-60)
             var audio = CreateAudio(sfx, shooter, player.GetComponent<PlayerMover>(), health, progression, skills, timer, transition);
+            SetRef(player.GetComponent<SurvivorSouls.Gameplay.Heroes.HeroLoadout>(), "sound", audio); // hero shot clips (KAN-227)
             SetRef(audio, "chests", chests); // chest land thud + open creak
             var rarityStyles = SkillsBuilder.BuildStyles(sfx.RarityReveals); // tier names, gems, reveal sounds (KAN-37)
             WindTrailBuilder.Create(kit, player);

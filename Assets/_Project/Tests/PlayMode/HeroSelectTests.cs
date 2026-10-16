@@ -24,7 +24,8 @@ namespace SurvivorSouls.Tests
     /// picked; Test Mode makes every hero free with a note and charges nothing), the menu's HEROES button (opens the page;
     /// hidden without a roster), both scenes wired to the shipped roster, and the Game scene spawning the picked Shadow
     /// Ranger with his model (Knight model off, bow muzzle, crossbow parts off, death clip) and his stats (max health,
-    /// attack speed, horde power 1). Wallets and hero saves are kept by <see cref="WalletPrefsGuard"/> and reset per test.
+    /// attack speed, horde power 1), his own arrow + bow twang (KAN-227; the Knight keeps the bolt and crossbow shots).
+    /// Wallets and hero saves are kept by <see cref="WalletPrefsGuard"/> and reset per test.
     /// </summary>
     public sealed class HeroSelectTests
     {
@@ -208,6 +209,10 @@ namespace SurvivorSouls.Tests
             Assert.That(loadout.Model.GetComponent<BowShootDriver>(), Is.Null, "Knight model");
             var knightHealth = Object.FindAnyObjectByType<PlayerHealth>().Max;
             var knightInterval = Object.FindAnyObjectByType<AutoShooter>().CurrentInterval;
+            var sceneBolt = Object.FindAnyObjectByType<AutoShooter>().BoltPrefab;
+            Assert.That(sceneBolt.name, Is.EqualTo("Bolt"), "Knight fires the crossbow bolt");
+            var sound = Object.FindAnyObjectByType<SurvivorSouls.Audio.GameAudio>();
+            Assert.That(sound.PlayerShots[0].name, Does.StartWith("sfx_crossbow_shot"), "Knight plays the crossbow");
             var empty = SceneManager.CreateScene("HeroEmpty");
             SceneManager.SetActiveScene(empty);
             yield return SceneManager.UnloadSceneAsync("Game");
@@ -249,6 +254,11 @@ namespace SurvivorSouls.Tests
             Assert.That(shooter.CurrentInterval, Is.EqualTo(knightInterval / 1.3f).Within(1e-3f), "+30 % attack speed");
             Assert.That(shooter.CurrentDamage, Is.EqualTo(shooter.BaseDamage * 0.8f).Within(1e-3f), "-20 % damage");
             Assert.That(Object.FindAnyObjectByType<HordeScaler>().Power, Is.EqualTo(1f).Within(0.01f), "hero profile is the horde baseline");
+            Assert.That(shooter.BoltPrefab, Is.SameAs(ranger.Projectile), "Ranger fires his arrow (KAN-227)");
+            Assert.That(shooter.BoltPrefab.name, Is.EqualTo("Arrow_Ranger"));
+            sound = Object.FindAnyObjectByType<SurvivorSouls.Audio.GameAudio>();
+            Assert.That(sound.PlayerShots, Is.EqualTo(ranger.ShotClips), "Ranger plays the bow twang");
+            Assert.That(sound.PlayerShots[0].name, Does.StartWith("sfx_bow_twang"));
 
             empty = SceneManager.CreateScene("HeroEmpty2");
             SceneManager.SetActiveScene(empty);
@@ -286,6 +296,13 @@ namespace SurvivorSouls.Tests
                 }
                 Assert.That(shots, Is.GreaterThanOrEqualTo(2), "the Ranger shoots the horde");
                 Assert.That(shooting, Is.True, "Shoot state while engaged");
+                int arrows = 0;
+                foreach (var b in Object.FindObjectsByType<Bolt>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+                {
+                    Assert.That(b.name, Does.StartWith("Arrow_Ranger"), "every projectile in flight / pooled is his arrow (KAN-227)");
+                    arrows++;
+                }
+                Assert.That(arrows, Is.GreaterThan(0));
             }
             finally { shooter.Fired -= OnFired; }
 

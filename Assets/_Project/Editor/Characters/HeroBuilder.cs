@@ -1,6 +1,9 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using SurvivorSouls.Editor.Audio;
+using SurvivorSouls.Editor.Combat;
+using SurvivorSouls.Gameplay.Combat;
 using SurvivorSouls.Gameplay.Heroes;
 using SurvivorSouls.Gameplay.Skills;
 using UnityEditor;
@@ -23,10 +26,12 @@ namespace SurvivorSouls.Editor.Characters
     /// from the Blender colours in Docs/ENEMY_ROSTER.md section 7), Animator <c>AC_ShadowRanger</c> (Idle / Walking /
     /// Running blend on Speed, Shoot on bool Shooting with motion time ShootTime, Death on trigger Die), a
     /// <see cref="BowShootDriver"/> and the <c>Bow_Muzzle</c> socket on the bow hand.</item>
+    /// <item>Shot (KAN-227): the Ranger's arrow (<see cref="CombatBuilder.ArrowPrefabPath"/>) and bow twang clips
+    /// (<see cref="SfxBuilder.BowTwangName"/>) on his definition; refreshed like the model link.</item>
     /// <item><see cref="AddTo"/>: <see cref="HeroLoadout"/> on the Game scene player (one line in GameSceneBuilder).</item>
     /// </list>
-    /// Tri budget: the Ranger body is ~20k tris (LOD0), over the 5-8k hero budget (STATE.md DECISIONS); Mesh LODs cut it
-    /// at the game camera distance. A decimate pass is a follow-up.
+    /// Tri budget: the Ranger is 7.8k tris LOD0 (body decimated to 6k in Tools/Meshy/build_shadow_ranger.py, KAN-227),
+    /// inside the 5-8k hero budget (STATE.md DECISIONS).
     /// </summary>
     public static class HeroBuilder
     {
@@ -69,6 +74,14 @@ namespace SurvivorSouls.Editor.Characters
                 ranger.SetModel(model);
                 EditorUtility.SetDirty(ranger);
             }
+            var arrowAsset = AssetDatabase.LoadAssetAtPath<GameObject>(CombatBuilder.ArrowPrefabPath);
+            var arrow = arrowAsset != null ? arrowAsset.GetComponent<Bolt>() : null;
+            var twangs = LoadTwangs();
+            if (arrow != null && (ranger.Projectile != arrow || !ranger.ShotClips.SequenceEqual(twangs)))
+            {
+                ranger.SetShot(arrow, twangs); // KAN-227
+                EditorUtility.SetDirty(ranger);
+            }
 
             var roster = AssetDatabase.LoadAssetAtPath<HeroRoster>(RosterPath);
             if (roster == null)
@@ -87,6 +100,12 @@ namespace SurvivorSouls.Editor.Characters
             AssetDatabase.SaveAssets();
             return roster;
         }
+
+        /// <summary>The Ranger's bow twang clips (SfxBuilder writes them; missing files are skipped).</summary>
+        private static AudioClip[] LoadTwangs() =>
+            Enumerable.Range(1, 3)
+                .Select(i => AssetDatabase.LoadAssetAtPath<AudioClip>($"{SfxBuilder.Dir}/{SfxBuilder.BowTwangName}_{i:00}.wav"))
+                .Where(c => c != null).ToArray();
 
         /// <summary>Game scene: the hero loadout on the player, before the soul tree applies (KAN-153).</summary>
         public static HeroLoadout AddTo(GameObject player, PlayerStats stats)

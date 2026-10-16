@@ -170,6 +170,8 @@ namespace SurvivorSouls.Gameplay.Combat
 
         /// <summary>Wiring for code-built objects and tests.</summary>
         public void SetBoltPrefab(Bolt prefab) => boltPrefab = prefab;
+        /// <summary>The projectile prefab new bolts are made from (the hero's arrow or the Knight bolt, KAN-227).</summary>
+        public Bolt BoltPrefab => boltPrefab;
 
         /// <summary>Wiring for code-built objects and tests: bolts leave from this socket (the scene builder sets it).</summary>
         public void SetMuzzle(Transform socket) => muzzle = socket;

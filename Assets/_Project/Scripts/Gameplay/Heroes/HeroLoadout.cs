@@ -1,4 +1,5 @@
 using System;
+using SurvivorSouls.Audio;
 using SurvivorSouls.Dev;
 using SurvivorSouls.Gameplay.Characters;
 using SurvivorSouls.Gameplay.Combat;
@@ -17,6 +18,8 @@ namespace SurvivorSouls.Gameplay.Heroes
     /// <item>Model: a hero with its own <see cref="HeroDefinition.ModelPrefab"/> replaces the scene's Knight "Model" (the
     /// Knight model is turned off and renamed). Health flash, death, locomotion driver and the shooter muzzle move to the
     /// new model; the crossbow-only parts (aim, stance, shoot cycle, recoil) are turned off.</item>
+    /// <item>Shot (KAN-227): the hero's own projectile on the <see cref="AutoShooter"/> and own shot clips on
+    /// <see cref="GameAudio"/>; a hero without them (the Knight) gets the scene defaults back.</item>
     /// </list>
     /// Dev / editor builds: <c>-ss-hero &lt;id&gt;</c> (<see cref="DevArgs"/>) plays that hero without owning it.
     /// On the player (GameSceneBuilder via HeroBuilder).
@@ -32,6 +35,10 @@ namespace SurvivorSouls.Gameplay.Heroes
 
         [SerializeField] private HeroRoster roster;
         [SerializeField] private PlayerStats stats;
+        [Tooltip("Game sound: takes the hero's shot clips (KAN-227). Empty = found in the scene.")]
+        [SerializeField] private GameAudio sound;
+
+        private Bolt _sceneBolt; // the scene's projectile (Knight bolt), restored for heroes without their own
 
         /// <summary>The hero applied by the last <see cref="Apply"/> (null without a roster).</summary>
         public HeroDefinition Hero { get; private set; }
@@ -79,8 +86,22 @@ namespace SurvivorSouls.Gameplay.Heroes
             if (stats != null) stats.SetSource(hero, hero.Modifiers, 1, permanent: true);
             if (hero.ModelPrefab != null) SwapModel(hero.ModelPrefab);
             else Model = transform.Find(ModelName);
+            ApplyShot(hero);
             Debug.Log($"[HeroLoadout] Hero '{hero.Id}' ({hero.Modifiers.Length} stat changes, model {(hero.ModelPrefab != null ? hero.ModelPrefab.name : "Knight")})");
             Applied?.Invoke(hero);
+        }
+
+        /// <summary>The hero's projectile and shot sounds, or the scene defaults (KAN-227).</summary>
+        private void ApplyShot(HeroDefinition hero)
+        {
+            var shooter = GetComponent<AutoShooter>();
+            if (shooter != null)
+            {
+                if (_sceneBolt == null) _sceneBolt = shooter.BoltPrefab;
+                shooter.SetBoltPrefab(hero.Projectile != null ? hero.Projectile : _sceneBolt);
+            }
+            if (sound == null) sound = FindFirstObjectByType<GameAudio>();
+            if (sound != null) sound.SetPlayerShots(hero.ShotClips.Length > 0 ? hero.ShotClips : null);
         }
 
         private void SwapModel(GameObject prefab)
