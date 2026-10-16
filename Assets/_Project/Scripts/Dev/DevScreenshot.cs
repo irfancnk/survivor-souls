@@ -49,6 +49,7 @@ namespace SurvivorSouls.Dev
     /// disabled "x0" button.
     /// <c>-ss-pick &lt;card&gt;[,&lt;seconds&gt;]</c> (KAN-54, with -ss-xp) picks card 0-2 once picks arm and captures that many
     /// unscaled seconds later (default 0.12: pulse peak, pick burst out) with the pick animation frozen.
+    /// <c>-ss-bolt-freeze &lt;seconds&gt;[,&lt;flight&gt;]</c> (KAN-200) freezes the game just after the next bolt leaves the crossbow.
     /// <c>-ss-burst &lt;seconds&gt;[,&lt;freeze&gt;[,&lt;count&gt;]]</c> (KAN-66, with -ss-skills soul_burst) kills the nearest enemies that long
     /// after load and stops time freeze s later, so the capture shows the Soul Burst explosion mid-way.
     /// <c>-ss-xp-lead &lt;seconds&gt;</c> (KAN-159) replaces the 1.5 s between the -ss-xp grant and the capture (e.g. 1.0 shows the
@@ -135,6 +136,7 @@ namespace SurvivorSouls.Dev
         private int _rerolls;
         private string _pick; // -ss-pick (KAN-54)
         private string _burst; // -ss-burst (KAN-66)
+        private string _boltFreeze; // -ss-bolt-freeze (KAN-200)
         private float _xpLead = XpLead; // -ss-xp-lead (KAN-159): shorter = capture the skill reel mid-roll
         private int _horde;
         private float _hordePower;
@@ -204,6 +206,7 @@ namespace SurvivorSouls.Dev
             shot._rerolls = int.TryParse(GetArg("-ss-reroll"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int rr) ? rr : 0;
             shot._pick = GetArg("-ss-pick");
             shot._burst = GetArg("-ss-burst"); // KAN-66
+            shot._boltFreeze = GetArg("-ss-bolt-freeze"); // KAN-200
             if (float.TryParse(GetArg("-ss-xp-lead"), NumberStyles.Float, CultureInfo.InvariantCulture, out float xl)) shot._xpLead = Mathf.Max(0f, xl);
             shot._openChest = GetArg("-ss-open-chest");
             shot._xp = int.TryParse(GetArg("-ss-xp"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int x) ? x : 0;
@@ -308,6 +311,7 @@ namespace SurvivorSouls.Dev
             if (_souls > 0) DropSouls(_souls);
             if (_soulsPull >= 0f) StartCoroutine(PullSouls(_soulsPull, _soulsFreeze));
             if (!string.IsNullOrEmpty(_burst)) StartCoroutine(SoulBurstShot(_burst)); // KAN-66
+            if (!string.IsNullOrEmpty(_boltFreeze)) StartCoroutine(BoltFreezeShot(_boltFreeze)); // KAN-200
             if (_immortal)
             {
                 foreach (var c in FindObjectsByType<ContactDamageReceiver>()) c.enabled = false;
@@ -686,6 +690,31 @@ namespace SurvivorSouls.Dev
             Debug.Log($"[DevScreenshot] -ss-burst: killed {killed} at t={Time.time:F2}, freeze in {freeze:F2} s");
             yield return new WaitForSeconds(freeze);
             Time.timeScale = 0f;
+        }
+
+        /// <summary>
+        /// KAN-200: <c>-ss-bolt-freeze &lt;seconds&gt;[,&lt;flight&gt;]</c> waits that long, then freezes the game
+        /// <c>flight</c> s (default 0.08) after the next bolt leaves the crossbow, so the shot shows bolts mid-flight
+        /// (blazing bolt look with Ember Bolts).
+        /// </summary>
+        private static IEnumerator BoltFreezeShot(string arg)
+        {
+            string[] parts = arg.Split(',');
+            float after = float.Parse(parts[0], CultureInfo.InvariantCulture);
+            float flight = parts.Length > 1 ? float.Parse(parts[1], CultureInfo.InvariantCulture) : 0.08f;
+            yield return new WaitForSeconds(after);
+            for (float t = 0f; t < 6f; t += Time.deltaTime)
+            {
+                if (FindObjectsByType<Bolt>(FindObjectsSortMode.None).Length > 0)
+                {
+                    yield return new WaitForSeconds(flight);
+                    Time.timeScale = 0f;
+                    Debug.Log($"[DevScreenshot] -ss-bolt-freeze: frozen with {FindObjectsByType<Bolt>(FindObjectsSortMode.None).Length} bolts in flight, {Bolt.Blazing.Count} blazing, t={Time.time:F2}");
+                    yield break;
+                }
+                yield return null;
+            }
+            Debug.Log("[DevScreenshot] -ss-bolt-freeze: no bolt fired");
         }
 
         private static IEnumerator PullSouls(float after, float freeze)

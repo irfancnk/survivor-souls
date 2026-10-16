@@ -502,6 +502,15 @@ namespace SurvivorSouls.Editor.Skills
                     Drag(flare, 6f);
                     Set(fx, "flames", flames);
                     Set(fx, "flare", flare);
+                    // KAN-200: sparks shed by blazing bolts in flight (one more shared system, +1 draw call while they fly).
+                    var boltSparks = Particles(root, "Bolt Sparks", fireMat, 300, new Vector2(0.16f, 0.3f), new Vector2(0.05f, 0.1f),
+                        new Color(1f, 0.85f, 0.4f), new Color(1f, 0.55f, 0.15f));
+                    var sr = boltSparks.GetComponent<ParticleSystemRenderer>();
+                    sr.renderMode = ParticleSystemRenderMode.Stretch;
+                    sr.velocityScale = 0.06f;
+                    sr.lengthScale = 1.2f;
+                    Drag(boltSparks, 3f);
+                    Set(root.AddComponent<BlazingBoltSparks>(), "sparks", boltSparks);
                 }),
                 [Fx.LifeSteal] = SavePrefab<LifeStealEffect>("FX_Skill_BloodCovenant", (root, fx) =>
                 {

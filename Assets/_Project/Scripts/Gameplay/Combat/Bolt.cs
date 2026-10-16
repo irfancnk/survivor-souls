@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace SurvivorSouls.Gameplay.Combat
@@ -24,6 +25,11 @@ namespace SurvivorSouls.Gameplay.Combat
         public float PierceFalloff;
         /// <summary>Share of damage lost on each ricochet bounce (KAN-86): 0.3 = 70 % after the first bounce. 0 = full damage.</summary>
         public float BounceFalloff;
+        /// <summary>
+        /// Ember Bolts look (KAN-200): 0 = a normal bolt, above 0 = a blazing bolt (hot head, fire trail, sparks), 1 = the
+        /// hottest (Ember Bolts level 4). Look only: damage and burn come from the skill effects.
+        /// </summary>
+        public float Heat;
 
         /// <summary>Shipped falloffs (KAN-86): AutoShooter defaults and the power curve base.</summary>
         public const float DefaultPierceFalloff = 0.33f;
@@ -48,6 +54,10 @@ namespace SurvivorSouls.Gameplay.Combat
     /// has not hit yet (<see cref="BoltShot.Ricochet"/>), else returns to its pool. Never hits the same enemy twice.
     /// Each pierce and bounce lowers the damage for the next enemy (<see cref="BoltShot.PierceFalloff"/>, KAN-86).
     /// Pooled by <see cref="AutoShooter"/>. The model child spins around the flight axis (rifled bolt look).
+    /// Blazing look (KAN-200): a shot with <see cref="BoltShot.Heat"/> above 0 shows the hot head child, swaps the trail to
+    /// the fire material, a longer, wider fire gradient (hotter = whiter core, longer, wider) and lists the bolt in
+    /// <see cref="Blazing"/> while it flies (the shared spark system reads it). A pooled bolt changes its look only when the
+    /// heat of its new shot differs from the last one: no allocation per shot.
     /// </summary>
     public sealed class Bolt : MonoBehaviour
     {
@@ -59,6 +69,16 @@ namespace SurvivorSouls.Gameplay.Combat
         [SerializeField] private TrailRenderer trail;
         [SerializeField] private Transform model;
         [SerializeField] private float spinDegreesPerSecond = 900f;
+        [Header("Blazing look (KAN-200)")]
+        [Tooltip("Hot head child (glow quads at the bolt head), shown only on blazing bolts.")]
+        [SerializeField] private Transform blazeHead;
+        [Tooltip("Trail material of blazing bolts (alpha blend: additive fire vanishes on the Realm 1 snow).")]
+        [SerializeField] private Material blazeTrailMaterial;
+
+        /// <summary>Blazing bolts in flight (KAN-200): the shared bolt spark system emits along them. Never edit.</summary>
+        public static readonly List<Bolt> Blazing = new List<Bolt>(64);
+
+        private const float NoLook = -1f;
 
         private readonly Enemy[] _hitEnemies = new Enemy[MaxTracked];
         private int _hitCount;
@@ -67,12 +87,28 @@ namespace SurvivorSouls.Gameplay.Combat
         private float _life;
         private Action<Bolt> _release;
         private Action<BoltHit> _onHit;
+        private float _lookHeat = NoLook;
+        private int _blazingIndex = -1;
+        private Material _trailMaterial;
+        private Gradient _trailGradient;
+        private float _trailTime;
+        private float _trailWidth = 1f;
+        private Gradient _blazeGradient;
+        private GradientColorKey[] _blazeColors;
+        private GradientAlphaKey[] _blazeAlphas;
 
         public bool InFlight => gameObject.activeSelf;
+        /// <summary>Heat of the look on show (KAN-200): 0 = normal bolt, above 0 = blazing.</summary>
+        public float Heat => Mathf.Max(0f, _lookHeat);
+        public bool IsBlazing => _lookHeat > 0f;
+        /// <summary>Flight direction (unit length; bounces turn it).</summary>
+        public Vector3 Direction => _shot.Speed > 0f ? _velocity / _shot.Speed : transform.forward;
 
         public void Launch(Vector3 position, Vector3 direction, in BoltShot shot, Action<Bolt> release, Action<BoltHit> onHit = null)
         {
             transform.SetPositionAndRotation(position, Quaternion.LookRotation(direction));
+            float heat = Mathf.Clamp01(shot.Heat);
+            if (heat != _lookHeat) ApplyLook(heat);
             _shot = shot;
             _velocity = direction * shot.Speed;
             _life = shot.Lifetime;
@@ -82,7 +118,95 @@ namespace SurvivorSouls.Gameplay.Combat
             Array.Clear(_hitEnemies, 0, MaxTracked);
             gameObject.SetActive(true);
             if (trail != null) trail.Clear();
+            if (_lookHeat > 0f) AddBlazing();
         }
+
+        /// <summary>
+        /// Switches between the normal and the blazing look (KAN-200). Runs only when the heat of a new shot differs from
+        /// the last one, so a pooled bolt firing the same look again touches nothing.
+        /// </summary>
+        private void ApplyLook(float heat)
+        {
+            bool blaze = heat > 0f;
+            if (trail != null)
+            {
+                if (_trailMaterial == null) // first look change: remember the normal trail
+                {
+                    _trailMaterial = trail.sharedMaterial;
+                    _trailGradient = trail.colorGradient;
+                    _trailTime = trail.time;
+                    _trailWidth = trail.widthMultiplier;
+                }
+                if (blaze)
+                {
+                    if (blazeTrailMaterial != null) trail.sharedMaterial = blazeTrailMaterial;
+                    trail.colorGradient = BlazeGradient(heat);
+                    trail.time = _trailTime * Mathf.Lerp(1.05f, 1.3f, heat);
+                    trail.widthMultiplier = _trailWidth * Mathf.Lerp(3f, 4.2f, heat);
+                }
+                else
+                {
+                    trail.sharedMaterial = _trailMaterial;
+                    trail.colorGradient = _trailGradient;
+                    trail.time = _trailTime;
+                    trail.widthMultiplier = _trailWidth;
+                }
+            }
+            if (blazeHead != null)
+            {
+                if (blazeHead.gameObject.activeSelf != blaze) blazeHead.gameObject.SetActive(blaze);
+                if (blaze) blazeHead.localScale = Vector3.one * Mathf.Lerp(0.85f, 1.3f, heat);
+            }
+            _lookHeat = heat;
+        }
+
+        /// <summary>
+        /// Fire trail (KAN-200): a yellow-white head (whiter when hotter), orange, then a dark red tail that still reads on
+        /// snow (alpha blend). Keys are reused, one Gradient per bolt.
+        /// </summary>
+        private Gradient BlazeGradient(float heat)
+        {
+            if (_blazeGradient == null)
+            {
+                _blazeGradient = new Gradient();
+                _blazeColors = new GradientColorKey[3];
+                _blazeAlphas = new GradientAlphaKey[3];
+            }
+            _blazeColors[0] = new GradientColorKey(Color.Lerp(new Color(1f, 0.82f, 0.4f), new Color(1f, 0.96f, 0.78f), heat), 0f);
+            _blazeColors[1] = new GradientColorKey(new Color(1f, Mathf.Lerp(0.45f, 0.58f, heat), 0.1f), 0.3f);
+            _blazeColors[2] = new GradientColorKey(new Color(0.6f, 0.12f, 0.04f), 1f);
+            _blazeAlphas[0] = new GradientAlphaKey(1f, 0f);
+            _blazeAlphas[1] = new GradientAlphaKey(Mathf.Lerp(0.7f, 0.85f, heat), 0.35f);
+            _blazeAlphas[2] = new GradientAlphaKey(0f, 1f);
+            _blazeGradient.SetKeys(_blazeColors, _blazeAlphas);
+            return _blazeGradient;
+        }
+
+        private void AddBlazing()
+        {
+            if (_blazingIndex >= 0) return;
+            _blazingIndex = Blazing.Count;
+            Blazing.Add(this);
+        }
+
+        /// <summary>Swap-remove from <see cref="Blazing"/> (order does not matter).</summary>
+        private void RemoveBlazing()
+        {
+            int i = _blazingIndex;
+            if (i < 0) return;
+            _blazingIndex = -1;
+            int last = Blazing.Count - 1;
+            if (i > last || Blazing[i] != this) { Blazing.Remove(this); return; } // list was cleared under us
+            if (i != last)
+            {
+                var moved = Blazing[last];
+                Blazing[i] = moved;
+                moved._blazingIndex = i;
+            }
+            Blazing.RemoveAt(last);
+        }
+
+        private void OnDisable() => RemoveBlazing();
 
         private void Update() => Tick(Time.deltaTime);
 
@@ -211,6 +335,7 @@ namespace SurvivorSouls.Gameplay.Combat
 
         private void Finish()
         {
+            RemoveBlazing();
             gameObject.SetActive(false);
             Array.Clear(_hitEnemies, 0, _hitCount);
             _hitCount = 0;
