@@ -146,6 +146,21 @@ namespace SurvivorSouls.Tests
         }
 
         [Test]
+        public void Pity_RestoredCounter_ForcesRarePlusOnTheFirstOfferOfTheNextChamber()
+        {
+            var commons = Many("c", SkillRarity.Common, 8);
+            var rare = Skill("rare", SkillRarity.Rare);
+            _table.Configure(new[] { Tier(2, 1000f, 0.0001f, 0f, 0f, commons.Append(rare).ToArray()) }, pity: 3);
+            var offer = new List<SkillDefinition>();
+
+            _manager.RestorePity(2); // two dry offers in the Chamber before (KAN-54)
+            _manager.Roll(3, 2, offer);
+            Assert.That(_manager.LastRollUsedPity, Is.True, "the carried count reaches the pity limit");
+            Assert.That(offer, Has.Member(rare));
+            Assert.That(_manager.OffersWithoutRarePlus, Is.Zero);
+        }
+
+        [Test]
         public void Pity_NeverReplacesTheGuarantee_AndSkipsZeroWeightTiers()
         {
             var commons = Many("c", SkillRarity.Common, 4);
@@ -252,6 +267,67 @@ namespace SurvivorSouls.Tests
             for (int f = 0; f < 60; f++) screen.Tick(1f / 60f);
             Assert.That(reveals.Count, Is.EqualTo(3), "no second reveal while open");
             Assert.That(burst.style.opacity.value, Is.Zero, "burst is over");
+        }
+
+        [Test]
+        public void PickPulse_GrowsWithTier_EpicAndLegendaryBurst()
+        {
+            Assert.That(SkillChoiceScreen.PickPulse(SkillRarity.Common), Is.EqualTo(SkillChoiceScreen.PickPulse(SkillRarity.Rare)));
+            Assert.That(SkillChoiceScreen.PickPulse(SkillRarity.Epic), Is.GreaterThan(SkillChoiceScreen.PickPulse(SkillRarity.Rare)));
+            Assert.That(SkillChoiceScreen.PickPulse(SkillRarity.Legendary), Is.GreaterThan(SkillChoiceScreen.PickPulse(SkillRarity.Epic)));
+            Assert.That(SkillChoiceScreen.PickBursts(SkillRarity.Common), Is.False);
+            Assert.That(SkillChoiceScreen.PickBursts(SkillRarity.Rare), Is.False);
+            Assert.That(SkillChoiceScreen.PickBursts(SkillRarity.Epic), Is.True);
+            Assert.That(SkillChoiceScreen.PickBursts(SkillRarity.Legendary), Is.True);
+        }
+
+        [UnityTest]
+        public IEnumerator CardScreen_EpicPick_PulsesHarderAndBurstsAgain_CommonPickDoesNot()
+        {
+            var styles = UnityEditor.AssetDatabase.LoadAssetAtPath<SkillRarityStyles>("Assets/_Project/Data/Skills/SkillRarityStyles.asset");
+            var epic = Skill("epic", SkillRarity.Epic);
+            var common = Skill("common", SkillRarity.Common);
+            var rare = Skill("rare", SkillRarity.Rare);
+            _table.Configure(new[] { Tier(2, 1f, 1f, 1f, 1f, epic, common, rare) });
+            var screen = OpenScreen(styles);
+            yield return null;
+            var root = screen.GetComponent<UIDocument>().rootVisualElement;
+
+            // Picks card index and returns (peak card scale, peak burst opacity, peak spark opacity) over the pick-out.
+            (float scale, float burst, float spark) PickAndWatch(int index)
+            {
+                var card = root.Q<Button>("skill-card-" + index);
+                var burst = card.Q(className: "skill-card__burst");
+                var sparks = card.Query(className: "skill-spark").ToList();
+                for (int f = 0; f < 90 && !screen.IsArmed; f++) screen.Tick(1f / 60f);
+                Assert.That(screen.IsArmed, Is.True, "test setup: picks armed");
+                for (int f = 0; f < 20; f++) screen.Tick(1f / 60f); // let landing bursts finish
+                Assert.That(screen.Choose(index), Is.True);
+                float s = 0f, b = 0f, k = 0f;
+                for (int f = 0; f < 22 && screen.IsShowing; f++)
+                {
+                    screen.Tick(1f / 60f);
+                    s = Mathf.Max(s, card.style.scale.value.value.y);
+                    b = Mathf.Max(b, burst.style.opacity.value);
+                    foreach (var sp in sparks) k = Mathf.Max(k, sp.style.opacity.value);
+                }
+                return (s, b, k);
+            }
+
+            _manager.ForceNextOffer(epic, common, rare);
+            screen.Present(2, () => { });
+            var epicPick = PickAndWatch(0);
+            for (int f = 0; f < 60 && screen.IsShowing; f++) screen.Tick(1f / 60f);
+
+            _manager.ForceNextOffer(epic, common, rare);
+            screen.Present(3, () => { });
+            var commonPick = PickAndWatch(1);
+
+            Assert.That(epicPick.burst, Is.GreaterThan(0.5f), "Epic pick fires the ring burst");
+            Assert.That(epicPick.spark, Is.GreaterThan(0.5f), "Epic pick throws sparks");
+            Assert.That(commonPick.burst, Is.Zero, "Common pick: no ring");
+            Assert.That(commonPick.spark, Is.Zero, "Common pick: no sparks");
+            Assert.That(epicPick.scale, Is.GreaterThan(commonPick.scale + 0.03f), "Epic pulse is stronger than Common");
         }
 
         // ------------------------------------------------------------ Shipped data

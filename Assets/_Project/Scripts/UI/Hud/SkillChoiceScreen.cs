@@ -21,6 +21,8 @@ namespace SurvivorSouls.UI.Hud
     /// Tier (KAN-37): colour class per <see cref="SkillRarity"/>, tier name + 1-4 gems from <see cref="SkillRarityStyles"/>
     /// (readable without colour), <see cref="CardRevealed"/> when a card lands (GameAudio plays the tier sound), and for
     /// shine / burst tiers (Legendary) a light band sweeping the card and a ring + sparks out of the icon on landing.
+    /// Pick (KAN-54): the pulse grows with the tier (<see cref="PickPulse"/>); Epic and Legendary fire a second, wider ring +
+    /// sparks burst (<see cref="PickBursts"/>).
     /// Chest upgrade mode (KAN-73, <see cref="PresentUpgrade"/>): same cards, gold "RELIQUARY" band (class skills--chest,
     /// Rare chest: skills--chest-rare), owned skills from <see cref="SkillManager.RollUpgrades"/> only, badge
     /// "LV N → N+k" and the text of level N+k (k = the chest's levels, capped at max), a pick calls
@@ -86,6 +88,8 @@ namespace SurvivorSouls.UI.Hud
         [Tooltip("Unscaled seconds for one shine sweep across a Legendary card (plus a short rest).")]
         [SerializeField, Min(0.1f)] private float shinePeriod = 2f;
         [SerializeField, Min(0.05f)] private float burstTime = 0.55f;
+        [Tooltip("Pick (KAN-54): unscaled seconds of the second ring + sparks burst out of an Epic / Legendary card's icon.")]
+        [SerializeField, Min(0.05f)] private float pickBurstTime = 0.34f;
         [Tooltip("Re-roll (KAN-67): unscaled seconds the old cards take to flip shut.")]
         [SerializeField, Min(0.01f)] private float flipOut = 0.15f;
         [Tooltip("Re-roll: unscaled seconds a new card takes to flip open.")]
@@ -728,7 +732,7 @@ namespace SurvivorSouls.UI.Hud
                 float flipX = (_flipDeal ? Mathf.Max(0f, EaseOutBack(t)) : 1f) * shut;
                 if (_picked >= 0)
                 {
-                    if (i == _picked) scale *= 1f + 0.09f * Mathf.Sin(Mathf.Min(1f, outK * 1.6f) * Mathf.PI);
+                    if (i == _picked) scale *= 1f + PickPulse((SkillRarity)card.RarityIndex) * Mathf.Sin(Mathf.Min(1f, outK * 1.6f) * Mathf.PI);
                     else
                     {
                         opacity *= 1f - Mathf.Min(1f, outK * 2.2f);
@@ -739,6 +743,49 @@ namespace SurvivorSouls.UI.Hud
                 card.Root.style.translate = new Translate(0f, (1f - rise) * cardRise);
                 card.Root.style.scale = new Scale(new Vector3(scale * flipX, scale, 1f));
                 AnimateTier(card, i, t);
+                if (i == _picked && PickBursts((SkillRarity)card.RarityIndex)) AnimatePickBurst(card);
+            }
+        }
+
+        /// <summary>
+        /// Pick pulse strength per tier (KAN-54): the picked card grows by this share at the top of its pulse. Common and
+        /// Rare 9 %, Epic 14 %, Legendary 18 %.
+        /// </summary>
+        public static float PickPulse(SkillRarity rarity) => rarity switch
+        {
+            SkillRarity.Legendary => 0.18f,
+            SkillRarity.Epic => 0.14f,
+            _ => 0.09f,
+        };
+
+        /// <summary>Epic and Legendary picks fire a second ring + sparks burst out of the icon (KAN-54).</summary>
+        public static bool PickBursts(SkillRarity rarity) => rarity >= SkillRarity.Epic;
+
+        /// <summary>
+        /// Second burst on pick (KAN-54): the landing ring (<c>skill-card__burst</c>) and its sparks again, wider and faster,
+        /// over <see cref="pickBurstTime"/>. Sparks fly between the landing burst's angles. UI only: no new draw call.
+        /// Runs after <see cref="AnimateTier"/>, so it overrides a Legendary landing burst that is still playing.
+        /// </summary>
+        private void AnimatePickBurst(Card card)
+        {
+            if (card.Burst == null) return;
+            float b = Mathf.Clamp01(_pickAge / pickBurstTime);
+            bool live = b < 1f;
+            float ease = 1f - (1f - b) * (1f - b);
+            card.Burst.style.opacity = live ? 0.95f * (1f - b) : 0f;
+            float ring = 1f + 1.3f * ease;
+            card.Burst.style.scale = new Scale(new Vector3(ring, ring, 1f));
+            for (int k = 0; k < Sparks; k++)
+            {
+                var spark = card.SparkDots[k];
+                if (spark == null) continue;
+                spark.style.opacity = live ? 1f - b : 0f;
+                if (!live) continue;
+                float angle = k * (Mathf.PI * 2f / Sparks);
+                float dist = 70f + 200f * ease;
+                spark.style.translate = new Translate(Mathf.Cos(angle) * dist, -Mathf.Sin(angle) * dist);
+                float size = 1.2f - 0.7f * b;
+                spark.style.scale = new Scale(new Vector3(size, size, 1f));
             }
         }
 

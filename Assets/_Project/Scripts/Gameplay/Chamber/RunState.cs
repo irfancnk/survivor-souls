@@ -31,6 +31,8 @@ namespace SurvivorSouls.Gameplay.Chamber
         public int Kills;
         public int Souls;
         public readonly List<SkillStack> Skills = new List<SkillStack>();
+        /// <summary>Skill offers in a row without a Rare+ card (pity counter, KAN-54): a new Chamber keeps counting.</summary>
+        public int OffersWithoutRarePlus;
     }
 
     /// <summary>

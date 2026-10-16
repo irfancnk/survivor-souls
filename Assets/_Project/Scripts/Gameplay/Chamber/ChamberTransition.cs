@@ -256,7 +256,7 @@ namespace SurvivorSouls.Gameplay.Chamber
             GamePause.Release();
         }
 
-        /// <summary>The run as it is now: level, XP, health, skills with stacks (pick order), kills and souls.</summary>
+        /// <summary>The run as it is now: level, XP, health, skills with stacks (pick order), the skill pity counter, kills and souls.</summary>
         public static RunSnapshot Capture(XpManager xpManager, SkillManager skillManager, PlayerHealth playerHealth,
             RunCounters runCounters = null)
         {
@@ -269,8 +269,11 @@ namespace SurvivorSouls.Gameplay.Chamber
             }
             if (playerHealth != null) snap.Health = playerHealth.Current;
             if (skillManager != null)
+            {
                 foreach (var o in skillManager.OwnedSkills)
                     snap.Skills.Add(new SkillStack(o.Skill, o.Level));
+                snap.OffersWithoutRarePlus = skillManager.OffersWithoutRarePlus;
+            }
             if (runCounters != null)
             {
                 snap.Kills = runCounters.Kills;
@@ -280,7 +283,7 @@ namespace SurvivorSouls.Gameplay.Chamber
         }
 
         /// <summary>
-        /// Puts <paramref name="snap"/> back. Skills first (max health skills raise the max), then XP, then health
+        /// Puts <paramref name="snap"/> back. Skills first (max health skills raise the max) with the pity counter, then XP, then health
         /// (+ <paramref name="heal"/> x max, capped), then the run counters.
         /// </summary>
         public static void Apply(RunSnapshot snap, XpManager xpManager, SkillManager skillManager, PlayerHealth playerHealth, float heal,
@@ -288,8 +291,11 @@ namespace SurvivorSouls.Gameplay.Chamber
         {
             if (snap == null) return;
             if (skillManager != null)
+            {
                 foreach (var s in snap.Skills)
                     skillManager.Restore(s.Skill, s.Stacks);
+                skillManager.RestorePity(snap.OffersWithoutRarePlus);
+            }
             if (xpManager != null) xpManager.Restore(snap.Level, snap.Xp, snap.TotalXp);
             if (playerHealth != null && snap.Health > 0f) playerHealth.Restore(snap.Health + heal * playerHealth.Max);
             if (runCounters != null) runCounters.Restore(snap.Kills, snap.Souls);

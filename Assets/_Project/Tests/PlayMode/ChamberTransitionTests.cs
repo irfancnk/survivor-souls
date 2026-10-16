@@ -157,6 +157,23 @@ namespace SurvivorSouls.Tests
         }
 
         [Test]
+        public void CaptureApply_RoundTrip_KeepsSkillPityCounter()
+        {
+            var a = NewRun();
+            a.Skills.RestorePity(2);
+            var snap = ChamberTransition.Capture(a.Xp, a.Skills, a.Health);
+            Assert.AreEqual(2, snap.OffersWithoutRarePlus);
+
+            var b = NewRun();
+            Assert.AreEqual(0, b.Skills.OffersWithoutRarePlus, "a fresh scene starts at 0");
+            ChamberTransition.Apply(snap, b.Xp, b.Skills, b.Health, heal: 0f);
+            Assert.AreEqual(2, b.Skills.OffersWithoutRarePlus, "the next Chamber keeps counting (KAN-54)");
+
+            b.Skills.RestorePity(-3);
+            Assert.AreEqual(0, b.Skills.OffersWithoutRarePlus, "negative counts as 0");
+        }
+
+        [Test]
         public void Portal_CarriesCounters_ToTheNextChamber()
         {
             var a = NewRun();

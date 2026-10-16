@@ -212,6 +212,12 @@ namespace SurvivorSouls.Gameplay.Skills
         }
 
         /// <summary>
+        /// Puts back the pity counter carried into the next Chamber (KAN-54), so the "Rare+ at least every N offers" rule
+        /// counts across Chambers. Negative values count as 0.
+        /// </summary>
+        public void RestorePity(int offersWithoutRarePlus) => _dryOffers = Mathf.Max(0, offersWithoutRarePlus);
+
+        /// <summary>
         /// Debug (KAN-75: debug window, DevScreenshot <c>-ss-skills id:N</c>): puts <paramref name="skill"/> at exactly
         /// <paramref name="level"/>, clamped to 0..max; up or down, owned or not. 0 removes the skill (modifiers and effect).
         /// Raises <see cref="SkillChanged"/> with <see cref="SkillChangeSource.Debug"/> and <see cref="Changed"/>; never
