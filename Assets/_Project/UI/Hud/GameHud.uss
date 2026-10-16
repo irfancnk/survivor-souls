@@ -1375,9 +1375,29 @@
     background-color: rgba(255, 236, 196, 0.08);
 }
 
-.hud-skill--rare .hud-skill__glow { border-radius: 37px; }
-.hud-skill--epic .hud-skill__glow { border-radius: 25px; }
-.hud-skill--legendary .hud-skill__glow { border-radius: 19px; left: -15px; top: -15px; right: -15px; bottom: -15px; }
+/* Glow layer (KAN-194): the rings live in one underlay before every slot (SkillHud places each anchor on its slot's
+   rect), so a ring never draws over the left neighbour's level shield or the pips of the row above. The anchor is not
+   under its slot, so it carries its own tier class; --slot-glow repeats the slot tier colours above (keep in sync). */
+.hud-skills__glows {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+}
+
+.hud-skill-glow {
+    position: absolute;
+    --slot-glow: rgb(226, 222, 212);
+}
+
+.hud-skill-glow--rare { --slot-glow: rgb(170, 214, 255); }
+.hud-skill-glow--epic { --slot-glow: rgb(222, 186, 255); }
+.hud-skill-glow--legendary { --slot-glow: rgb(255, 224, 140); }
+
+.hud-skill-glow--rare .hud-skill__glow { border-radius: 37px; }
+.hud-skill-glow--epic .hud-skill__glow { border-radius: 25px; }
+.hud-skill-glow--legendary .hud-skill__glow { border-radius: 19px; left: -15px; top: -15px; right: -15px; bottom: -15px; }
 
 /* Crit and fire damage numbers (CombatHud, KAN-19). */
 .combat-number--crit {

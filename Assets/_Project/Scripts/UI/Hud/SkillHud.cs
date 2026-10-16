@@ -24,6 +24,12 @@ namespace SurvivorSouls.UI.Hud
     /// shield with the level number (pips stay), the level-up glow adds a shine sweep and two sparks (shared KAN-35 bar art),
     /// and an optional cooldown shade (<see cref="SetCooldown"/>) for skills that recharge. Styles are written only on change.
     /// </para>
+    /// <para>
+    /// Glow layer (KAN-194): the glow rings do not live in their slots but in one underlay (first child of the row, absolute),
+    /// each in an anchor that copies its slot's layout rect on <see cref="GeometryChangedEvent"/>. So every ring draws behind
+    /// every frame, level shield and pip row (a ring reaches 13 px + growth past its slot, into the 12 px gap where the left
+    /// neighbour's shield sits). Same elements, same draw calls, nothing per frame.
+    /// </para>
     /// Looks: hud-skill* in GameHud.uss; art from HudBarArtBuilder.
     /// </summary>
     [RequireComponent(typeof(UIDocument))]
@@ -47,10 +53,14 @@ namespace SurvivorSouls.UI.Hud
         private const string SparkLowClass = "hud-skill__spark--low";
         private const string BadgeClass = "hud-skill__badge";
         private const string LevelClass = "hud-skill__level";
+        private const string GlowLayerClass = "hud-skills__glows";
+        private const string GlowAnchorClass = "hud-skill-glow";
         /// <summary>Cooldown shade steps: the height is quantised so a per-frame call writes a style only ~64 times per cooldown.</summary>
         private const int CooldownSteps = 64;
         private static readonly string[] LevelText = BuildLevelText(20);
         private static readonly string[] RarityClasses = { "hud-skill--common", "hud-skill--rare", "hud-skill--epic", "hud-skill--legendary" };
+        /// <summary>Tier classes of the glow anchor (KAN-194): the ring is not under its slot, so it gets its own tier cue.</summary>
+        private static readonly string[] GlowRarityClasses = { "hud-skill-glow--common", "hud-skill-glow--rare", "hud-skill-glow--epic", "hud-skill-glow--legendary" };
 
         [SerializeField] private SkillManager skills;
         [SerializeField, Min(0.05f)] private float popTime = 0.45f;
@@ -65,6 +75,8 @@ namespace SurvivorSouls.UI.Hud
         private sealed class Slot
         {
             public VisualElement Root, Icon, Glow, PipRow, Inlay, Clip, Cooldown, Shine, SparkHigh, SparkLow, Badge;
+            /// <summary>Holds <see cref="Glow"/> in the glow layer, on the slot's layout rect (KAN-194).</summary>
+            public VisualElement GlowAnchor;
             public Label Level;
             public int ShownLevel = -1;
             /// <summary>Cooldown shade in steps of 1 / <see cref="CooldownSteps"/> (0 = ready).</summary>
@@ -85,6 +97,7 @@ namespace SurvivorSouls.UI.Hud
         private readonly List<Slot> _slots = new List<Slot>();
         private readonly List<PendingGlow> _pending = new List<PendingGlow>(8);
         private VisualElement _row;
+        private VisualElement _glowLayer;
         private SkillDefinition _popSkill;
         private int _popSlot = -1;
         private float _popAge = -1f;
@@ -99,6 +112,9 @@ namespace SurvivorSouls.UI.Hud
 
         /// <summary>Slot root element of owned skill <paramref name="index"/> (pick order), null when not shown. Tests, screenshots.</summary>
         public VisualElement SlotElement(int index) => index >= 0 && index < VisibleSlots && index < _slots.Count ? _slots[index].Root : null;
+
+        /// <summary>Level-up glow ring of slot <paramref name="index"/> (in the glow layer, not under the slot), null when not shown. Tests.</summary>
+        public VisualElement GlowElement(int index) => index >= 0 && index < VisibleSlots && index < _slots.Count ? _slots[index].Glow : null;
 
         /// <summary>
         /// Cooldown shade on the slot of <paramref name="skill"/> (KAN-184; for skills that recharge, e.g. KAN-192): a dark
@@ -130,6 +146,7 @@ namespace SurvivorSouls.UI.Hud
         private void OnEnable()
         {
             _row = GetComponent<UIDocument>().rootVisualElement?.Q(RowName);
+            EnsureGlowLayer();
             if (skills == null) return;
             skills.Changed += Rebuild;
             skills.Granted += OnGranted;
@@ -173,6 +190,7 @@ namespace SurvivorSouls.UI.Hud
                 var slot = _slots[i];
                 bool on = i < owned.Count;
                 slot.Root.style.display = on ? DisplayStyle.Flex : DisplayStyle.None;
+                slot.GlowAnchor.style.display = slot.Root.style.display;
                 if (!on)
                 {
                     slot.Skill = null;
@@ -187,7 +205,11 @@ namespace SurvivorSouls.UI.Hud
                 }
                 slot.Skill = o.Skill;
                 int r = (int)o.Skill.Rarity;
-                for (int k = 0; k < RarityClasses.Length; k++) slot.Root.EnableInClassList(RarityClasses[k], k == r);
+                for (int k = 0; k < RarityClasses.Length; k++)
+                {
+                    slot.Root.EnableInClassList(RarityClasses[k], k == r);
+                    slot.GlowAnchor.EnableInClassList(GlowRarityClasses[k], k == r);
+                }
                 slot.Root.EnableInClassList(MaxClass, o.Level >= o.Skill.MaxLevel);
                 slot.Icon.style.backgroundImage = o.Skill.Icon != null ? new StyleBackground(o.Skill.Icon) : StyleKeyword.None;
                 SetPips(slot, o.Skill.MaxLevel, o.Level);
@@ -227,6 +249,7 @@ namespace SurvivorSouls.UI.Hud
             {
                 Root = new VisualElement { pickingMode = PickingMode.Ignore },
                 Glow = new VisualElement { pickingMode = PickingMode.Ignore },
+                GlowAnchor = new VisualElement { pickingMode = PickingMode.Ignore },
                 Icon = new VisualElement { pickingMode = PickingMode.Ignore },
                 PipRow = new VisualElement { pickingMode = PickingMode.Ignore },
                 Inlay = new VisualElement { pickingMode = PickingMode.Ignore },
@@ -240,6 +263,7 @@ namespace SurvivorSouls.UI.Hud
             };
             slot.Root.AddToClassList(SlotClass);
             slot.Glow.AddToClassList(GlowClass);
+            slot.GlowAnchor.AddToClassList(GlowAnchorClass);
             slot.Icon.AddToClassList(IconClass);
             slot.PipRow.AddToClassList(PipRowClass);
             slot.Inlay.AddToClassList(InlayClass);
@@ -256,9 +280,11 @@ namespace SurvivorSouls.UI.Hud
             slot.SparkHigh.style.opacity = 0f;
             slot.SparkLow.style.opacity = 0f;
             slot.Cooldown.style.height = Length.Percent(0f);
-            // Order = draw order: glow ring behind the frame, inlay on the frame, icon, then shade + shine over the icon
-            // (clipped to the field), sparks, the level shield and the pips on top.
-            slot.Root.Add(slot.Glow);
+            // Order = draw order: glow ring in the underlay (behind every slot, KAN-194), inlay on the frame, icon, then
+            // shade + shine over the icon (clipped to the field), sparks, the level shield and the pips on top.
+            slot.GlowAnchor.Add(slot.Glow);
+            _glowLayer.Add(slot.GlowAnchor);
+            slot.Root.RegisterCallback<GeometryChangedEvent>(_ => PlaceGlow(slot));
             slot.Root.Add(slot.Inlay);
             slot.Root.Add(slot.Icon);
             slot.Clip.Add(slot.Cooldown);
@@ -327,6 +353,7 @@ namespace SurvivorSouls.UI.Hud
                 int index = SlotOf(p.Skill);
                 if (index < 0) continue; // run reset while waiting
                 var slot = _slots[index];
+                PlaceGlow(slot); // layout may have settled without a geometry event reaching the anchor yet
                 slot.GlowAge = 0f;
                 slot.NewFrom = Mathf.Max(0, p.Old);
                 slot.NewTo = p.New;
@@ -338,6 +365,40 @@ namespace SurvivorSouls.UI.Hud
             if (started == 0) return;
             if (haptic) Haptics.Light();
             UpgradeShown?.Invoke(started);
+        }
+
+        /// <summary>Glow underlay (KAN-194): first child of the row, absolute (out of the flex flow), so it draws before every slot.</summary>
+        private void EnsureGlowLayer()
+        {
+            if (_row == null || (_glowLayer != null && _glowLayer.parent == _row)) return;
+            if (_glowLayer == null)
+            {
+                _glowLayer = new VisualElement { pickingMode = PickingMode.Ignore };
+                _glowLayer.AddToClassList(GlowLayerClass);
+                _glowLayer.RegisterCallback<GeometryChangedEvent>(_ => PlaceGlows());
+            }
+            _row.Insert(0, _glowLayer);
+        }
+
+        private void PlaceGlows()
+        {
+            for (int i = 0; i < _slots.Count; i++) PlaceGlow(_slots[i]);
+        }
+
+        /// <summary>
+        /// Puts the slot's glow anchor on the slot's layout rect. Both are children of the row, so the layer's own resolved
+        /// position is the only offset (no padding or transform maths; the pick pop scale does not move the ring).
+        /// </summary>
+        private void PlaceGlow(Slot slot)
+        {
+            Rect r = slot.Root.layout;
+            Rect l = _glowLayer.layout;
+            if (float.IsNaN(r.width) || float.IsNaN(l.width)) return; // not laid out yet
+            var s = slot.GlowAnchor.style;
+            s.left = r.x - l.x;
+            s.top = r.y - l.y;
+            s.width = r.width;
+            s.height = r.height;
         }
 
         private int SlotOf(SkillDefinition skill)

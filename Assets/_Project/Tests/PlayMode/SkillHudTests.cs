@@ -20,6 +20,7 @@ namespace SurvivorSouls.Tests
     /// owned level, max class at the cap; a level up of an owned skill glows only after the pause ends, all waiting slots
     /// together with one <see cref="SkillHud.UpgradeShown"/> and one haptic; new skills and Chamber restores do not glow.
     /// KAN-184: tier frame + rarity inlay + level shield, shine / spark glow, cooldown shade.
+    /// KAN-194: glow rings in one underlay behind every slot, each on its slot's rect, tier colour = the slot's glow colour.
     /// </summary>
     public sealed class SkillHudTests
     {
@@ -181,7 +182,7 @@ namespace SurvivorSouls.Tests
             Assert.That(_hud.IsGlowing(0), Is.False);
             Assert.That(Flashing(0), Is.Empty);
             Assert.That(Lit(0), Is.EqualTo(2));
-            Assert.That(_hud.SlotElement(0).Q(className: "hud-skill__glow").style.opacity.value, Is.Zero);
+            Assert.That(_hud.GlowElement(0).style.opacity.value, Is.Zero);
             Assert.That(_shown, Is.EqualTo(1), "one chime per level-up batch");
         }
 
@@ -354,6 +355,79 @@ namespace SurvivorSouls.Tests
             _manager.ResetRun();
             _manager.Grant(skills[1]); // new skill in the old slot: no leftover shade
             Assert.That(_hud.CooldownOf(0), Is.Zero);
+        }
+
+        [UnityTest]
+        public IEnumerator GlowRing_InUnderlay_BehindEverySlot_OnItsSlotRect()
+        {
+            var skills = Shipped();
+            var a = skills[0];
+            var b = skills.First(s => s.Rarity != a.Rarity);
+            var c = skills.First(s => s != a && s != b);
+            _manager.Grant(a);
+            _manager.Grant(b);
+            _manager.Grant(c);
+            yield return null; // layout
+            _manager.Upgrade(b); // middle slot: its ring reaches into both gaps
+            _hud.Tick(0.01f);
+            yield return null;
+            _hud.Tick(_hud.GlowTime * 0.1f); // ring at full flare
+
+            var row = _hud.SlotElement(0).parent;
+            var glow = _hud.GlowElement(1);
+            Assert.That(_hud.IsGlowing(1), Is.True);
+            Assert.That(glow.style.opacity.value, Is.GreaterThan(0.5f));
+            Assert.That(_hud.SlotElement(1).Contains(glow), Is.False, "the ring is not under its slot");
+            var layer = row[0];
+            Assert.That(layer.ClassListContains("hud-skills__glows"), Is.True, "underlay = first child of the row");
+            Assert.That(layer.Contains(glow), Is.True);
+            Assert.That(layer.resolvedStyle.position, Is.EqualTo(Position.Absolute), "out of the flex flow");
+            for (int i = 0; i < _hud.VisibleSlots; i++)
+            {
+                Assert.That(row.IndexOf(_hud.SlotElement(i)), Is.GreaterThan(0), "every slot (frame, shield, pips) draws after every ring");
+                // layout, not worldBound: the pick pop scales the newest slot for a moment.
+                Rect slot = _hud.SlotElement(i).layout;
+                Rect anchor = _hud.GlowElement(i).parent.layout;
+                Assert.That(anchor.x + layer.layout.x, Is.EqualTo(slot.x).Within(0.5f), "anchor on slot " + i);
+                Assert.That(anchor.y + layer.layout.y, Is.EqualTo(slot.y).Within(0.5f));
+                Assert.That(anchor.width, Is.EqualTo(slot.width).Within(0.5f));
+                Assert.That(anchor.height, Is.EqualTo(slot.height).Within(0.5f));
+                Assert.That(_hud.GlowElement(i).pickingMode, Is.EqualTo(PickingMode.Ignore));
+            }
+            Assert.That(glow.layout.x, Is.LessThan(-10f), "ring still outside the rim");
+
+            // Tier colour: same as the slot's --slot-glow (the max-level inlay tint), per tier.
+            for (int i = 0; i < 2; i++)
+            {
+                var s = i == 0 ? a : b;
+                _manager.Upgrade(s, s.MaxLevel);
+            }
+            yield return null;
+            for (int i = 0; i < 2; i++)
+            {
+                Color tint = _hud.SlotElement(i).Q(className: "hud-skill__inlay").resolvedStyle.unityBackgroundImageTintColor;
+                Assert.That(_hud.GlowElement(i).resolvedStyle.borderTopColor, Is.EqualTo(tint), "glow colour of slot " + i);
+            }
+            Assert.That(_hud.GlowElement(0).resolvedStyle.borderTopColor, Is.Not.EqualTo(_hud.GlowElement(1).resolvedStyle.borderTopColor));
+        }
+
+        [UnityTest]
+        public IEnumerator GlowRing_FollowsSlot_WhenRowChanges()
+        {
+            var skills = Shipped();
+            _manager.Grant(skills[0]);
+            yield return null;
+            _manager.ResetRun();
+            _manager.Grant(skills[1]);
+            _manager.Grant(skills[0]);
+            yield return null;
+            var layer = _hud.GetComponent<UIDocument>().rootVisualElement.Q(className: "hud-skills__glows");
+            for (int i = 0; i < _hud.VisibleSlots; i++)
+                Assert.That(_hud.GlowElement(i).parent.layout.x + layer.layout.x, Is.EqualTo(_hud.SlotElement(i).layout.x).Within(0.5f));
+            _manager.ResetRun();
+            yield return null;
+            Assert.That(_hud.GlowElement(0), Is.Null);
+            Assert.That(layer.Children().All(e => e.resolvedStyle.display == DisplayStyle.None), "hidden slots hide their ring anchor");
         }
 
         [Test]
