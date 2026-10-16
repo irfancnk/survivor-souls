@@ -1,5 +1,6 @@
 using SurvivorSouls.Editor.Boss;
 using SurvivorSouls.Editor.Procedural;
+using SurvivorSouls.Gameplay.CameraRig;
 using SurvivorSouls.Gameplay.Chests;
 using SurvivorSouls.Gameplay.Combat;
 using SurvivorSouls.Gameplay.MiniBosses;
@@ -16,7 +17,9 @@ namespace SurvivorSouls.Editor.MiniBoss
     /// Mini boss of the Game scene (KAN-23): the Realm 1 data asset (<see cref="DataPath"/>, made once, never overwritten),
     /// the "MiniBoss" object with <see cref="MiniBossDirector"/>, its own crimson ground warning (the boss telegraph look,
     /// <see cref="BossBuilder.CreateTelegraph"/>) and the ground aura (<see cref="MiniBossAura"/>: T_Ring + T_SoftDot quads,
-    /// alpha blend). Called by GameSceneBuilder. Debug menus (Play mode): "Survivor Souls/Debug/Mini Boss: Spawn Now",
+    /// alpha blend). KAN-212: the special attack (<see cref="MiniBossAttack"/>) with its own red circle + one lane
+    /// (<see cref="BossBuilder.CreateTelegraph"/>, <see cref="BossBuilder.CreateLanes"/>) and the scene's follow camera
+    /// for the shake. Called by GameSceneBuilder. Debug menus (Play mode): "Survivor Souls/Debug/Mini Boss: Spawn Now",
     /// "Mini Boss: Kill".
     /// </summary>
     public static class MiniBossBuilder
@@ -33,6 +36,7 @@ namespace SurvivorSouls.Editor.MiniBoss
             var go = new GameObject("MiniBoss");
             var warning = BossBuilder.CreateTelegraph(kit, go.transform, "Warning");
             var aura = CreateAura(kit, go.transform);
+            var attack = CreateAttack(kit, go);
             var director = go.AddComponent<MiniBossDirector>();
             var so = new SerializedObject(director);
             so.FindProperty("data").objectReferenceValue = data;
@@ -45,8 +49,24 @@ namespace SurvivorSouls.Editor.MiniBoss
             so.FindProperty("souls").objectReferenceValue = souls;
             so.FindProperty("warning").objectReferenceValue = warning;
             so.FindProperty("aura").objectReferenceValue = aura;
+            so.FindProperty("attack").objectReferenceValue = attack;
             so.ApplyModifiedPropertiesWithoutUndo();
             return director;
+        }
+
+        /// <summary>KAN-212: the attack loop with its own warnings (attack red, apart from the crimson rise warning).</summary>
+        private static MiniBossAttack CreateAttack(GameArtKit kit, GameObject root)
+        {
+            var slam = BossBuilder.CreateTelegraph(kit, root.transform, "Slam Warning");
+            var lane = BossBuilder.CreateLanes(kit, root.transform, 1, "Charge Lane");
+            var attack = root.AddComponent<MiniBossAttack>();
+            var so = new SerializedObject(attack);
+            so.FindProperty("slamWarning").objectReferenceValue = slam;
+            so.FindProperty("chargeLane").objectReferenceValue = lane;
+            // The camera rig is built before the mini boss (GameSceneBuilder); found here so the builder call stays as is.
+            so.FindProperty("followCamera").objectReferenceValue = Object.FindAnyObjectByType<TopDownFollowCamera>();
+            so.ApplyModifiedPropertiesWithoutUndo();
+            return attack;
         }
 
         private static MiniBossData LoadOrCreateData()

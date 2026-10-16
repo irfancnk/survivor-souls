@@ -3,6 +3,16 @@ using UnityEngine;
 
 namespace SurvivorSouls.Gameplay.MiniBosses
 {
+    /// <summary>KAN-212: the mini boss's own telegraphed attack (<see cref="MiniBossAttack"/>). Stored as an int: append only.</summary>
+    public enum MiniBossAttackKind
+    {
+        None = 0,
+        /// <summary>Red ground circle round the mini boss fills, then everything inside is hit at once.</summary>
+        Slam = 1,
+        /// <summary>Red lane towards the Knight fills, then a short dash along it.</summary>
+        Charge = 2,
+    }
+
     /// <summary>
     /// One mini boss (KAN-23): which roster enemy is promoted, how much stronger and bigger it gets, its colours, when and
     /// how it arrives, and what it leaves. A mini boss is a normal roster type (it keeps its own attacks: the Grave Brute
@@ -53,6 +63,48 @@ namespace SurvivorSouls.Gameplay.MiniBosses
         [SerializeField, Min(0)] private int hunterBonusUpgrades = 1;
         [SerializeField] private string hunterSkillId = "reliquary_hunter";
 
+        [Header("Special attack (KAN-212)")]
+        [Tooltip("The mini boss's own telegraphed attack, on top of its type's attacks (they never overlap).")]
+        [SerializeField] private MiniBossAttackKind attack = MiniBossAttackKind.Charge;
+        [Tooltip("Distance (m) to the Knight at which the attack starts.")]
+        [SerializeField, Min(1f)] private float attackRange = 8f;
+        [Tooltip("Seconds the warning fills before the hit (at least MinWindUp: always dodgeable).")]
+        [SerializeField, Min(MinWindUp)] private float attackWindUp = 1.1f;
+        [Tooltip("Seconds from the end of an attack to the next wind-up.")]
+        [SerializeField, Min(0.5f)] private float attackCooldown = 5f;
+        [Tooltip("Seconds after the rise before the first attack can start.")]
+        [SerializeField, Min(0f)] private float firstAttackDelay = 2.5f;
+        [Tooltip("Damage, share of the Knight's max health.")]
+        [SerializeField, Range(0f, 1f)] private float attackDamage = 0.2f;
+        [Tooltip("Seconds the mini boss stands still after the hit (the punish window).")]
+        [SerializeField, Min(0f)] private float attackRecover = 1f;
+        [Tooltip("Animator state played in the wind-up (the type's Attack state when the controller lacks it).")]
+        [SerializeField] private string attackClip = "Slam";
+        [Tooltip("Slam: radius (m) of the circle.")]
+        [SerializeField, Min(0.5f)] private float slamRadius = 3.4f;
+        [Tooltip("Charge: longest dash (m); walls and pillars cut it.")]
+        [SerializeField, Min(1f)] private float chargeLength = 7f;
+        [Tooltip("Charge: lane width (m); the Knight inside the lane when the mini boss passes is hit.")]
+        [SerializeField, Min(0.3f)] private float chargeWidth = 1.6f;
+        [Tooltip("Charge: seconds the dash takes.")]
+        [SerializeField, Min(0.1f)] private float chargeTime = 0.45f;
+
+        /// <summary>Shortest wind-up (s) of the mini boss attack: the Knight can always walk out of the warning.</summary>
+        public const float MinWindUp = 0.9f;
+
+        public MiniBossAttackKind Attack => attack;
+        public float AttackRange => attackRange;
+        public float AttackWindUp => Mathf.Max(MinWindUp, attackWindUp);
+        public float AttackCooldown => attackCooldown;
+        public float FirstAttackDelay => firstAttackDelay;
+        public float AttackDamage => attackDamage;
+        public float AttackRecover => attackRecover;
+        public string AttackClip => attackClip;
+        public float SlamRadius => slamRadius;
+        public float ChargeLength => chargeLength;
+        public float ChargeWidth => chargeWidth;
+        public float ChargeTime => chargeTime;
+
         public string DisplayName => displayName;
         public string EnemyType => enemyType;
         public float HealthMultiplier => healthMultiplier;
@@ -91,6 +143,25 @@ namespace SurvivorSouls.Gameplay.MiniBosses
             d.hunterBonusUpgrades = Mathf.Max(0, hunterBonus);
             d.spawnDistance = Mathf.Max(2f, distance);
             return d;
+        }
+
+        /// <summary>Tests and tools: sets the special attack (KAN-212). The wind-up is never below <see cref="MinWindUp"/>.</summary>
+        public MiniBossData WithAttack(MiniBossAttackKind kind, float range = 8f, float windUp = 1.1f, float cooldown = 5f,
+            float firstDelay = 0f, float damage = 0.2f, float recover = 1f, float radius = 3.4f, float length = 7f,
+            float width = 1.6f, float dashTime = 0.45f)
+        {
+            attack = kind;
+            attackRange = Mathf.Max(1f, range);
+            attackWindUp = Mathf.Max(MinWindUp, windUp);
+            attackCooldown = Mathf.Max(0.5f, cooldown);
+            firstAttackDelay = Mathf.Max(0f, firstDelay);
+            attackDamage = Mathf.Clamp01(damage);
+            attackRecover = Mathf.Max(0f, recover);
+            slamRadius = Mathf.Max(0.5f, radius);
+            chargeLength = Mathf.Max(1f, length);
+            chargeWidth = Mathf.Max(0.3f, width);
+            chargeTime = Mathf.Max(0.1f, dashTime);
+            return this;
         }
     }
 }

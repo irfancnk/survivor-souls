@@ -20,7 +20,8 @@ namespace SurvivorSouls.Gameplay.MiniBosses
     /// (<see cref="ChestDropper.DropReward"/>: never fades, ignores the ground cap) of the data tier, +1 upgrade with
     /// Reliquary Hunter (KAN-50); with no upgradable skill a chest would be empty, so a bonus skill pick is queued instead
     /// (same rule as <see cref="BossReward"/>). At most one mini boss per Chamber; the scene reloads every Chamber, so the
-    /// state is per Chamber and per run. On the "MiniBoss" object (MiniBossBuilder).
+    /// state is per Chamber and per run. KAN-212: from the rise its own telegraphed attack runs (<see cref="MiniBossAttack"/>,
+    /// <see cref="MiniBossData.Attack"/>). On the "MiniBoss" object (MiniBossBuilder).
     /// </summary>
     public sealed class MiniBossDirector : MonoBehaviour
     {
@@ -39,6 +40,8 @@ namespace SurvivorSouls.Gameplay.MiniBosses
         [Tooltip("Ground warning before the rise.")]
         [SerializeField] private GroundTelegraph warning;
         [SerializeField] private MiniBossAura aura;
+        [Tooltip("KAN-212: the mini boss's own telegraphed attack.")]
+        [SerializeField] private MiniBossAttack attack;
         [Tooltip("Warning colours (ring, disc, flash): soul crimson, apart from the attack red.")]
         [SerializeField] private Color warningRing = new Color(0.55f, 0.02f, 0.08f, 1f);
         [SerializeField] private Color warningFill = new Color(0.32f, 0.0f, 0.05f, 0.72f);
@@ -64,6 +67,8 @@ namespace SurvivorSouls.Gameplay.MiniBosses
         /// <summary>The living mini boss (null before the rise and after the kill).</summary>
         public Enemy Boss { get; private set; }
         public MiniBossData Data => data;
+        /// <summary>KAN-212: the special attack loop (null when the scene has none).</summary>
+        public MiniBossAttack Attack => attack;
         public Vector3 Spot => _spot;
         /// <summary>The reward chest (null before the kill or when a pick was given).</summary>
         public ReliquaryChest Chest { get; private set; }
@@ -71,7 +76,7 @@ namespace SurvivorSouls.Gameplay.MiniBosses
         /// <summary>Tests: wiring without the scene builder.</summary>
         public void Setup(MiniBossData miniBoss, EnemySpawner enemySpawner, PlayerHealth knight, ChestDropper chestDropper,
             SkillManager skillManager, LevelUpFlow levelUpFlow, XpManager xpManager, SoulWispField wisps,
-            GroundTelegraph warningTelegraph = null, MiniBossAura groundAura = null)
+            GroundTelegraph warningTelegraph = null, MiniBossAura groundAura = null, MiniBossAttack specialAttack = null)
         {
             data = miniBoss;
             spawner = enemySpawner;
@@ -83,6 +88,7 @@ namespace SurvivorSouls.Gameplay.MiniBosses
             souls = wisps;
             warning = warningTelegraph;
             aura = groundAura;
+            attack = specialAttack;
         }
 
         private void OnEnable()
@@ -188,6 +194,7 @@ namespace SurvivorSouls.Gameplay.MiniBosses
             Boss = enemy;
             State = Phase.Alive;
             if (aura != null) aura.Follow(enemy, data.AuraRadius, data.AuraColor);
+            if (attack != null) attack.Begin(enemy, data, player);
             if (Debug.isDebugBuild) Debug.Log($"[MiniBoss] {data.DisplayName} rose at {_spot}, health {enemy.MaxHealth:0}");
             Spawned?.Invoke(enemy);
         }
@@ -206,6 +213,7 @@ namespace SurvivorSouls.Gameplay.MiniBosses
             Boss = null;
             State = Phase.Done;
             if (aura != null) aura.Stop();
+            if (attack != null) attack.Stop();
         }
 
         /// <summary>Bonus wisps and the chest (or the bonus pick) at <paramref name="at"/>.</summary>

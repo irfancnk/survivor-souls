@@ -30,3 +30,15 @@ MonoBehaviour:
   chestUpgrades: 1
   hunterBonusUpgrades: 1
   hunterSkillId: reliquary_hunter
+  attack: 2
+  attackRange: 8
+  attackWindUp: 1.1
+  attackCooldown: 5
+  firstAttackDelay: 2.5
+  attackDamage: 0.2
+  attackRecover: 1
+  attackClip: Slam
+  slamRadius: 3.4
+  chargeLength: 7
+  chargeWidth: 1.6
+  chargeTime: 0.45
