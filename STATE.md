@@ -1070,6 +1070,16 @@
   - Verified: compile 0 errors / 0 new warnings; Game scene rebuild exit 0, no diff; EditMode 219 pass; PlayMode 943: 941 pass, 2 skipped (soak), 0 fail; Mac dev build + 4 shot runs, 0 exceptions.
   - Limits: the pierce / bounce falloff perk has no own look (only bigger numbers on the 2nd-5th foe). The blazing bolt look (KAN-200) is hottest from Ember L4 (75/s): L5-7 bolts look the same. iPhone pacing / feel check is in KAN-222.
   - Next: KAN-221 (Double / Spread Shot to 5), then KAN-222 (pacing sim with chests, Confluence sheet, iPhone).
+- 2026-10-16 (KAN-221, KAN-124.3): Double Shot and Spread Shot go from 3 to 5 levels (third part of KAN-124 deeper skill levels). Branch `feat/kan-221-multishot-levels`. Scheduled-task run r202610161122-d0348e.
+  - Tables (`Data/Skills/Skill_DoubleShot.asset`, `Skill_Multishot.asset` + `SkillsBuilder` seed rows, edit both; levels 1-3 kept, `maxStack` 5). Levels 4-5 add damage, never more bolts (frame time: KAN-83 / KAN-88):
+    - Double Shot: L4 3 extra bolts at full damage (no `ChainDamage` penalty), L5 3 extra bolts at 115 % (`ChainDamage` +15 %). Repeat / chest weights unchanged (owned 2+ = 6 %, chest 35 %).
+    - Spread Shot: L4 6 side bolts at 70 % (`SpreadDamage` +0.2), L5 80 % (+0.3).
+  - No code change: `AutoShooter` and `PowerSnapshot` already read `ChainDamage` / `SpreadDamage`.
+  - Tests: `SkillLevelTableTests` sheet rows L4-5, tier rule (5, 5) for both skills (`FiveLevelBoltSkills`), new `BoltSkills_HaveFiveLevels_LevelsFourAndFiveAddDamageNotBolts` (bolt counts flat after L3, side share 50/55/60/70/80 %, follow-up share 100/100/90/100/115 %, maxed at 5); `MultiArrowTests` shipped bolt counts at L4-5 + max level 5.
+  - Balance (`SingleTargetBalanceTests`, 2000 runs, random card, no chests): level 10 single target 2.53x, level 20 4.34x: same as KAN-220 (random picks rarely reach level 4-5).
+  - Shot (Mac dev 540x1170, `-ss-scene Game -ss-quality Mobile -ss-immortal -ss-run-seed 9001 -ss-delay 5 -ss-skills double_shot:4,multishot:4,sharpened_bolts:1 -ss-xp 40 -ss-xp-lead 3 -ss-offer double_shot,multishot,sharpened_bolts`): `Docs/screenshots/kan221-levelup-cards-double-spread-l5.png` (`LV 4 -> 5` cards, 5 pips, L5 texts).
+  - Verified: compile 0 errors; Game scene rebuild exit 0, no diff; EditMode 219 pass; PlayMode 952: 951 pass after the max-level fix, 2 skipped (soak); Mac dev build + shot, 0 exceptions.
+  - Limits: no new look for L4-5 (same bolts, bigger numbers). Pacing with chest upgrades + iPhone check: KAN-222.
 
 ## DECISIONS
 - Design language: Archero / Archero 2 (menus, loop, chests, daily/weekly quests, gear merge, talents, energy). Look: Dark Souls, realistic, not dismal. User decision 2026-10-11.
