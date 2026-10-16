@@ -23,7 +23,8 @@ namespace SurvivorSouls.Editor.Characters
     /// <see cref="RangerPrice"/> Ember Shards (the 1,200 pack covers it).</item>
     /// <item>Model (<c>Prefabs/Hero_ShadowRanger_Model.prefab</c>): "Model" root with the KAN-156 import of
     /// <c>SK_ShadowRanger.fbx</c> as "Body" (Generic, Mesh LODs), URP materials (body BaseColor + Normal, untextured parts
-    /// from the Blender colours in Docs/ENEMY_ROSTER.md section 7), Animator <c>AC_ShadowRanger</c> (Idle / Walking /
+    /// from the Blender colours in Docs/ENEMY_ROSTER.md section 7), Animator <c>AC_ShadowRanger</c> on the rig node
+    /// (<see cref="ClipRoot"/>: where the clip paths start; always animates) (Idle / Walking /
     /// Running blend on Speed, Shoot on bool Shooting with motion time ShootTime, Death on trigger Die), a
     /// <see cref="BowShootDriver"/> and the <c>Bow_Muzzle</c> socket on the bow hand.</item>
     /// <item>Shot (KAN-227): the Ranger's arrow (<see cref="CombatBuilder.ArrowPrefabPath"/>) and bow twang clips
@@ -193,10 +194,14 @@ namespace SurvivorSouls.Editor.Characters
                     }
                 }
 
-                var animator = body.AddComponent<Animator>();
+                // KAN-227: the clip files hold the armature alone, so their curve paths start below the rig node
+                // ("Hips/..."), while SK_ puts the rig under the FBX root ("ShadowRanger_Rig/Hips/..."). On the FBX root
+                // the Animator bound 0 of 280 curves and the Ranger stood in the rest pose (KAN-153 to KAN-227).
+                var rig = ClipRoot(body.transform, clips.Values);
+                var animator = rig.gameObject.AddComponent<Animator>();
                 animator.runtimeAnimatorController = BuildController(clips);
                 animator.applyRootMotion = false;
-                animator.cullingMode = AnimatorCullingMode.CullUpdateTransforms;
+                animator.cullingMode = AnimatorCullingMode.AlwaysAnimate; // the renderers are not under the rig node
                 var driver = new SerializedObject(root.AddComponent<BowShootDriver>());
                 driver.FindProperty("animator").objectReferenceValue = animator;
                 driver.ApplyModifiedPropertiesWithoutUndo();
@@ -219,6 +224,25 @@ namespace SurvivorSouls.Editor.Characters
             {
                 Object.DestroyImmediate(root);
             }
+        }
+
+        /// <summary>
+        /// The transform the clip curve paths start from: the first one (breadth first under <paramref name="body"/>)
+        /// where every path of every clip resolves. Throws when none does (the Animator would bind nothing).
+        /// </summary>
+        public static Transform ClipRoot(Transform body, IEnumerable<AnimationClip> clips)
+        {
+            var paths = clips.SelectMany(AnimationUtility.GetCurveBindings).Select(b => b.path).Where(p => p.Length > 0)
+                .Distinct().ToArray();
+            var queue = new Queue<Transform>();
+            queue.Enqueue(body);
+            while (queue.Count > 0)
+            {
+                var t = queue.Dequeue();
+                if (paths.All(p => t.Find(p) != null)) return t;
+                foreach (Transform child in t) queue.Enqueue(child);
+            }
+            throw new System.InvalidOperationException($"[HeroBuilder] no transform under '{body.name}' matches the clip paths (first '{paths.FirstOrDefault()}')");
         }
 
         private static int TriCount(Mesh mesh)

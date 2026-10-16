@@ -281,6 +281,11 @@ namespace SurvivorSouls.Tests
             var driver = loadout.Model.GetComponent<BowShootDriver>();
             var animator = driver.Animator;
             animator.cullingMode = AnimatorCullingMode.AlwaysAnimate; // no camera render in batch
+            Transform hand = null;
+            foreach (var tr in loadout.Model.GetComponentsInChildren<Transform>()) if (tr.name == "LeftHand") hand = tr;
+            Transform restHand = null;
+            foreach (var tr in ranger.ModelPrefab.GetComponentsInChildren<Transform>(true)) if (tr.name == "LeftHand") restHand = tr;
+            float handOffRest = 0f;
             int shots = 0;
             void OnFired(Vector3 m, Vector3 d) => shots++;
             shooter.Fired += OnFired;
@@ -292,8 +297,10 @@ namespace SurvivorSouls.Tests
                 {
                     t += Time.deltaTime;
                     shooting |= driver.Shooting && animator.GetCurrentAnimatorStateInfo(0).IsName("Shoot");
+                    handOffRest = Mathf.Max(handOffRest, Quaternion.Angle(hand.localRotation, restHand.localRotation));
                     yield return null;
                 }
+                Assert.That(handOffRest, Is.GreaterThan(5f), "the clips move the bones (KAN-227: was the rest pose)");
                 Assert.That(shots, Is.GreaterThanOrEqualTo(2), "the Ranger shoots the horde");
                 Assert.That(shooting, Is.True, "Shoot state while engaged");
                 int arrows = 0;

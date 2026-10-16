@@ -1087,6 +1087,14 @@ if STAGE != "A":
         bpy.ops.object.modifier_move_to_index(modifier=dec.name, index=0)
         bpy.ops.object.modifier_apply(modifier=dec.name)
         body.vertex_groups.remove(body.vertex_groups["DecimateKeep"])     # the old handle is stale after the apply
+        # Collapse blends the weights of merged vertices: 114 vertices ended with 5+ bones. Unity skins 4 bones per vertex
+        # and drops the rest, so they tore (hand flakes, cape spikes in Running). Keep the 4 strongest, sum 1.
+        bpy.ops.object.mode_set(mode='WEIGHT_PAINT')
+        bpy.ops.object.vertex_group_limit_total(group_select_mode='ALL', limit=4)
+        bpy.ops.object.vertex_group_normalize_all(group_select_mode='ALL', lock_active=False)
+        bpy.ops.object.mode_set(mode='OBJECT')
+        over = sum(1 for v in body.data.vertices if sum(1 for g in v.groups if g.weight > 0) > 4)
+        print(f"B6b weights limited to 4 bones per vertex ({over} over)")
         print(f"B6b body decimated {tris0} -> {sum(len(p.vertices) - 2 for p in body.data.polygons)} tris (ratio {ratio:.3f})")
 
     blend = os.path.join(JOB, "ShadowRanger.blend")

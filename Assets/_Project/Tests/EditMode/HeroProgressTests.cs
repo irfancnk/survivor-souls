@@ -147,6 +147,37 @@ namespace SurvivorSouls.Tests
         }
 
         [Test]
+        public void RangerModel_EveryClipBindsToTheRig_AndMovesTheBones()
+        {
+            // KAN-227: the Animator sat on the FBX root, the clip paths start below the rig node: 0 curves bound, rest pose.
+            var go = Object.Instantiate(Ranger.ModelPrefab);
+            _objects.Add(go);
+            var animator = go.GetComponent<BowShootDriver>().Animator;
+            Assert.That(animator.cullingMode, Is.EqualTo(AnimatorCullingMode.AlwaysAnimate), "no renderer under the rig node");
+            var hand = FindDeep(go.transform, "LeftHand");
+            var foot = FindDeep(go.transform, "LeftFoot");
+            Vector3 hand0 = hand.position, foot0 = foot.position;
+            var clips = new HashSet<AnimationClip>(animator.runtimeAnimatorController.animationClips);
+            Assert.That(clips.Count, Is.EqualTo(5));
+            foreach (var clip in clips)
+            {
+                foreach (var b in AnimationUtility.GetCurveBindings(clip))
+                    Assert.That(b.path.Length == 0 || animator.transform.Find(b.path) != null, Is.True, $"{clip.name}: curve path '{b.path}' binds");
+                clip.SampleAnimation(animator.gameObject, clip.length * 0.5f);
+                float moved = Mathf.Max((hand.position - hand0).magnitude, (foot.position - foot0).magnitude);
+                Assert.That(moved, Is.GreaterThan(0.05f), $"{clip.name} moves the hand or foot off the rest pose");
+                hand0 = hand.position; foot0 = foot.position;
+            }
+        }
+
+        private static Transform FindDeep(Transform root, string name)
+        {
+            foreach (var t in root.GetComponentsInChildren<Transform>(true))
+                if (t.name == name) return t;
+            return null;
+        }
+
+        [Test]
         public void RangerModel_InsideTheHeroTriBudget()
         {
             int tris = 0;
