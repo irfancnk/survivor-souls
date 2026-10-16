@@ -79,6 +79,8 @@ namespace SurvivorSouls.Gameplay.Combat
             public float Time;
             public Vector3 Direction;
             public float Lateral;
+            /// <summary>Point-blank pull-back of the bolt start (KAN-224), zero for a normal shot.</summary>
+            public Vector3 Back;
             /// <summary>The shot of its own volley, damage share applied (a newer volley does not change it).</summary>
             public BoltShot Shot;
             public bool Lead;
@@ -251,9 +253,13 @@ namespace SurvivorSouls.Gameplay.Combat
         {
             if (boltPrefab == null || target == null) return;
             // KAN-215: the upper body takes the last degrees (and this frame's root turn) so the crossbow line is the bolt line.
-            if (_aim != null && _aim.isActiveAndEnabled) _aim.AlignNow(target.AimPoint);
-            Vector3 from = MuzzlePosition;
-            Vector3 dir = (target.AimPoint - from).normalized;
+            // KAN-224: a target closer than the muzzle is aimed through PointBlankAim (bolt starts further back, same line).
+            Vector3 point = target.AimPoint;
+            if (_aim != null && _aim.isActiveAndEnabled) _aim.AlignNow(PointBlankAim.AimPoint(transform.position, MuzzlePosition, point));
+            Vector3 muzzleAt = MuzzlePosition;
+            Vector3 back = PointBlankAim.Shift(transform.position, muzzleAt, point);
+            Vector3 from = muzzleAt - back;
+            Vector3 dir = (point - from).normalized;
             var shot = new BoltShot
             {
                 Damage = CurrentDamage,
@@ -283,11 +289,11 @@ namespace SurvivorSouls.Gameplay.Combat
                 {
                     _pending[_pendingCount++] = new Pending
                     {
-                        Time = a.Delay, Direction = d, Lateral = a.Lateral, Shot = scaled, Lead = a.Lead,
+                        Time = a.Delay, Direction = d, Lateral = a.Lateral, Back = back, Shot = scaled, Lead = a.Lead,
                     };
                 }
             }
-            Fired?.Invoke(from, dir);
+            Fired?.Invoke(muzzleAt, dir);
         }
 
         private Vector3 MuzzlePosition => muzzle != null ? muzzle.position : transform.position + Vector3.up * 1.1f;
@@ -302,7 +308,7 @@ namespace SurvivorSouls.Gameplay.Combat
                 _pending[i].Time -= dt;
                 if (_pending[i].Time > 0f) continue;
                 var p = _pending[i];
-                Launch(from, p.Direction, p.Lateral, p.Shot);
+                Launch(from - p.Back, p.Direction, p.Lateral, p.Shot);
                 if (p.Lead) FollowUpFired?.Invoke(from, p.Direction);
                 _pending[i] = _pending[--_pendingCount];
                 i--;
