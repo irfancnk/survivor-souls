@@ -8,9 +8,9 @@ using UnityEngine.SceneManagement;
 namespace SurvivorSouls.Tests
 {
     /// <summary>
-    /// KAN-15: the Knight runs silently. The generated Game scene's <see cref="GameAudio"/> has no footstep clips (the
-    /// footstep hook stays, empty, for a quieter set from KAN-32 / KAN-81), the old snow step clips are gone from the
-    /// project, and every other sound set is still wired.
+    /// KAN-15: the old snow steps stay gone. The generated Game scene's <see cref="GameAudio"/> has no footstep clips (its
+    /// stride timer stays silent; KAN-235 <see cref="FootstepSounds"/> plays the new quiet steps, see FootstepSfxTests), the
+    /// old "sfx_footstep" clips are gone from the project, and every other sound set is still wired.
     /// </summary>
     public sealed class FootstepRemovalTests
     {

@@ -48,7 +48,7 @@ namespace SurvivorSouls.Audio
         [SerializeField] private AudioClip[] shots;
         [SerializeField] private AudioClip[] impacts;
         [SerializeField] private AudioClip[] deaths;
-        [Tooltip("Footstep hook (KAN-15): empty = the Knight runs silently (the snow steps irritated in playtests). A quieter set (KAN-32 / KAN-81) goes here; the stride timer in Update plays it.")]
+        [Tooltip("Old footstep hook (KAN-15): stays empty. Knight steps come from FootstepSounds (KAN-235: foot plants, surfaces, fight ducking).")]
         [SerializeField] private AudioClip[] footsteps;
         [Tooltip("Hit marker confirm tick (KAN-13), plays on every non-lethal enemy hit.")]
         [SerializeField] private AudioClip[] hitMarkers;
