@@ -1,5 +1,5 @@
 """Blender headless: lit preview film of the Shadow Ranger clips (EEVEE, MP4).
-blender -b ShadowRanger.blend --python film_shadow_ranger.py -- <out.mp4> [--quick]
+blender -b ShadowRanger.blend --python film_shadow_ranger.py -- <out.mp4> [--quick] [--clips Shoot:4,Idle:1] [--orbit DEG]
 Clips back to back, one NLA track each (Shoot x3, Idle, Walking x2, Running x3) with short blends, a label per clip,
 three-point light, dark stone ground, slow camera orbit. Walk / run play in place (root motion is frozen in the clips)."""
 import bpy, sys, math
@@ -17,6 +17,9 @@ ad.action = None
 for tr in list(ad.nla_tracks):
     ad.nla_tracks.remove(tr)
 SEQ = [("Shoot", 3, "SHOOT"), ("Idle", 1, "IDLE"), ("Walking", 2, "WALK"), ("Running", 3, "RUN"), ("Death", 1, "DEATH")]
+if "--clips" in args:                       # KAN-229: approval previews of one clip, e.g. --clips Shoot:4
+    SEQ = [(c.split(":")[0], int(c.split(":")[1]), c.split(":")[0].upper()) for c in args[args.index("--clips") + 1].split(",")]
+ORBIT = float(args[args.index("--orbit") + 1]) if "--orbit" in args else -50.0
 BLEND = 5
 cursor = 1
 segments = []
@@ -92,7 +95,7 @@ dist, height = 6.2, 0.75
 cam.location = (math.cos(start) * dist, math.sin(start) * dist, height)
 con = cam.constraints.new('TRACK_TO'); con.target = pivot; con.track_axis = 'TRACK_NEGATIVE_Z'; con.up_axis = 'UP_Y'
 pivot.rotation_euler = (0, 0, 0); pivot.keyframe_insert("rotation_euler", frame=1)
-pivot.rotation_euler = (0, 0, math.radians(-50)); pivot.keyframe_insert("rotation_euler", frame=end)
+pivot.rotation_euler = (0, 0, math.radians(ORBIT)); pivot.keyframe_insert("rotation_euler", frame=end)
 
 # ---------------- labels, one per clip, parented to the camera
 font_mat = bpy.data.materials.new("M_Label"); font_mat.use_nodes = True

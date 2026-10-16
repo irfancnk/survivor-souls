@@ -387,15 +387,45 @@ if STAGE != "A":
     HIPS = -82                                                        # feet perpendicular to the shot line
     TORSO = [("Spine02", 8), ("Spine01", 7), ("Spine", 6)]            # chest -61 deg: bow shoulder to the target (longer draw)
     HEAD = [("neck", 27), ("Head", 34)]                               # face fully to the target
-    CANT = 18                                                         # bow top limb leans to the archer's right
+    CANT = 26                                                         # bow top limb leans to the archer's right (KAN-229: 18 -> 26, the lower limb clears the bent front thigh)
 
     HAND_OFF = Vector((-0.015, 0.055, -0.015))   # wrist behind the pinch point (fingers on the string)
     BACK_OFF = Vector((-0.11, 0.16, -0.02))      # follow-through: hand snaps back past the jaw, out towards the shoulder
 
-    def base_aim(breath=0.0):
+    FEET = {}                                    # planted feet (armature space) of the side-on stance, cached
+
+    def plant_body(m):
+        """KAN-229 full-body shot: hips drop (knees bend) and shift onto the front foot; legs re-solved by two-bone IK
+        so both feet stay planted where the side-on stance put them (foot bones keep their stance rotation)."""
+        fwd = Matrix.Rotation(math.radians(HIPS), 3, 'Z') @ Vector((0, -1, 0))      # where the knees point
+        if not FEET:
+            for side in ("Left", "Right"):
+                FEET[side] = PB[f"{side}Foot"].matrix.copy()
+                # pole in the leg's own bend plane (hip, knee, foot): a generic "forward" pole twisted the thighs into the bow
+                h, k, ft = joint(f"{side}UpLeg"), joint(f"{side}Leg"), joint(f"{side}Foot")
+                d = (ft - h).normalized(); bend = (k - h) - d * (k - h).dot(d)
+                FEET[side + "Pole"] = A(k + (bend.normalized() if bend.length > 1e-3 else fwd) * 0.5)
+        pb = PB["Hips"]; M = pb.matrix.copy()
+        M.translation = A(W(M.translation) + Vector((0, -m["shift"], -m["crouch"])))
+        pb.matrix = M; upd()
+        for side in ("Left", "Right"):
+            foot_w = W(FEET[side].translation) + STANCE[side]
+            two_bone(f"{side}UpLeg", f"{side}Leg", f"{side}Foot", foot_w, W(FEET[side + "Pole"]) + Vector((0, -m["shift"], -m["crouch"])))
+            Mf = FEET[side].copy(); Mf.translation = A(foot_w); PB[f"{side}Foot"].matrix = Mf; upd()
+
+    def base_aim(breath=0.0, body=None):
         reset_pose()
-        twist([("Hips", HIPS)]); twist(TORSO); twist(HEAD)
+        twist([("Hips", HIPS)])
+        if body:
+            plant_body(body)
+        twist(TORSO); twist(HEAD)
         tilt("Spine", -3 + breath)               # chest up a little, breathing
+        if body:
+            tilt("Spine01", body["lean"])        # chest leans into the shot (towards the target, -Y)
+            if body["yaw"]:
+                twist([("Spine02", body["yaw"])])    # release follow-through: chest opens a little
+            if body["nod"]:
+                tilt("Head", body["nod"])        # head settles on the loose
         if ANCHOR_LOCAL is not None:             # cheek anchor just outside the hood (found by raycast, head space)
             anchor = (AW @ PB["Head"].matrix) @ ANCHOR_LOCAL
         else:
@@ -403,7 +433,8 @@ if STAGE != "A":
         # arrow line: from the anchor straight at the target, slightly up
         aimdir = Vector((0, -1, 0.03)).normalized()
         # bow wrist: on a line parallel to the arrow, 3 cm left / 4 cm low of it, at 97 % arm reach
-        Sh = joint("LeftArm"); off = Vector((0.03, 0, -0.04))
+        # KAN-229: the bow rises with the draw (body "lift") so the bent front thigh clears the lower limb
+        Sh = joint("LeftArm"); off = Vector((0.03, 0, -0.04 + (body["lift"] if body else 0.0)))
         p0 = anchor + off; dp = p0 - Sh
         bq = 2 * dp.dot(aimdir); cq = dp.dot(dp) - (REACH_L * 0.97) ** 2
         t = (-bq + math.sqrt(max(bq * bq - 4 * cq, 0))) / 2
@@ -753,9 +784,27 @@ if STAGE != "A":
 
     # 1.0 s loop at 30 fps: set 0-3, fast draw 3-10, hold + expansion + tremor 10-19, release 19 -> 20,
     # bow dumps forward and vibrates 20-24, follow-through 19-25, next arrow 25-30
+    # KAN-229 body keys (frame: crouch m, shift m onto the front foot, lean deg into the shot, chest yaw deg, head nod deg,
+    # bow lift m):
+    # settle into the stance on the set, sink and lean through the draw, sink a little more on the hold, the loose kicks
+    # the body up and back (hips rise, chest opens, head settles), then back to the set stance for the next arrow.
+    BODY_KEYS = [(0, 0.020, 0.000, 0.0, 0.0, 0.0, 0.000), (3, 0.030, 0.005, 1.0, 0.0, 0.0, 0.000),
+                 (10, 0.120, 0.030, 7.0, 0.0, 0.0, 0.035), (19, 0.130, 0.035, 8.0, 0.0, 0.0, 0.040),
+                 (21, 0.090, 0.000, -2.0, -6.0, 4.0, 0.030), (24, 0.070, 0.010, 3.0, -3.0, 1.5, 0.015),
+                 (30, 0.020, 0.000, 0.0, 0.0, 0.0, 0.000)]
+    STANCE = {"Left": Vector((0, -0.10, 0)), "Right": Vector((0, 0.06, 0))}   # wider archer stance along the shot line
+
+    def body_motion(f):
+        for (f0, *a), (f1, *b) in zip(BODY_KEYS, BODY_KEYS[1:]):
+            if f0 <= f <= f1:
+                t = smooth((f - f0) / (f1 - f0))
+                v = [x + (y - x) * t for x, y in zip(a, b)]
+                return dict(crouch=v[0], shift=v[1], lean=v[2], yaw=v[3], nod=v[4], lift=v[5])
+        return None
+
     def shoot_pose(f):
         breath = 0.6 * math.sin(f / 30 * 2 * math.pi)
-        anchor, aimdir, wrist = base_aim(breath)
+        anchor, aimdir, wrist = base_aim(breath, body_motion(f))
         if f <= 3:
             draw = 0.0
         elif f <= 10:

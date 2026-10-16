@@ -178,6 +178,30 @@ namespace SurvivorSouls.Tests
         }
 
         [Test]
+        public void RangerAimTurn_Eased_180DegRetargetTakesOverHalfASecond_KnightKeepsTheSceneTurn()
+        {
+            // KAN-229: the Ranger snapped round in 0.25 s (720 deg/s constant) when the next target was behind him.
+            Assert.That(Knight.AimTurnSpeed, Is.EqualTo(0f), "the Knight keeps the scene shooter's turn");
+            Assert.That(Ranger.AimTurnSpeed, Is.EqualTo(HeroBuilder.RangerTurnSpeed));
+            Assert.That(Ranger.AimTurnSmoothing, Is.EqualTo(HeroBuilder.RangerTurnSmoothing));
+            const float dt = 1f / 60f;
+            float yaw = 0f, vel = 0f, t = 0f, maxStep = 0f, firstStep = -1f, aimed = -1f;
+            while (t < 2f)
+            {
+                float next = AutoShooter.TurnYaw(yaw, 180f, ref vel, Ranger.AimTurnSmoothing, Ranger.AimTurnSpeed, dt);
+                float step = Mathf.Abs(Mathf.DeltaAngle(yaw, next));
+                if (firstStep < 0f) firstStep = step;
+                maxStep = Mathf.Max(maxStep, step);
+                yaw = next; t += dt;
+                if (aimed < 0f && Mathf.Abs(Mathf.DeltaAngle(yaw, 180f)) <= 15f) aimed = t; // AutoShooter fires within 15 deg
+            }
+            Assert.That(aimed, Is.InRange(0.45f, 0.9f), "a 180 deg retarget is a visible turn, not a snap, and not sluggish");
+            Assert.That(maxStep, Is.LessThanOrEqualTo(Ranger.AimTurnSpeed * dt + 1e-3f), "never faster than the cap");
+            Assert.That(firstStep, Is.LessThan(maxStep * 0.5f), "eases in");
+            Assert.That(Mathf.Abs(Mathf.DeltaAngle(yaw, 180f)), Is.LessThan(1f), "settles on the target");
+        }
+
+        [Test]
         public void RangerModel_InsideTheHeroTriBudget()
         {
             int tris = 0;

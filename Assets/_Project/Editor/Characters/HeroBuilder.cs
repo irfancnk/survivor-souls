@@ -41,6 +41,8 @@ namespace SurvivorSouls.Editor.Characters
         public const string KnightId = "knight";
         public const string RangerId = "shadow_ranger";
         public const int RangerPrice = 1000;
+        /// <summary>Ranger aim turn (KAN-229): max deg/s and smooth-damp time (s).</summary>
+        public const float RangerTurnSpeed = 360f, RangerTurnSmoothing = 0.16f;
         public const string RangerModelPath = "Assets/_Project/Prefabs/Hero_ShadowRanger_Model.prefab";
         private const string RangerArt = HeroPetArtImporter.HeroesArt + "/ShadowRanger";
         private const string GeneratedDir = "Assets/_Project/Art/Characters/HeroBuilds/ShadowRanger";
@@ -73,6 +75,12 @@ namespace SurvivorSouls.Editor.Characters
             if (ranger.ModelPrefab != model)
             {
                 ranger.SetModel(model);
+                EditorUtility.SetDirty(ranger);
+            }
+            // KAN-229: eased turn to a new target (a 180 deg retarget takes ~0.6 s instead of the Knight's 0.25 s snap).
+            if (ranger.AimTurnSpeed <= 0f)
+            {
+                ranger.SetAimTurn(RangerTurnSpeed, RangerTurnSmoothing);
                 EditorUtility.SetDirty(ranger);
             }
             var arrowAsset = AssetDatabase.LoadAssetAtPath<GameObject>(CombatBuilder.ArrowPrefabPath);
