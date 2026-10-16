@@ -6,6 +6,7 @@ using SurvivorSouls.Gameplay.Combat;
 using SurvivorSouls.Gameplay.Player;
 using SurvivorSouls.Gameplay.Progression;
 using SurvivorSouls.Gameplay.Skills;
+using SurvivorSouls.Gameplay.Skills.Effects;
 using SurvivorSouls.UI.Hud;
 using UnityEngine;
 
@@ -77,6 +78,12 @@ namespace SurvivorSouls.Audio
         [Tooltip("Knight walks up to the sealed portal: muted low stone thud (KAN-49).")]
         [SerializeField] private AudioClip[] portalSealed;
         [SerializeField, Range(0f, 1f)] private float portalSealedVolume = 0.45f;
+        [Tooltip("Hallowed Shield ward (KAN-93): rises, blocks a hit, runs out.")]
+        [SerializeField] private AudioClip[] wardUps;
+        [SerializeField] private AudioClip[] wardBlocks;
+        [SerializeField] private AudioClip[] wardDowns;
+        [SerializeField, Range(0f, 1f)] private float wardVolume = 0.6f;
+        [SerializeField, Range(0f, 1f)] private float wardBlockVolume = 0.35f;
         [SerializeField] private AudioClip ambience;
 
         [Header("Mix")]
@@ -165,6 +172,9 @@ namespace SurvivorSouls.Audio
             }
             Bolt.Hit += OnHit;
             PortalGate.SealTouched += OnPortalSealed; // KAN-49
+            ShieldWardEffect.WardRaised += OnWardRaised; // KAN-93
+            ShieldWardEffect.WardBlocked += OnWardBlocked;
+            ShieldWardEffect.WardEnded += OnWardEnded;
             Enemy.Damaged += OnDamaged;
             if (playerHealth != null)
             {
@@ -221,6 +231,9 @@ namespace SurvivorSouls.Audio
             }
             Bolt.Hit -= OnHit;
             PortalGate.SealTouched -= OnPortalSealed; // KAN-49
+            ShieldWardEffect.WardRaised -= OnWardRaised; // KAN-93
+            ShieldWardEffect.WardBlocked -= OnWardBlocked;
+            ShieldWardEffect.WardEnded -= OnWardEnded;
             Enemy.Damaged -= OnDamaged;
             if (playerHealth != null)
             {
@@ -364,6 +377,9 @@ namespace SurvivorSouls.Audio
         private void OnChamberArrived(int chamber) => Play(chamberArrives, chamberArriveVolume, 0f);
 
         private void OnPortalSealed(PortalGate gate) => Play(portalSealed, portalSealedVolume, 0.04f);
+        private void OnWardRaised() => Play(wardUps, wardVolume, 0.02f); // KAN-93
+        private void OnWardBlocked() => Play(wardBlocks, wardBlockVolume, 0.06f);
+        private void OnWardEnded() => Play(wardDowns, wardVolume * 0.8f, 0.03f);
 
         /// <summary>End of Realm (KAN-47): the portal horn a little lower, under the Chamber toll.</summary>
         private void OnRealmCleared(SurvivorSouls.Gameplay.Chamber.RunSnapshot run)

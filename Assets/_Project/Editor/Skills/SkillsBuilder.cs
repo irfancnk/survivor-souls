@@ -18,6 +18,7 @@ namespace SurvivorSouls.Editor.Skills
     /// links are filled in). Icons and effect prefabs are rebuilt every run. Called by GameSceneBuilder.
     /// Tiers (KAN-37): Common = plain stat boosts, Rare = crit / pierce / ricochet / Spread Shot, Epic = life steal /
     /// Double Shot, Legendary = burning bolts / soul burst. Reliquary Hunter (KAN-72, Epic) drops upgrade chests through stats only.
+    /// Hallowed Shield (KAN-93, Epic): a ward bubble that blocks all damage for a few seconds on a cooldown.
     /// <see cref="BuildStyles"/> makes the per-tier style asset (labels, gems, sounds).
     /// </summary>
     public static class SkillsBuilder
@@ -30,7 +31,7 @@ namespace SurvivorSouls.Editor.Skills
         private const string PrefabDir = "Assets/_Project/Prefabs/Skills";
         private const string RingTexturePath = "Assets/_Project/Art/Textures/Game/T_Ring.png"; // made by GameArtKit
 
-        private enum Fx { None, Burn, LifeSteal, KillBurst }
+        private enum Fx { None, Burn, LifeSteal, KillBurst, Ward }
 
         private sealed class Spec
         {
@@ -207,10 +208,20 @@ namespace SurvivorSouls.Editor.Skills
                     L("Chests 3%, elites 16%, 5th is rare", Add(StatId.ChestChance, 0.03f), Add(StatId.ChestEliteChance, 0.16f),
                         Add(StatId.ChestChoices, 1f), Add(StatId.RareChestEvery, 5f)),
                 } },
+            // KAN-93: Temporary Shield. Every Cooldown seconds a ward blocks ALL damage for WardDuration seconds (the shield
+            // pool is not touched). The cooldown counts from the end of the last ward; the effect's base is 20 s, levels
+            // subtract. Epic, from the level 4 tier.
+            new Spec { Id = "temporary_shield", File = "TemporaryShield", Name = "Hallowed Shield", Rarity = SkillRarity.Epic,
+                Glyph = SkillIconPainter.Ward, Effect = Fx.Ward, Levels = new[]
+                {
+                    L("Ward: immune 3 s, every 20 s", Add(StatId.WardDuration, 3f)),
+                    L("Ward: immune 4 s, every 17 s", Add(StatId.WardDuration, 4f), Add(StatId.WardCooldown, -3f)),
+                    L("Ward: immune 5 s, every 14 s", Add(StatId.WardDuration, 5f), Add(StatId.WardCooldown, -6f)),
+                } },
         };
 
         /// <summary>Skills added after the progression asset was first made: id -> tier fromLevel they join (once).</summary>
-        private static readonly (string id, int fromLevel)[] LateUnlocks = { ("reliquary_hunter", 4), ("double_shot", 2) };
+        private static readonly (string id, int fromLevel)[] LateUnlocks = { ("reliquary_hunter", 4), ("double_shot", 2), ("temporary_shield", 4) };
 
         /// <summary>Guarantees added after the progression asset was first made: id -> level (once, if that level is free).</summary>
         private static readonly (string id, int level)[] LateGuarantees = { ("double_shot", 3), ("sharpened_bolts", 2), ("quick_draw", 8) };
@@ -366,7 +377,7 @@ namespace SurvivorSouls.Editor.Skills
                     new SkillProgression.Tier
                     {
                         fromLevel = 4, common = 55f, rare = 30f, epic = 12f, legendary = 3f,
-                        unlocks = new[] { s["ricochet"], s["ember_bolts"], s["blood_covenant"], s["reliquary_hunter"] },
+                        unlocks = new[] { s["ricochet"], s["ember_bolts"], s["blood_covenant"], s["reliquary_hunter"], s["temporary_shield"] },
                     },
                     new SkillProgression.Tier
                     {
@@ -436,6 +447,7 @@ namespace SurvivorSouls.Editor.Skills
             if (ringTex == null) throw new InvalidOperationException($"Missing {RingTexturePath} (GameArtKit builds it).");
             var ringMat = EditorAssetUtil.ParticleMaterial(FxDir + "/M_FX_SoulBurstRing.mat", ringTex, additive: true);
             var glowMat = EditorAssetUtil.ParticleMaterial(FxDir + "/M_FX_SkillGlow.mat", kit.SoftDot, additive: true);
+            var wardMat = EditorAssetUtil.LoadOrCreateMaterial(FxDir + "/M_FX_WardBubble.mat", "SurvivorSouls/WardBubble"); // KAN-93
 
             return new Dictionary<Fx, SkillEffect>
             {
@@ -473,6 +485,29 @@ namespace SurvivorSouls.Editor.Skills
                     main.gravityModifier = 0.6f;
                     Set(fx, "ring", ring);
                     Set(fx, "sparks", sparks);
+                }),
+                // KAN-93: ward bubble (built-in sphere, WardBubble shader, off until the first ward) + rise / break motes.
+                [Fx.Ward] = SavePrefab<ShieldWardEffect>("FX_Skill_HallowedShield", (root, fx) =>
+                {
+                    var sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                    sphere.name = "Ward Bubble";
+                    UnityEngine.Object.DestroyImmediate(sphere.GetComponent<Collider>());
+                    sphere.transform.SetParent(root.transform, false);
+                    sphere.transform.localPosition = new Vector3(0f, 0.95f, 0f);
+                    sphere.transform.localScale = Vector3.one * 2.2f;
+                    var mr = sphere.GetComponent<MeshRenderer>();
+                    mr.sharedMaterial = wardMat;
+                    mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                    mr.receiveShadows = false;
+                    mr.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off;
+                    mr.reflectionProbeUsage = UnityEngine.Rendering.ReflectionProbeUsage.Off;
+                    mr.motionVectorGenerationMode = MotionVectorGenerationMode.ForceNoMotion;
+                    mr.enabled = false;
+                    var motes = Particles(root, "Ward Motes", glowMat, 80, new Vector2(0.5f, 0.8f), new Vector2(0.08f, 0.15f),
+                        new Color(1f, 0.9f, 0.6f), new Color(0.75f, 0.85f, 1f));
+                    Drag(motes, 2.5f);
+                    Set(fx, "bubble", mr);
+                    Set(fx, "motes", motes);
                 }),
             };
         }

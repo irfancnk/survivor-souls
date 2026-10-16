@@ -166,6 +166,18 @@ namespace SurvivorSouls.Editor.Skills
             return Mathf.Max(star, -hole);
         }
 
+        /// <summary>Hallowed Shield (KAN-93): heater shield rim (flat top, pointed base) with a cross inside.</summary>
+        public static float Ward(Vector2 p)
+        {
+            float top = RoundBox(p, new Vector2(0f, 0.24f), new Vector2(0.6f, 0.4f), 0.08f);
+            float point = Triangle(p, new Vector2(0f, -0.88f), new Vector2(0.6f, -0.08f), new Vector2(-0.6f, -0.08f));
+            float shield = SmoothMin(top, point, 0.16f);
+            float rim = Mathf.Max(shield, -(shield + 0.13f));
+            float cross = Mathf.Min(Segment(p, new Vector2(0f, 0.42f), new Vector2(0f, -0.5f), 0.075f),
+                Segment(p, new Vector2(-0.3f, 0.14f), new Vector2(0.3f, 0.14f), 0.075f));
+            return Mathf.Min(rim, cross);
+        }
+
         // ------------------------------------------------------------ SDF primitives
 
         /// <summary>Reliquary chest: box body, domed lid split by a gap, keyhole cut out, two light rays above.</summary>

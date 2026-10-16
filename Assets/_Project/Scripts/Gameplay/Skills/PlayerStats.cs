@@ -16,7 +16,8 @@ namespace SurvivorSouls.Gameplay.Skills
     /// (extra bolts fired one after another down the same line, KAN-83), SpreadDamage (damage share of each angled Spread
     /// Shot bolt; base from the shooter), ChainDamage (damage share of each follow-up Double Shot bolt; base 1), BurnSpread
     /// (foes a bolt-lit burning enemy sets on fire per burn tick, KAN-77), BurnDeathBlast (blast damage on a burning enemy's
-    /// death, as a share of bolt damage, KAN-77). Append new ids at the end: assets store them as numbers.
+    /// death, as a share of bolt damage, KAN-77), WardDuration (seconds a Hallowed Shield ward blocks all damage, KAN-93),
+    /// WardCooldown (seconds between two wards; base from the effect, levels subtract). Append new ids at the end: assets store them as numbers.
     /// </summary>
     public enum StatId
     {
@@ -44,6 +45,8 @@ namespace SurvivorSouls.Gameplay.Skills
         ChainDamage,
         BurnSpread,
         BurnDeathBlast,
+        WardDuration,
+        WardCooldown,
     }
 
     /// <summary>Flat adds to the base value; Percent scales it (0.2 = +20 %). Percents from all sources add up.</summary>

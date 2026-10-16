@@ -1,0 +1,51 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1fe610960d6a34b01a28534f0f33effb, type: 3}
+  m_Name: Skill_TemporaryShield
+  m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Skills.SkillDefinition
+  id: temporary_shield
+  displayName: Hallowed Shield
+  description: 'Ward: immune 3 s, every 20 s'
+  icon: {fileID: 2800000, guid: dabb2a779a1d345f7a0d8355ba65ea3e, type: 3}
+  rarity: 2
+  maxStack: 3
+  weight: 1
+  modifiers:
+  - stat: 24
+    kind: 0
+    value: 3
+  levels:
+  - description: 'Ward: immune 3 s, every 20 s'
+    modifiers:
+    - stat: 24
+      kind: 0
+      value: 3
+  - description: 'Ward: immune 4 s, every 17 s'
+    modifiers:
+    - stat: 24
+      kind: 0
+      value: 4
+    - stat: 25
+      kind: 0
+      value: -3
+  - description: 'Ward: immune 5 s, every 14 s'
+    modifiers:
+    - stat: 24
+      kind: 0
+      value: 5
+    - stat: 25
+      kind: 0
+      value: -6
+  effectPrefab: {fileID: 3081473456292653756, guid: 8f677da42675d42e2b5b4788ae92ae78, type: 3}
+  requiresUpgradableSkill: 0
+  repeatOfferWeights: []
+  upgradeOfferWeight: 1

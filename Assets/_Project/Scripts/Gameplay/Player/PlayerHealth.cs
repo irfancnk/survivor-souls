@@ -13,7 +13,8 @@ namespace SurvivorSouls.Gameplay.Player
     /// <see cref="maxHealth"/> is the base: max health skills raise it through <see cref="PlayerStats"/>; a raise also heals
     /// by the amount gained (Archero rule), a drop only clamps.
     /// <see cref="Shield"/> (KAN-82, for KAN-93 Temporary Shield) is a separate pool on top of health: damage takes the
-    /// shield first, the rest comes off health. No skill grants a shield yet.
+    /// shield first, the rest comes off health. No skill grants a shield yet: KAN-93 Hallowed Shield uses the full block
+    /// <see cref="Warded"/> instead (the ticket asks for no damage at all while it is up).
     /// </summary>
     public sealed class PlayerHealth : MonoBehaviour
     {
@@ -31,6 +32,8 @@ namespace SurvivorSouls.Gameplay.Player
         public event Action OnDeath;
         /// <summary>Raised when the shield value changes (KAN-82): new shield.</summary>
         public event Action<float> OnShieldChanged;
+        /// <summary>Raised on every damage call a ward blocked (KAN-93): amount blocked. Can fire every frame (contact damage).</summary>
+        public event Action<float> OnWardBlocked;
 
         private float _current;
         private float _max;
@@ -49,6 +52,11 @@ namespace SurvivorSouls.Gameplay.Player
         public float Shield => _shield;
         /// <summary>Takes no damage while set (boss intro, KAN-62: the Knight cannot move, so nothing may hurt it).</summary>
         public bool Invulnerable { get; set; }
+        /// <summary>
+        /// Ward up (KAN-93 Hallowed Shield): no damage at all, the shield pool is not touched either. Separate from
+        /// <see cref="Invulnerable"/> so the skill and the boss intro never clear each other's flag.
+        /// </summary>
+        public bool Warded { get; set; }
 
         private void Awake()
         {
@@ -81,6 +89,11 @@ namespace SurvivorSouls.Gameplay.Player
         public float TakeDamage(float amount)
         {
             if (_dead || Invulnerable || amount <= 0f) return 0f;
+            if (Warded)
+            {
+                OnWardBlocked?.Invoke(amount);
+                return 0f;
+            }
             if (_shield > 0f)
             {
                 float absorbed = Mathf.Min(_shield, amount);
