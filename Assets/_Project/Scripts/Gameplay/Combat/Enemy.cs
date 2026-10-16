@@ -188,7 +188,7 @@ namespace SurvivorSouls.Gameplay.Combat
         private float _freezeLeft;     // KAN-91: seconds the foe stays frozen
         private float _freezeCooldown; // seconds until the next freeze may start
         private float _freezeTotal;    // length of the running freeze (tint fade)
-        private static readonly Color IceTint = new Color(0.62f, 1.05f, 1.9f); // KAN-91 frozen body (pale blue, HDR)
+        private static readonly Color IceTint = new Color(1.45f, 1.9f, 2.7f); // KAN-91 frozen body: pale frosted blue (HDR lifts the dark albedo)
 
         /// <summary>Northmost Z an enemy may walk to (the sea edge). Set by the spawner from the world; +inf = no limit.</summary>
         public static float LandMaxZ = float.PositiveInfinity;

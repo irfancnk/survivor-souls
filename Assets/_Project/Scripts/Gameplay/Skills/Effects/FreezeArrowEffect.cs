@@ -38,9 +38,9 @@ namespace SurvivorSouls.Gameplay.Skills.Effects
         public static event System.Action<Enemy> Frozen;
 
         private static readonly Color FlashColour = new Color(0.86f, 0.96f, 1f, 0.9f);
-        private static readonly Color ShardColour = new Color(0.62f, 0.86f, 1f);
-        private static readonly Color MistColour = new Color(0.78f, 0.9f, 1f, 0.55f);
-        private static readonly Color RimeColour = new Color(0.7f, 0.9f, 1f);
+        private static readonly Color ShardColour = new Color(0.4f, 0.72f, 1f);
+        private static readonly Color MistColour = new Color(0.6f, 0.82f, 1f, 0.6f);
+        private static readonly Color RimeColour = new Color(0.45f, 0.75f, 1f); // bluer than the snow, else it vanishes
 
         private System.Action<BoltHit> _onHit;
         private int _charge;
@@ -125,7 +125,7 @@ namespace SurvivorSouls.Gameplay.Skills.Effects
                     Vector2 ring = Random.insideUnitCircle.normalized * (e.HitRadius * Random.Range(0.85f, 1.1f));
                     p.position = root + new Vector3(ring.x, Random.Range(0.15f, e.Height * 0.95f), ring.y);
                     p.velocity = new Vector3(ring.x * 0.3f, Random.Range(0.25f, 0.6f), ring.y * 0.3f);
-                    p.startSize = Random.Range(0.1f, 0.18f) * scale;
+                    p.startSize = Random.Range(0.16f, 0.26f) * scale;
                     p.startLifetime = Random.Range(0.5f, 0.8f);
                     p.startColor = RimeColour;
                     frost.Emit(p, 1);
