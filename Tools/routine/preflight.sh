@@ -34,6 +34,11 @@ echo "== origin/main (last 15)"
 git log --oneline -15 origin/main
 
 echo
+echo "== KAN keys named in origin/main commit subjects (a ticket here has work on main: check before you build it again)"
+git log origin/main --format=%s | grep -oE 'KAN-[0-9]+' | sort -t- -k2 -n -u | tr '\n' ' '
+echo
+
+echo
 echo "== claims / locks on origin (git side only: also check the last Jira comment before you call one STALE)"
 found=0
 while read -r ref sha ts; do
