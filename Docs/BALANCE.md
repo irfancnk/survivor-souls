@@ -50,3 +50,17 @@ Horde scaling (KAN-92, unchanged asset) at level 20: power index 8.11, zombie he
 
 - Phone feel check for these numbers: KAN-53 (Chamber balance pass) and KAN-85 (boss playtest).
 - No boss-damage perk yet. If bosses still feel long on the phone, add one (follow-up ticket).
+
+## KAN-77 Ember Bolts level perks (2026-10-16)
+
+| Lv | Burn | Length | Perk | Card text |
+| --- | --- | --- | --- | --- |
+| 1 | 25 /s | 3 s | - | Hits burn: 25 fire damage/s for 3 s |
+| 2 | 40 /s | 3 s | - | Hits burn: 40 fire damage/s for 3 s |
+| 3 | 55 /s | 4 s | Spread: `BurnSpread` 1 | Burn 55/s for 4 s, spreads to a foe |
+| 4 | 75 /s | 5 s | Spread 1 + death blast: `BurnDeathBlast` 0.6 | Burn 75/s for 5 s + 60% death blast |
+
+- Spread: every burn tick (0.5 s) of a bolt-lit enemy sets the nearest non-burning foe within 2.5 m on fire, with the same damage per second and length. One step only: a fire caught from a neighbour does not spread on. A bolt hit on a caught fire makes it a bolt fire again.
+- Death blast: when a burning enemy dies (any cause except a Bloater's own burst), it deals 60 % of the current bolt damage to every foe within 2.2 m, one frame later (queued like Soul Burst). A blast kill of a burning foe blasts again.
+- Tunables on the effect prefab `Prefabs/Skills/FX_Skill_EmberBolts.prefab` (`BurnOnHitEffect`): `spreadRadius` 2.5, `blastRadius` 2.2, `spreadEmbers` 8, `blastEmbers` 22.
+- Not in the power curve yet: `SkillPowerCurve` models burn as a 1-target DPS add only. Spread and blast are crowd damage, so the KAN-92 horde scaling does not see them. Follow-up ticket if the phone run shows Ember L4 too strong.
