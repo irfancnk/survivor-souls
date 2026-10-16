@@ -32,6 +32,8 @@ namespace SurvivorSouls.Gameplay.Combat
         [SerializeField] private bool fireWhileMoving;
         [SerializeField, Min(0f)] private float aimTurnSpeed = 720f; // degrees per second
         [SerializeField, Range(1f, 90f)] private float aimTolerance = 15f;
+        [Tooltip("KAN-215: with fireWhileMoving, most degrees between the run direction and the target; beyond it the upper body cannot twist that far, so no shot.")]
+        [SerializeField, Range(0f, 180f)] private float maxMovingTwist = 100f;
         [Header("Skill bases (PlayerStats modifies these)")]
         [SerializeField, Range(0f, 1f)] private float critChance;
         [SerializeField, Min(1f)] private float critMultiplier = 2f;
@@ -91,6 +93,8 @@ namespace SurvivorSouls.Gameplay.Combat
         private int _active;
         private PlayerMover _mover;
         private PlayerStats _stats;
+        private CrossbowAim _aim;
+        private Enemy _target;
         private Action<Bolt> _release;
         private Action<BoltHit> _onHit;
         private float _reload = 1f; // ready at spawn, like the old zero cooldown
@@ -130,6 +134,8 @@ namespace SurvivorSouls.Gameplay.Combat
         /// False = moving or no target; the ring then shows its calm ready state instead of a sweep that leads nowhere.
         /// </summary>
         public bool Engaged => _engaged;
+        /// <summary>The enemy the last tick aimed at (null = none). The upper-body aim (KAN-215) follows it.</summary>
+        public Enemy Target => _target;
 
         /// <summary>Bolts in flight now (active cap check).</summary>
         public int ActiveBolts => _active;
@@ -170,6 +176,7 @@ namespace SurvivorSouls.Gameplay.Combat
         {
             _mover = GetComponent<PlayerMover>();
             _stats = GetComponent<PlayerStats>();
+            _aim = GetComponent<CrossbowAim>();
             _release = b =>
             {
                 _pool.Push(b);
@@ -189,6 +196,7 @@ namespace SurvivorSouls.Gameplay.Combat
             _reload = Mathf.Min(before + dt / CurrentInterval, 2f);
             if (before < 1f && _reload >= 1f) ReloadCompleted?.Invoke();
             _engaged = false;
+            _target = null;
 
             bool moving = _mover.Velocity.sqrMagnitude > MovingSpeed * MovingSpeed;
             if (moving && !fireWhileMoving) return;
@@ -199,11 +207,13 @@ namespace SurvivorSouls.Gameplay.Combat
             to.y = 0f;
             if (to.sqrMagnitude < 0.0001f) return;
             _engaged = true;
+            _target = target;
             var look = Quaternion.LookRotation(to);
             if (!moving) transform.rotation = Quaternion.RotateTowards(transform.rotation, look, aimTurnSpeed * dt);
 
             if (_reload < 1f) return;
             if (!moving && Quaternion.Angle(transform.rotation, look) > aimTolerance) return;
+            if (moving && Vector3.Angle(transform.forward, to) > maxMovingTwist) return;
             Fire(target);
             // Back-to-back fire keeps this frame's overshoot, so the fire rate does not drift slower with the frame time.
             // A shot that waited (aim, target) starts a clean reload. The carry is capped so a long hitch cannot double-fire.
@@ -233,6 +243,8 @@ namespace SurvivorSouls.Gameplay.Combat
         public void Fire(Enemy target)
         {
             if (boltPrefab == null || target == null) return;
+            // KAN-215: the upper body takes the last degrees (and this frame's root turn) so the crossbow line is the bolt line.
+            if (_aim != null && _aim.isActiveAndEnabled) _aim.AlignNow(target.AimPoint);
             Vector3 from = MuzzlePosition;
             Vector3 dir = (target.AimPoint - from).normalized;
             var shot = new BoltShot

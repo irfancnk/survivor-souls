@@ -216,6 +216,9 @@ namespace SurvivorSouls.Editor
             var muzzle = player.GetComponentsInChildren<Transform>(true).FirstOrDefault(t => t.name == "Crossbow_Muzzle");
             if (muzzle != null) SetRef(shooter, "muzzle", muzzle);
             SetRef(player.AddComponent<CrossbowRecoil>(), "rig", player.GetComponentInChildren<HumanoidRig>());
+            var aim = player.AddComponent<CrossbowAim>(); // KAN-215: spine + chest turn the crossbow onto the target, head looks
+            SetRef(aim, "rig", player.GetComponentInChildren<HumanoidRig>());
+            if (muzzle != null) SetRef(aim, "muzzle", muzzle);
 
             var spawner = new GameObject("Enemies").AddComponent<EnemySpawner>();
             var waves = CombatBuilder.LoadOrCreateWaves(enemy);
