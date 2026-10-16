@@ -30,6 +30,11 @@ namespace SurvivorSouls.Gameplay.Combat
         /// hottest (Ember Bolts level 4). Look only: damage and burn come from the skill effects.
         /// </summary>
         public float Heat;
+        /// <summary>
+        /// Point-blank guard (KAN-226): the first metres (flat, along the launch direction) on which the bolt ignores enemies,
+        /// = the part of the path behind the shooter's root. Cleared by the first hit. 0 = none (the struct default).
+        /// </summary>
+        public float Guard;
 
         /// <summary>Shipped falloffs (KAN-86): AutoShooter defaults and the power curve base.</summary>
         public const float DefaultPierceFalloff = 0.33f;
@@ -85,6 +90,9 @@ namespace SurvivorSouls.Gameplay.Combat
         private BoltShot _shot;
         private Vector3 _velocity;
         private float _life;
+        private Vector3 _origin;     // launch point (KAN-226 guard)
+        private Vector3 _guardDir;   // flat unit launch direction
+        private float _guard;        // ignore enemies whose centre is less than this far along _guardDir from _origin
         private Action<Bolt> _release;
         private Action<BoltHit> _onHit;
         private float _lookHeat = NoLook;
@@ -112,6 +120,10 @@ namespace SurvivorSouls.Gameplay.Combat
             _shot = shot;
             _velocity = direction * shot.Speed;
             _life = shot.Lifetime;
+            _origin = position;
+            _guardDir = new Vector3(direction.x, 0f, direction.z);
+            _guard = shot.Guard > 0f && _guardDir.sqrMagnitude > 1e-8f ? shot.Guard : 0f;
+            if (_guard > 0f) _guardDir.Normalize();
             _release = release;
             _onHit = onHit;
             _hitCount = 0;
@@ -224,7 +236,7 @@ namespace SurvivorSouls.Gameplay.Combat
             for (int i = 0; i < enemies.Count; i++)
             {
                 var e = enemies[i];
-                if (WasHit(e) || !Crosses(e, from, to, out float t) || t >= bestT) continue;
+                if (WasHit(e) || (_guard > 0f && Guarded(e)) || !Crosses(e, from, to, out float t) || t >= bestT) continue;
                 bestT = t;
                 target = e;
             }
@@ -251,6 +263,7 @@ namespace SurvivorSouls.Gameplay.Combat
             bool crit = _shot.CritChance >= 1f || (_shot.CritChance > 0f && UnityEngine.Random.value < _shot.CritChance);
             float damage = crit ? _shot.Damage * Mathf.Max(1f, _shot.CritMultiplier) : _shot.Damage;
             Vector3 dir = _velocity.normalized;
+            _guard = 0f; // the guard covers only the first leg up to the first hit
             if (_hitCount < MaxTracked) _hitEnemies[_hitCount++] = enemy;
             float deducted = enemy.TakeDamage(damage, _velocity, DamageKind.Direct, crit);
             Hit?.Invoke(point, dir);
@@ -296,6 +309,13 @@ namespace SurvivorSouls.Gameplay.Combat
             transform.rotation = Quaternion.LookRotation(dir);
             _life = Mathf.Max(_life, _shot.RicochetRange * 1.5f / Mathf.Max(1f, _shot.Speed));
             return true;
+        }
+
+        /// <summary>True when the enemy centre lies on the guarded first metres of the path (behind the shooter, KAN-226).</summary>
+        private bool Guarded(Enemy e)
+        {
+            Vector3 d = e.transform.position - _origin;
+            return d.x * _guardDir.x + d.z * _guardDir.z < _guard;
         }
 
         private bool WasHit(Enemy e)

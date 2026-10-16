@@ -282,6 +282,7 @@ namespace SurvivorSouls.Gameplay.Combat
             if (boltPrefab == null || target == null) return;
             // KAN-215: the upper body takes the last degrees (and this frame's root turn) so the crossbow line is the bolt line.
             // KAN-224: a point-blank target (PointBlankAim): the crossbow aims far down the forward line, the bolt starts further back.
+            // KAN-226: blended toward the normal shot between 1.25 and 1.5 m; the bolt skips enemies on its path behind the root.
             Vector3 point = target.AimPoint;
             if (_aim != null && _aim.isActiveAndEnabled) _aim.AlignNow(PointBlankAim.AimPoint(transform.position, point));
             Vector3 muzzleAt = MuzzlePosition;
@@ -301,6 +302,7 @@ namespace SurvivorSouls.Gameplay.Combat
                 PierceFalloff = CurrentPierceFalloff,
                 BounceFalloff = CurrentBounceFalloff,
                 Heat = BoltHeat,
+                Guard = PointBlankAim.Guard(transform.position, from, point), // KAN-226: no hit on an enemy behind the Knight
             };
             int count = VolleyBuilder.Build(CurrentVolleySpec, _volley);
             for (int i = 0; i < count; i++)
