@@ -50,6 +50,8 @@ namespace SurvivorSouls.Editor.Characters
         private const float WalkSpeed = 1.6f, RunSpeed = 5f;
         // Shoulder aim clips (KAN-216, from build_knight_crossbow.py): upper-body layer (AimIdle loop, Lower one shot) + turn step.
         private const string AimClip = "AimIdle", LowerClip = "Lower", TurnStepClip = "TurnStep";
+        // Shoot cycle clips (KAN-217): Fire (kick) + Reload (string pulled, bolt seated) on the upper-body layer.
+        private const string FireClip = "Fire", ReloadClip = "Reload";
         private const string UpperBodyRoot = "mixamorig:Spine1"; // this bone and everything under it is in the upper-body mask
 
         public static bool SourceExists => File.Exists(SourcePath);
@@ -130,6 +132,8 @@ namespace SurvivorSouls.Editor.Characters
                     var stance = new SerializedObject(root.AddComponent<SurvivorSouls.Gameplay.Combat.CrossbowStance>());
                     stance.FindProperty("animator").objectReferenceValue = animator;
                     stance.ApplyModifiedPropertiesWithoutUndo();
+                    if (clips.TryGetValue(FireClip, out var fire) && clips.TryGetValue(ReloadClip, out var reload))
+                        CrossbowCycleBuilder.AddTo(root, animator, fire.length, reload.length); // KAN-217 shoot cycle
                 }
 
                 EditorAssetUtil.EnsureFolder("Assets/_Project/Prefabs");
@@ -362,7 +366,7 @@ namespace SurvivorSouls.Editor.Characters
                     else if (channel == "rotation") AddRotationCurves(clip, path, times, glb.ReadFloats(sampler["output"].AsInt(), 4));
                 }
                 clip.EnsureQuaternionContinuity();
-                SetLoop(clip, name != HitClip && name != LowerClip && name != TurnStepClip);
+                SetLoop(clip, name != HitClip && name != LowerClip && name != TurnStepClip && name != FireClip && name != ReloadClip);
                 result[name] = SaveClip(clip);
             }
             if (!result.ContainsKey("Idle")) result["Idle"] = SaveClip(MakeIdle(nodes, model));
@@ -542,7 +546,11 @@ namespace SurvivorSouls.Editor.Characters
             }
             sm.defaultState = locoState;
             if (clips.TryGetValue(TurnStepClip, out var stepClip) && clips.TryGetValue(AimClip, out var aimClip) && clips.TryGetValue(LowerClip, out var lowerClip))
+            {
                 AddAimLayers(ctrl, sm, locoState, stepClip, aimClip, lowerClip, upperBody);
+                if (clips.TryGetValue(FireClip, out var fireClip) && clips.TryGetValue(ReloadClip, out var reloadClip))
+                    AddShootCycle(ctrl, fireClip, reloadClip);
+            }
             EditorUtility.SetDirty(ctrl);
             return ctrl;
         }
@@ -592,6 +600,55 @@ namespace SurvivorSouls.Editor.Characters
             toAim.AddCondition(UnityEditor.Animations.AnimatorConditionMode.If, 0f, SurvivorSouls.Gameplay.Combat.CrossbowStance.AimParam);
             toAim.hasExitTime = false;
             toAim.duration = 0.12f;
+        }
+
+        /// <summary>
+        /// KAN-217: Fire and Reload states on the upper-body layer next to Aim. CrossbowCycle cross-fades into Fire on each
+        /// volley; Fire goes on to Reload (speed from float "ReloadSpeed") or, with bool "Snap" (fire rate too high for a
+        /// reload), straight back to Aim. Both leave for Lower when "Aim" turns off.
+        /// </summary>
+        private static void AddShootCycle(UnityEditor.Animations.AnimatorController ctrl, AnimationClip fireClip, AnimationClip reloadClip)
+        {
+            ctrl.AddParameter(SurvivorSouls.Gameplay.Combat.CrossbowCycle.SnapParam, AnimatorControllerParameterType.Bool);
+            ctrl.AddParameter(new AnimatorControllerParameter
+            {
+                name = SurvivorSouls.Gameplay.Combat.CrossbowCycle.ReloadSpeedParam, type = AnimatorControllerParameterType.Float, defaultFloat = 1f,
+            });
+            var usm = ctrl.layers[ctrl.layers.Length - 1].stateMachine;
+            UnityEditor.Animations.AnimatorState aim = null, lower = null;
+            foreach (var cs in usm.states)
+            {
+                if (cs.state.name == SurvivorSouls.Gameplay.Combat.CrossbowStance.AimState) aim = cs.state;
+                if (cs.state.name == SurvivorSouls.Gameplay.Combat.CrossbowStance.LowerState) lower = cs.state;
+            }
+            var fire = usm.AddState(SurvivorSouls.Gameplay.Combat.CrossbowCycle.FireState);
+            fire.motion = fireClip;
+            var reload = usm.AddState(SurvivorSouls.Gameplay.Combat.CrossbowCycle.ReloadState);
+            reload.motion = reloadClip;
+            reload.speedParameter = SurvivorSouls.Gameplay.Combat.CrossbowCycle.ReloadSpeedParam;
+            reload.speedParameterActive = true;
+
+            var toReload = fire.AddTransition(reload);
+            toReload.AddCondition(UnityEditor.Animations.AnimatorConditionMode.IfNot, 0f, SurvivorSouls.Gameplay.Combat.CrossbowCycle.SnapParam);
+            toReload.hasExitTime = true;
+            toReload.exitTime = 1f;
+            toReload.duration = 0f;
+            var snapBack = fire.AddTransition(aim);
+            snapBack.AddCondition(UnityEditor.Animations.AnimatorConditionMode.If, 0f, SurvivorSouls.Gameplay.Combat.CrossbowCycle.SnapParam);
+            snapBack.hasExitTime = true;
+            snapBack.exitTime = 1f;
+            snapBack.duration = 0.04f;
+            var reloadBack = reload.AddTransition(aim);
+            reloadBack.hasExitTime = true;
+            reloadBack.exitTime = 1f;
+            reloadBack.duration = 0.05f;
+            foreach (var from in new[] { fire, reload })
+            {
+                var down = from.AddTransition(lower);
+                down.AddCondition(UnityEditor.Animations.AnimatorConditionMode.IfNot, 0f, SurvivorSouls.Gameplay.Combat.CrossbowStance.AimParam);
+                down.hasExitTime = false;
+                down.duration = 0.08f;
+            }
         }
 
         // ------------------------------------------------------------ Material + textures

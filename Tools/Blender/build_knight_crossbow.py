@@ -95,6 +95,23 @@ LOWER_FRAMES = 8           # aim -> hip carry (0.33 s)
 STEP_FRAMES = 10           # turn-in-place step (0.42 s): left foot, then right foot
 STEP_LIFT = 0.07           # foot lift (m)
 
+# Shoot cycle (KAN-217), upper-body layer, both from the shoulder aim. Fire: sharp kick, the crossbow lifts and settles.
+# Reload: the crossbow dips, the left hand reaches forward to the string, pulls it back to the nut and seats a bolt.
+# Unity plays Reload at a speed that fits the fire interval (CrossbowCycle); the bolt shows again at RELOAD_SEAT.
+FIRE_FRAMES = 3            # 0.125 s
+FIRE_KICK = (0.0, 1.0, 0.45, 0.0)   # kick share per frame
+FIRE_BACK = 0.045          # grip slides back toward the shoulder at the peak (crossbow units)
+FIRE_PITCH_DEG = 7.0       # muzzle lifts at the peak
+FIRE_SPINE_DEG = (-3.0, -2.0)       # Spine1 / Spine2 pitch at the peak (- = leans back)
+RELOAD_FRAMES = 14         # 0.58 s at speed 1
+RELOAD_PITCH_DEG = -18.0   # muzzle tips down while the string is pulled
+RELOAD_DROP = (0.05, -0.06)          # grip moves back (+X) and down (-Z) at full dip (crossbow units)
+RELOAD_LEAN_DEG = (2.0, 3.0, 9.0)    # Spine1 / Spine2 / Head pitch at full dip (+ = forward / down)
+# Left hand offset from its fore-stock contact (crossbow units: -X toward the muzzle, +Z up), keyed at clip shares.
+RELOAD_HAND = ((0.0, (0.0, 0.0, 0.0)), (0.25, (-0.16, 0.0, 0.10)), (0.55, (0.17, 0.0, 0.10)),
+               (0.70, (0.06, 0.0, 0.11)), (0.88, (0.0, 0.0, 0.0)), (1.0, (0.0, 0.0, 0.0)))
+RELOAD_SEAT = 0.70         # clip share where the bolt sits on the rail again (CrossbowCycle.seatAt)
+
 CLIPS = ["Walking", "Running", "Hit_Reaction"]
 B = "mixamorig:"
 ARM_BONES = [B + n for n in ("LeftShoulder", "LeftArm", "LeftForeArm", "LeftHand",
@@ -515,6 +532,66 @@ def step_feet(feet):
     return before
 
 
+# ------------------------------------------------------------------ shoot cycle clips (KAN-217)
+def make_fire(arm, offs):
+    """Fire (upper body, one shot): aim stance with a short backward kick of the chest."""
+    act = bpy.data.actions.new("Fire")
+    set_action(arm, act)
+    rest_pose(arm)
+    aim = aim_offsets(arm, offs)
+    for f in range(FIRE_FRAMES + 1):
+        k = FIRE_KICK[f]
+        rots = dict(aim)
+        for n, deg in zip(("Spine1", "Spine2"), FIRE_SPINE_DEG):
+            rots[B + n] = to_local(arm, B + n, world_rot(0, deg * k, 0)) @ aim[B + n]
+        key_spine(arm, f, rots)
+    return act
+
+
+def reload_dip(f):
+    t = f / RELOAD_FRAMES
+    if t < 0.25:
+        return smooth(t / 0.25)
+    if t > 0.75:
+        return 1.0 - smooth((t - 0.75) / 0.25)
+    return 1.0
+
+
+def reload_hand(f):
+    t = f / RELOAD_FRAMES
+    for (t0, a), (t1, b) in zip(RELOAD_HAND, RELOAD_HAND[1:]):
+        if t <= t1:
+            w = smooth((t - t0) / (t1 - t0))
+            return Vector(a).lerp(Vector(b), w)
+    return Vector(RELOAD_HAND[-1][1])
+
+
+def make_reload(arm, offs):
+    """Reload (upper body, one shot): chest and head lean over the crossbow while it dips."""
+    act = bpy.data.actions.new("Reload")
+    set_action(arm, act)
+    rest_pose(arm)
+    aim = aim_offsets(arm, offs)
+    for f in range(RELOAD_FRAMES + 1):
+        d = reload_dip(f)
+        rots = dict(aim)
+        for n, deg in zip(("Spine1", "Spine2", "Head"), RELOAD_LEAN_DEG):
+            rots[B + n] = to_local(arm, B + n, world_rot(0, deg * d, 0)) @ aim[B + n]
+        key_spine(arm, f, rots)
+    return act
+
+
+def grip_offset(rig, back, up, pitch_deg):
+    """Moves the grip frame (crossbow space: +X toward the stock, +Z up) and pitches the muzzle (+ = up)."""
+    g = rig["grip"]
+    g.matrix_world = g.matrix_world @ Matrix.Translation((back, 0.0, up)) @ Matrix.Rotation(math.radians(pitch_deg), 4, "Y")
+
+
+def left_hand_offset(rig, rel, delta):
+    """Left hand target = its fore-stock contact moved by delta (crossbow space)."""
+    rig["LeftTarget"].matrix_world = rig["grip"].matrix_world @ Matrix.Translation(delta) @ rel
+
+
 def move_crossbow_to_hand(arm, xb, idle):
     """The crossbow follows the right hand (the hand moves it between hip carry and shoulder aim)."""
     set_action(arm, idle)
@@ -581,12 +658,30 @@ def main():
         add_stance_keys(arm, act, offs)
     carry_clips = list(actions)
     aim_idle, lower, step = make_aim_idle(arm, offs), make_lower(arm, offs), make_turn_step(idle)
-    actions += [aim_idle, lower, step]
+    fire, reload = make_fire(arm, offs), make_reload(arm, offs)
+    actions += [aim_idle, lower, step, fire, reload]
 
     captured = {a.name: capture(arm, a, ARM_BONES) for a in carry_clips if a is not idle}
     captured[aim_idle.name] = capture(arm, aim_idle, ARM_BONES, lambda f: place_rig(arm, rig, carry, aim, 1.0))
     captured[lower.name] = capture(arm, lower, ARM_BONES,
                                    lambda f: place_rig(arm, rig, carry, aim, lower_weight(f)))
+    left_rel = rig["grip"].matrix_world.inverted() @ rig["LeftTarget"].matrix_world
+
+    def fire_frame(f):
+        place_rig(arm, rig, carry, aim, 1.0)
+        k = FIRE_KICK[f]
+        grip_offset(rig, FIRE_BACK * k, 0.0, FIRE_PITCH_DEG * k)
+        left_hand_offset(rig, left_rel, Vector())
+
+    def reload_frame(f):
+        place_rig(arm, rig, carry, aim, 1.0)
+        d = reload_dip(f)
+        grip_offset(rig, RELOAD_DROP[0] * d, RELOAD_DROP[1] * d, RELOAD_PITCH_DEG * d)
+        left_hand_offset(rig, left_rel, reload_hand(f))
+    captured[fire.name] = capture(arm, fire, ARM_BONES, fire_frame)
+    captured[reload.name] = capture(arm, reload, ARM_BONES, reload_frame)
+    place_rig(arm, rig, carry, aim, 0.0)
+    left_hand_offset(rig, left_rel, Vector())
     leg_helpers = add_leg_ik(arm)
     helpers += leg_helpers
     captured[idle.name] = capture(arm, idle, ARM_BONES + LEG_BONES, lambda f: place_rig(arm, rig, carry, aim, 0.0))

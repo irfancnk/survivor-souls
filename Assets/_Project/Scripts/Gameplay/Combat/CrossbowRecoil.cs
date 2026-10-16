@@ -26,6 +26,10 @@ namespace SurvivorSouls.Gameplay.Combat
         private AutoShooter _shooter;
         private float _time = float.MaxValue;
         private float _scale = 1f;
+        private float _volleyScale = 1f;
+
+        /// <summary>KAN-217: size of the main volley kick (CrossbowCycle lowers it: its Fire clip carries most of the kick).</summary>
+        public void SetVolleyScale(float scale) => _volleyScale = Mathf.Clamp01(scale);
 
         private void Awake() => _shooter = GetComponent<AutoShooter>();
         private void OnEnable()
@@ -40,7 +44,7 @@ namespace SurvivorSouls.Gameplay.Combat
             _shooter.FollowUpFired -= OnFollowUp;
         }
 
-        private void OnFired(Vector3 muzzle, Vector3 direction) => Kick(1f);
+        private void OnFired(Vector3 muzzle, Vector3 direction) => Kick(_volleyScale);
         private void OnFollowUp(Vector3 muzzle, Vector3 direction) => Kick(followUpScale);
 
         private void Kick(float scale)
