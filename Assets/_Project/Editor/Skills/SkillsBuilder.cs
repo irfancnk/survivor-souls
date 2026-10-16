@@ -88,6 +88,8 @@ namespace SurvivorSouls.Editor.Skills
         // KAN-191: level 10 single-target back to 2.5x (true mean at 2000 runs was 2.44x): Sharpened Bolts 42-135 % from level 2,
         // Quick Draw 50-94 % from level 3 (levels 1-2 kept: the 10-pick boss fight stays >= 60 s), Fleet Foot weight 0.5 (no
         // damage, it crowded the early Common offers).
+        // KAN-219 (KAN-124.1): the 6 stat skills (Sharpened Bolts, Quick Draw, Vigor, Fleet Foot, Soul Siphon, Keen Eye) have 8
+        // levels: shrinking steps, level 8 a bigger step (milestone). Levels 1-6 (1-5) kept.
         // NOTE: shipped assets keep designer numbers; these rows only seed a fresh asset. Edit both.
         private static readonly Spec[] Specs =
         {
@@ -100,6 +102,8 @@ namespace SurvivorSouls.Editor.Skills
                     L("+90% bolt damage", Pct(StatId.Damage, 0.9f)),
                     L("+112% bolt damage", Pct(StatId.Damage, 1.12f)),
                     L("+135% bolt damage", Pct(StatId.Damage, 1.35f)),
+                    L("+155% bolt damage", Pct(StatId.Damage, 1.55f)),
+                    L("+180% bolt damage", Pct(StatId.Damage, 1.8f)),
                 } },
             new Spec { Id = "quick_draw", File = "QuickDraw", Name = "Quick Draw", Rarity = SkillRarity.Common,
                 Glyph = SkillIconPainter.AttackSpeed, Levels = new[]
@@ -110,6 +114,8 @@ namespace SurvivorSouls.Editor.Skills
                     L("+66% attack speed", Pct(StatId.AttackSpeed, 0.66f)),
                     L("+80% attack speed", Pct(StatId.AttackSpeed, 0.8f)),
                     L("+94% attack speed", Pct(StatId.AttackSpeed, 0.94f)),
+                    L("+106% attack speed", Pct(StatId.AttackSpeed, 1.06f)),
+                    L("+120% attack speed", Pct(StatId.AttackSpeed, 1.2f)),
                 } },
             new Spec { Id = "fleet_foot", File = "FleetFoot", Name = "Fleet Foot", Rarity = SkillRarity.Common, Weight = 0.5f,
                 Glyph = SkillIconPainter.MoveSpeed, Levels = new[]
@@ -119,6 +125,9 @@ namespace SurvivorSouls.Editor.Skills
                     L("+24% move speed", Pct(StatId.MoveSpeed, 0.24f)),
                     L("+29% move speed", Pct(StatId.MoveSpeed, 0.29f)),
                     L("+33% move speed", Pct(StatId.MoveSpeed, 0.33f)),
+                    L("+36% move speed", Pct(StatId.MoveSpeed, 0.36f)),
+                    L("+39% move speed", Pct(StatId.MoveSpeed, 0.39f)),
+                    L("+43% move speed", Pct(StatId.MoveSpeed, 0.43f)),
                 } },
             new Spec { Id = "vigor", File = "Vigor", Name = "Vigor", Rarity = SkillRarity.Common,
                 Glyph = SkillIconPainter.MaxHealth, Levels = new[]
@@ -129,6 +138,8 @@ namespace SurvivorSouls.Editor.Skills
                     L("+275 max health, healed at once", Add(StatId.MaxHealth, 275f)),
                     L("+330 max health, healed at once", Add(StatId.MaxHealth, 330f)),
                     L("+380 max health, healed at once", Add(StatId.MaxHealth, 380f)),
+                    L("+425 max health, healed at once", Add(StatId.MaxHealth, 425f)),
+                    L("+480 max health, healed at once", Add(StatId.MaxHealth, 480f)),
                 } },
             new Spec { Id = "soul_siphon", File = "SoulSiphon", Name = "Soul Siphon", Rarity = SkillRarity.Common, Weight = 0.7f,
                 Glyph = SkillIconPainter.PickupRadius, Levels = new[]
@@ -138,6 +149,9 @@ namespace SurvivorSouls.Editor.Skills
                     L("+95% soul pickup range", Pct(StatId.PickupRadius, 0.95f)),
                     L("+115% soul pickup range", Pct(StatId.PickupRadius, 1.15f)),
                     L("+130% soul pickup range", Pct(StatId.PickupRadius, 1.3f)),
+                    L("+145% soul pickup range", Pct(StatId.PickupRadius, 1.45f)),
+                    L("+160% soul pickup range", Pct(StatId.PickupRadius, 1.6f)),
+                    L("+180% soul pickup range", Pct(StatId.PickupRadius, 1.8f)),
                 } },
             new Spec { Id = "keen_eye", File = "KeenEye", Name = "Keen Eye", Rarity = SkillRarity.Rare,
                 Glyph = SkillIconPainter.Crit, Levels = new[]
@@ -147,6 +161,9 @@ namespace SurvivorSouls.Editor.Skills
                     L("+20% crit chance, +60% crit damage", Add(StatId.CritChance, 0.2f), Add(StatId.CritDamage, 0.6f)),
                     L("+25% crit chance, +80% crit damage", Add(StatId.CritChance, 0.25f), Add(StatId.CritDamage, 0.8f)),
                     L("+30% crit chance, +100% crit damage", Add(StatId.CritChance, 0.3f), Add(StatId.CritDamage, 1f)),
+                    L("+33% crit chance, +112% crit damage", Add(StatId.CritChance, 0.33f), Add(StatId.CritDamage, 1.12f)),
+                    L("+36% crit chance, +124% crit damage", Add(StatId.CritChance, 0.36f), Add(StatId.CritDamage, 1.24f)),
+                    L("+40% crit chance, +140% crit damage", Add(StatId.CritChance, 0.4f), Add(StatId.CritDamage, 1.4f)),
                 } },
             new Spec { Id = "piercing_bolts", File = "PiercingBolts", Name = "Piercing Bolts", Rarity = SkillRarity.Rare,
                 Glyph = SkillIconPainter.Pierce, Levels = new[]
