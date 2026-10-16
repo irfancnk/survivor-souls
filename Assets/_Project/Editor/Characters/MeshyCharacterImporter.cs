@@ -30,6 +30,7 @@ namespace SurvivorSouls.Editor.Characters
         private const string MaterialPath = Dir + "/M_ArcherMeshy.mat";
         public const string PrefabPath = "Assets/_Project/Prefabs/Player_ArcherMeshy.prefab";
         private const string ControllerPath = Dir + "/AC_ArcherMeshy.controller";
+        private const string UpperBodyMaskPath = Dir + "/AM_ArcherMeshy_UpperBody.mask";
         private const string HipsBone = "mixamorig:Hips";
         private const int TextureSize = 1024; // character is ~100 px tall on screen; 1k is plenty on phones
         private const int AttachmentTextureSize = 512; // weapon covers a few dozen pixels
@@ -47,6 +48,9 @@ namespace SurvivorSouls.Editor.Characters
         // glTF animation names in the Meshy export, and blend thresholds (planar speed, m/s).
         private const string WalkClip = "Walking", RunClip = "Running", HitClip = "Hit_Reaction";
         private const float WalkSpeed = 1.6f, RunSpeed = 5f;
+        // Shoulder aim clips (KAN-216, from build_knight_crossbow.py): upper-body layer (AimIdle loop, Lower one shot) + turn step.
+        private const string AimClip = "AimIdle", LowerClip = "Lower", TurnStepClip = "TurnStep";
+        private const string UpperBodyRoot = "mixamorig:Spine1"; // this bone and everything under it is in the upper-body mask
 
         public static bool SourceExists => File.Exists(SourcePath);
 
@@ -114,12 +118,19 @@ namespace SurvivorSouls.Editor.Characters
                 // Authored animations: clips from the GLB, Animator on the Model (curve paths are relative to it).
                 var clips = BuildClips(glb, nodes, model);
                 var animator = model.gameObject.AddComponent<Animator>();
-                animator.runtimeAnimatorController = BuildController(clips);
+                animator.runtimeAnimatorController = BuildController(clips, BuildUpperBodyMask(nodes, model));
                 animator.applyRootMotion = false;
                 animator.cullingMode = AnimatorCullingMode.CullUpdateTransforms;
                 var driver = new SerializedObject(root.AddComponent<LocomotionAnimatorDriver>());
                 driver.FindProperty("animator").objectReferenceValue = animator;
                 driver.ApplyModifiedPropertiesWithoutUndo();
+                if (clips.ContainsKey(AimClip))
+                {
+                    // KAN-216: upper-body aim layer + turn step, driven from the shooter's target.
+                    var stance = new SerializedObject(root.AddComponent<SurvivorSouls.Gameplay.Combat.CrossbowStance>());
+                    stance.FindProperty("animator").objectReferenceValue = animator;
+                    stance.ApplyModifiedPropertiesWithoutUndo();
+                }
 
                 EditorAssetUtil.EnsureFolder("Assets/_Project/Prefabs");
                 var prefab = PrefabUtility.SaveAsPrefabAsset(root, PrefabPath);
@@ -351,7 +362,7 @@ namespace SurvivorSouls.Editor.Characters
                     else if (channel == "rotation") AddRotationCurves(clip, path, times, glb.ReadFloats(sampler["output"].AsInt(), 4));
                 }
                 clip.EnsureQuaternionContinuity();
-                SetLoop(clip, name != HitClip);
+                SetLoop(clip, name != HitClip && name != LowerClip && name != TurnStepClip);
                 result[name] = SaveClip(clip);
             }
             if (!result.ContainsKey("Idle")) result["Idle"] = SaveClip(MakeIdle(nodes, model));
@@ -461,8 +472,40 @@ namespace SurvivorSouls.Editor.Characters
             return existing;
         }
 
-        /// <summary>Locomotion blend tree on Speed (Idle 0, Walking, Running) + Hit reaction on trigger.</summary>
-        private static UnityEditor.Animations.AnimatorController BuildController(Dictionary<string, AnimationClip> clips)
+        /// <summary>
+        /// Generic transform mask for the upper-body layer (KAN-216): <see cref="UpperBodyRoot"/> and every node under it
+        /// (chest, neck, head, arms, hands, fingers, crossbow); hips, lower spine and legs stay with the base layer.
+        /// </summary>
+        private static AvatarMask BuildUpperBodyMask(Dictionary<int, Transform> nodes, Transform model)
+        {
+            var paths = new List<(string path, bool on)>();
+            foreach (var t in model.GetComponentsInChildren<Transform>(true))
+            {
+                if (t == model) continue;
+                bool on = false;
+                for (var p = t; p != null && p != model; p = p.parent)
+                    if (p.name == UpperBodyRoot) { on = true; break; }
+                paths.Add((AnimationUtility.CalculateTransformPath(t, model), on));
+            }
+            var mask = new AvatarMask { name = "AM_ArcherMeshy_UpperBody", transformCount = paths.Count };
+            for (int i = 0; i < paths.Count; i++)
+            {
+                mask.SetTransformPath(i, paths[i].path);
+                mask.SetTransformActive(i, paths[i].on);
+            }
+            var existing = AssetDatabase.LoadAssetAtPath<AvatarMask>(UpperBodyMaskPath);
+            if (existing == null) { AssetDatabase.CreateAsset(mask, UpperBodyMaskPath); return mask; }
+            EditorUtility.CopySerialized(mask, existing);
+            EditorUtility.SetDirty(existing);
+            return existing;
+        }
+
+        /// <summary>
+        /// Locomotion blend tree on Speed (Idle 0, Walking, Running) + Hit reaction on trigger. With the KAN-216 clips: a
+        /// TurnStep state (trigger) on the base layer and an "UpperBody" override layer (mask, weight set by
+        /// <see cref="SurvivorSouls.Gameplay.Combat.CrossbowStance"/>) with Aim (AimIdle loop) and Lower (one shot) on bool "Aim".
+        /// </summary>
+        private static UnityEditor.Animations.AnimatorController BuildController(Dictionary<string, AnimationClip> clips, AvatarMask upperBody)
         {
             StableAssetWriter.Remember(ControllerPath); // new fileIDs every rebuild: keep the old file when nothing changed (KAN-157)
             AssetDatabase.DeleteAsset(ControllerPath); // rebuilt from scratch each import
@@ -492,8 +535,57 @@ namespace SurvivorSouls.Editor.Characters
                 back.duration = 0.15f;
             }
             sm.defaultState = locoState;
+            if (clips.TryGetValue(TurnStepClip, out var stepClip) && clips.TryGetValue(AimClip, out var aimClip) && clips.TryGetValue(LowerClip, out var lowerClip))
+                AddAimLayers(ctrl, sm, locoState, stepClip, aimClip, lowerClip, upperBody);
             EditorUtility.SetDirty(ctrl);
             return ctrl;
+        }
+
+        /// <summary>KAN-216: turn step on the base layer + the upper-body aim layer (Aim / Lower on bool "Aim").</summary>
+        private static void AddAimLayers(UnityEditor.Animations.AnimatorController ctrl, UnityEditor.Animations.AnimatorStateMachine sm,
+            UnityEditor.Animations.AnimatorState locoState, AnimationClip stepClip, AnimationClip aimClip, AnimationClip lowerClip, AvatarMask upperBody)
+        {
+            ctrl.AddParameter(SurvivorSouls.Gameplay.Combat.CrossbowStance.AimParam, AnimatorControllerParameterType.Bool);
+            ctrl.AddParameter(SurvivorSouls.Gameplay.Combat.CrossbowStance.TurnStepParam, AnimatorControllerParameterType.Trigger);
+
+            var step = sm.AddState(SurvivorSouls.Gameplay.Combat.CrossbowStance.TurnStepState);
+            step.motion = stepClip;
+            var toStep = locoState.AddTransition(step);
+            toStep.AddCondition(UnityEditor.Animations.AnimatorConditionMode.If, 0f, SurvivorSouls.Gameplay.Combat.CrossbowStance.TurnStepParam);
+            toStep.hasExitTime = false;
+            toStep.duration = 0.06f;
+            var stepBack = step.AddTransition(locoState);
+            stepBack.hasExitTime = true;
+            stepBack.exitTime = 0.85f;
+            stepBack.duration = 0.1f;
+            // Leave the step as soon as the Knight runs (the step is an in-place shuffle).
+            var stepRun = step.AddTransition(locoState);
+            stepRun.AddCondition(UnityEditor.Animations.AnimatorConditionMode.Greater, 0.5f, "Speed");
+            stepRun.hasExitTime = false;
+            stepRun.duration = 0.1f;
+
+            ctrl.AddLayer(SurvivorSouls.Gameplay.Combat.CrossbowStance.UpperBodyLayer);
+            var layers = ctrl.layers;
+            var layer = layers[layers.Length - 1];
+            layer.avatarMask = upperBody;
+            layer.blendingMode = UnityEditor.Animations.AnimatorLayerBlendingMode.Override;
+            layer.defaultWeight = 0f; // CrossbowStance raises it while aiming / lowering
+            ctrl.layers = layers;
+
+            var usm = layer.stateMachine;
+            var aim = usm.AddState(SurvivorSouls.Gameplay.Combat.CrossbowStance.AimState);
+            aim.motion = aimClip;
+            var lower = usm.AddState(SurvivorSouls.Gameplay.Combat.CrossbowStance.LowerState);
+            lower.motion = lowerClip;
+            usm.defaultState = lower; // at rest the layer sits on the last Lower frame (= hip carry), weight 0
+            var toLower = aim.AddTransition(lower);
+            toLower.AddCondition(UnityEditor.Animations.AnimatorConditionMode.IfNot, 0f, SurvivorSouls.Gameplay.Combat.CrossbowStance.AimParam);
+            toLower.hasExitTime = false;
+            toLower.duration = 0.05f;
+            var toAim = lower.AddTransition(aim);
+            toAim.AddCondition(UnityEditor.Animations.AnimatorConditionMode.If, 0f, SurvivorSouls.Gameplay.Combat.CrossbowStance.AimParam);
+            toAim.hasExitTime = false;
+            toAim.duration = 0.12f;
         }
 
         // ------------------------------------------------------------ Material + textures

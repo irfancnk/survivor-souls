@@ -66,6 +66,7 @@ Transform:
   - {fileID: 5296812866797503661}
   - {fileID: 6391657629561838870}
   - {fileID: 8350549163391487670}
+  - {fileID: 2948856364003643421}
   m_Father: {fileID: 8289994141783609681}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &482234462837486015
@@ -291,7 +292,6 @@ Transform:
   - {fileID: 392632769929154141}
   - {fileID: 8085979650585907710}
   - {fileID: 8255255054836654343}
-  - {fileID: 2948856364003643421}
   m_Father: {fileID: 6967621426597346298}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1419120981023417418
@@ -368,6 +368,7 @@ GameObject:
   - component: {fileID: 4051827044754611781}
   - component: {fileID: 2650050879392182969}
   - component: {fileID: 4122250463134975176}
+  - component: {fileID: 6384121462841236068}
   m_Layer: 0
   m_Name: Player_ArcherMeshy
   m_TagString: Untagged
@@ -449,6 +450,26 @@ MonoBehaviour:
   m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Characters.LocomotionAnimatorDriver
   animator: {fileID: 2702232363127474087}
   speedDampTime: 0.08
+--- !u!114 &6384121462841236068
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1462581417389549166}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 046909a042bed46dca315107065111fb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Combat.CrossbowStance
+  animator: {fileID: 2702232363127474087}
+  lowerDelay: 1
+  raiseTime: 0.12
+  fadeTime: 0.15
+  stepAngle: 45
+  standSpeed: 0.25
+  stepCooldown: 0.45
+  turnForget: 40
 --- !u!1 &1619641021120782401
 GameObject:
   m_ObjectHideFlags: 0
@@ -1513,13 +1534,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4303081797949333250}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.03120598, y: -0.90935874, z: -0.017621309, w: 0.4144664}
-  m_LocalPosition: {x: 0.03267226, y: -0.17760311, z: 0.17901835}
-  m_LocalScale: {x: 0.84000003, y: 0.8400002, z: 0.84000015}
+  m_LocalRotation: {x: -0.43671346, y: -0.8304313, z: -0.32265732, w: 0.1247297}
+  m_LocalPosition: {x: 0.0398763, y: 0.09134033, z: -0.0048712343}
+  m_LocalScale: {x: 0.84000015, y: 0.84000003, z: 0.8399999}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 5171785286860769406}
-  m_Father: {fileID: 239148441759787078}
+  m_Father: {fileID: 6407115133867882833}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!33 &4744051385943758510
 MeshFilter:
@@ -2594,7 +2615,7 @@ Transform:
   m_GameObject: {fileID: 8900555284576150503}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: -0, z: -0.7071068, w: 0.7071068}
-  m_LocalPosition: {x: 0.63000005, y: 0.04949992, z: 0}
+  m_LocalPosition: {x: 0.6300001, y: 0.049499884, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []

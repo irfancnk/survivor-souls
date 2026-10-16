@@ -73,6 +73,28 @@ IDLE_HIPS_DROP = 0.035
 IDLE_HIPS_YAW = -14.0
 IDLE_BREATH_DEG = 1.6
 
+# Shoulder aim (KAN-216): crossbow up at the right shoulder, cheek on the stock, level along the character forward.
+# World space at rest with STANCE + AIM_STANCE. Grip = crossbow origin (stock wrist); the butt sits ~0.26 m behind it.
+AIM_GRIP = Vector((-0.10, -0.26, 1.44))
+AIM_YAW_DEG = 0.0
+AIM_PITCH_DEG = 0.0
+# Extra world-axis rotations on top of STANCE while aiming: the chest blades a little more (left shoulder forward,
+# so the left hand reaches the fore-stock), neck / head turn back to the front and tip onto the stock.
+AIM_STANCE = {
+    "mixamorig:Spine1": (-7.0, 0.0, 0.0),
+    "mixamorig:Spine2": (-7.0, 0.0, 0.0),
+    "mixamorig:Neck": (7.0, 3.0, 0.0),
+    "mixamorig:Head": (7.0, 5.0, -6.0),
+}
+AIM_RIGHT_POLE = Vector((-0.60, 0.10, 1.10))   # right elbow out to the side and a little down
+AIM_LEFT_POLE = Vector((0.25, -0.25, 0.80))    # left elbow under the fore-stock
+AIM_FRAMES = 48            # aim idle loop (2 s): breathing + slight sway
+AIM_BREATH_DEG = 0.7
+AIM_SWAY_DEG = 0.5
+LOWER_FRAMES = 8           # aim -> hip carry (0.33 s)
+STEP_FRAMES = 10           # turn-in-place step (0.42 s): left foot, then right foot
+STEP_LIFT = 0.07           # foot lift (m)
+
 CLIPS = ["Walking", "Running", "Hit_Reaction"]
 B = "mixamorig:"
 ARM_BONES = [B + n for n in ("LeftShoulder", "LeftArm", "LeftForeArm", "LeftHand",
@@ -215,8 +237,11 @@ def place_crossbow(arm, xb):
 
 
 def add_arm_rig(arm, xb):
-    """Hand target empties (children of the crossbow) + IK and Copy Rotation constraints."""
-    helpers = []
+    """Hand target empties (children of a grip frame on the chest) + IK and Copy Rotation constraints.
+    The grip frame starts on the crossbow (hip carry); aim / lower clips move it (and the elbow poles) per frame."""
+    grip = new_empty("GripFrame", parent=arm, bone=B + "Spine2", world=xb.matrix_world.copy())
+    helpers = [grip]
+    rig = {"grip": grip}
     xr = xb.matrix_world.to_3x3().normalized()
     for side, cfg, pole in (("Right", RIGHT_HAND, RIGHT_POLE), ("Left", LEFT_HAND, LEFT_POLE)):
         f = (xr @ Vector(cfg["fingers"])).normalized()
@@ -229,10 +254,12 @@ def add_arm_rig(arm, xb):
         hand_rot = world @ local.inverted()
         contact = xb.matrix_world @ Vector(cfg["contact"])
         wrist = contact - f * WRIST_TO_PALM - palm_dir(side, f, t) * PALM_DEPTH
-        tgt = new_empty(f"{side}HandTarget", parent=xb,
+        tgt = new_empty(f"{side}HandTarget", parent=grip,
                         world=Matrix.Translation(wrist) @ hand_rot.to_4x4())
         pole_o = new_empty(f"{side}ElbowPole", parent=arm, bone=B + "Spine2", world=Matrix.Translation(pole))
         helpers += [tgt, pole_o]
+        rig[side + "Pole"] = pole_o
+        rig[side + "Target"] = tgt
 
         ik = arm.pose.bones[f"{B}{side}ForeArm"].constraints.new("IK")
         ik.target, ik.pole_target, ik.chain_count, ik.use_tail = tgt, pole_o, 2, True
@@ -241,7 +268,7 @@ def add_arm_rig(arm, xb):
         shoulder = arm.pose.bones[f"{B}{side}Arm"].head
         log(f"{side} wrist->shoulder {(wrist - shoulder).length:.3f} m (arm length 0.446)")
     bpy.context.view_layer.update()
-    return helpers
+    return helpers, rig
 
 
 def finger_bases(arm):
@@ -327,8 +354,8 @@ def add_leg_ik(arm):
     return made
 
 
-def capture(arm, action, bones):
-    """Constrained armature-space matrices per frame, parents first."""
+def capture(arm, action, bones, before=None):
+    """Constrained armature-space matrices per frame, parents first. before(f) moves rig helpers for frame f."""
     set_action(arm, action)
     depth = {n: len(arm.data.bones[n].parent_recursive) for n in bones}
     order = sorted(bones, key=lambda n: depth[n])
@@ -336,6 +363,9 @@ def capture(arm, action, bones):
     data = {}
     for f in frames:
         bpy.context.scene.frame_set(f)
+        if before is not None:
+            before(f)
+            bpy.context.view_layer.update()
         data[f] = {n: arm.pose.bones[n].matrix.copy() for n in order}
     return frames, order, data
 
@@ -363,6 +393,138 @@ def write_capture(arm, action, frames, order, data, fingers):
             pb.rotation_mode = "QUATERNION"
             pb.rotation_quaternion = q
             pb.keyframe_insert("rotation_quaternion", frame=f)
+
+
+# ------------------------------------------------------------------ aim clips (KAN-216)
+def smooth(x):
+    x = min(max(x, 0.0), 1.0)
+    return x * x * (3.0 - 2.0 * x)
+
+
+def chest_matrix(arm):
+    return arm.matrix_world @ arm.pose.bones[B + "Spine2"].matrix
+
+
+def lerp_matrix(a, b, t):
+    la, ra, sa = a.decompose()
+    lb, rb, sb = b.decompose()
+    return Matrix.LocRotScale(la.lerp(lb, t), ra.slerp(rb, t), sa.lerp(sb, t))
+
+
+def aim_offsets(arm, offs):
+    """Spine offsets of the aim stance (STANCE then AIM_STANCE, both world-axis)."""
+    out = dict(offs)
+    for n, v in AIM_STANCE.items():
+        out[n] = to_local(arm, n, world_rot(*v)) @ offs.get(n, Quaternion())
+    return out
+
+
+def aim_layout(arm, xb, rig, offs):
+    """Chest-space (Spine2) matrices of the grip frame and elbow poles for the hip carry and the shoulder aim."""
+    pose_rest_with_stance(arm, offs)
+    chest = chest_matrix(arm).inverted()
+    carry = {"grip": chest @ rig["grip"].matrix_world, "RightPole": chest @ rig["RightPole"].matrix_world,
+             "LeftPole": chest @ rig["LeftPole"].matrix_world}
+    pose_rest_with_stance(arm, aim_offsets(arm, offs))
+    chest = chest_matrix(arm).inverted()
+    rot = (Euler((0, 0, math.radians(90 + AIM_YAW_DEG))).to_matrix()
+           @ Euler((0, math.radians(AIM_PITCH_DEG), 0)).to_matrix())
+    aim_grip = Matrix.Translation(AIM_GRIP) @ rot.to_4x4() @ Matrix.Scale(CROSSBOW_SCALE, 4)
+    aim = {"grip": chest @ aim_grip, "RightPole": chest @ Matrix.Translation(AIM_RIGHT_POLE),
+           "LeftPole": chest @ Matrix.Translation(AIM_LEFT_POLE)}
+    for side in ("Right", "Left"):
+        tgt = chest_matrix(arm) @ aim["grip"] @ rig["grip"].matrix_world.inverted() @ rig[side + "Target"].matrix_world
+        shoulder = arm.matrix_world @ arm.pose.bones[f"{B}{side}Arm"].head
+        log(f"aim {side} wrist->shoulder {(tgt.translation - shoulder).length:.3f} m (arm length 0.446)")
+    pose_rest_with_stance(arm, offs)
+    return carry, aim
+
+
+def place_rig(arm, rig, carry, aim, w):
+    """Grip frame + poles at blend w (0 = hip carry, 1 = shoulder aim), relative to the current chest pose."""
+    chest = chest_matrix(arm)
+    for k in ("grip", "RightPole", "LeftPole"):
+        rig[k].matrix_world = chest @ lerp_matrix(carry[k], aim[k], w)
+
+
+def key_spine(arm, f, rots):
+    hips = arm.pose.bones[B + "Hips"]
+    hips.rotation_mode = "QUATERNION"
+    hips.location = Vector()
+    hips.rotation_quaternion = Quaternion()
+    hips.keyframe_insert("location", frame=f)
+    hips.keyframe_insert("rotation_quaternion", frame=f)
+    for n, q in rots.items():
+        pb = arm.pose.bones[n]
+        pb.rotation_mode = "QUATERNION"
+        pb.rotation_quaternion = q
+        pb.keyframe_insert("rotation_quaternion", frame=f)
+
+
+def make_aim_idle(arm, offs):
+    """Aim idle (upper body): aim stance, slow breathing pitch and a slight sway."""
+    act = bpy.data.actions.new("AimIdle")
+    set_action(arm, act)
+    rest_pose(arm)
+    aim = aim_offsets(arm, offs)
+    for f in range(AIM_FRAMES + 1):
+        ph = 2 * math.pi * f / AIM_FRAMES
+        rots = dict(aim)
+        for n, k in (("Spine1", 0.5), ("Spine2", 0.5)):
+            wob = world_rot(AIM_SWAY_DEG * k * math.sin(ph + 0.6), AIM_BREATH_DEG * k * math.sin(ph), 0)
+            rots[B + n] = to_local(arm, B + n, wob) @ aim[B + n]
+        key_spine(arm, f, rots)
+    return act
+
+
+def make_lower(arm, offs):
+    """Lower (upper body, one shot): aim stance back to the hip-carry stance."""
+    act = bpy.data.actions.new("Lower")
+    set_action(arm, act)
+    rest_pose(arm)
+    aim = aim_offsets(arm, offs)
+    for f in range(LOWER_FRAMES + 1):
+        w = 1.0 - smooth(f / LOWER_FRAMES)
+        key_spine(arm, f, {n: offs[n].slerp(aim[n], w) for n in offs})
+    return act
+
+
+def lower_weight(f):
+    return 1.0 - smooth(f / LOWER_FRAMES)
+
+
+def make_turn_step(idle):
+    """Turn-in-place step: the Idle keys (stance included) over STEP_FRAMES; the feet lift in the capture."""
+    act = idle.copy()
+    act.name = "TurnStep"
+    act.use_frame_range = True
+    act.frame_start, act.frame_end = 0, STEP_FRAMES
+    return act
+
+
+def step_feet(feet):
+    """before(f) for the step capture: left foot lifts in the first half, right foot in the second."""
+    base = {k: o.matrix_world.copy() for k, o in feet.items()}
+
+    def before(f):
+        half = STEP_FRAMES / 2.0
+        for side, start in (("Left", 0.0), ("Right", half)):
+            t = (f - start) / half
+            lift = STEP_LIFT * math.sin(math.pi * t) if 0.0 < t < 1.0 else 0.0
+            feet[side].matrix_world = Matrix.Translation((0, 0, lift)) @ base[side]
+    return before
+
+
+def move_crossbow_to_hand(arm, xb, idle):
+    """The crossbow follows the right hand (the hand moves it between hip carry and shoulder aim)."""
+    set_action(arm, idle)
+    bpy.context.scene.frame_set(0)
+    bpy.context.view_layer.update()
+    world = xb.matrix_world.copy()
+    xb.parent_bone = B + "RightHand"
+    bpy.context.view_layer.update()
+    xb.matrix_world = world
+    bpy.context.view_layer.update()
 
 
 # ------------------------------------------------------------------ preview
@@ -409,17 +571,32 @@ def main():
     offs = stance_offsets(arm)
     pose_rest_with_stance(arm, offs)
     place_crossbow(arm, xb)
-    helpers = add_arm_rig(arm, xb)
+    helpers, rig = add_arm_rig(arm, xb)
     fingers = finger_bases(arm)
+    carry, aim = aim_layout(arm, xb, rig, offs)
 
     idle = make_idle(arm)
     actions.append(idle)
     for act in actions:
         add_stance_keys(arm, act, offs)
+    carry_clips = list(actions)
+    aim_idle, lower, step = make_aim_idle(arm, offs), make_lower(arm, offs), make_turn_step(idle)
+    actions += [aim_idle, lower, step]
 
-    captured = {a.name: capture(arm, a, ARM_BONES) for a in actions if a is not idle}
-    helpers += add_leg_ik(arm)
-    captured[idle.name] = capture(arm, idle, ARM_BONES + LEG_BONES)
+    captured = {a.name: capture(arm, a, ARM_BONES) for a in carry_clips if a is not idle}
+    captured[aim_idle.name] = capture(arm, aim_idle, ARM_BONES, lambda f: place_rig(arm, rig, carry, aim, 1.0))
+    captured[lower.name] = capture(arm, lower, ARM_BONES,
+                                   lambda f: place_rig(arm, rig, carry, aim, lower_weight(f)))
+    leg_helpers = add_leg_ik(arm)
+    helpers += leg_helpers
+    captured[idle.name] = capture(arm, idle, ARM_BONES + LEG_BONES, lambda f: place_rig(arm, rig, carry, aim, 0.0))
+    feet = {s: next(o for o in leg_helpers if o.name == f"{s}FootTarget") for s in ("Left", "Right")}
+    lift = step_feet(feet)
+
+    def step_frame(f):
+        place_rig(arm, rig, carry, aim, 0.0)
+        lift(f)
+    captured[step.name] = capture(arm, step, ARM_BONES + LEG_BONES, step_frame)
 
     for pb in arm.pose.bones:
         for c in list(pb.constraints):
@@ -428,6 +605,7 @@ def main():
         bpy.data.objects.remove(o)
     for act in actions:
         write_capture(arm, act, *captured[act.name], fingers)
+    move_crossbow_to_hand(arm, xb, idle)
 
     if opt["preview"]:
         preview(arm, opt["preview"], actions)
