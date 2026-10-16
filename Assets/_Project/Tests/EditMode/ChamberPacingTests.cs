@@ -17,7 +17,7 @@ namespace SurvivorSouls.Tests
     /// <summary>
     /// KAN-113 / KAN-232 acceptance on the shipped Realm 1 data: the pacing model gives 3-4 Hunter level picks in Chamber 1
     /// and 2-3 in every other regular 45 s Chamber of a 20-Chamber run; spawn pressure keeps a strong Knight's field fuller than the table alone; max alive stays
-    /// inside the phone budget; the chest pity clock fits the 2 minute Chamber.
+    /// inside the phone budget; the chest pity clock fits the Chamber clock.
     /// </summary>
     public sealed class ChamberPacingTests
     {
@@ -88,8 +88,8 @@ namespace SurvivorSouls.Tests
             var rules = AssetDatabase.LoadAssetAtPath<ChamberRules>(ChamberBuilder.RulesPath);
             Assert.That(config, Is.Not.Null);
             Assert.That(rules, Is.Not.Null);
-            Assert.That(config.PitySeconds, Is.LessThanOrEqualTo(rules.SurvivalSeconds * 0.5f + 0.01f),
-                "a Chamber without an elite chest still gets its pity chest early enough to use it");
+            Assert.That(config.PitySeconds, Is.LessThanOrEqualTo(rules.SurvivalSeconds - 15f),
+                "a Chamber without an elite chest still gets its pity chest with 15 s left to use it");
             Assert.That(config.PitySeconds, Is.GreaterThanOrEqualTo(20f), "pity is a safety net, not the drop rate");
         }
 

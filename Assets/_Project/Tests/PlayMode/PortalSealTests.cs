@@ -183,9 +183,9 @@ namespace SurvivorSouls.Tests
                 Assert.That(box.yMin, Is.GreaterThanOrEqualTo(bar.worldBound.yMax), "clear of the timer bar");
 
             // Live countdown.
-            timer.SetRemaining(100.2f);
+            timer.SetRemaining(30.2f); // inside the 45 s clock (KAN-232)
             hud.Tick(0f);
-            Assert.That(hud.TimeText, Is.EqualTo("01:41"), "counts down live while visible");
+            Assert.That(hud.TimeText, Is.EqualTo("00:31"), "counts down live while visible");
 
             hud.Tick(Frame); // warm up
             Assert.That(() => { for (int i = 0; i < 30; i++) hud.Tick(Frame); }, Is.Not.AllocatingGCMemory(), "no allocation per frame");
