@@ -2455,11 +2455,13 @@ MonoBehaviour:
   hitCooldown: 0.5
   flashShare: 0.5
   glow: {fileID: 7248517104444377827}
-  tilt: 55
+  tilt: 20
+  bookScale: 1.35
+  haloSize: 0.95
   bobHeight: 0.08
   bobRate: 2.4
   growTime: 0.25
-  trailRate: 22
+  trailRate: 26
   hitSparks: 7
 --- !u!1 &2491715239417487975
 GameObject:

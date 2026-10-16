@@ -36,13 +36,17 @@ namespace SurvivorSouls.Gameplay.Skills.Effects
         [Header("Look")]
         [SerializeField] private ParticleSystem glow;
         [Tooltip("Cover tilt out of the orbit plane, degrees (the top-down camera sees the cover).")]
-        [SerializeField, Range(0f, 90f)] private float tilt = 55f;
+        [SerializeField, Range(0f, 90f)] private float tilt = 20f;
+        [Tooltip("Book size (the mesh is a 0.5 m tome; bigger reads better at phone size).")]
+        [SerializeField, Min(0.1f)] private float bookScale = 1.35f;
+        [Tooltip("Soft gold halo behind each book (one short particle per book per frame); 0 = off.")]
+        [SerializeField, Min(0f)] private float haloSize = 0.95f;
         [SerializeField, Min(0f)] private float bobHeight = 0.08f;
         [SerializeField, Min(0f)] private float bobRate = 2.4f;
         [Tooltip("Seconds a book takes to grow in when it appears.")]
         [SerializeField, Min(0.01f)] private float growTime = 0.25f;
         [Tooltip("Trail motes per second per book.")]
-        [SerializeField, Min(0f)] private float trailRate = 22f;
+        [SerializeField, Min(0f)] private float trailRate = 26f;
         [SerializeField, Min(0)] private int hitSparks = 7;
 
         /// <summary>A tome hit a foe (sound): the foe and the hit point. Raised after the damage.</summary>
@@ -54,9 +58,10 @@ namespace SurvivorSouls.Gameplay.Skills.Effects
         public const int MaxTomes = 8;
         private const int HitSlots = 24; // recent hits remembered per book (more foes than this inside one book never happens)
 
-        private static readonly Color TrailColour = new Color(1f, 0.82f, 0.38f, 0.75f);
+        private static readonly Color TrailColour = new Color(1f, 0.7f, 0.22f, 0.9f); // deep amber: pale gold vanishes on snow
         private static readonly Color SparkColour = new Color(1f, 0.9f, 0.5f, 1f);
         private static readonly Color FlashColour = new Color(1f, 0.95f, 0.72f, 0.85f);
+        private static readonly Color HaloColour = new Color(1f, 0.72f, 0.28f, 0.42f);
 
         private readonly Enemy[] _hitEnemy = new Enemy[MaxTomes * HitSlots];
         private readonly float[] _hitUntil = new float[MaxTomes * HitSlots];
@@ -181,7 +186,7 @@ namespace SurvivorSouls.Gameplay.Skills.Effects
                 var rot = Quaternion.LookRotation(tangent, Vector3.up) * Quaternion.Euler(0f, 0f, -tilt);
                 _grow[i] = Mathf.Min(1f, _grow[i] + dt / growTime);
                 float g = _grow[i];
-                float scale = g < 1f ? EaseOutBack(g) : 1f;
+                float scale = (g < 1f ? EaseOutBack(g) : 1f) * bookScale;
                 book.SetPositionAndRotation(p, rot);
                 book.localScale = new Vector3(scale, scale, scale);
             }
@@ -272,7 +277,9 @@ namespace SurvivorSouls.Gameplay.Skills.Effects
 
         private void EmitTrail(int count, float dt)
         {
-            if (glow == null || trailRate <= 0f || dt <= 0f) return;
+            if (glow == null || dt <= 0f) return;
+            if (haloSize > 0f) EmitHalos(count);
+            if (trailRate <= 0f) return;
             _trailDebt += trailRate * dt;
             int per = (int)_trailDebt;
             if (per <= 0) return;
@@ -290,11 +297,27 @@ namespace SurvivorSouls.Gameplay.Skills.Effects
                 {
                     p.position = at + back * UnityEngine.Random.Range(0.05f, 0.25f) + UnityEngine.Random.insideUnitSphere * 0.1f;
                     p.velocity = back * 0.4f + Vector3.up * UnityEngine.Random.Range(0.05f, 0.25f);
-                    p.startSize = UnityEngine.Random.Range(0.1f, 0.18f);
+                    p.startSize = UnityEngine.Random.Range(0.13f, 0.24f);
                     p.startLifetime = UnityEngine.Random.Range(0.3f, 0.45f);
                     p.startColor = TrailColour;
                     glow.Emit(p, 1);
                 }
+            }
+        }
+
+        /// <summary>One short soft halo particle behind every book (the books read as glowing on the snow).</summary>
+        private void EmitHalos(int count)
+        {
+            var p = new ParticleSystem.EmitParams { applyShapeToPosition = false };
+            p.velocity = Vector3.zero;
+            p.startSize = haloSize * bookScale;
+            p.startLifetime = 0.07f;
+            p.startColor = HaloColour;
+            for (int i = 0; i < count; i++)
+            {
+                if (tomes[i] == null) continue;
+                p.position = tomes[i].position - Vector3.up * 0.3f; // below = behind for the top-down camera: the book stays clear
+                glow.Emit(p, 1);
             }
         }
 
