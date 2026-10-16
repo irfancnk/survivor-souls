@@ -22,6 +22,8 @@ namespace SurvivorSouls.Gameplay.Combat
         /// <summary>A warning shows at least this long before damage can land (boss rule, BossData.MinTelegraph).</summary>
         public const float MinTelegraph = 0.6f;
 
+        /// <summary>KAN-132: an attack started its wind-up (swell, crouch, slam wind-up): the attacker. Sounds.</summary>
+        public static event Action<SpecialAttack> WindUpStarted;
         /// <summary>An attack struck (burst, leap take-off, slam): the attacker. Sounds, shake, tests.</summary>
         public static event Action<SpecialAttack> Struck;
         /// <summary>An attack hit the Knight: the attacker, damage dealt.</summary>
@@ -101,6 +103,7 @@ namespace SurvivorSouls.Gameplay.Combat
             _phase = Phase.WindUp;
             _time = 0f;
             Enemy.Halted = true;
+            WindUpStarted?.Invoke(this);
             return true;
         }
 

@@ -13,7 +13,9 @@ namespace SurvivorSouls.Gameplay.Combat
     /// <item>Burst: the Knight inside the circle loses <see cref="Settings.damageShare"/> of its max health; every other
     /// zombie inside (not bosses) loses <see cref="Settings.enemyShare"/> of its own max health (a crowd tool: chains into
     /// other Bloaters); a toxic cloud (<see cref="Settings.cloud"/>, <see cref="GroundHazards"/>) stays. The Bloater dies by
-    /// its own burst (<see cref="Enemy.Expire"/>: no soul wisp, no kill).</item>
+    /// its own burst (<see cref="Enemy.Expire"/>: no soul wisp, no kill). KAN-132: the body vanishes at the burst
+    /// (<see cref="Enemy.Vanish"/>), it never plays its Death clip after it; the spores and sounds are in
+    /// <see cref="SpecialMeleeFx"/> / <c>SpecialMeleeSounds</c>.</item>
     /// <item>A kill by the Knight (bolt, burn, another burst) bursts it too: the circle shows round the corpse and the burst
     /// comes <see cref="Settings.deathFuse"/> s after the warning first showed (a kill mid-swell keeps the time already shown).
     /// With no free warning the corpse still bursts on the zombies and leaves the cloud, but never hits the Knight unwarned.</item>
@@ -159,8 +161,9 @@ namespace SurvivorSouls.Gameplay.Combat
             if (hazards != null && settings.cloud.IsValid) hazards.Spawn(centre, settings.cloud);
             RaiseStruck();
             Burst?.Invoke(this, centre, dealt, byKill);
-            if (!byKill) Enemy.Expire();
             _phase = Phase.Recover;
+            if (!byKill) Enemy.Expire();
+            Enemy.Vanish(); // KAN-132: the body is gone in the spore splash (no Death clip after the burst)
         }
 
         public override void Cancel()

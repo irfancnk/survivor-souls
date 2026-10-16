@@ -140,7 +140,7 @@ namespace SurvivorSouls.Gameplay.Combat
                     Hurt(knight, settings.damageShare);
                 }
             }
-            if (_wave != null) _wave.ShowWave(_origin, next, next / end);
+            if (_wave != null) _wave.ShowWave(_origin, next, next / end, settings.width); // KAN-132: the band looks as wide as it hits
             if (next < end) return;
             _wave = ReleaseCircle(_wave, hide: true);
             Enter(Phase.Recover);

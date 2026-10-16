@@ -142,6 +142,8 @@ namespace SurvivorSouls.Editor
             CreateChargeSounds(audio.gameObject, sfx, boss); // charge growl, dash, stop / crash (KAN-168)
             CreateSoulBurstSounds(audio.gameObject, sfx); // Soul Burst whump + dark chime, 3 voices (KAN-66)
             CreateEmberSounds(audio.gameObject, sfx, shooter, player.GetComponent<PlayerStats>()); // ignite whoomp, crackle, hot shot (KAN-201)
+            // Special melee zombies (KAN-132): spores, dust, slam cracks + shake, and their wind-up / strike sounds
+            SpecialMeleeFxBuilder.Create(kit, enemyShots.transform, camera.GetComponent<TopDownFollowCamera>(), audio.gameObject, sfx);
             // Knight hurt feel (KAN-187): hit direction arc, hit-stop, shake, haptic, grunt + low-health heartbeat
             HurtFeedbackBuilder.Create(health, camera.GetComponent<TopDownFollowCamera>(), camera, choice.gameObject, audio.gameObject, sfx);
             BossBuilder.CreateLaneSmoke(kit, boss.transform.parent); // smoke wisps along every warning lane (KAN-167)

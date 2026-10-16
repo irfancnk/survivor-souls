@@ -37,6 +37,8 @@ namespace SurvivorSouls.Tests
         private IWalkability _savedWalk;
         private float _savedLandMaxZ;
         private readonly List<Enemy> _killed = new List<Enemy>();
+        private SpecialMeleeFx _fx;               // KAN-132: only the no-GC test sets these
+        private SurvivorSouls.Audio.SpecialMeleeSounds _sounds;
 
         /// <summary>One pillar (r 1) at (0, 0, 2.5): in front of a Ghoul at the origin leaping north.</summary>
         private sealed class PillarAhead : IWalkability
@@ -90,6 +92,8 @@ namespace SurvivorSouls.Tests
         [TearDown]
         public void TearDown()
         {
+            _fx = null;
+            _sounds = null;
             Enemy.Damaged -= OnDamaged;
             foreach (var o in _objects)
                 if (o != null) Object.DestroyImmediate(o);
@@ -130,6 +134,8 @@ namespace SurvivorSouls.Tests
                 _hazards.Tick(Frame);
                 foreach (var c in _circles) c.Tick(Frame);
                 foreach (var l in _lines) l.Tick(Frame);
+                if (_fx != null) _fx.FollowFronts(Frame);
+                if (_sounds != null) _sounds.TickHiss(Frame, Frame);
             }
         }
 
@@ -443,7 +449,7 @@ namespace SurvivorSouls.Tests
 
         /// <summary>
         /// One full cycle of each attack first (first calls into Unity may allocate once), then a second cycle from the start
-        /// must not allocate: wind-up, ring, leap, landing, burst, cloud.
+        /// must not allocate: wind-up, ring, leap, landing, burst, cloud, and the KAN-132 strike effects + sounds.
         /// </summary>
         [Test]
         public void Attacks_NoGcPerFrame()
@@ -456,6 +462,17 @@ namespace SurvivorSouls.Tests
             var leap = ghoul.GetComponent<GhoulLeap>();
             var burst = first.GetComponent<BloaterBurst>();
             var burst2 = second.GetComponent<BloaterBurst>();
+            // KAN-132: the strike effects and sounds listen in (spores, dust, crack, ring dust, shake, voices, hiss).
+            _fx = Track(new GameObject("Special Melee FX")).AddComponent<SpecialMeleeFx>();
+            _fx.Setup(Track(new GameObject("Spores")).AddComponent<ParticleSystem>(), Track(new GameObject("Puffs")).AddComponent<ParticleSystem>(),
+                Track(new GameObject("Dust")).AddComponent<ParticleSystem>(), Track(new GameObject("Cracks")).AddComponent<ParticleSystem>(), null);
+            var audio = Track(new GameObject("Audio"));
+            audio.SetActive(false);
+            _sounds = audio.AddComponent<SurvivorSouls.Audio.SpecialMeleeSounds>();
+            var clips = new AudioClip[7][];
+            for (int i = 0; i < clips.Length; i++) clips[i] = new[] { Track(AudioClip.Create("melee" + i, 4410, 1, 44100, false)) };
+            _sounds.Setup(clips, Track(AudioClip.Create("hiss", 44100, 1, 44100, false)));
+            audio.SetActive(true);
             PlaceKnight(new Vector3(0f, 0f, 2f));
             Assert.That(slam.ForceAttack(), Is.True);
             Assert.That(leap.ForceAttack(), Is.True);
@@ -472,9 +489,12 @@ namespace SurvivorSouls.Tests
                 leap.ForceAttack();
                 burst2.ForceAttack();
                 Run(1.1f, all);
-            }, Is.Not.AllocatingGCMemory(), "Brute ring, Ghoul leap + landing, Bloater burst");
+            }, Is.Not.AllocatingGCMemory(), "Brute ring, Ghoul leap + landing, Bloater burst, KAN-132 effects + sounds");
             Assert.That(slam.CurrentPhase, Is.EqualTo(SpecialAttack.Phase.Strike));
             Assert.That(burst2.HasBurst, Is.True);
+            Assert.That(_fx.Bursts, Is.EqualTo(2), "both bursts splashed");
+            Assert.That(_fx.Slams, Is.EqualTo(2));
+            Assert.That(_fx.RingDust, Is.GreaterThan(0));
         }
 
         [Test]
