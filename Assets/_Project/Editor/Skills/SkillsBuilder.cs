@@ -13,7 +13,7 @@ namespace SurvivorSouls.Editor.Skills
 {
     /// <summary>
     /// Builds the skill system (KAN-19): rune icons, the 12 skill assets, the level table, the three behaviour-skill effect
-    /// prefabs (burn embers, life steal motes, soul burst ring + sparks) and the scene <see cref="SkillManager"/>.
+    /// prefabs (burn embers, life steal motes, soul burst dark-magic explosion (KAN-66)) and the scene <see cref="SkillManager"/>.
     /// Skill and table assets are created only when missing: designer edits are never overwritten (missing icon / effect
     /// links are filled in). Icons and effect prefabs are rebuilt every run. Called by GameSceneBuilder.
     /// Tiers (KAN-37): Common = plain stat boosts, Rare = crit / pierce / ricochet / Spread Shot, Epic = life steal /
@@ -451,7 +451,7 @@ namespace SurvivorSouls.Editor.Skills
             EditorAssetUtil.EnsureFolder(FxDir);
             var ringTex = AssetDatabase.LoadAssetAtPath<Texture2D>(RingTexturePath);
             if (ringTex == null) throw new InvalidOperationException($"Missing {RingTexturePath} (GameArtKit builds it).");
-            var ringMat = EditorAssetUtil.ParticleMaterial(FxDir + "/M_FX_SoulBurstRing.mat", ringTex, additive: true);
+            var burstMats = SoulBurstArt.Build(FxDir, ringTex); // KAN-66
             var glowMat = EditorAssetUtil.ParticleMaterial(FxDir + "/M_FX_SkillGlow.mat", kit.SoftDot, additive: true);
             var wardMat = EditorAssetUtil.LoadOrCreateMaterial(FxDir + "/M_FX_WardBubble.mat", "SurvivorSouls/WardBubble"); // KAN-93
 
@@ -472,25 +472,44 @@ namespace SurvivorSouls.Editor.Skills
                     Drag(motes, 3f);
                     Set(fx, "motes", motes);
                 }),
+                // KAN-66: dark-magic mini explosion, six Emit-only layers (KillBurstEffect sets size / colour per burst).
                 [Fx.KillBurst] = SavePrefab<KillBurstEffect>("FX_Skill_SoulBurst", (root, fx) =>
                 {
-                    var ring = Particles(root, "Burst Ring", ringMat, 24, new Vector2(0.38f, 0.38f), new Vector2(1f, 1f),
-                        new Color(0.72f, 0.9f, 1f, 0.95f), new Color(0.72f, 0.9f, 1f, 0.95f));
+                    var flash = Particles(root, "Burst Flash", glowMat, 24, new Vector2(0.1f, 0.1f), new Vector2(1.6f, 1.6f),
+                        Color.white, Color.white);
+                    Curve(flash, 0.6f, 1.25f, 1.1f);
+                    var ring = Particles(root, "Burst Ring", burstMats.GroundRing, 32, new Vector2(0.42f, 0.42f), new Vector2(1f, 1f),
+                        Color.white, Color.white);
                     ring.GetComponent<ParticleSystemRenderer>().renderMode = ParticleSystemRenderMode.HorizontalBillboard;
-                    var size = ring.sizeOverLifetime;
-                    size.enabled = true;
-                    size.size = new ParticleSystem.MinMaxCurve(1f, new AnimationCurve(new Keyframe(0f, 0.25f, 0f, 3f), new Keyframe(1f, 1f, 0f, 0f)));
-                    var sparks = Particles(root, "Burst Sparks", glowMat, 320, new Vector2(0.3f, 0.5f), new Vector2(0.07f, 0.12f),
-                        new Color(0.8f, 0.94f, 1f), new Color(0.55f, 0.78f, 1f));
+                    Curve(ring, 0.2f, 1f, 1f); // ends exactly on the damage radius (KillBurstEffect.RingSize)
+                    var shell = Particles(root, "Burst Shell", burstMats.Ring, 32, new Vector2(0.34f, 0.34f), new Vector2(1f, 1f),
+                        Color.white, Color.white);
+                    Curve(shell, 0.3f, 1f, 1f);
+                    var fire = Particles(root, "Burst Soul Fire", burstMats.Wisp, 220, new Vector2(0.45f, 0.6f), new Vector2(0.6f, 1f),
+                        Color.white, Color.white);
+                    Curve(fire, 0.55f, 1.35f, 1.5f);
+                    Drag(fire, 4.5f);
+                    var fireMain = fire.main;
+                    fireMain.gravityModifier = -0.35f; // wisps curl up
+                    var sparks = Particles(root, "Burst Shards", glowMat, 240, new Vector2(0.45f, 0.65f), new Vector2(0.07f, 0.12f),
+                        Color.white, Color.white);
                     var sr = sparks.GetComponent<ParticleSystemRenderer>();
                     sr.renderMode = ParticleSystemRenderMode.Stretch;
-                    sr.velocityScale = 0.06f;
-                    sr.lengthScale = 1.4f;
-                    Drag(sparks, 5f);
+                    sr.velocityScale = 0.05f;
+                    sr.lengthScale = 1.6f;
+                    Drag(sparks, 2.5f);
                     var main = sparks.main;
-                    main.gravityModifier = 0.6f;
+                    main.gravityModifier = 1.1f; // shards arc out and fall
+                    var mark = Particles(root, "Burst Rune Mark", burstMats.Mark, 32, new Vector2(0.45f, 0.45f), new Vector2(1f, 1f),
+                        Color.white, Color.white);
+                    mark.GetComponent<ParticleSystemRenderer>().renderMode = ParticleSystemRenderMode.HorizontalBillboard;
+                    Curve(mark, 0.92f, 1f, 1f);
+                    Set(fx, "flash", flash);
                     Set(fx, "ring", ring);
+                    Set(fx, "shell", shell);
+                    Set(fx, "fire", fire);
                     Set(fx, "sparks", sparks);
+                    Set(fx, "mark", mark);
                 }),
                 // KAN-93: ward bubble (built-in sphere, WardBubble shader, off until the first ward) + rise / break motes.
                 [Fx.Ward] = SavePrefab<ShieldWardEffect>("FX_Skill_HallowedShield", (root, fx) =>
@@ -564,6 +583,15 @@ namespace SurvivorSouls.Editor.Skills
             r.reflectionProbeUsage = UnityEngine.Rendering.ReflectionProbeUsage.Off;
             r.motionVectorGenerationMode = MotionVectorGenerationMode.ForceNoMotion;
             return ps;
+        }
+
+        /// <summary>Size over life: <paramref name="from"/> at birth, eased out to <paramref name="to"/> (KAN-66 burst layers).</summary>
+        private static void Curve(ParticleSystem ps, float from, float to, float max)
+        {
+            var size = ps.sizeOverLifetime;
+            size.enabled = true;
+            size.size = new ParticleSystem.MinMaxCurve(max, new AnimationCurve(
+                new Keyframe(0f, from / max, 0f, 3f * (to - from) / max), new Keyframe(1f, to / max, 0f, 0f)));
         }
 
         private static void Drag(ParticleSystem ps, float drag)
