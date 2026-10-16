@@ -11,11 +11,13 @@ namespace SurvivorSouls.Tests
     /// <see cref="PowerBase.SpreadFoes"/> neighbours of every bolt-lit fire to the crowd DPS; the death blast (L4) scales the
     /// crowd DPS by 1 + blast share x <see cref="PowerBase.BlastFoes"/> / <see cref="PowerBase.HitsToKill"/>. Neither
     /// touches the single-target DPS (a boss has no neighbours). With the assumptions at 0 the old formula comes back.
-    /// The shipped curve reads both perks by level 20.
+    /// The shipped Ember levels step the crowd DPS up (level 3 spread, level 4 blast); few random-pick runs reach them
+    /// by level 20, so the shipped curve barely moves.
     /// </summary>
     public sealed class EmberPowerCurveTests
     {
         private const string ProgressionPath = "Assets/_Project/Data/Skills/SkillProgression_Run.asset";
+        private const string EmberPath = "Assets/_Project/Data/Skills/Skill_EmberBolts.asset";
 
         private readonly List<Object> _objects = new List<Object>();
 
@@ -103,7 +105,29 @@ namespace SurvivorSouls.Tests
 
 #if UNITY_EDITOR
         [Test]
-        public void ShippedCurve_SeesBothPerks()
+        public void ShippedEmberLevels_GrowCrowd_SingleTargetOnlyByBurn()
+        {
+            var ember = UnityEditor.AssetDatabase.LoadAssetAtPath<SkillDefinition>(EmberPath);
+            Assert.That(ember, Is.Not.Null);
+            Assert.That(ember.MaxLevel, Is.EqualTo(4));
+            var crowd = new float[5];
+            for (int level = 1; level <= 4; level++)
+            {
+                var stats = Stats();
+                ember.ApplyLevel(stats, level);
+                var s = PowerSnapshot.Measure(stats, PowerBase.Default);
+                crowd[level] = s.CrowdDps;
+                Assert.That(s.SingleTargetDps, Is.EqualTo(100f + s.BurnDps).Within(1e-2f), $"level {level}: no perk on a boss");
+                if (level == 3) Assert.That(s.SpreadBurnDps, Is.GreaterThan(0f), "level 3 spreads");
+                if (level == 4) Assert.That(s.BlastFactor, Is.GreaterThan(0f), "level 4 blasts");
+            }
+            Assert.That(crowd[2], Is.GreaterThan(crowd[1]));
+            Assert.That(crowd[3], Is.GreaterThan(crowd[2] * 1.4f), "spread is a big crowd step");
+            Assert.That(crowd[4], Is.GreaterThan(crowd[3] * 1.4f), "blast is a big crowd step");
+        }
+
+        [Test]
+        public void ShippedCurve_SingleTargetUnchanged_CrowdNotLower()
         {
             var table = UnityEditor.AssetDatabase.LoadAssetAtPath<SkillProgression>(ProgressionPath);
             Assert.That(table, Is.Not.Null);
@@ -113,11 +137,9 @@ namespace SurvivorSouls.Tests
             var with = SkillPowerCurve.Simulate(table, PowerBase.Default, 200, 20).AtLevel(20);
             var without = SkillPowerCurve.Simulate(table, off, 200, 20).AtLevel(20);
 
-            Assert.That(with.BurnSpread, Is.GreaterThan(0f), "some runs reach Ember Bolts level 3 by level 20");
-            Assert.That(with.BurnDeathBlast, Is.GreaterThan(0f), "some runs reach Ember Bolts level 4 by level 20");
             Assert.That(with.SpreadBurn, Is.GreaterThanOrEqualTo(with.BurnSpread * 55f - 1e-3f),
                 "spread burn kept per run: every spread run burns at least 55/s");
-            Assert.That(with.CrowdDps, Is.GreaterThan(without.CrowdDps));
+            Assert.That(with.CrowdDps, Is.GreaterThanOrEqualTo(without.CrowdDps));
             Assert.That(with.SingleTargetDps, Is.EqualTo(without.SingleTargetDps).Within(1e-2f));
         }
 #endif

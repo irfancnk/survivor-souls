@@ -63,7 +63,7 @@ Horde scaling (KAN-92, unchanged asset) at level 20: power index 8.11, zombie he
 - Spread: every burn tick (0.5 s) of a bolt-lit enemy sets the nearest non-burning foe within 2.5 m on fire, with the same damage per second and length. One step only: a fire caught from a neighbour does not spread on. A bolt hit on a caught fire makes it a bolt fire again.
 - Death blast: when a burning enemy dies (any cause except a Bloater's own burst), it deals 60 % of the current bolt damage to every foe within 2.2 m, one frame later (queued like Soul Burst). A blast kill of a burning foe blasts again.
 - Tunables on the effect prefab `Prefabs/Skills/FX_Skill_EmberBolts.prefab` (`BurnOnHitEffect`): `spreadRadius` 2.5, `blastRadius` 2.2, `spreadEmbers` 8, `blastEmbers` 22.
-- Not in the power curve yet: `SkillPowerCurve` models burn as a 1-target DPS add only. Spread and blast are crowd damage, so the KAN-92 horde scaling does not see them. Follow-up ticket if the phone run shows Ember L4 too strong.
+- Power curve: since KAN-188 the crowd DPS (and so the KAN-92 horde scaling) includes spread and blast. See the KAN-188 section below.
 
 ## KAN-163 boss damage pass (2026-10-16)
 
@@ -148,3 +148,44 @@ Level steps alone move level 10 only a little: at level 10 most runs own Sharpen
 | 20 | 10.5 | 152 | 1.36 | 11 % | 3.86 | 0.82 | 1.26 | 1.33 | 17 | 449 | 2723 | 27.2x |
 
 Growth at level 20: 1-target 4.49x, crowd 27.2x, gap 6.1. All `HordeScalingTests` checks pass (horde health follows the higher crowd power). First boss with the 10-pick build: Drowned Warden 62 s, Butcher / Pyre Lord 69 s, Rotting Colossus 71 s, Bone Matriarch 61 s (band 60-90 s).
+
+## KAN-188 Ember perks in the power curve (2026-10-16)
+
+### Model
+
+`PowerSnapshot.CrowdDps` (crowd only; single-target DPS is unchanged, a boss has no neighbours):
+
+`crowd = (bolt x shots/s x crit + burn + spread burn) x volley x hits x (1 + blast factor)`
+
+- Spread burn = burn DPS x `BurnSpread` x `SpreadFoes`. Every bolt-lit fire keeps `SpreadFoes` = 1.5 neighbours burning. A fire catches one foe per 0.5 s tick and a caught fire lasts the full burn, so the limit is the neighbours, not the tick rate: in a dense horde most foes within 2.5 m already burn from bolts. The product burn x `BurnSpread` is kept per run (`PowerSnapshot.SpreadBurn`), so the run average does not mix a spread run with a no-burn run.
+- Blast factor = `BurnDeathBlast` x `BlastFoes` / `HitsToKill` = 0.6 x 1.5 / 3 = 0.3 at Ember level 4. Blast DPS = blast share x bolt damage x kills per second x foes in 2.2 m, and kills per second in a crowd = crowd DPS / (`HitsToKill` x bolt damage). Horde health follows the power index (KAN-92), so `HitsToKill` = 3 bolt hits stays about the same through a run. Bolt damage cancels. Only when the sheet burns (every kill is a burning kill). Blast-on-blast chains are not counted.
+- The three assumptions are `PowerBase` fields (`SpreadFoes`, `BlastFoes`, `HitsToKill`). Set them to 0 to get the old formula.
+
+### What it changes
+
+Bare Knight plus Ember Bolts only (one bolt, no other skills):
+
+| Ember level | 1-target DPS | Crowd DPS before | Crowd DPS now |
+| --- | --- | --- | --- |
+| 2 (burn 40) | 140 | 140 | 140 |
+| 3 (burn 55, spread) | 155 | 155 | 238 |
+| 4 (burn 75, spread, blast 60 %) | 175 | 175 | 374 |
+
+At level 20 (bolt part about 230 DPS per target), a run with Ember Bolts level 4 now reads about 2x the crowd DPS of the same run at Ember level 2. The horde scaling sees it: power index x 2^0.35 = 1.27, zombie health x 1.15.
+
+The average curve hardly moves: by level 20 only about 1 % of the random-pick runs own Ember Bolts level 3, and almost none level 4 (it is Legendary; the level 4 guarantee is only the first copy).
+
+| Lv | skills | bolt dmg | shots/s | crit | bolts | chain | pierce | bounce | burn | spread | blast | 1-target DPS | crowd DPS | crowd x |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | 0.0 | 100 | 1.00 | 0 % | 1.00 | 0.00 | 0.00 | 0.00 | 0 | 0.00 | 0.00 | 100 | 100 | 1.0x |
+| 5 | 3.5 | 116 | 1.08 | 3 % | 1.00 | 0.36 | 0.22 | 0.12 | 8 | 0.00 | 0.00 | 182 | 234 | 2.3x |
+| 10 | 6.7 | 127 | 1.19 | 6 % | 2.24 | 0.49 | 0.56 | 0.58 | 10 | 0.00 | 0.00 | 251 | 733 | 7.3x |
+| 15 | 8.8 | 139 | 1.27 | 9 % | 3.05 | 0.69 | 0.96 | 0.96 | 12 | 0.01 | 0.00 | 344 | 1535 | 15.3x |
+| 20 | 10.4 | 152 | 1.36 | 12 % | 3.85 | 0.81 | 1.28 | 1.36 | 14 | 0.01 | 0.00 | 448 | 2725 | 27.3x |
+
+(200 runs, seed 75, `BalanceReport`.) Growth at level 20: 1-target 4.48x, crowd 27.25x, gap 6.1 (limit 6.5). No tuning of the level 4 blast share was needed. `SingleTargetBalanceTests`, `HordeScalingTests` and the new `EmberPowerCurveTests` pass.
+
+### Open points
+
+- KAN-186 (Confluence sync): copy the model and the three assumptions to the design sheet.
+- The assumptions are estimates. The KAN-77 effect counts real fires (`BurnOnHitEffect.SpreadCount` / `BlastCount`); a phone run with an Ember level 4 build can check `SpreadFoes` and `BlastFoes`.
