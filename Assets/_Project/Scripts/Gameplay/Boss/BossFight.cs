@@ -941,6 +941,7 @@ namespace SurvivorSouls.Gameplay.Boss
             _dashBlocked = length < a.length - ChargeProbeStep * 0.5f; // cut short: it will slam into a pillar or the wall
             lines.ShowLine(_attackOrigin, _attackDir, length, a.width);
             BeginWindUp(index);
+            _boss.PlayPose(Enemy.StandState); // KAN-80: plant and lean in (BossChargeFx), the run clip starts with the dash
             ChargeWarned?.Invoke(_attackOrigin, _attackDir, length);
             return true;
         }
@@ -975,6 +976,7 @@ namespace SurvivorSouls.Gameplay.Boss
         {
             if (lines != null) lines.Flash();
             CurrentAttack = Attack.Dashing;
+            if (_boss != null) _boss.PlayAction(_attack.clip); // KAN-80: the wind-up stood still
             _dashHit = false;
             _dashDealt = 0f;
             _time = 0f;

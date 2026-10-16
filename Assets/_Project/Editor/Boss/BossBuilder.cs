@@ -262,6 +262,60 @@ namespace SurvivorSouls.Editor.Boss
             return go.AddComponent<LaneSmoke>();
         }
 
+        /// <summary>
+        /// Boss charge dash visuals (KAN-80): one shared alpha-blend particle system (scrape dust, dash trail, skid cloud,
+        /// dizzy embers; soft dot, one material, one draw call while alive) + <see cref="BossChargeFx"/> (lean pose).
+        /// Alpha blend, not additive: additive dust vanishes on the Realm 1 snow.
+        /// </summary>
+        public static BossChargeFx CreateChargeFx(GameArtKit kit, BossFight fight)
+        {
+            var mat = EditorAssetUtil.ParticleMaterial(ArtDir + "/M_FX_ChargeDust.mat", kit.SoftDot, additive: false);
+            var go = new GameObject("Boss Charge FX");
+            go.transform.SetParent(fight.transform.parent, false);
+            var ps = go.AddComponent<ParticleSystem>();
+            ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            var main = ps.main;
+            main.playOnAwake = true;
+            main.loop = true;
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+            main.startLifetime = 0.9f; // each puff sets its own life
+            main.startSpeed = 0f;
+            main.startSize = 1f;
+            main.maxParticles = 160;
+            main.scalingMode = ParticleSystemScalingMode.Hierarchy;
+            var emission = ps.emission;
+            emission.enabled = false;
+            var shape = ps.shape;
+            shape.enabled = false;
+            var drag = ps.limitVelocityOverLifetime;
+            drag.enabled = true;
+            drag.limit = 100f;
+            drag.drag = 1.6f; // puffs kick out, then hang
+            var size = ps.sizeOverLifetime;
+            size.enabled = true;
+            size.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.EaseInOut(0f, 0.75f, 1f, 1.6f));
+            var colour = ps.colorOverLifetime;
+            colour.enabled = true;
+            var fade = new Gradient();
+            fade.SetKeys(new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(new Color(0.85f, 0.82f, 0.8f), 1f) },
+                new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(1f, 0.12f), new GradientAlphaKey(0.7f, 0.55f), new GradientAlphaKey(0f, 1f) });
+            colour.color = fade;
+            var rot = ps.rotationOverLifetime;
+            rot.enabled = true;
+            rot.z = new ParticleSystem.MinMaxCurve(-0.8f, 0.8f);
+            var r = go.GetComponent<ParticleSystemRenderer>();
+            r.sharedMaterial = mat;
+            r.renderMode = ParticleSystemRenderMode.Billboard;
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            r.receiveShadows = false;
+            r.sortingOrder = 2;
+            var fx = go.AddComponent<BossChargeFx>();
+            var so = new SerializedObject(fx);
+            so.FindProperty("fight").objectReferenceValue = fight;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            return fx;
+        }
+
         private static void SetArray(SerializedProperty prop, Object[] items)
         {
             prop.arraySize = items.Length;

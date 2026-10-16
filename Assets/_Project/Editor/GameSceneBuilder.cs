@@ -149,6 +149,7 @@ namespace SurvivorSouls.Editor
             // Knight hurt feel (KAN-187): hit direction arc, hit-stop, shake, haptic, grunt + low-health heartbeat
             HurtFeedbackBuilder.Create(health, camera.GetComponent<TopDownFollowCamera>(), camera, choice.gameObject, audio.gameObject, sfx);
             BossBuilder.CreateLaneSmoke(kit, boss.transform.parent); // smoke wisps along every warning lane (KAN-167)
+            BossBuilder.CreateChargeFx(kit, boss); // charge lean pose, scrape dust, dash trail, dizzy embers (KAN-80)
             SetRef(audio, "hearts", hearts); // heal swell (KAN-60)
             SetRef(choice.gameObject.AddComponent<BossHud>(), "fight", boss); // boss bar in the timer's place
             SetRef(choice.gameObject.AddComponent<BossBannerHud>(), "fight", boss); // name at the intro, "felled" at the kill (KAN-62)
