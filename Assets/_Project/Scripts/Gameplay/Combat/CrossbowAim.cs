@@ -36,12 +36,17 @@ namespace SurvivorSouls.Gameplay.Combat
         [SerializeField, Min(0.01f)] private float blendIn = 0.08f;
         [Tooltip("Seconds to blend the aim out when there is no target or the Knight moves.")]
         [SerializeField, Min(0.01f)] private float blendOut = 0.25f;
+        [Tooltip("KAN-231: the upper body swings to a new target this much faster than the root turn (same spring, shorter " +
+                 "smoothing, higher cap), so the chest leads the turn instead of jumping up to maxYaw in one frame.")]
+        [SerializeField, Min(1f)] private float leadFactor = 1.4f;
 
         private AutoShooter _shooter;
         private Vector3 _headForwardLocal; // the character forward in head space at rest
         private Vector3 _point;
         private float _weight;
         private bool _ready;
+        private float _aimYaw, _aimYawVelocity; // smoothed world yaw of the aim (KAN-231)
+        private bool _hasAim;
 
         /// <summary>Current aim blend 0..1 (1 = full upper-body aim on the target).</summary>
         public float Weight => _weight;
@@ -80,7 +85,8 @@ namespace SurvivorSouls.Gameplay.Combat
         {
             if (!_ready) return;
             var target = _shooter.isActiveAndEnabled && _shooter.Engaged ? _shooter.Target : null;
-            if (target != null) _point = PointBlankAim.AimPoint(transform.position, target.AimPoint); // KAN-224
+            if (target != null) _point = SmoothedPoint(PointBlankAim.AimPoint(transform.position, target.AimPoint)); // KAN-224
+            else _hasAim = false;
             float goal = target != null ? 1f : 0f;
             float time = goal > _weight ? blendIn : blendOut;
             _weight = Mathf.MoveTowards(_weight, goal, Time.deltaTime / time);
@@ -97,7 +103,38 @@ namespace SurvivorSouls.Gameplay.Combat
         {
             if (!_ready) return;
             _point = point;
+            Vector3 to = point - transform.position;
+            if (to.x * to.x + to.z * to.z > 1e-6f)
+            {
+                _aimYaw = Mathf.Atan2(to.x, to.z) * Mathf.Rad2Deg; // the smoothed aim continues from the shot line
+                _hasAim = true;
+            }
             Solve(point, 1f);
+        }
+
+        /// <summary>
+        /// KAN-231: the aim point swung round the root at a limited, eased rate (the shooter's spring turn, faster by
+        /// <see cref="leadFactor"/>): the upper body no longer jumps up to <see cref="maxYaw"/> in one frame when the next
+        /// target is behind the Knight. Starts from the body forward when a target appears; same distance and height.
+        /// </summary>
+        private Vector3 SmoothedPoint(Vector3 point)
+        {
+            Vector3 to = point - transform.position;
+            float flat = Mathf.Sqrt(to.x * to.x + to.z * to.z);
+            if (flat < 1e-3f) return point;
+            float goal = Mathf.Atan2(to.x, to.z) * Mathf.Rad2Deg;
+            if (!_hasAim)
+            {
+                _aimYaw = transform.eulerAngles.y;
+                _aimYawVelocity = 0f;
+                _hasAim = true;
+            }
+            float dt = Time.deltaTime, speed = _shooter.AimTurnSpeed * leadFactor;
+            _aimYaw = _shooter.AimTurnSmoothing > 0f
+                ? AutoShooter.TurnYaw(_aimYaw, goal, ref _aimYawVelocity, _shooter.AimTurnSmoothing / leadFactor, speed, dt)
+                : Mathf.MoveTowardsAngle(_aimYaw, goal, speed * dt);
+            float rad = _aimYaw * Mathf.Deg2Rad;
+            return new Vector3(transform.position.x + Mathf.Sin(rad) * flat, point.y, transform.position.z + Mathf.Cos(rad) * flat);
         }
 
         /// <summary>Degrees between the crossbow line and the line from the muzzle to <paramref name="point"/>.</summary>
