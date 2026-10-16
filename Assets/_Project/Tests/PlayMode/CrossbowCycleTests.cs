@@ -129,6 +129,20 @@ namespace SurvivorSouls.Tests
         }
 
         [Test]
+        public void Loaded_Bolt_Lies_On_The_Crossbow_Line_Behind_The_Muzzle()
+        {
+            var crossbow = _loadedBolt.transform.parent;
+            Transform muzzle = null;
+            foreach (Transform c in crossbow) if (c.name == "Crossbow_Muzzle") muzzle = c;
+            Assert.That(muzzle, Is.Not.Null, "bolt sits on the crossbow next to the muzzle socket");
+            Assert.That(Vector3.Angle(_loadedBolt.transform.up, crossbow.right), Is.LessThan(1f), "bolt along the stock-to-muzzle line");
+            Vector3 tipToMuzzle = muzzle.position - _loadedBolt.transform.position;
+            Assert.That(tipToMuzzle.magnitude, Is.InRange(0.01f, 0.06f), "tip just behind the muzzle");
+            Assert.That(Vector3.Dot(tipToMuzzle, crossbow.right), Is.GreaterThan(0f), "tip behind (not past) the muzzle");
+            Assert.That(_loadedBolt.transform.lossyScale.x, Is.EqualTo(1f).Within(0.01f), "bolt keeps its own size");
+        }
+
+        [Test]
         public void ReloadSpeed_Fits_The_Interval_And_Snaps_When_Too_Fast()
         {
             float fire = _cycle.FireLength, reload = _cycle.ReloadLength, fill = _cycle.Fill;

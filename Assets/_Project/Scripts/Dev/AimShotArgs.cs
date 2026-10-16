@@ -6,9 +6,9 @@ namespace SurvivorSouls.Dev
 {
     /// <summary>
     /// Dev-build screenshot helper for the upper-body crossbow aim (KAN-215), next to <see cref="DevScreenshot"/>:
-    /// <c>-ss-aim on|off[,&lt;shot&gt;]</c> keeps (<c>on</c>) or turns off (<c>off</c>, the old pose for before / after shots)
+    /// <c>-ss-aim on|off[,&lt;shot&gt;[,&lt;seconds&gt;]]</c> keeps (<c>on</c>) or turns off (<c>off</c>, the old pose for before / after shots)
     /// <see cref="CrossbowAim"/>, logs the crossbow-line error of each volley, draws a thin red line along the crossbow line
-    /// (6 m) and stops time 0.03 s after volley number <c>shot</c> (default 2), so the capture (<c>-ss-delay</c>, realtime)
+    /// (6 m) and stops time 0.03 s (or <c>seconds</c>, KAN-217 reload shots) after volley number <c>shot</c> (default 2), so the capture (<c>-ss-delay</c>, realtime)
     /// shows the pose at the shot. Use with <c>-ss-horde</c> and <c>-ss-closeup</c>. Dev builds only; no effect without the arg.
     /// </summary>
     [DefaultExecutionOrder(10000)] // after CrossbowAim / CrossbowRecoil: the line follows the final pose
@@ -23,6 +23,7 @@ namespace SurvivorSouls.Dev
         private LineRenderer _line;
         private int _shots;
         private float _left = -1f;
+        private float _freezeAfter = 0.03f; // KAN-217: optional 3rd arg, e.g. 0.45 = mid-reload
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void Bootstrap()
@@ -36,6 +37,7 @@ namespace SurvivorSouls.Dev
             var args = go.AddComponent<AimShotArgs>();
             args._on = parts[0] != "off";
             args._freezeShot = parts.Length > 1 && int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out int n) ? n : 2;
+            if (parts.Length > 2 && float.TryParse(parts[2], NumberStyles.Float, CultureInfo.InvariantCulture, out float after)) args._freezeAfter = Mathf.Max(0.001f, after);
         }
 
         private void Update()
@@ -63,7 +65,7 @@ namespace SurvivorSouls.Dev
             _shots++;
             float error = _aim != null ? Vector3.Angle(_aim.MuzzleLine, dir) : -1f;
             Debug.Log($"[AimShotArgs] volley {_shots}: crossbow line vs bolt line {error:F2} deg, aim weight {(_aim != null ? _aim.Weight : 0f):F2}");
-            if (_shots == _freezeShot) _left = 0.03f;
+            if (_shots == _freezeShot) _left = _freezeAfter;
         }
 
         private void CreateLine()
