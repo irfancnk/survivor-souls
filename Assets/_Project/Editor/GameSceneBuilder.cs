@@ -141,6 +141,7 @@ namespace SurvivorSouls.Editor
             SetRef(audio, "boss", boss); // boss groans + slam thud
             CreateChargeSounds(audio.gameObject, sfx, boss); // charge growl, dash, stop / crash (KAN-168)
             CreateSoulBurstSounds(audio.gameObject, sfx); // Soul Burst whump + dark chime, 3 voices (KAN-66)
+            CreateEmberSounds(audio.gameObject, sfx, shooter, player.GetComponent<PlayerStats>()); // ignite whoomp, crackle, hot shot (KAN-201)
             // Knight hurt feel (KAN-187): hit direction arc, hit-stop, shake, haptic, grunt + low-health heartbeat
             HurtFeedbackBuilder.Create(health, camera.GetComponent<TopDownFollowCamera>(), camera, choice.gameObject, audio.gameObject, sfx);
             BossBuilder.CreateLaneSmoke(kit, boss.transform.parent); // smoke wisps along every warning lane (KAN-167)
@@ -328,6 +329,19 @@ namespace SurvivorSouls.Editor
             var sounds = host.AddComponent<SoulBurstSounds>();
             var so = new SerializedObject(sounds);
             SetClips(so.FindProperty("bursts"), sfx.SoulBursts);
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        /// <summary>Ember Bolts sounds (KAN-201): own small voice pools on the audio object.</summary>
+        private static void CreateEmberSounds(GameObject host, SfxBuilder.Set sfx, AutoShooter shooter, PlayerStats stats)
+        {
+            var sounds = host.AddComponent<EmberSounds>();
+            var so = new SerializedObject(sounds);
+            so.FindProperty("shooter").objectReferenceValue = shooter;
+            so.FindProperty("stats").objectReferenceValue = stats;
+            SetClips(so.FindProperty("ignites"), sfx.EmberIgnites);
+            SetClips(so.FindProperty("crackles"), sfx.EmberCrackles);
+            SetClips(so.FindProperty("hotShots"), sfx.EmberHotShots);
             so.ApplyModifiedPropertiesWithoutUndo();
         }
 

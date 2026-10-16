@@ -47,6 +47,8 @@ namespace SurvivorSouls.Editor.Audio
             public AudioClip Heartbeat;
             /// <summary>Soul Burst (KAN-66): dull low whump with a short dark chime tail.</summary>
             public AudioClip[] SoulBursts;
+            /// <summary>Ember Bolts (KAN-201): ignite whoomp + sizzle, seamless burning crackle loops, hot shot fire layer.</summary>
+            public AudioClip[] EmberIgnites, EmberCrackles, EmberHotShots;
         }
 
         [MenuItem("Survivor Souls/Rebuild Sounds")]
@@ -97,6 +99,9 @@ namespace SurvivorSouls.Editor.Audio
             set.KnightGrunts = Many("sfx_knight_grunt", 3, KnightGrunt); // KAN-187
             set.Heartbeat = Save("sfx_heartbeat_01", Rate, Heartbeat(), ambience: false); // KAN-187
             set.SoulBursts = Many("sfx_soul_burst", 2, SoulBurst); // KAN-66
+            set.EmberIgnites = Many("sfx_ember_ignite", 2, EmberIgnite); // KAN-201
+            set.EmberCrackles = Many("sfx_ember_crackle_loop", 2, EmberCrackle);
+            set.EmberHotShots = Many("sfx_ember_hot_shot", 2, EmberHotShot);
             return set;
         }
 
@@ -776,6 +781,92 @@ namespace SurvivorSouls.Editor.Audio
             Swell(b, 0.05f, 0.5f, 349.2f * v, 0.09f, 0.01f, 8f, 2);           // F4: dark minor third
             Sweep(b, 0.03f, 0.35f, 293.7f * 2.76f * v, 293.7f * 2.76f * v, 0.03f, 14f, 1); // bell partial
             return Normalize(b, 0.8f);
+        }
+
+        /// <summary>
+        /// Ember ignite (KAN-201, ~0.6 s): gas catching fire. A soft "whoomp" (low band noise that swells in over 25 ms,
+        /// a falling low sine under it), then a hiss / sizzle tail (high band noise with fast crackle flutter) that dies out.
+        /// </summary>
+        private static float[] EmberIgnite(int seed)
+        {
+            var rng = new System.Random(seed * 7019);
+            var b = new float[(int)(Rate * 0.62f)];
+            float v = seed == 1 ? 1f : 0.92f;
+            var lo = new Biquad(); lo.SetLowPass(520f * v, 0.8f, Rate);
+            var hp = new Biquad(); hp.SetHighPass(2600f, 0.7f, Rate);
+            var lp = new Biquad(); lp.SetLowPass(8500f, 0.7f, Rate);
+            for (int i = 0; i < b.Length; i++)
+            {
+                float t = i / (float)Rate;
+                float whoomp = Mathf.Min(1f, t / 0.025f) * Mathf.Exp(-Mathf.Max(0f, t - 0.025f) * 9f);
+                float sizzle = Mathf.Min(1f, Mathf.Max(0f, t - 0.03f) / 0.04f) * Mathf.Exp(-Mathf.Max(0f, t - 0.07f) * 6.5f);
+                float flutter = 0.55f + 0.45f * (float)rng.NextDouble(); // crackly hiss: random grain level
+                b[i] += lo.Process(Noise(rng)) * whoomp * 1.4f;
+                b[i] += lp.Process(hp.Process(Noise(rng))) * sizzle * flutter * 0.42f;
+            }
+            Sweep(b, 0f, 0.28f, 120f * v, 52f * v, 0.55f, 11f, 2);               // body under the whoomp
+            for (int k = 0; k < 7; k++)                                          // a few sparks pop off
+                Click(b, 0.05f + (float)rng.NextDouble() * 0.4f, 0.003f, 0.25f + (float)rng.NextDouble() * 0.2f, 6000f, rng);
+            return Normalize(b, 0.8f);
+        }
+
+        /// <summary>
+        /// Burning crackle (KAN-201, seamless ~2.25 s loop): a quiet low fire roar (low-passed noise with a slow flicker) and
+        /// random wood-fire pops (short bright ticks, a few bigger snaps). The tail crossfades into the start, so it loops.
+        /// </summary>
+        private static float[] EmberCrackle(int seed)
+        {
+            var rng = new System.Random(seed * 3491);
+            float seconds = 2.5f;
+            int n = (int)(Rate * seconds), fade = Rate / 4;
+            var b = new float[n];
+            var roar = new Biquad(); roar.SetLowPass(340f, 0.7f, Rate);
+            var air = new Biquad(); air.SetBandPass(1400f, 0.8f, Rate);
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)Rate;
+                float flicker = 0.75f + 0.25f * Mathf.Sin(t * Mathf.PI * 2f * 1.6f) * Mathf.Sin(t * Mathf.PI * 2f * 0.6f + seed);
+                b[i] = roar.Process(Noise(rng)) * 0.9f * flicker + air.Process(Noise(rng)) * 0.06f;
+            }
+            for (float t = 0.02f; t < seconds - 0.01f; t += 0.025f + (float)rng.NextDouble() * 0.11f)
+            {
+                bool snap = rng.NextDouble() < 0.12;
+                Click(b, t, snap ? 0.006f : 0.0025f, snap ? 0.55f : 0.12f + (float)rng.NextDouble() * 0.2f, snap ? 4200f : 7000f, rng);
+            }
+            for (int i = 0; i < fade; i++)
+            {
+                float w = i / (float)fade;
+                b[i] = b[i] * w + b[n - fade + i] * (1f - w);
+            }
+            var loop = new float[n - fade];
+            Array.Copy(b, loop, loop.Length);
+            // Scale only: Normalize's end fade would dip to silence at the loop point.
+            float max = 1e-6f;
+            foreach (float x in loop) max = Mathf.Max(max, Mathf.Abs(x));
+            for (int i = 0; i < loop.Length; i++) loop[i] *= 0.7f / max;
+            return loop;
+        }
+
+        /// <summary>
+        /// Hot shot layer (KAN-201, ~0.35 s) on top of the crossbow shot while Ember Bolts is owned: a fire "fwoosh"
+        /// (band noise sweeping down from 2.4 kHz to 500 Hz as the burning bolt leaves) and two or three spark ticks.
+        /// </summary>
+        private static float[] EmberHotShot(int seed)
+        {
+            var rng = new System.Random(seed * 5303);
+            var b = new float[(int)(Rate * 0.36f)];
+            var bp = new Biquad();
+            for (int i = 0; i < b.Length; i++)
+            {
+                float t = i / (float)Rate, k = t / 0.36f;
+                bp.SetBandPass(Mathf.Lerp(2400f, 500f, Mathf.Sqrt(k)), 1.1f, Rate);
+                float env = Mathf.Min(1f, t / 0.012f) * Mathf.Exp(-t * 10f);
+                b[i] = bp.Process(Noise(rng)) * env;
+            }
+            int sparks = 2 + seed % 2;
+            for (int s = 0; s < sparks; s++)
+                Click(b, 0.01f + (float)rng.NextDouble() * 0.12f, 0.0025f, 0.18f, 7500f, rng);
+            return Normalize(b, 0.75f);
         }
 
         /// <summary>
