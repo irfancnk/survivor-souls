@@ -265,6 +265,25 @@ namespace SurvivorSouls.Tests
         }
 
         [Test]
+        public void Hex_SkipsOtherShamans_SoOnlyZombiesShedEmbers()
+        {
+            var caster = SpawnShaman(Vector3.zero);
+            var other = SpawnShaman(new Vector3(0f, 0f, -2f));
+            var a = Spawn("GraveyardLaborer", new Vector3(2f, 0f, 0f));
+            var b = Spawn("GraveyardLaborer", new Vector3(-2f, 0f, 1f));
+            PlaceKnight(new Vector3(0f, 0f, 9f));
+            Assert.That(HexShaman.IsCaster(other.Enemy), Is.True);
+            Assert.That(HexShaman.IsCaster(a), Is.False);
+            Assert.That(caster.HexTargets(), Is.EqualTo(2), "the other Shaman does not count");
+            Assert.That(caster.ForceCast(HexShaman.Cast.Hex), Is.True);
+            Run(caster.Config.castWindUp + Frame, caster);
+            Assert.That(a.IsHexed && b.IsHexed, Is.True);
+            Assert.That(other.Enemy.IsHexed, Is.False, "Shamans never hex each other");
+            _fx.EmitMotes(Frame);
+            Assert.That(_fx.HexedCount, Is.EqualTo(2));
+        }
+
+        [Test]
         public void SoundsAndMotes_NoGc()
         {
             var shaman = SpawnShaman(Vector3.zero);

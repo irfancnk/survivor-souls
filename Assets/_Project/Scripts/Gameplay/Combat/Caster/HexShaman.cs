@@ -17,7 +17,7 @@ namespace SurvivorSouls.Gameplay.Combat
     /// <see cref="Settings.orbWindUp"/> s, then <see cref="Settings.orbCount"/> slow soul orbs fly outwards, evenly spaced
     /// with one aimed at the Knight (the gaps sit beside it: a side step dodges). One ring hurts the Knight once at most.</item>
     /// <item><b>Hex or raise</b> (cast B, every <see cref="Settings.castCooldown"/> s): with at least
-    /// <see cref="Settings.hexMinTargets"/> other zombies within <see cref="Settings.hexRadius"/> m a violet circle of that
+    /// <see cref="Settings.hexMinTargets"/> other zombies (not Shamans, KAN-138) within <see cref="Settings.hexRadius"/> m a violet circle of that
     /// size warns, then every zombie inside gets <see cref="Enemy.ApplyHex"/> (+30 % speed, violet tint, 5 s). Else it
     /// raises <see cref="Settings.raiseCount"/> Graveyard Laborers on a ring round itself (a circle warns at each point), never
     /// more than <see cref="Settings.raiseMax"/> of its own alive. No target and nothing to raise = try again in 1 s.</item>
@@ -302,11 +302,22 @@ namespace SurvivorSouls.Gameplay.Combat
             for (int i = 0; i < list.Count; i++)
             {
                 var e = list[i];
-                if (e == null || e == _enemy || !e.IsAlive || e.IsBoss) continue;
+                if (e == null || e == _enemy || !e.IsAlive || e.IsBoss || IsCaster(e)) continue;
                 float dx = e.transform.position.x - p.x, dz = e.transform.position.z - p.z;
                 if (dx * dx + dz * dz <= r2) n++;
             }
             return n;
+        }
+
+        /// <summary>
+        /// KAN-138: Shamans never hex each other: a hexed Shaman would shed the hexed embers and look like a buffed zombie,
+        /// and +30 % speed does nothing for a caster that holds its distance. Scans <see cref="Active"/> (a few, no GC).
+        /// </summary>
+        public static bool IsCaster(Enemy e)
+        {
+            for (int i = 0; i < Active.Count; i++)
+                if (Active[i] != null && Active[i]._enemy == e) return true;
+            return false;
         }
 
         /// <summary>Zombies raised by this Shaman that are still alive.</summary>
@@ -465,7 +476,7 @@ namespace SurvivorSouls.Gameplay.Combat
             for (int i = 0; i < list.Count; i++)
             {
                 var e = list[i];
-                if (e == null || e == _enemy || !e.IsAlive || e.IsBoss) continue;
+                if (e == null || e == _enemy || !e.IsAlive || e.IsBoss || IsCaster(e)) continue;
                 float dx = e.transform.position.x - p.x, dz = e.transform.position.z - p.z;
                 if (dx * dx + dz * dz <= r2 && e.ApplyHex(settings.hexBoost, settings.hexDuration)) n++;
             }
