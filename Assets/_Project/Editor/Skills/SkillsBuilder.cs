@@ -71,8 +71,9 @@ namespace SurvivorSouls.Editor.Skills
         // radius). Level 1 keeps the KAN-19 numbers, so the first pick feels the same as before.
         // KAN-86 single-target pass: Sharpened Bolts / Quick Draw / Keen Eye hit harder from level 2 (level 1 kept, later
         // levels grow most: boss DPS at level 20 up from 3.8x), pierce -33 % and bounce -30 % damage per enemy (BoltShot falloff), Spread Shot side bolts 50 / 55 / 60 %.
-        // KAN-191: level 10 single-target back to 2.5x (true mean at 2000 runs was 2.44x): Sharpened Bolts 42-135 % and Quick
-        // Draw 33-94 % from level 2 (level 1 kept), Fleet Foot weight 0.6 (the weakest damage card crowded the early offers).
+        // KAN-191: level 10 single-target back to 2.5x (true mean at 2000 runs was 2.44x): Sharpened Bolts 42-135 % from level 2,
+        // Quick Draw 50-94 % from level 3 (levels 1-2 kept: the 10-pick boss fight stays >= 60 s), Fleet Foot weight 0.5 (no
+        // damage, it crowded the early Common offers).
         // NOTE: shipped assets keep designer numbers; these rows only seed a fresh asset. Edit both.
         private static readonly Spec[] Specs =
         {
@@ -90,13 +91,13 @@ namespace SurvivorSouls.Editor.Skills
                 Glyph = SkillIconPainter.AttackSpeed, Levels = new[]
                 {
                     L("+15% attack speed", Pct(StatId.AttackSpeed, 0.15f)),
-                    L("+33% attack speed", Pct(StatId.AttackSpeed, 0.33f)),
+                    L("+30% attack speed", Pct(StatId.AttackSpeed, 0.3f)),
                     L("+50% attack speed", Pct(StatId.AttackSpeed, 0.5f)),
                     L("+66% attack speed", Pct(StatId.AttackSpeed, 0.66f)),
                     L("+80% attack speed", Pct(StatId.AttackSpeed, 0.8f)),
                     L("+94% attack speed", Pct(StatId.AttackSpeed, 0.94f)),
                 } },
-            new Spec { Id = "fleet_foot", File = "FleetFoot", Name = "Fleet Foot", Rarity = SkillRarity.Common, Weight = 0.6f,
+            new Spec { Id = "fleet_foot", File = "FleetFoot", Name = "Fleet Foot", Rarity = SkillRarity.Common, Weight = 0.5f,
                 Glyph = SkillIconPainter.MoveSpeed, Levels = new[]
                 {
                     L("+10% move speed", Pct(StatId.MoveSpeed, 0.1f)),

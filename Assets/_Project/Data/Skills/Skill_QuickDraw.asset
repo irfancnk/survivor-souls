@@ -29,11 +29,11 @@ MonoBehaviour:
     - stat: 1
       kind: 1
       value: 0.15
-  - description: +33% attack speed
+  - description: +30% attack speed
     modifiers:
     - stat: 1
       kind: 1
-      value: 0.33
+      value: 0.3
   - description: +50% attack speed
     modifiers:
     - stat: 1

@@ -107,3 +107,44 @@ Printed by `BossDamageBalanceTests.HitsToKill_Table` (EditMode). "-" = the attac
 - Phone playtest of the Butcher and one other boss (deaths from readable mistakes, fight time): human step, see KAN-163 follow-up.
 - Hearts (KAN-60) and life steal unchanged; re-check after the playtest.
 - The Confluence balance sheet sync (KAN-186) should also take this table.
+
+## KAN-191 level 10 single-target back to 2.5x (2026-10-16)
+
+### Problem
+
+KAN-86 set the target "level 10 single-target DPS at least 2.5x the bare Knight". The 200-run power curve read 2.54x at seed 75, but that was seed luck. At 2000 runs the true mean on main was 2.42-2.45x (seeds 75 / 11 / 23). KAN-93 moved the test to 2000 runs and lowered the floor to 2.4x.
+
+### Options measured (2000 runs, level 10 single-target at seeds 75 / 11 / 23)
+
+| Change | L10 | L20 | Gap L20 |
+| --- | --- | --- | --- |
+| Main (before) | 2.45 / 2.42 / 2.43 | 4.13 | 5.9 |
+| Sharpened Bolts +40-130 % | 2.46 / 2.44 / 2.45 | 4.19 | 5.9 |
+| Sharpened Bolts +42-135 % | 2.48 / 2.46 / 2.46 | 4.25 | 5.9 |
+| Quick Draw +33-94 % | 2.47 / 2.45 / 2.46 | 4.20 | 5.9 |
+| Quick Draw guarantee level 8 -> 5 | 2.44 / 2.43 / 2.45 | 4.13 | 6.0 |
+| Fleet Foot weight 0.7, Vigor 0.8 | 2.47 / 2.48 / 2.50 | 4.30 | 6.1 |
+| Sharpened Bolts 42-135 % + Quick Draw 33-94 % + Fleet Foot 0.6 | 2.53 / 2.53 / 2.54 | 4.48 | 6.0-6.1 |
+| **Sharpened Bolts 42-135 % + Quick Draw 30-94 % + Fleet Foot 0.5 (shipped)** | **2.52 / 2.53 / 2.55** | **4.49** | **6.1-6.2** |
+
+Level steps alone move level 10 only a little: at level 10 most runs own Sharpened Bolts / Quick Draw at level 1-2. An earlier Quick Draw guarantee did not help (the random card of the offer is still 1 in 3). The offer mix moved it most: Fleet Foot (move speed, no damage, saturates at 33 %) crowded the early Common offers. Quick Draw level 2 stays at +30 %: with +33 % the 10-pick Bone Matriarch fight (`BossIntroTests` balance check, band 60-90 s) dropped to 59.2 s. With the shipped numbers it is about 60.5 s (Drowned Warden about 62 s).
+
+### Decision
+
+- Sharpened Bolts: +20 / **42 / 66 / 90 / 112 / 135** % damage (was 20 / 38 / 58 / 80 / 102 / 125). Level 1 stays (KAN-71 rule).
+- Quick Draw: +15 / 30 / **50 / 66 / 80 / 94** % attack speed (was 15 / 30 / 46 / 62 / 76 / 90). Levels 1-2 stay.
+- Fleet Foot: offer weight **0.5** (was 1). Same levels. Vigor stays at 1: survival matters more since the KAN-163 boss hits.
+- `SingleTargetBalanceTests`: level 10 floor back to **2.5x** on 2000 runs. Level 20 stays inside 4-6x, gap under 6.5.
+- The Confluence balance sheet sync is KAN-186.
+
+### Power curve after the change (2000 runs, seed 75)
+
+| Lv | skills | bolt dmg | shots/s | crit | bolts | chain | pierce | bounce | burn | 1-target DPS | crowd DPS | crowd x |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | 0.0 | 100 | 1.00 | 0 % | 1.00 | 0.00 | 0.00 | 0.00 | 0 | 100 | 100 | 1.0x |
+| 5 | 3.5 | 115 | 1.08 | 2 % | 1.00 | 0.37 | 0.25 | 0.13 | 9 | 183 | 240 | 2.4x |
+| 10 | 6.6 | 126 | 1.19 | 6 % | 2.27 | 0.50 | 0.59 | 0.52 | 11 | 252 | 735 | 7.3x |
+| 15 | 8.9 | 139 | 1.27 | 9 % | 3.11 | 0.68 | 0.94 | 0.94 | 14 | 341 | 1535 | 15.4x |
+| 20 | 10.5 | 152 | 1.36 | 11 % | 3.86 | 0.82 | 1.26 | 1.33 | 17 | 449 | 2723 | 27.2x |
+
+Growth at level 20: 1-target 4.49x, crowd 27.2x, gap 6.1. All `HordeScalingTests` checks pass (horde health follows the higher crowd power). First boss with the 10-pick build: Drowned Warden 62 s, Butcher / Pyre Lord 69 s, Rotting Colossus 71 s, Bone Matriarch 61 s (band 60-90 s).

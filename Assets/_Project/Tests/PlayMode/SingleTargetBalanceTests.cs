@@ -14,8 +14,8 @@ namespace SurvivorSouls.Tests
     /// KAN-93: 2000 runs (was 200). At 200 runs the level 10 value moved +-0.05 with any change to the skill pool (seed
     /// noise): main read 2.54x at seed 75 but 2.46x at seeds 11 / 23, and 2.44-2.46x at 2000 runs (the true mean). The
     /// level 10 floor followed the true mean: 2.4x (Hallowed Shield in the pool: 2.43-2.44x).
-    /// KAN-191: back to 2.5x. Sharpened Bolts 42-135 % and Quick Draw 33-94 % from level 2, Fleet Foot weight 0.6. 2000 runs:
-    /// level 10 2.53x at seed 75 (2.53 / 2.54 at seeds 11 / 23), level 20 4.48x, gap 6.0-6.1.
+    /// KAN-191: back to 2.5x. Sharpened Bolts 42-135 % from level 2, Quick Draw 50-94 % from level 3, Fleet Foot weight 0.5.
+    /// 2000 runs: level 10 2.52x at seed 75 (2.53 / 2.55 at seeds 11 / 23), level 20 4.49x, gap 6.1.
     /// </summary>
     public sealed class SingleTargetBalanceTests
     {

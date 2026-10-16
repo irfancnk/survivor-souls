@@ -74,7 +74,7 @@ namespace SurvivorSouls.Tests
             new object[] { "SharpenedBolts", 5, new[] { "Damage%=1.12" } },
             new object[] { "SharpenedBolts", 6, new[] { "Damage%=1.35" } },
             new object[] { "QuickDraw", 1, new[] { "AttackSpeed%=0.15" } },
-            new object[] { "QuickDraw", 2, new[] { "AttackSpeed%=0.33" } },
+            new object[] { "QuickDraw", 2, new[] { "AttackSpeed%=0.3" } },
             new object[] { "QuickDraw", 3, new[] { "AttackSpeed%=0.5" } },
             new object[] { "QuickDraw", 4, new[] { "AttackSpeed%=0.66" } },
             new object[] { "QuickDraw", 5, new[] { "AttackSpeed%=0.8" } },
@@ -232,7 +232,7 @@ namespace SurvivorSouls.Tests
             Assert.That(_manager.GetLevel(skill), Is.EqualTo(6));
             Assert.That(_manager.CanUpgrade(skill), Is.False);
             Assert.That(_manager.CanTake(skill), Is.False, "maxed: never offered again");
-            Assert.That(_stats.Modify(StatId.Damage, 100f), Is.EqualTo(225f).Within(1e-3f), "level 6: +125 % (KAN-86)");
+            Assert.That(_stats.Modify(StatId.Damage, 100f), Is.EqualTo(235f).Within(1e-3f), "level 6: +135 % (KAN-191)");
         }
 
         // ------------------------------------------------------------ New secondary stats reach their consumers

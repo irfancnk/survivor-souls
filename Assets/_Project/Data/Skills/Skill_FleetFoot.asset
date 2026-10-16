@@ -18,7 +18,7 @@ MonoBehaviour:
   icon: {fileID: 2800000, guid: 2dba2fcdc84f84b32a3bca6b4044c48b, type: 3}
   rarity: 0
   maxStack: 5
-  weight: 0.6
+  weight: 0.5
   modifiers:
   - stat: 2
     kind: 1
