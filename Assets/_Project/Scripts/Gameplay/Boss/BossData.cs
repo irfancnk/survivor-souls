@@ -175,6 +175,21 @@ namespace SurvivorSouls.Gameplay.Boss
         [Tooltip("Seconds the boss stands and roars when the enrage starts (when it is not mid-attack). 0 = no roar.")]
         [SerializeField, Min(0f)] private float enrageRoar;
 
+        [Header("Bolt look (KAN-164.3)")]
+        [Tooltip("Look of this boss's bolts: Ember (default), Cleaver (Butcher), Fireball (Pyre Lord), Boulder (Colossus), " +
+                 "Skull (Matriarch).")]
+        [SerializeField] private BossProjectiles.BoltLook boltLook;
+
+        /// <summary>KAN-239: look of this boss's bolts.</summary>
+        public BossProjectiles.BoltLook BoltLook => boltLook;
+
+        /// <summary>KAN-239 tests and tools: sets the bolt look.</summary>
+        public BossData WithBoltLook(BossProjectiles.BoltLook look)
+        {
+            boltLook = look;
+            return this;
+        }
+
         public string DisplayName => displayName;
         public string Title => title;
         public Enemy Prefab => prefab;
