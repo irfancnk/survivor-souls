@@ -17,7 +17,7 @@ MonoBehaviour:
   description: Bounce +1 enemy, -30% per bounce
   icon: {fileID: 2800000, guid: 00233de07be0c4bdd81ce05c923264f4, type: 3}
   rarity: 1
-  maxStack: 4
+  maxStack: 7
   weight: 1
   modifiers:
   - stat: 8
@@ -47,4 +47,31 @@ MonoBehaviour:
     - stat: 0
       kind: 1
       value: 0.15
+  - description: Bounce to +3 enemies, +25% damage
+    modifiers:
+    - stat: 8
+      kind: 0
+      value: 3
+    - stat: 0
+      kind: 1
+      value: 0.25
+  - description: Bounce to +4 enemies, +25% damage
+    modifiers:
+    - stat: 8
+      kind: 0
+      value: 4
+    - stat: 0
+      kind: 1
+      value: 0.25
+  - description: Bounce +4, -15% per hop, +35% dmg
+    modifiers:
+    - stat: 8
+      kind: 0
+      value: 4
+    - stat: 0
+      kind: 1
+      value: 0.35
+    - stat: 37
+      kind: 0
+      value: -0.15
   effectPrefab: {fileID: 0}

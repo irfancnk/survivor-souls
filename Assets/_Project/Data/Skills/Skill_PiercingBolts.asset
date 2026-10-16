@@ -17,7 +17,7 @@ MonoBehaviour:
   description: Pierce +1 enemy, -33% per enemy
   icon: {fileID: 2800000, guid: 991054c7ab8bf4a17b91afcd37c442ba, type: 3}
   rarity: 1
-  maxStack: 4
+  maxStack: 7
   weight: 1
   modifiers:
   - stat: 7
@@ -50,4 +50,31 @@ MonoBehaviour:
     - stat: 0
       kind: 1
       value: 0.15
+  - description: Pierce +3 enemies, +25% damage
+    modifiers:
+    - stat: 7
+      kind: 0
+      value: 3
+    - stat: 0
+      kind: 1
+      value: 0.25
+  - description: Pierce +4 enemies, +25% damage
+    modifiers:
+    - stat: 7
+      kind: 0
+      value: 4
+    - stat: 0
+      kind: 1
+      value: 0.25
+  - description: Pierce +4, -15% per enemy, +35% dmg
+    modifiers:
+    - stat: 7
+      kind: 0
+      value: 4
+    - stat: 0
+      kind: 1
+      value: 0.35
+    - stat: 36
+      kind: 0
+      value: -0.18
   effectPrefab: {fileID: 0}

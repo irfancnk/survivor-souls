@@ -172,6 +172,11 @@ namespace SurvivorSouls.Editor.Skills
                     L("Pierce +2 enemies, -33% per enemy", Add(StatId.Pierce, 2f)),
                     L("Pierce +2 enemies, +10% damage", Add(StatId.Pierce, 2f), Pct(StatId.Damage, 0.1f)),
                     L("Pierce +3 enemies, +15% damage", Add(StatId.Pierce, 3f), Pct(StatId.Damage, 0.15f)),
+                    // KAN-220 (KAN-124.2): 7 levels. L7 milestone: a pierce loses 15 % instead of 33 %.
+                    L("Pierce +3 enemies, +25% damage", Add(StatId.Pierce, 3f), Pct(StatId.Damage, 0.25f)),
+                    L("Pierce +4 enemies, +25% damage", Add(StatId.Pierce, 4f), Pct(StatId.Damage, 0.25f)),
+                    L("Pierce +4, -15% per enemy, +35% dmg", Add(StatId.Pierce, 4f), Pct(StatId.Damage, 0.35f),
+                        Add(StatId.PierceFalloff, -0.18f)),
                 } },
             new Spec { Id = "ricochet", File = "Ricochet", Name = "Ricochet", Rarity = SkillRarity.Rare,
                 Glyph = SkillIconPainter.Ricochet, Levels = new[]
@@ -180,6 +185,11 @@ namespace SurvivorSouls.Editor.Skills
                     L("Bounce +2 enemies, -30% per bounce", Add(StatId.Ricochet, 2f)),
                     L("Bounce +3 enemies, -30% per bounce", Add(StatId.Ricochet, 3f)),
                     L("Bounce to +3 enemies, +15% damage", Add(StatId.Ricochet, 3f), Pct(StatId.Damage, 0.15f)),
+                    // KAN-220 (KAN-124.2): 7 levels. L7 milestone: a bounce loses 15 % instead of 30 %.
+                    L("Bounce to +3 enemies, +25% damage", Add(StatId.Ricochet, 3f), Pct(StatId.Damage, 0.25f)),
+                    L("Bounce to +4 enemies, +25% damage", Add(StatId.Ricochet, 4f), Pct(StatId.Damage, 0.25f)),
+                    L("Bounce +4, -15% per hop, +35% dmg", Add(StatId.Ricochet, 4f), Pct(StatId.Damage, 0.35f),
+                        Add(StatId.BounceFalloff, -0.15f)),
                 } },
             new Spec { Id = "ember_bolts", File = "EmberBolts", Name = "Ember Bolts", Rarity = SkillRarity.Legendary,
                 Glyph = SkillIconPainter.Burn, Effect = Fx.Burn, Levels = new[]
@@ -195,6 +205,16 @@ namespace SurvivorSouls.Editor.Skills
                     L("Fire 75/s 5 s, 60% blast, slow 25%", Add(StatId.BurnDps, 75f), Add(StatId.BurnDuration, 2f),
                         Add(StatId.BurnSpread, 1f), Add(StatId.BurnDeathBlast, 0.6f), Add(StatId.BurnSlow, 0.25f),
                         Add(StatId.IgniteStun, 0.2f)),
+                    // KAN-220 (KAN-124.2): 7 levels. L7 milestone: each fire tick spreads to 2 foes, deaths blast 100 %.
+                    L("Fire 90/s 5 s, 70% blast, slow 26%", Add(StatId.BurnDps, 90f), Add(StatId.BurnDuration, 2f),
+                        Add(StatId.BurnSpread, 1f), Add(StatId.BurnDeathBlast, 0.7f), Add(StatId.BurnSlow, 0.26f),
+                        Add(StatId.IgniteStun, 0.2f)),
+                    L("Fire 105/s 6 s, 80% blast, slow 28%", Add(StatId.BurnDps, 105f), Add(StatId.BurnDuration, 3f),
+                        Add(StatId.BurnSpread, 1f), Add(StatId.BurnDeathBlast, 0.8f), Add(StatId.BurnSlow, 0.28f),
+                        Add(StatId.IgniteStun, 0.2f)),
+                    L("Fire 130/s, spreads x2, 100% blast", Add(StatId.BurnDps, 130f), Add(StatId.BurnDuration, 3f),
+                        Add(StatId.BurnSpread, 2f), Add(StatId.BurnDeathBlast, 1f), Add(StatId.BurnSlow, 0.3f),
+                        Add(StatId.IgniteStun, 0.2f)),
                 } },
             new Spec { Id = "blood_covenant", File = "BloodCovenant", Name = "Blood Covenant", Rarity = SkillRarity.Epic,
                 Glyph = SkillIconPainter.LifeSteal, Effect = Fx.LifeSteal, Levels = new[]
@@ -203,6 +223,10 @@ namespace SurvivorSouls.Editor.Skills
                     L("Heal 7% of bolt damage dealt", Add(StatId.LifeSteal, 0.07f)),
                     L("Heal 9% of bolt damage dealt", Add(StatId.LifeSteal, 0.09f)),
                     L("Heal 12% of damage, +60 max HP", Add(StatId.LifeSteal, 0.12f), Add(StatId.MaxHealth, 60f)),
+                    // KAN-220 (KAN-124.2): 7 levels. L7 milestone: the bigger jump (20 % heal, +160 max HP).
+                    L("Heal 14% of damage, +80 max HP", Add(StatId.LifeSteal, 0.14f), Add(StatId.MaxHealth, 80f)),
+                    L("Heal 16% of damage, +100 max HP", Add(StatId.LifeSteal, 0.16f), Add(StatId.MaxHealth, 100f)),
+                    L("Heal 20% of damage, +160 max HP", Add(StatId.LifeSteal, 0.2f), Add(StatId.MaxHealth, 160f)),
                 } },
             // KAN-83: the old Multishot is now Spread Shot (same asset and id "multishot", so saves and debug configs load).
             // The main bolt always flies straight; angled bolts at 15 deg steps on both sides deal a damage share (AutoShooter
@@ -231,6 +255,10 @@ namespace SurvivorSouls.Editor.Skills
                     L("Kills burst: 70% damage in 2.6 m", Add(StatId.KillBurst, 0.7f)),
                     L("Kills burst: 90% damage in 3.2 m", Add(StatId.KillBurst, 0.9f), Add(StatId.BurstRadius, 0.6f)),
                     L("Kills burst: 120% damage in 3.6 m", Add(StatId.KillBurst, 1.2f), Add(StatId.BurstRadius, 1f)),
+                    // KAN-220 (KAN-124.2): 7 levels. L7 milestone: the bigger jump (200 % in 4.4 m).
+                    L("Kills burst: 140% damage in 3.8 m", Add(StatId.KillBurst, 1.4f), Add(StatId.BurstRadius, 1.2f)),
+                    L("Kills burst: 160% damage in 4 m", Add(StatId.KillBurst, 1.6f), Add(StatId.BurstRadius, 1.4f)),
+                    L("Kills burst: 200% damage in 4.4 m", Add(StatId.KillBurst, 2f), Add(StatId.BurstRadius, 1.8f)),
                 } },
             // KAN-72 (KAN-50 part 2): chest drops. Pure data: ChestDropper reads these stats, no effect prefab. Epic with
             // 5 levels (KAN-50 asks for 5; a utility skill, so outside the 3-4 Epic rule). L3 adds a third upgrade card,

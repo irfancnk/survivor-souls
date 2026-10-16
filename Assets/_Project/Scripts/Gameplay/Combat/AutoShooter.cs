@@ -110,6 +110,10 @@ namespace SurvivorSouls.Gameplay.Combat
         /// <summary>Damage share lost per pierce / per bounce (power curve base, KAN-86).</summary>
         public float BasePierceFalloff => pierceFalloff;
         public float BaseBounceFalloff => bounceFalloff;
+        /// <summary>Damage share a bolt loses per pierce now: the base plus <see cref="StatId.PierceFalloff"/> (KAN-220 Piercing Bolts L7).</summary>
+        public float CurrentPierceFalloff => Mathf.Clamp01(PlayerStats.Eval(_stats, StatId.PierceFalloff, pierceFalloff));
+        /// <summary>Damage share a bolt loses per bounce now: the base plus <see cref="StatId.BounceFalloff"/> (KAN-220 Ricochet L7).</summary>
+        public float CurrentBounceFalloff => Mathf.Clamp01(PlayerStats.Eval(_stats, StatId.BounceFalloff, bounceFalloff));
         /// <summary>Bolt damage after skills (burst and similar skills scale from it).</summary>
         public float CurrentDamage => PlayerStats.Eval(_stats, StatId.Damage, damage);
         /// <summary>Seconds between shots after attack speed skills.</summary>
@@ -257,8 +261,8 @@ namespace SurvivorSouls.Gameplay.Combat
                 Pierce = _stats != null ? _stats.ModifyInt(StatId.Pierce, 0) : 0,
                 Ricochet = _stats != null ? _stats.ModifyInt(StatId.Ricochet, 0) : 0,
                 RicochetRange = ricochetRange,
-                PierceFalloff = pierceFalloff,
-                BounceFalloff = bounceFalloff,
+                PierceFalloff = CurrentPierceFalloff,
+                BounceFalloff = CurrentBounceFalloff,
                 Heat = BoltHeat,
             };
             int count = VolleyBuilder.Build(CurrentVolleySpec, _volley);

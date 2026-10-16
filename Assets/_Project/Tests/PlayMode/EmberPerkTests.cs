@@ -233,11 +233,11 @@ namespace SurvivorSouls.Tests
 #if UNITY_EDITOR
             var skill = UnityEditor.AssetDatabase.LoadAssetAtPath<SkillDefinition>("Assets/_Project/Data/Skills/Skill_EmberBolts.asset");
             Assert.That(skill, Is.Not.Null);
-            Assert.That(skill.MaxLevel, Is.EqualTo(4), "Legendary keeps 4 levels");
+            Assert.That(skill.MaxLevel, Is.EqualTo(7), "KAN-220: 7 levels");
             _manager.Grant(skill);
-            float[] spread = { 0f, 0f, 1f, 1f };
-            float[] blast = { 0f, 0f, 0f, 0.6f };
-            for (int level = 1; level <= 4; level++)
+            float[] spread = { 0f, 0f, 1f, 1f, 1f, 1f, 2f };
+            float[] blast = { 0f, 0f, 0f, 0.6f, 0.7f, 0.8f, 1f };
+            for (int level = 1; level <= 7; level++)
             {
                 if (level > 1) _manager.Upgrade(skill);
                 Assert.That(_stats.Modify(StatId.BurnSpread, 0f), Is.EqualTo(spread[level - 1]).Within(1e-4f), $"L{level} spread");

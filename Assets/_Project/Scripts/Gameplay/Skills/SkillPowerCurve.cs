@@ -159,8 +159,8 @@ namespace SurvivorSouls.Gameplay.Skills
             TomeFoes = b.TomeFoes,
             KillBurst = PlayerStats.Eval(stats, StatId.KillBurst, 0f, permanentOnly),
             LifeSteal = PlayerStats.Eval(stats, StatId.LifeSteal, 0f, permanentOnly),
-            PierceFalloff = b.PierceFalloff,
-            BounceFalloff = b.BounceFalloff,
+            PierceFalloff = Mathf.Clamp01(PlayerStats.Eval(stats, StatId.PierceFalloff, b.PierceFalloff, permanentOnly)), // KAN-220
+            BounceFalloff = Mathf.Clamp01(PlayerStats.Eval(stats, StatId.BounceFalloff, b.BounceFalloff, permanentOnly)),
             MaxHealth = PlayerStats.Eval(stats, StatId.MaxHealth, b.MaxHealth, permanentOnly),
             MoveSpeed = PlayerStats.Eval(stats, StatId.MoveSpeed, b.MoveSpeed, permanentOnly),
             Skills = skills,

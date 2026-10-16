@@ -119,18 +119,30 @@ namespace SurvivorSouls.Tests
             new object[] { "PiercingBolts", 2, new[] { "Pierce+=2" } },
             new object[] { "PiercingBolts", 3, new[] { "Pierce+=2", "Damage%=0.1" } },
             new object[] { "PiercingBolts", 4, new[] { "Pierce+=3", "Damage%=0.15" } },
+            new object[] { "PiercingBolts", 5, new[] { "Pierce+=3", "Damage%=0.25" } }, // KAN-220: 7 levels
+            new object[] { "PiercingBolts", 6, new[] { "Pierce+=4", "Damage%=0.25" } },
+            new object[] { "PiercingBolts", 7, new[] { "Pierce+=4", "Damage%=0.35", "PierceFalloff+=-0.18" } },
             new object[] { "Ricochet", 1, new[] { "Ricochet+=1" } },
             new object[] { "Ricochet", 2, new[] { "Ricochet+=2" } },
             new object[] { "Ricochet", 3, new[] { "Ricochet+=3" } },
             new object[] { "Ricochet", 4, new[] { "Ricochet+=3", "Damage%=0.15" } },
+            new object[] { "Ricochet", 5, new[] { "Ricochet+=3", "Damage%=0.25" } }, // KAN-220: 7 levels
+            new object[] { "Ricochet", 6, new[] { "Ricochet+=4", "Damage%=0.25" } },
+            new object[] { "Ricochet", 7, new[] { "Ricochet+=4", "Damage%=0.35", "BounceFalloff+=-0.15" } },
             new object[] { "EmberBolts", 1, new[] { "BurnDps+=25", "BurnSlow+=0.15", "IgniteStun+=0.2" } }, // KAN-134 slow + flinch
             new object[] { "EmberBolts", 2, new[] { "BurnDps+=40", "BurnSlow+=0.18", "IgniteStun+=0.2" } },
             new object[] { "EmberBolts", 3, new[] { "BurnDps+=55", "BurnDuration+=1", "BurnSpread+=1", "BurnSlow+=0.21", "IgniteStun+=0.2" } }, // KAN-77 perks
             new object[] { "EmberBolts", 4, new[] { "BurnDps+=75", "BurnDuration+=2", "BurnSpread+=1", "BurnDeathBlast+=0.6", "BurnSlow+=0.25", "IgniteStun+=0.2" } },
+            new object[] { "EmberBolts", 5, new[] { "BurnDps+=90", "BurnDuration+=2", "BurnSpread+=1", "BurnDeathBlast+=0.7", "BurnSlow+=0.26", "IgniteStun+=0.2" } }, // KAN-220
+            new object[] { "EmberBolts", 6, new[] { "BurnDps+=105", "BurnDuration+=3", "BurnSpread+=1", "BurnDeathBlast+=0.8", "BurnSlow+=0.28", "IgniteStun+=0.2" } },
+            new object[] { "EmberBolts", 7, new[] { "BurnDps+=130", "BurnDuration+=3", "BurnSpread+=2", "BurnDeathBlast+=1", "BurnSlow+=0.3", "IgniteStun+=0.2" } },
             new object[] { "BloodCovenant", 1, new[] { "LifeSteal+=0.05" } },
             new object[] { "BloodCovenant", 2, new[] { "LifeSteal+=0.07" } },
             new object[] { "BloodCovenant", 3, new[] { "LifeSteal+=0.09" } },
             new object[] { "BloodCovenant", 4, new[] { "LifeSteal+=0.12", "MaxHealth+=60" } },
+            new object[] { "BloodCovenant", 5, new[] { "LifeSteal+=0.14", "MaxHealth+=80" } }, // KAN-220
+            new object[] { "BloodCovenant", 6, new[] { "LifeSteal+=0.16", "MaxHealth+=100" } },
+            new object[] { "BloodCovenant", 7, new[] { "LifeSteal+=0.2", "MaxHealth+=160" } },
             new object[] { "Multishot", 1, new[] { "Multishot+=2" } }, // Spread Shot (KAN-83)
             new object[] { "Multishot", 2, new[] { "Multishot+=4", "SpreadDamage+=0.05" } },
             new object[] { "Multishot", 3, new[] { "Multishot+=6", "SpreadDamage+=0.1" } },
@@ -141,6 +153,9 @@ namespace SurvivorSouls.Tests
             new object[] { "SoulBurst", 2, new[] { "KillBurst+=0.7" } },
             new object[] { "SoulBurst", 3, new[] { "KillBurst+=0.9", "BurstRadius+=0.6" } },
             new object[] { "SoulBurst", 4, new[] { "KillBurst+=1.2", "BurstRadius+=1" } },
+            new object[] { "SoulBurst", 5, new[] { "KillBurst+=1.4", "BurstRadius+=1.2" } }, // KAN-220
+            new object[] { "SoulBurst", 6, new[] { "KillBurst+=1.6", "BurstRadius+=1.4" } },
+            new object[] { "SoulBurst", 7, new[] { "KillBurst+=2", "BurstRadius+=1.8" } },
             new object[] { "ReliquaryHunter", 1, new[] { "ChestChance+=0.01", "ChestEliteChance+=0.08" } },
             new object[] { "ReliquaryHunter", 2, new[] { "ChestChance+=0.015", "ChestEliteChance+=0.1" } },
             new object[] { "ReliquaryHunter", 3, new[] { "ChestChance+=0.02", "ChestEliteChance+=0.12", "ChestChoices+=1" } },
@@ -210,6 +225,70 @@ namespace SurvivorSouls.Tests
         private static readonly string[] EightLevelStatSkills =
             { "sharpened_bolts", "quick_draw", "vigor", "fleet_foot", "soul_siphon", "keen_eye" };
 
+        /// <summary>KAN-220 (KAN-124.2): effect skills with 7 levels; level 7 is the milestone perk or the bigger jump.</summary>
+        private static readonly string[] SevenLevelEffectSkills =
+            { "ember_bolts", "soul_burst", "blood_covenant", "piercing_bolts", "ricochet" };
+
+        [Test]
+        public void EffectSkills_HaveSevenLevels_LevelSevenIsTheMilestone()
+        {
+            foreach (string id in SevenLevelEffectSkills)
+            {
+                var s = Shipped().Single(k => k.Id == id);
+                Assert.That(s.MaxLevel, Is.EqualTo(7), id);
+                float Total(int level, StatId stat) => s.Levels[level - 1].modifiers.Where(m => m.stat == stat).Sum(m => m.value);
+                StatId primary = s.Levels[0].modifiers[0].stat;
+                // The primary stat (or, for pierce / bounce counts, the damage bonus) steps up at level 7 by more than at 6.
+                StatId step = primary == StatId.Pierce || primary == StatId.Ricochet ? StatId.Damage : primary;
+                float Step(int level) => Total(level, step) - Total(level - 1, step);
+                Assert.That(Step(7), Is.GreaterThan(Step(6) + 1e-4f), id + " L7 is the bigger step");
+            }
+            // The level 7 perks that are more than a bigger number.
+            float Stat(string id, int level, StatId stat) =>
+                Shipped().Single(k => k.Id == id).Levels[level - 1].modifiers.Where(m => m.stat == stat).Sum(m => m.value);
+            for (int level = 1; level <= 7; level++)
+            {
+                Assert.That(Stat("ember_bolts", level, StatId.BurnSpread), Is.EqualTo(level >= 7 ? 2f : level >= 3 ? 1f : 0f), $"Ember L{level} spread");
+                Assert.That(Stat("piercing_bolts", level, StatId.PierceFalloff) < 0f, Is.EqualTo(level == 7), $"Pierce L{level} falloff perk");
+                Assert.That(Stat("ricochet", level, StatId.BounceFalloff) < 0f, Is.EqualTo(level == 7), $"Ricochet L{level} falloff perk");
+            }
+        }
+
+        [Test]
+        public void PierceAndRicochetLevelSeven_BoltsLoseLessPerHit()
+        {
+            var go = Track(new GameObject("Shooter"));
+            go.SetActive(false); // Awake after every component exists
+            var stats = go.AddComponent<PlayerStats>();
+            go.AddComponent<CharacterController>();
+            go.AddComponent<SurvivorSouls.Gameplay.Player.PlayerMover>();
+            var shooter = go.AddComponent<SurvivorSouls.Gameplay.Combat.AutoShooter>();
+            go.SetActive(true);
+            shooter.enabled = false;
+            var manager = Track(new GameObject("Skills 2")).AddComponent<SkillManager>();
+            manager.Setup(Track(ScriptableObject.CreateInstance<SkillProgression>()), stats, shooter, null, go.transform, rngSeed: 220);
+
+            var pierce = Load("PiercingBolts");
+            var bounce = Load("Ricochet");
+            manager.Grant(pierce);
+            manager.Grant(bounce);
+            manager.Upgrade(pierce, 5);
+            manager.Upgrade(bounce, 5);
+            Assert.That(shooter.CurrentPierceFalloff, Is.EqualTo(0.33f).Within(1e-4f), "L6: KAN-86 falloff");
+            Assert.That(shooter.CurrentBounceFalloff, Is.EqualTo(0.3f).Within(1e-4f));
+            manager.Upgrade(pierce);
+            manager.Upgrade(bounce);
+            Assert.That(manager.GetLevel(pierce), Is.EqualTo(7));
+            Assert.That(shooter.CurrentPierceFalloff, Is.EqualTo(0.15f).Within(1e-4f), "L7: a pierce loses 15 %");
+            Assert.That(shooter.CurrentBounceFalloff, Is.EqualTo(0.15f).Within(1e-4f), "L7: a bounce loses 15 %");
+
+            var s = PowerSnapshot.Measure(stats, PowerBase.Default);
+            Assert.That(s.PierceFalloff, Is.EqualTo(0.15f).Within(1e-4f), "power curve reads the perk");
+            Assert.That(s.BounceFalloff, Is.EqualTo(0.15f).Within(1e-4f));
+            manager.ResetRun();
+            Assert.That(shooter.CurrentPierceFalloff, Is.EqualTo(0.33f).Within(1e-4f), "run reset drops the perk");
+        }
+
         [Test]
         public void StatSkills_HaveEightLevels_StepsShrink_LevelEightIsTheMilestoneStep()
         {
@@ -235,8 +314,10 @@ namespace SurvivorSouls.Tests
                 Assert.That(s.HasLevelTable, Is.True, s.Id + " has a level table");
                 // Utility Epic: KAN-50 asks for 5 levels. Spread Shot (Rare): KAN-83 asks for 3 (3 / 5 / 7 bolts). Holy Tomes
                 // (Rare): KAN-123 asks for 8 (the deeper path of KAN-124). The 6 stat skills: KAN-219 (KAN-124.1) asks for 8.
+                // The 5 effect skills: KAN-220 (KAN-124.2) asks for 7.
                 bool deep = s.Id == "holy_tomes" || System.Array.IndexOf(EightLevelStatSkills, s.Id) >= 0;
-                var (min, max) = s.Id == "reliquary_hunter" ? (5, 5) : s.Id == "multishot" ? (3, 3) : deep ? (8, 8) : s.Rarity switch
+                bool seven = System.Array.IndexOf(SevenLevelEffectSkills, s.Id) >= 0;
+                var (min, max) = s.Id == "reliquary_hunter" ? (5, 5) : s.Id == "multishot" ? (3, 3) : deep ? (8, 8) : seven ? (7, 7) : s.Rarity switch
                 {
                     SkillRarity.Common => (5, 6),
                     SkillRarity.Rare => (4, 5),
@@ -294,12 +375,12 @@ namespace SurvivorSouls.Tests
             _manager.Grant(skill);
             var burn = (BurnOnHitEffect)_manager.OwnedSkills.Single().Effect;
             Assert.That(burn, Is.Not.Null);
-            float[] expected = { 3f, 3f, 4f, 5f };
-            for (int level = 1; level <= 4; level++)
+            float[] expected = { 3f, 3f, 4f, 5f, 5f, 6f, 6f };
+            for (int level = 1; level <= 7; level++)
             {
                 if (level > 1) _manager.Upgrade(skill);
                 Assert.That(burn.Duration, Is.EqualTo(expected[level - 1]).Within(1e-4f), $"L{level} burn seconds");
-                Assert.That(_stats.Modify(StatId.BurnDps, 0f), Is.EqualTo(new[] { 25f, 40f, 55f, 75f }[level - 1]).Within(1e-4f));
+                Assert.That(_stats.Modify(StatId.BurnDps, 0f), Is.EqualTo(new[] { 25f, 40f, 55f, 75f, 90f, 105f, 130f }[level - 1]).Within(1e-4f));
             }
         }
 
@@ -310,8 +391,8 @@ namespace SurvivorSouls.Tests
             _manager.Grant(skill);
             var burst = (KillBurstEffect)_manager.OwnedSkills.Single().Effect;
             Assert.That(burst, Is.Not.Null);
-            float[] expected = { 2.6f, 2.6f, 3.2f, 3.6f };
-            for (int level = 1; level <= 4; level++)
+            float[] expected = { 2.6f, 2.6f, 3.2f, 3.6f, 3.8f, 4f, 4.4f };
+            for (int level = 1; level <= 7; level++)
             {
                 if (level > 1) _manager.Upgrade(skill);
                 Assert.That(burst.Radius, Is.EqualTo(expected[level - 1]).Within(1e-4f), $"L{level} burst radius");

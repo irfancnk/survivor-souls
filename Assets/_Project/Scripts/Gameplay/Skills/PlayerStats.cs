@@ -67,6 +67,10 @@ namespace SurvivorSouls.Gameplay.Skills
         TomeKnockback,
         /// <summary>KAN-123 Holy Tomes: holy flash splash radius in metres round a tome hit (0 = none).</summary>
         TomeFlash,
+        /// <summary>KAN-220 Piercing Bolts level 7: flat change of the damage share a bolt loses per pierce (-0.18 = 33 % to 15 %).</summary>
+        PierceFalloff,
+        /// <summary>KAN-220 Ricochet level 7: flat change of the damage share a bolt loses per bounce (-0.15 = 30 % to 15 %).</summary>
+        BounceFalloff,
     }
 
     /// <summary>Flat adds to the base value; Percent scales it (0.2 = +20 %). Percents from all sources add up.</summary>

@@ -109,9 +109,9 @@ namespace SurvivorSouls.Tests
         {
             var ember = UnityEditor.AssetDatabase.LoadAssetAtPath<SkillDefinition>(EmberPath);
             Assert.That(ember, Is.Not.Null);
-            Assert.That(ember.MaxLevel, Is.EqualTo(4));
-            var crowd = new float[5];
-            for (int level = 1; level <= 4; level++)
+            Assert.That(ember.MaxLevel, Is.EqualTo(7)); // KAN-220
+            var crowd = new float[8];
+            for (int level = 1; level <= 7; level++)
             {
                 var stats = Stats();
                 ember.ApplyLevel(stats, level);
@@ -124,6 +124,8 @@ namespace SurvivorSouls.Tests
             Assert.That(crowd[2], Is.GreaterThan(crowd[1]));
             Assert.That(crowd[3], Is.GreaterThan(crowd[2] * 1.4f), "spread is a big crowd step");
             Assert.That(crowd[4], Is.GreaterThan(crowd[3] * 1.4f), "blast is a big crowd step");
+            for (int level = 5; level <= 7; level++) Assert.That(crowd[level], Is.GreaterThan(crowd[level - 1]), $"level {level} grows the crowd");
+            Assert.That(crowd[7] / crowd[6], Is.GreaterThan(crowd[6] / crowd[5]), "level 7 (spread x2, 100 % blast) is the milestone step");
         }
 
         [Test]

@@ -290,8 +290,8 @@ namespace SurvivorSouls.Tests
             Assert.That(skill, Is.Not.Null);
             _manager.Grant(skill);
             var ember = (BurnOnHitEffect)_manager.OwnedSkills.Single().Effect;
-            float[] slow = { 0.15f, 0.18f, 0.21f, 0.25f };
-            for (int level = 1; level <= 4; level++)
+            float[] slow = { 0.15f, 0.18f, 0.21f, 0.25f, 0.26f, 0.28f, 0.3f }; // KAN-220: 7 levels
+            for (int level = 1; level <= 7; level++)
             {
                 if (level > 1) _manager.Upgrade(skill);
                 Assert.That(ember.SlowShare, Is.EqualTo(slow[level - 1]).Within(1e-4f), $"L{level} slow");
