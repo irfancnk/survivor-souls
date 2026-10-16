@@ -156,6 +156,7 @@ namespace SurvivorSouls.Gameplay.Combat
         private float _hexBoost = 1f;
         private Color _tint = Color.clear;
         private Color _calmTint = Color.white; // base tint x danger tier colour (KAN-92)
+        private bool _miniBoss; // KAN-23
         private Material[] _sourceMaterials;   // the body's own materials (tier step 0)
         private int _tierStep;
         private float _detourSide = 1f;
@@ -236,6 +237,8 @@ namespace SurvivorSouls.Gameplay.Combat
         public float DamagePerSecond => damagePerSecond;
         public int XpValue => xpValue;
         public bool IsBoss => isBoss;
+        /// <summary>Mini boss of this spawn (KAN-23, <see cref="PromoteToMiniBoss"/>): always-on health bar, own tint. Reset on every spawn.</summary>
+        public bool IsMiniBoss => _miniBoss;
         /// <summary>Ranged type: has a hold band (KAN-105).</summary>
         public bool KeepsDistance => holdMax > 0f;
         public float HoldMin => holdMin;
@@ -352,10 +355,30 @@ namespace SurvivorSouls.Gameplay.Combat
             transform.localScale = new Vector3(_scale, _scale, _scale);
             gameObject.SetActive(true);
             if (_tierStep != 0) SetDangerStep(null, 0);
+            _miniBoss = false; // KAN-23: a pooled mini boss body comes back as a normal foe
             _calmTint = baseTint;
             SetTint(baseTint);
             StartAnimation();
             Active.Add(this);
+        }
+
+        /// <summary>
+        /// KAN-23: makes this living spawn the Chamber's mini boss: max health x <paramref name="healthMultiplier"/> (full
+        /// health), body size x <paramref name="sizeMultiplier"/> (hit radius, height and bar anchor follow) and the calm body
+        /// colour <paramref name="tint"/> (a property block, so it shows even when it equals no material colour). The next
+        /// <see cref="Spawn"/> undoes all of it.
+        /// </summary>
+        public void PromoteToMiniBoss(float healthMultiplier, float sizeMultiplier, Color tint)
+        {
+            if (!IsAlive) return;
+            _miniBoss = true;
+            _maxHealth *= Mathf.Max(1f, healthMultiplier);
+            _health = _maxHealth;
+            _scale *= Mathf.Max(0.1f, sizeMultiplier);
+            transform.localScale = new Vector3(_scale, _scale, _scale);
+            _calmTint = tint;
+            _tint = Color.clear;
+            SetTint(tint);
         }
 
         /// <summary>Random phase (and, for a free-running clip, a small rate spread), so a crowd does not walk in lockstep.</summary>
@@ -942,7 +965,7 @@ namespace SurvivorSouls.Gameplay.Combat
         {
             _tint = c;
             if (body == null) return;
-            if (c == _calmTint)
+            if (c == _calmTint && !_miniBoss) // KAN-23: the mini boss tint is no material colour, it always needs the block
             {
                 body.SetPropertyBlock(null);
                 return;

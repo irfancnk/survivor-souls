@@ -6,7 +6,7 @@ namespace SurvivorSouls.Gameplay.Chamber
     public enum ChamberType
     {
         Normal = 0,
-        /// <summary>Mini boss Chamber (KAN-23). Until mini bosses exist it plays as <see cref="Normal"/>.</summary>
+        /// <summary>Mini boss Chamber (KAN-23): the horde plus one mini boss (MiniBossDirector) that drops a Reliquary chest.</summary>
         MiniBoss = 1,
         /// <summary>Boss Chamber (KAN-22): every 5th and the last of the Realm. Until bosses exist it plays as <see cref="Normal"/>.</summary>
         Boss = 2,
@@ -60,7 +60,8 @@ namespace SurvivorSouls.Gameplay.Chamber
     /// from a seed made of the run seed, the Realm and the Chamber: a new shore every Chamber, the same one if the same
     /// Chamber of the same run loads again. A non-zero entry in <see cref="layoutSeeds"/> pins a hand-picked layout.
     /// Type rule: the last Chamber and every <see cref="bossEvery"/>th is a boss Chamber (KAN-22), every
-    /// <see cref="miniBossEvery"/>th a mini boss Chamber (KAN-23, 0 = off). Edit the asset; the builder never overwrites it.
+    /// <see cref="miniBossEvery"/>th (shifted by <see cref="miniBossOffset"/>) a mini boss Chamber (KAN-23, 0 = off). Edit the
+    /// asset; the builder never overwrites it.
     /// </summary>
     [CreateAssetMenu(menuName = "Survivor Souls/Chamber Difficulty", fileName = "ChamberDifficulty")]
     public sealed class ChamberDifficulty : ScriptableObject
@@ -71,6 +72,8 @@ namespace SurvivorSouls.Gameplay.Chamber
         [SerializeField, Min(0)] private int bossEvery = 5;
         [Tooltip("Every Nth Chamber is a mini boss Chamber (KAN-23); a boss Chamber wins. 0 = off.")]
         [SerializeField, Min(0)] private int miniBossEvery;
+        [Tooltip("KAN-23: mini boss Chambers are the ones where Chamber % every == this (every 5, offset 2 = Chambers 2, 7, 12).")]
+        [SerializeField, Min(0)] private int miniBossOffset;
 
         [Header("Enemy health")]
         [Tooltip("Added to the enemy health multiplier per Chamber after the first (0.15 = +15 % each).")]
@@ -97,7 +100,7 @@ namespace SurvivorSouls.Gameplay.Chamber
         public ChamberType TypeOf(int chamber)
         {
             if (chamber >= chambersInRealm || (bossEvery > 0 && chamber % bossEvery == 0)) return ChamberType.Boss;
-            if (miniBossEvery > 0 && chamber % miniBossEvery == 0) return ChamberType.MiniBoss;
+            if (miniBossEvery > 0 && chamber % miniBossEvery == miniBossOffset % miniBossEvery) return ChamberType.MiniBoss;
             return ChamberType.Normal;
         }
 
@@ -153,12 +156,13 @@ namespace SurvivorSouls.Gameplay.Chamber
         /// <summary>Tests and tools: rules without an asset.</summary>
         public static ChamberDifficulty Create(int chambers = 10, int boss = 5, int miniBoss = 0, float health = 0.15f,
             float maxHealth = 4f, float cap = 0.05f, float maxCap = 1.35f, float interval = 0.96f, float minInterval = 0.7f,
-            int[] seeds = null)
+            int[] seeds = null, int miniBossOffset = 0)
         {
             var d = CreateInstance<ChamberDifficulty>();
             d.chambersInRealm = chambers;
             d.bossEvery = boss;
             d.miniBossEvery = miniBoss;
+            d.miniBossOffset = miniBossOffset;
             d.healthGrowth = health;
             d.maxHealthMultiplier = maxHealth;
             d.capGrowth = cap;
