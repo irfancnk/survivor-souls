@@ -888,6 +888,16 @@
   - Verified: compile 0 errors / 0 new warnings; Game scene rebuild exit 0, no diff; EditMode 197 pass; PlayMode 791: 789 pass, 2 skipped (soak), 0 fail; mac dev build + `-ss-power-curve` run: 0 exceptions, new columns in the log. No screenshot (no visual change).
   - Limits: SpreadFoes / BlastFoes are estimates; check them with `BurnOnHitEffect.SpreadCount` / `BlastCount` on a phone run with an Ember L4 build. Confluence copy = KAN-186.
 
+- 2026-10-16 (KAN-54): Skill pity counter carried across Chambers + per-tier pick burst (KAN-37 follow-up). Branch `feat/kan-54-skill-pity-carry`. Scheduled-task run r202610160443-dcc25c.
+  - Pity carry: `RunSnapshot.OffersWithoutRarePlus` (`Gameplay/Chamber/RunState.cs`), written by `ChamberTransition.Capture`, put back by `Apply` through the new `SkillManager.RestorePity(n)` (negative = 0). Before, every Chamber load reset the "Rare+ at least every 3 offers" count, so a dry streak could run up to 2 offers longer across a portal. New run / RETRY still starts at 0 (`ResetRun`).
+  - Pick look (`UI/Hud/SkillChoiceScreen.cs`): pick pulse by tier `PickPulse` (Common / Rare 9 %, Epic 14 %, Legendary 18 %); Epic and Legendary (`PickBursts`) fire a second ring + 8 sparks out of the icon (`AnimatePickBurst`, reuses `skill-card__burst` + `skill-spark`, wider and faster than the landing burst, sparks between the landing angles, `pickBurstTime` 0.34 s unscaled). UI only: no new draw call, no USS change.
+  - Reveal sound mix (ticket item 3): not changed. With the KAN-159 slot roll the 3 cards stop 0.2 s apart (not 0.16 s together), so the original "too busy" case is mostly gone; Fast Skill Reveal still lands them 0.08 s apart. Ear check on the phone -> follow-up ticket.
+  - Dev shot: DevScreenshot `-ss-pick <card>[,<seconds>]` (with `-ss-xp`): picks card 0-2 once picks arm (skips a rolling reel) and freezes the pick animation that many unscaled seconds later (default 0.12 = pulse peak).
+  - Tests: PlayMode `ChamberTransitionTests.CaptureApply_RoundTrip_KeepsSkillPityCounter`, `SkillRarityTests.Pity_RestoredCounter_ForcesRarePlusOnTheFirstOfferOfTheNextChamber`, `PickPulse_GrowsWithTier_EpicAndLegendaryBurst`, `CardScreen_EpicPick_PulsesHarderAndBurstsAgain_CommonPickDoesNot`.
+  - Shots (Mac dev 540x1170, `-ss-scene Game -ss-quality Mobile -ss-run-seed 9001 -ss-immortal -ss-delay 4 -ss-xp 40 -ss-offer ember_bolts,quick_draw,temporary_shield -ss-pick <0|2|1>,0.12`): `Docs/screenshots/kan54-pick-legendary.png`, `kan54-pick-epic.png`, `kan54-pick-common.png`.
+  - Verified: compile 0 errors; Game scene rebuild exit 0; EditMode 207 pass; PlayMode 795: 793 pass, 2 skipped (soak), 0 fail; mac dev build + 3 shot runs, 0 exceptions. Not on iPhone (night run).
+  - Limits: the pity counter lives only in the static run carry (an app kill ends the run anyway). Pick burst size / timing not felt on a phone yet.
+
 ## DECISIONS
 - Design language: Archero / Archero 2 (menus, loop, chests, daily/weekly quests, gear merge, talents, energy). Look: Dark Souls, realistic, not dismal. User decision 2026-10-11.
 - Naming map: energy=Estus, gold=Souls, gems=Ember Shards, chests=Reliquaries, daily=Oaths, weekly=Pilgrimage, chapter=Realm, room=Chamber. See GAME_PLAN sec 2.
