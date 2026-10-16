@@ -23,12 +23,28 @@
     </ui:VisualElement>
 
     <ui:VisualElement name="safe-root" class="hud-root" picking-mode="Ignore">
-        <!-- Run XP (XpHud, KAN-21): level number + soul-blue bar, fill width set in code. -->
+        <!-- Run XP (XpHud, KAN-21; medieval bar KAN-35): shared ss-bar (glass track, clip, iron rim) with a molten-gold fill,
+             rune strip + shine (HudBarFx), tip spark, flash overlay; level number on a heraldic shield over the left cap,
+             gold motes burst from it on a level wrap. Fill width, spark, shield ring and motes set in code. -->
         <ui:VisualElement name="xp" class="hud-xp" picking-mode="Ignore">
-            <ui:Label name="xp-level" text="LV 1" class="hud-xp__level" picking-mode="Ignore" />
-            <ui:VisualElement class="hud-xp__track" picking-mode="Ignore">
-                <ui:VisualElement name="xp-fill" class="hud-xp__fill" picking-mode="Ignore" />
+            <ui:VisualElement name="xp-track" class="hud-xp__track ss-bar" picking-mode="Ignore">
+                <ui:VisualElement class="ss-bar__clip" picking-mode="Ignore">
+                    <ui:VisualElement name="xp-fill" class="hud-xp__fill ss-bar__fill ss-bar__fill--gold" picking-mode="Ignore">
+                        <ui:VisualElement class="ss-bar__runes" picking-mode="Ignore" />
+                        <ui:VisualElement class="ss-bar__shine" picking-mode="Ignore" />
+                    </ui:VisualElement>
+                    <ui:VisualElement name="xp-flash" class="ss-bar__flash" picking-mode="Ignore" />
+                </ui:VisualElement>
+                <ui:VisualElement class="ss-bar__rim" picking-mode="Ignore" />
+                <ui:VisualElement class="ss-bar__lane" picking-mode="Ignore">
+                    <ui:VisualElement name="xp-spark" class="hud-xp__spark" picking-mode="Ignore" />
+                </ui:VisualElement>
             </ui:VisualElement>
+            <ui:VisualElement name="xp-badge" class="hud-xp__badge" picking-mode="Ignore">
+                <ui:Label text="LV" class="hud-xp__lv" picking-mode="Ignore" />
+                <ui:Label name="xp-level" text="1" class="hud-xp__level" picking-mode="Ignore" />
+            </ui:VisualElement>
+            <ui:VisualElement name="xp-motes" class="hud-xp__motes hud-hidden" picking-mode="Ignore" />
         </ui:VisualElement>
         <!-- Chamber survival countdown (TimerHud, KAN-39). Hidden in boss Chambers. -->
         <ui:VisualElement name="timer" class="hud-timer" picking-mode="Ignore">
@@ -37,11 +53,17 @@
         <!-- Boss health (BossHud, KAN-58): name, bar, title. Boss Chambers only, in the timer's place, once the boss rises. -->
         <ui:VisualElement name="boss" class="hud-boss hud-hidden" picking-mode="Ignore">
             <ui:Label name="boss-name" text="" class="hud-boss__name" picking-mode="Ignore" />
-            <ui:VisualElement class="hud-boss__track" picking-mode="Ignore">
-                <ui:VisualElement name="boss-trail" class="hud-boss__trail" picking-mode="Ignore" />
-                <ui:VisualElement name="boss-fill" class="hud-boss__fill" picking-mode="Ignore" />
-                <!-- Phase 2 mark (KAN-61): tick at the phase 2 health share, lights when phase 2 starts. -->
-                <ui:VisualElement name="boss-phase" class="hud-boss__phase" picking-mode="Ignore" />
+            <!-- Medieval bar (KAN-35): shared ss-bar frame, crimson fill with a shine sweep (HudBarFx). -->
+            <ui:VisualElement class="hud-boss__track ss-bar" picking-mode="Ignore">
+                <ui:VisualElement class="ss-bar__clip" picking-mode="Ignore">
+                    <ui:VisualElement name="boss-trail" class="hud-boss__trail" picking-mode="Ignore" />
+                    <ui:VisualElement name="boss-fill" class="hud-boss__fill ss-bar__fill ss-bar__fill--crimson" picking-mode="Ignore">
+                        <ui:VisualElement class="ss-bar__shine" picking-mode="Ignore" />
+                    </ui:VisualElement>
+                    <!-- Phase 2 mark (KAN-61): tick at the phase 2 health share, lights when phase 2 starts. -->
+                    <ui:VisualElement name="boss-phase" class="hud-boss__phase" picking-mode="Ignore" />
+                </ui:VisualElement>
+                <ui:VisualElement class="ss-bar__rim" picking-mode="Ignore" />
             </ui:VisualElement>
             <ui:Label name="boss-title" text="" class="hud-boss__title" picking-mode="Ignore" />
         </ui:VisualElement>

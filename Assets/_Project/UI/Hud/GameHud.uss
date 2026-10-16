@@ -450,47 +450,168 @@
     scale: 0.97 0.97;
 }
 
-/* Run XP (XpHud, KAN-21): full-width thin bar at the very top, soul blue (green = health, red = enemies). */
+/* Shared medieval bar (KAN-35): dark glass track + iron rim with a gold inlay and rivets (9-slice, one shape:
+   HudBarArtBuilder BarHeight 40 / radius 16; slices 26 / 18), a clip inset on the rim's inner edge, gradient fills,
+   a faint rune strip and a shine band (HudBarFx moves both), a flash overlay. Bars: XP, boss; health follows (KAN-82). */
+.ss-bar {
+    background-image: url("project://database/Assets/_Project/Art/UI/HudBars/T_UI_BarGlass.png");
+    -unity-slice-left: 26;
+    -unity-slice-right: 26;
+    -unity-slice-top: 18;
+    -unity-slice-bottom: 18;
+}
+
+.ss-bar__clip,
+.ss-bar__lane {
+    position: absolute;
+    left: 8px; right: 8px; top: 8px; bottom: 8px;
+}
+
+.ss-bar__clip {
+    overflow: hidden;
+    border-radius: 8px;
+}
+
+.ss-bar__rim {
+    position: absolute;
+    left: 0; right: 0; top: 0; bottom: 0;
+    background-image: url("project://database/Assets/_Project/Art/UI/HudBars/T_UI_BarRim.png");
+    -unity-slice-left: 26;
+    -unity-slice-right: 26;
+    -unity-slice-top: 18;
+    -unity-slice-bottom: 18;
+}
+
+.ss-bar__fill {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    overflow: hidden;
+    -unity-background-scale-mode: stretch-to-fill;
+}
+
+.ss-bar__fill--gold {
+    background-image: url("project://database/Assets/_Project/Art/UI/HudBars/T_UI_BarFillGold.png");
+}
+
+.ss-bar__fill--crimson {
+    background-image: url("project://database/Assets/_Project/Art/UI/HudBars/T_UI_BarFillCrimson.png");
+}
+
+/* Rune strip: 256 x 32 tile drawn 192 px wide (HudBarFx.runeTile), etched dark amber into the gold. */
+.ss-bar__runes {
+    position: absolute;
+    left: 0; right: 0; top: 0; bottom: 0;
+    background-image: url("project://database/Assets/_Project/Art/UI/HudBars/T_UI_BarRunes.png");
+    background-repeat: repeat-x;
+    background-size: 192px 100%;
+    -unity-background-image-tint-color: rgba(110, 46, 6, 0.42);
+}
+
+.ss-bar__shine {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 110px;
+    translate: -110px 0;
+    background-image: url("project://database/Assets/_Project/Art/UI/HudBars/T_UI_BarShine.png");
+    -unity-background-scale-mode: stretch-to-fill;
+}
+
+.ss-bar__flash {
+    position: absolute;
+    left: 0; right: 0; top: 0; bottom: 0;
+    background-color: rgba(255, 232, 170, 0.55);
+    opacity: 0;
+}
+
+/* Run XP (XpHud, KAN-21; medieval KAN-35): full-width gold bar at the very top, level shield over its left cap. */
 .hud-xp {
     flex-direction: row;
     align-items: center;
-    padding: 28px 40px 0 40px;
-}
-
-.hud-xp__level {
-    min-width: 120px;
-    padding: 0;
-    margin: 0 16px 0 0;
-    font-size: 36px;
-    -unity-font-style: bold;
-    -unity-text-align: middle-left;
-    color: var(--hud-soul-glow);
-    -unity-text-outline-width: 2px;
-    -unity-text-outline-color: rgba(0, 0, 0, 0.85);
+    padding: 42px 40px 0 40px;
 }
 
 .hud-xp__track {
     flex-grow: 1;
-    height: 20px;
-    background-color: var(--hud-hp-track);
-    border-width: 2px;
-    border-color: rgba(156, 210, 255, 0.4);
-    border-radius: 10px;
-    overflow: hidden;
+    height: 40px;
+    margin-left: 62px;
 }
 
 .hud-xp__fill {
-    position: absolute;
-    left: 0; top: 0; bottom: 0;
     width: 0;
-    background-color: var(--hud-soul);
-    border-right-width: 2px;
-    border-color: var(--hud-soul-glow);
+    border-right-width: 3px;
+    border-color: rgba(255, 244, 205, 0.95);
 }
 
-.hud-xp--flash {
-    border-color: var(--hud-soul-glow);
-    background-color: rgba(120, 170, 220, 0.6);
+.hud-xp--flash > .ss-bar__rim {
+    -unity-background-image-tint-color: rgb(255, 228, 160);
+}
+
+/* Heraldic level shield (T_UI_LevelShield, 2x art). Scale and rotate set in code (bell ring on a level wrap). */
+.hud-xp__badge {
+    position: absolute;
+    left: 28px;
+    top: 8px;
+    width: 96px;
+    height: 110px;
+    padding-bottom: 16px;
+    align-items: center;
+    justify-content: center;
+    background-image: url("project://database/Assets/_Project/Art/UI/HudBars/T_UI_LevelShield.png");
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.hud-xp__lv {
+    margin: 0;
+    padding: 0;
+    font-size: 19px;
+    letter-spacing: 2px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    color: rgba(232, 196, 120, 0.85);
+    -unity-text-outline-width: 1px;
+    -unity-text-outline-color: rgba(10, 2, 2, 0.9);
+}
+
+.hud-xp__level {
+    margin: -8px 0 0 0;
+    padding: 0;
+    font-size: 46px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    color: rgb(255, 226, 150);
+    -unity-text-outline-width: 3px;
+    -unity-text-outline-color: rgba(24, 6, 4, 0.95);
+}
+
+/* Gold spark on the fill tip after each XP gain (left, opacity, scale, rotate set in code). */
+.hud-xp__spark {
+    position: absolute;
+    top: 50%;
+    width: 60px;
+    height: 60px;
+    margin-left: -30px;
+    margin-top: -30px;
+    opacity: 0;
+    background-image: url("project://database/Assets/_Project/Art/UI/HudBars/T_UI_BarSpark.png");
+}
+
+/* Level-up motes: zero-size anchor at the shield centre; motes built and moved in code. */
+.hud-xp__motes {
+    position: absolute;
+    left: 76px;
+    top: 63px;
+    width: 0;
+    height: 0;
+}
+
+.hud-xp__mote {
+    position: absolute;
+    left: -14px;
+    top: -14px;
+    width: 28px;
+    height: 28px;
+    background-image: url("project://database/Assets/_Project/Art/UI/HudBars/T_UI_BarSpark.png");
+    -unity-background-image-tint-color: rgb(255, 210, 110);
 }
 
 /* "LEVEL UP" over the Knight. Translate, scale and opacity set in code (unscaled time). */
@@ -1263,13 +1384,8 @@
 
 .hud-boss__track {
     width: 100%;
-    height: 30px;
+    height: 44px;
     margin-top: 6px;
-    background-color: rgba(8, 6, 6, 0.8);
-    border-width: 3px;
-    border-color: rgba(232, 196, 120, 0.55);
-    border-radius: 4px;
-    overflow: hidden;
 }
 
 .hud-boss__trail,
@@ -1280,13 +1396,12 @@
 }
 
 .hud-boss__trail {
-    background-color: rgb(236, 196, 104);
+    background-color: rgba(255, 214, 150, 0.9);
 }
 
 .hud-boss__fill {
-    background-color: rgb(168, 26, 20);
     border-right-width: 2px;
-    border-color: rgba(255, 150, 120, 0.6);
+    border-color: rgba(255, 150, 120, 0.7);
 }
 
 /* Phase 2 (KAN-61): a dark-edged gold tick at the phase 2 share (BossHud sets left), lit once phase 2 starts; the bar
@@ -1307,11 +1422,12 @@
 }
 
 .hud-boss--enraged .hud-boss__fill {
-    background-color: rgb(212, 52, 20);
+    background-image: url("project://database/Assets/_Project/Art/UI/HudBars/T_UI_BarFillGold.png");
+    -unity-background-image-tint-color: rgb(255, 120, 60);
 }
 
-.hud-boss--enraged .hud-boss__track {
-    border-color: rgba(255, 160, 90, 0.85);
+.hud-boss--enraged .ss-bar__rim {
+    -unity-background-image-tint-color: rgb(255, 196, 150);
 }
 
 .hud-boss__title {
