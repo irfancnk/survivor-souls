@@ -17,7 +17,7 @@ MonoBehaviour:
   description: +10% crit chance, +25% crit damage
   icon: {fileID: 2800000, guid: 77e4e110e47f84c34b70d50ab8cdb367, type: 3}
   rarity: 1
-  maxStack: 5
+  maxStack: 8
   weight: 1
   modifiers:
   - stat: 4
@@ -67,4 +67,28 @@ MonoBehaviour:
     - stat: 5
       kind: 0
       value: 1
+  - description: +33% crit chance, +112% crit damage
+    modifiers:
+    - stat: 4
+      kind: 0
+      value: 0.33
+    - stat: 5
+      kind: 0
+      value: 1.12
+  - description: +36% crit chance, +124% crit damage
+    modifiers:
+    - stat: 4
+      kind: 0
+      value: 0.36
+    - stat: 5
+      kind: 0
+      value: 1.24
+  - description: +40% crit chance, +140% crit damage
+    modifiers:
+    - stat: 4
+      kind: 0
+      value: 0.4
+    - stat: 5
+      kind: 0
+      value: 1.4
   effectPrefab: {fileID: 0}

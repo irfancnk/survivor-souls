@@ -17,7 +17,7 @@ MonoBehaviour:
   description: +15% attack speed
   icon: {fileID: 2800000, guid: 80dc2c78bbbb54792aeeeda7bf713228, type: 3}
   rarity: 0
-  maxStack: 6
+  maxStack: 8
   weight: 1
   modifiers:
   - stat: 1
@@ -54,4 +54,14 @@ MonoBehaviour:
     - stat: 1
       kind: 1
       value: 0.94
+  - description: +106% attack speed
+    modifiers:
+    - stat: 1
+      kind: 1
+      value: 1.06
+  - description: +120% attack speed
+    modifiers:
+    - stat: 1
+      kind: 1
+      value: 1.2
   effectPrefab: {fileID: 0}

@@ -17,7 +17,7 @@ MonoBehaviour:
   description: +40% soul pickup range
   icon: {fileID: 2800000, guid: 2713c740f677a4c2bbf941167c85339f, type: 3}
   rarity: 0
-  maxStack: 5
+  maxStack: 8
   weight: 0.7
   modifiers:
   - stat: 12
@@ -49,4 +49,19 @@ MonoBehaviour:
     - stat: 12
       kind: 1
       value: 1.3
+  - description: +145% soul pickup range
+    modifiers:
+    - stat: 12
+      kind: 1
+      value: 1.45
+  - description: +160% soul pickup range
+    modifiers:
+    - stat: 12
+      kind: 1
+      value: 1.6
+  - description: +180% soul pickup range
+    modifiers:
+    - stat: 12
+      kind: 1
+      value: 1.8
   effectPrefab: {fileID: 0}

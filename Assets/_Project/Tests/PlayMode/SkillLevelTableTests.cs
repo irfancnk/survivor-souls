@@ -73,33 +73,48 @@ namespace SurvivorSouls.Tests
             new object[] { "SharpenedBolts", 4, new[] { "Damage%=0.9" } },
             new object[] { "SharpenedBolts", 5, new[] { "Damage%=1.12" } },
             new object[] { "SharpenedBolts", 6, new[] { "Damage%=1.35" } },
+            new object[] { "SharpenedBolts", 7, new[] { "Damage%=1.55" } },
+            new object[] { "SharpenedBolts", 8, new[] { "Damage%=1.8" } }, // KAN-219: 8 levels
             new object[] { "QuickDraw", 1, new[] { "AttackSpeed%=0.15" } },
             new object[] { "QuickDraw", 2, new[] { "AttackSpeed%=0.3" } },
             new object[] { "QuickDraw", 3, new[] { "AttackSpeed%=0.5" } },
             new object[] { "QuickDraw", 4, new[] { "AttackSpeed%=0.66" } },
             new object[] { "QuickDraw", 5, new[] { "AttackSpeed%=0.8" } },
             new object[] { "QuickDraw", 6, new[] { "AttackSpeed%=0.94" } },
+            new object[] { "QuickDraw", 7, new[] { "AttackSpeed%=1.06" } },
+            new object[] { "QuickDraw", 8, new[] { "AttackSpeed%=1.2" } },
             new object[] { "FleetFoot", 1, new[] { "MoveSpeed%=0.1" } },
             new object[] { "FleetFoot", 2, new[] { "MoveSpeed%=0.18" } },
             new object[] { "FleetFoot", 3, new[] { "MoveSpeed%=0.24" } },
             new object[] { "FleetFoot", 4, new[] { "MoveSpeed%=0.29" } },
             new object[] { "FleetFoot", 5, new[] { "MoveSpeed%=0.33" } },
+            new object[] { "FleetFoot", 6, new[] { "MoveSpeed%=0.36" } },
+            new object[] { "FleetFoot", 7, new[] { "MoveSpeed%=0.39" } },
+            new object[] { "FleetFoot", 8, new[] { "MoveSpeed%=0.43" } },
             new object[] { "Vigor", 1, new[] { "MaxHealth+=80" } },
             new object[] { "Vigor", 2, new[] { "MaxHealth+=150" } },
             new object[] { "Vigor", 3, new[] { "MaxHealth+=215" } },
             new object[] { "Vigor", 4, new[] { "MaxHealth+=275" } },
             new object[] { "Vigor", 5, new[] { "MaxHealth+=330" } },
             new object[] { "Vigor", 6, new[] { "MaxHealth+=380" } },
+            new object[] { "Vigor", 7, new[] { "MaxHealth+=425" } },
+            new object[] { "Vigor", 8, new[] { "MaxHealth+=480" } },
             new object[] { "SoulSiphon", 1, new[] { "PickupRadius%=0.4" } },
             new object[] { "SoulSiphon", 2, new[] { "PickupRadius%=0.7" } },
             new object[] { "SoulSiphon", 3, new[] { "PickupRadius%=0.95" } },
             new object[] { "SoulSiphon", 4, new[] { "PickupRadius%=1.15" } },
             new object[] { "SoulSiphon", 5, new[] { "PickupRadius%=1.3" } },
+            new object[] { "SoulSiphon", 6, new[] { "PickupRadius%=1.45" } },
+            new object[] { "SoulSiphon", 7, new[] { "PickupRadius%=1.6" } },
+            new object[] { "SoulSiphon", 8, new[] { "PickupRadius%=1.8" } },
             new object[] { "KeenEye", 1, new[] { "CritChance+=0.1", "CritDamage+=0.25" } },
             new object[] { "KeenEye", 2, new[] { "CritChance+=0.15", "CritDamage+=0.45" } },
             new object[] { "KeenEye", 3, new[] { "CritChance+=0.2", "CritDamage+=0.6" } },
             new object[] { "KeenEye", 4, new[] { "CritChance+=0.25", "CritDamage+=0.8" } },
             new object[] { "KeenEye", 5, new[] { "CritChance+=0.3", "CritDamage+=1" } },
+            new object[] { "KeenEye", 6, new[] { "CritChance+=0.33", "CritDamage+=1.12" } },
+            new object[] { "KeenEye", 7, new[] { "CritChance+=0.36", "CritDamage+=1.24" } },
+            new object[] { "KeenEye", 8, new[] { "CritChance+=0.4", "CritDamage+=1.4" } },
             new object[] { "PiercingBolts", 1, new[] { "Pierce+=1" } },
             new object[] { "PiercingBolts", 2, new[] { "Pierce+=2" } },
             new object[] { "PiercingBolts", 3, new[] { "Pierce+=2", "Damage%=0.1" } },
@@ -191,6 +206,27 @@ namespace SurvivorSouls.Tests
 
         // ------------------------------------------------------------ Table rules
 
+        /// <summary>KAN-219 (KAN-124.1): pure stat skills with 8 levels.</summary>
+        private static readonly string[] EightLevelStatSkills =
+            { "sharpened_bolts", "quick_draw", "vigor", "fleet_foot", "soul_siphon", "keen_eye" };
+
+        [Test]
+        public void StatSkills_HaveEightLevels_StepsShrink_LevelEightIsTheMilestoneStep()
+        {
+            foreach (string id in EightLevelStatSkills)
+            {
+                var s = Shipped().Single(k => k.Id == id);
+                Assert.That(s.MaxLevel, Is.EqualTo(8), id);
+                // Primary stat of each row (Keen Eye: crit chance). Diminishing steps from level 3 to 7 (level 2 may grow, as
+                // KAN-191 front-loaded Sharpened Bolts / Quick Draw), then level 8 a bigger step than level 7.
+                float At(int level) => s.Levels[level - 1].modifiers[0].value;
+                float Step(int level) => At(level) - At(level - 1);
+                Assert.That(Step(7), Is.GreaterThan(0f), id + " L7 step");
+                Assert.That(Step(7), Is.LessThanOrEqualTo(Step(3) + 1e-4f), id + " L7 step not above the L3 step");
+                Assert.That(Step(8), Is.GreaterThan(Step(7)), id + " L8 is the milestone step");
+            }
+        }
+
         [Test]
         public void ShippedTables_FollowTheTierRules_TextPerLevel_RowOneIsTheFirstPick()
         {
@@ -198,8 +234,9 @@ namespace SurvivorSouls.Tests
             {
                 Assert.That(s.HasLevelTable, Is.True, s.Id + " has a level table");
                 // Utility Epic: KAN-50 asks for 5 levels. Spread Shot (Rare): KAN-83 asks for 3 (3 / 5 / 7 bolts). Holy Tomes
-                // (Rare): KAN-123 asks for 8 (the deeper path of KAN-124).
-                var (min, max) = s.Id == "reliquary_hunter" ? (5, 5) : s.Id == "multishot" ? (3, 3) : s.Id == "holy_tomes" ? (8, 8) : s.Rarity switch
+                // (Rare): KAN-123 asks for 8 (the deeper path of KAN-124). The 6 stat skills: KAN-219 (KAN-124.1) asks for 8.
+                bool deep = s.Id == "holy_tomes" || System.Array.IndexOf(EightLevelStatSkills, s.Id) >= 0;
+                var (min, max) = s.Id == "reliquary_hunter" ? (5, 5) : s.Id == "multishot" ? (3, 3) : deep ? (8, 8) : s.Rarity switch
                 {
                     SkillRarity.Common => (5, 6),
                     SkillRarity.Rare => (4, 5),
@@ -242,10 +279,10 @@ namespace SurvivorSouls.Tests
             _manager.Grant(skill);
             Assert.That(skill.DescriptionAt(_manager.GetLevel(skill) + 1), Is.EqualTo("+42% bolt damage"), "card for 1 -> 2");
             Assert.That(_manager.Upgrade(skill, 99), Is.True);
-            Assert.That(_manager.GetLevel(skill), Is.EqualTo(6));
+            Assert.That(_manager.GetLevel(skill), Is.EqualTo(8));
             Assert.That(_manager.CanUpgrade(skill), Is.False);
             Assert.That(_manager.CanTake(skill), Is.False, "maxed: never offered again");
-            Assert.That(_stats.Modify(StatId.Damage, 100f), Is.EqualTo(235f).Within(1e-3f), "level 6: +135 % (KAN-191)");
+            Assert.That(_stats.Modify(StatId.Damage, 100f), Is.EqualTo(280f).Within(1e-3f), "level 8: +180 % (KAN-219)");
         }
 
         // ------------------------------------------------------------ New secondary stats reach their consumers
