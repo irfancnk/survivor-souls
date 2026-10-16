@@ -421,12 +421,12 @@ namespace SurvivorSouls.Tests
             Assert.That(spread.Id, Is.EqualTo("multishot"), "same id: saves and debug configs load");
             Assert.That(spread.DisplayName, Is.EqualTo("Spread Shot"));
             Assert.That(spread.Rarity, Is.EqualTo(SkillRarity.Rare));
-            Assert.That(spread.MaxLevel, Is.EqualTo(3));
+            Assert.That(spread.MaxLevel, Is.EqualTo(5), "KAN-221: 5 levels, levels 4-5 add damage");
 
             var ds = Load("DoubleShot");
             Assert.That(ds.Id, Is.EqualTo("double_shot"));
             Assert.That(ds.Rarity, Is.EqualTo(SkillRarity.Epic));
-            Assert.That(ds.MaxLevel, Is.EqualTo(3));
+            Assert.That(ds.MaxLevel, Is.EqualTo(5), "KAN-221: 5 levels, levels 4-5 add damage");
             Assert.That(ds.Icon, Is.Not.Null);
 
 #if UNITY_EDITOR
