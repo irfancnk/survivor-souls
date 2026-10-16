@@ -19,6 +19,7 @@ namespace SurvivorSouls.Editor.Skills
     /// Tiers (KAN-37): Common = plain stat boosts, Rare = crit / pierce / ricochet / Spread Shot, Epic = life steal /
     /// Double Shot, Legendary = burning bolts / soul burst. Reliquary Hunter (KAN-72, Epic) drops upgrade chests through stats only.
     /// Hallowed Shield (KAN-93, Epic): a ward bubble that blocks all damage for a few seconds on a cooldown.
+    /// Freeze Arrow (KAN-91, Rare): every Nth bolt hit freezes the foe (frost burst + rime, ice tint).
     /// <see cref="BuildStyles"/> makes the per-tier style asset (labels, gems, sounds).
     /// </summary>
     public static class SkillsBuilder
@@ -31,7 +32,7 @@ namespace SurvivorSouls.Editor.Skills
         private const string PrefabDir = "Assets/_Project/Prefabs/Skills";
         private const string RingTexturePath = "Assets/_Project/Art/Textures/Game/T_Ring.png"; // made by GameArtKit
 
-        private enum Fx { None, Burn, LifeSteal, KillBurst, Ward }
+        private enum Fx { None, Burn, LifeSteal, KillBurst, Ward, Frost }
 
         private sealed class Spec
         {
@@ -228,10 +229,24 @@ namespace SurvivorSouls.Editor.Skills
                     L("Ward: immune 4 s, every 17 s", Add(StatId.WardDuration, 4f), Add(StatId.WardCooldown, -3f)),
                     L("Ward: immune 5 s, every 14 s", Add(StatId.WardDuration, 5f), Add(StatId.WardCooldown, -6f)),
                 } },
+            // KAN-91: Freeze Arrow. Every Nth bolt hit that leaves the foe alive freezes it (rooted, no bite, attacks paused,
+            // ice tint); bosses 35 % of the time (rooted only), elites 60 %, 1 s before the same foe can freeze again.
+            // Rare: 4 levels (Rare tier rule; the ticket's 1.5 s / every 3rd / every 2nd start). Duration first (the
+            // primary stat never drops), then hits per frost. No damage, so it joins late: level 10 tier, weight 0.5. Earlier
+            // it crowds the damage picks out of the random-pick power curve (2000 runs, level 10 single-target: 2.45x at tier
+            // 4 weight 1, 2.49x at tier 4 / 6 weight 0.5, 2.49x at tier 6 weight 0.3; floor 2.5x, KAN-191). Tier 10: 2.51x.
+            new Spec { Id = "freeze_arrow", File = "FreezeArrow", Name = "Freeze Arrow", Rarity = SkillRarity.Rare, Weight = 0.5f,
+                Glyph = SkillIconPainter.Frost, Effect = Fx.Frost, Levels = new[]
+                {
+                    L("Every 3rd hit freezes foes 1.5 s", Add(StatId.FreezeDuration, 1.5f), Add(StatId.FreezeEvery, 3f)),
+                    L("Every 3rd hit freezes foes 2 s", Add(StatId.FreezeDuration, 2f), Add(StatId.FreezeEvery, 3f)),
+                    L("Every 2nd hit freezes foes 2 s", Add(StatId.FreezeDuration, 2f), Add(StatId.FreezeEvery, 2f)),
+                    L("Every 2nd hit freezes foes 2.5 s", Add(StatId.FreezeDuration, 2.5f), Add(StatId.FreezeEvery, 2f)),
+                } },
         };
 
         /// <summary>Skills added after the progression asset was first made: id -> tier fromLevel they join (once).</summary>
-        private static readonly (string id, int fromLevel)[] LateUnlocks = { ("reliquary_hunter", 4), ("double_shot", 2), ("temporary_shield", 6) };
+        private static readonly (string id, int fromLevel)[] LateUnlocks = { ("reliquary_hunter", 4), ("double_shot", 2), ("temporary_shield", 6), ("freeze_arrow", 10) };
 
         /// <summary>Guarantees added after the progression asset was first made: id -> level (once, if that level is free).</summary>
         private static readonly (string id, int level)[] LateGuarantees = { ("double_shot", 3), ("sharpened_bolts", 2), ("quick_draw", 8) };
@@ -460,6 +475,8 @@ namespace SurvivorSouls.Editor.Skills
             var wardMat = EditorAssetUtil.LoadOrCreateMaterial(FxDir + "/M_FX_WardBubble.mat", "SurvivorSouls/WardBubble"); // KAN-93
             // KAN-134: alpha blend, not additive: additive fire vanishes on the white snow of Realm 1.
             var fireMat = EditorAssetUtil.ParticleMaterial(FxDir + "/M_FX_BurnFlame.mat", kit.SoftDot, additive: false);
+            // KAN-91: alpha blend (pale ice on white snow needs the blue tint and real coverage, not additive light).
+            var frostMat = EditorAssetUtil.ParticleMaterial(FxDir + "/M_FX_Frost.mat", kit.SoftDot, additive: false);
 
             return new Dictionary<Fx, SkillEffect>
             {
@@ -563,6 +580,16 @@ namespace SurvivorSouls.Editor.Skills
                     Drag(motes, 2.5f);
                     Set(fx, "bubble", mr);
                     Set(fx, "motes", motes);
+                }),
+                // KAN-91: one shared frost system: freeze flash + ice shards + mist, rime crystals off frozen foes (+1 draw call).
+                [Fx.Frost] = SavePrefab<FreezeArrowEffect>("FX_Skill_FreezeArrow", (root, fx) =>
+                {
+                    var frost = Particles(root, "Frost", frostMat, 400, new Vector2(0.3f, 0.8f), new Vector2(0.1f, 0.2f),
+                        new Color(0.7f, 0.9f, 1f), new Color(0.55f, 0.8f, 1f));
+                    Drag(frost, 3f);
+                    var main = frost.main;
+                    main.gravityModifier = 0.35f; // shards arc and fall, mist and rime barely sink
+                    Set(fx, "frost", frost);
                 }),
             };
         }

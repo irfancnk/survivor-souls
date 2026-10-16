@@ -176,6 +176,7 @@ namespace SurvivorSouls.Gameplay.Combat
                 Cancel();
                 return;
             }
+            if (enemy.IsFrozenSolid) return; // KAN-91: a frozen archer's draw pauses
             if (_cooldown > 0f) _cooldown -= dt;
             CheckSight(knight, dt);
 

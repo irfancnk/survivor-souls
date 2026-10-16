@@ -142,6 +142,7 @@ namespace SurvivorSouls.Editor
             CreateChargeSounds(audio.gameObject, sfx, boss); // charge growl, dash, stop / crash (KAN-168)
             CreateSoulBurstSounds(audio.gameObject, sfx); // Soul Burst whump + dark chime, 3 voices (KAN-66)
             CreateEmberSounds(audio.gameObject, sfx, shooter, player.GetComponent<PlayerStats>()); // ignite whoomp, crackle, hot shot (KAN-201)
+            CreateFrostSounds(audio.gameObject, sfx); // Freeze Arrow ice crack + crystal ring, 3 voices (KAN-91)
             // Knight hurt feel (KAN-187): hit direction arc, hit-stop, shake, haptic, grunt + low-health heartbeat
             HurtFeedbackBuilder.Create(health, camera.GetComponent<TopDownFollowCamera>(), camera, choice.gameObject, audio.gameObject, sfx);
             BossBuilder.CreateLaneSmoke(kit, boss.transform.parent); // smoke wisps along every warning lane (KAN-167)
@@ -342,6 +343,15 @@ namespace SurvivorSouls.Editor
             SetClips(so.FindProperty("ignites"), sfx.EmberIgnites);
             SetClips(so.FindProperty("crackles"), sfx.EmberCrackles);
             SetClips(so.FindProperty("hotShots"), sfx.EmberHotShots);
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        /// <summary>Freeze Arrow sound (KAN-91): own small voice pool on the audio object.</summary>
+        private static void CreateFrostSounds(GameObject host, SfxBuilder.Set sfx)
+        {
+            var sounds = host.AddComponent<FrostSounds>();
+            var so = new SerializedObject(sounds);
+            SetClips(so.FindProperty("freezes"), sfx.FrostFreezes);
             so.ApplyModifiedPropertiesWithoutUndo();
         }
 

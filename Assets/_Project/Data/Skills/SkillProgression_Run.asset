@@ -47,7 +47,8 @@ MonoBehaviour:
     epic: 16
     legendary: 7
   - fromLevel: 10
-    unlocks: []
+    unlocks:
+    - {fileID: 11400000, guid: 647412f3c29ff49ea9b5703e7d8e5aed, type: 2}
     common: 38
     rare: 32
     epic: 20
