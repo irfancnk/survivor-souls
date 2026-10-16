@@ -19,6 +19,7 @@ namespace SurvivorSouls.Tests
     /// HUD skill row level pips and level-up glow (KAN-74) on the real HUD: one pip per level up to the max, lit to the
     /// owned level, max class at the cap; a level up of an owned skill glows only after the pause ends, all waiting slots
     /// together with one <see cref="SkillHud.UpgradeShown"/> and one haptic; new skills and Chamber restores do not glow.
+    /// KAN-184: tier frame + rarity inlay + level shield, shine / spark glow, cooldown shade.
     /// </summary>
     public sealed class SkillHudTests
     {
@@ -269,6 +270,90 @@ namespace SurvivorSouls.Tests
             _hud.Tick(0.01f);
             Assert.That(_hud.IsGlowing(0), Is.False);
             Assert.That(Flashing(0), Is.Empty);
+        }
+
+        [UnityTest]
+        public IEnumerator MedievalSlot_TierFrame_Inlay_LevelShield()
+        {
+            var skills = Shipped();
+            var a = skills[0];
+            var b = skills.First(s => s.Rarity != a.Rarity);
+            _manager.Grant(a);
+            _manager.Grant(a);
+            _manager.Grant(b);
+            yield return null;
+
+            var slot = _hud.SlotElement(0);
+            Assert.That(slot.Q(className: "hud-skill__inlay"), Is.Not.Null, "rarity inlay on the frame");
+            Assert.That(slot.Q(className: "hud-skill__badge"), Is.Not.Null, "level shield");
+            Assert.That(_hud.LevelLabel(0), Is.EqualTo("2"));
+            Assert.That(_hud.LevelLabel(1), Is.EqualTo("1"));
+            Assert.That(Pips(0).Count, Is.EqualTo(a.MaxLevel), "KAN-74 pips kept");
+
+            string FrameOf(int i) => _hud.SlotElement(i).resolvedStyle.backgroundImage.texture?.name;
+            Assert.That(FrameOf(0), Does.StartWith("T_UI_SkillSlot" + a.Rarity), "tier frame");
+            Assert.That(FrameOf(1), Does.StartWith("T_UI_SkillSlot" + b.Rarity));
+            var inlay = slot.Q(className: "hud-skill__inlay").resolvedStyle;
+            Assert.That(inlay.backgroundImage.texture?.name, Does.StartWith("T_UI_SkillInlay" + a.Rarity));
+            Color rim = inlay.unityBackgroundImageTintColor;
+            Assert.That(rim, Is.Not.EqualTo(Color.white), "inlay tinted by rarity");
+
+            _manager.Upgrade(a, a.MaxLevel);
+            yield return null;
+            Assert.That(_hud.LevelLabel(0), Is.EqualTo(a.MaxLevel.ToString()));
+            Assert.That(slot.Q(className: "hud-skill__inlay").resolvedStyle.unityBackgroundImageTintColor, Is.Not.EqualTo(rim),
+                "max level: the inlay burns in the glow colour");
+            Assert.That(slot.pickingMode, Is.EqualTo(PickingMode.Ignore));
+            Assert.That(slot.Query<VisualElement>().ToList().All(e => e.pickingMode == PickingMode.Ignore), "never blocks touches");
+        }
+
+        [Test]
+        public void Glow_SweepsShine_TwinklesSparks_ThenClears()
+        {
+            var a = Shipped()[0];
+            _manager.Grant(a);
+            _manager.Upgrade(a);
+            _hud.Tick(0.01f);
+            var slot = _hud.SlotElement(0);
+            var shine = slot.Q(className: "hud-skill__shine");
+            var spark = slot.Q(className: "hud-skill__spark");
+            _hud.Tick(_hud.GlowTime * 0.25f);
+            Assert.That(shine.style.opacity.value, Is.EqualTo(1f), "shine sweeping");
+            Assert.That(spark.style.opacity.value, Is.GreaterThan(0.3f), "spark twinkling");
+            float x1 = shine.style.translate.value.x.value;
+            _hud.Tick(_hud.GlowTime * 0.1f);
+            Assert.That(shine.style.translate.value.x.value, Is.GreaterThan(x1), "shine moves left to right");
+            _hud.Tick(_hud.GlowTime);
+            Assert.That(_hud.IsGlowing(0), Is.False);
+            Assert.That(shine.style.opacity.value, Is.Zero);
+            Assert.That(slot.Query(className: "hud-skill__spark").ToList().All(e => e.style.opacity.value == 0f));
+        }
+
+        [Test]
+        public void Cooldown_ShadeFromBottom_Quantised_ClearsOnReset_NoGc()
+        {
+            var skills = Shipped();
+            var a = skills[0];
+            _manager.Grant(a);
+            Assert.That(_hud.SetCooldown(skills[1], 0.5f), Is.False, "not owned: no slot");
+            Assert.That(_hud.SetCooldown(a, 0.5f), Is.True);
+            Assert.That(_hud.CooldownOf(0), Is.EqualTo(0.5f).Within(0.02f));
+            Assert.That(_hud.SlotElement(0).ClassListContains("hud-skill--cooling"), Is.True);
+            var shade = _hud.SlotElement(0).Q(className: "hud-skill__cooldown");
+            Assert.That(shade.style.height.value.value, Is.EqualTo(50f).Within(2f));
+            Assert.That(_hud.SetCooldown(a, 0.0001f), Is.True);
+            Assert.That(_hud.CooldownOf(0), Is.GreaterThan(0f), "a sliver left still shows (ceil)");
+            _hud.SetCooldown(a, 0f);
+            Assert.That(_hud.CooldownOf(0), Is.Zero);
+            Assert.That(_hud.SlotElement(0).ClassListContains("hud-skill--cooling"), Is.False);
+
+            for (float r = 1f; r >= 0f; r -= 0.01f) _hud.SetCooldown(a, r); // warm up
+            Assert.That(() => { for (float r = 1f; r >= 0f; r -= 0.01f) _hud.SetCooldown(a, r); }, Is.Not.AllocatingGCMemory());
+
+            _hud.SetCooldown(a, 0.7f);
+            _manager.ResetRun();
+            _manager.Grant(skills[1]); // new skill in the old slot: no leftover shade
+            Assert.That(_hud.CooldownOf(0), Is.Zero);
         }
 
         [Test]

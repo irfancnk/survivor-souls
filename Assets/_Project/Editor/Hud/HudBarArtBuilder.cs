@@ -30,9 +30,28 @@ namespace SurvivorSouls.Editor.Hud
         public const string HeartPath = Dir + "/T_UI_HeartMedallion.png"; // KAN-82 health bar emblem
         public const string CracksPath = Dir + "/T_UI_HeartCracks.png";   // KAN-82 low-health glow over the emblem
 
+        /// <summary>KAN-184 skill slot frames, one per rarity (common round, rare rounded, epic square, legendary heavy square):
+        /// forged iron ring + dark glass field. Index = <c>SkillRarity</c>.</summary>
+        public static readonly string[] SlotFramePaths =
+        {
+            Dir + "/T_UI_SkillSlotCommon.png", Dir + "/T_UI_SkillSlotRare.png",
+            Dir + "/T_UI_SkillSlotEpic.png", Dir + "/T_UI_SkillSlotLegendary.png",
+        };
+
+        /// <summary>KAN-184 white inlay line in the groove of each frame (tinted by rarity in USS). Index = <c>SkillRarity</c>.</summary>
+        public static readonly string[] SlotInlayPaths =
+        {
+            Dir + "/T_UI_SkillInlayCommon.png", Dir + "/T_UI_SkillInlayRare.png",
+            Dir + "/T_UI_SkillInlayEpic.png", Dir + "/T_UI_SkillInlayLegendary.png",
+        };
+
         /// <summary>Every generated texture (tests check they exist and stay small).</summary>
         public static readonly string[] All =
-            { RimPath, GlassPath, FillGoldPath, FillCrimsonPath, RunesPath, ShinePath, ShieldPath, SparkPath, HeartPath, CracksPath };
+        {
+            RimPath, GlassPath, FillGoldPath, FillCrimsonPath, RunesPath, ShinePath, ShieldPath, SparkPath, HeartPath, CracksPath,
+            SlotFramePaths[0], SlotFramePaths[1], SlotFramePaths[2], SlotFramePaths[3],
+            SlotInlayPaths[0], SlotInlayPaths[1], SlotInlayPaths[2], SlotInlayPaths[3],
+        };
 
         /// <summary>The HUD style sheet that uses this art.</summary>
         public const string UssPath = "Assets/_Project/UI/Hud/GameHud.uss";
@@ -70,6 +89,11 @@ namespace SurvivorSouls.Editor.Hud
             WriteSpark();
             WriteHeartMedallion();
             WriteHeartCracks();
+            for (int tier = 0; tier < SlotFramePaths.Length; tier++)
+            {
+                WriteSlotFrame(tier);
+                WriteSlotInlay(tier);
+            }
             AssetDatabase.SaveAssets();
             // A USS that names a texture before it exists keeps "Invalid asset path" until it imports again (KAN-82).
             AssetDatabase.ImportAsset(UssPath, ImportAssetOptions.ForceUpdate);
@@ -383,6 +407,101 @@ namespace SurvivorSouls.Editor.Hud
             if (d < edge) body = Color.Lerp(Gold * (0.8f + 0.45f * v), body, Mathf.Clamp01(d - edge + 1f));
             if (d < 0.8f) body = Color.Lerp(Outline, body, Mathf.Clamp01(d - 0.2f)); // thin dark outline
             return Color.Lerp(under, body, Mathf.Clamp01(d + 1.5f));
+        }
+
+        // ------------------------------------------------------------ Skill slot frames (KAN-184)
+
+        /// <summary>Slot art size: 2x the 76 px HUD slot (fixed size, so no 9-slice: the frame scales to fit).</summary>
+        public const int SlotSize = 152;
+
+        /// <summary>Corner radius (2x px) per tier: the KAN-37 shape cue (circle, rounded square, square, heavy square).</summary>
+        public static float SlotRadius(int tier) => tier switch { 0 => SlotSize * 0.5f, 1 => 48f, 2 => 24f, _ => 12f };
+
+        /// <summary>Iron band width (2x px) per tier; legendary is heavier.</summary>
+        public static float SlotRim(int tier) => tier >= 3 ? 17f : 13f;
+
+        /// <summary>Depth (2x px from the outer edge) of the inlay groove centre.</summary>
+        private static float InlayDepth(int tier) => SlotRim(tier) * 0.5f;
+
+        private const float InlayHalfWidth = 2.2f;
+
+        /// <summary>Corner rivets (epic, legendary) sit on the inlay line at the diagonal; the inlay breaks around them.</summary>
+        private static float RivetInset(int tier) => SlotRadius(tier) - (SlotRadius(tier) - InlayDepth(tier)) / Mathf.Sqrt(2f);
+
+        private static float RivetRadius(int tier) => tier >= 3 ? 4.2f : 3.4f;
+
+        /// <summary>Forged iron ring lit from above, a dark groove where the rarity inlay sits, an inner shadow lip, and a dark
+        /// glass field with a faint centre glow (the icon sits on it). Epic and legendary get brass rivets in the corners.</summary>
+        private static void WriteSlotFrame(int tier)
+        {
+            const int s = SlotSize;
+            float radius = SlotRadius(tier), rim = SlotRim(tier), groove = InlayDepth(tier);
+            Write(SlotFramePaths[tier], s, s, (x, y) =>
+            {
+                float px = x + 0.5f, py = y + 0.5f;
+                float d = RoundRect(px, py, s, s, radius);
+                float alpha = Mathf.Clamp01(0.5f - d);
+                if (alpha <= 0f) return Clear;
+                float depth = -d;
+                float v = py / s; // 1 at the top
+
+                Color c;
+                if (depth < rim)
+                {
+                    float lit = Mathf.Lerp(0.6f, 1.45f, v);
+                    float ridge = 1f + 0.3f * (1f - Mathf.Abs(2f * Mathf.Clamp01((depth - 1.5f) / (rim - 2.5f)) - 1f));
+                    float forged = 0.84f + 0.3f * TextureFactory.Fbm(px / s, py / s, 6, 3, 41 + tier);
+                    c = Iron * (lit * ridge * forged);
+                    c = Color.Lerp(c, Outline, 0.85f * Gauss(depth, groove, InlayHalfWidth + 0.6f)); // groove under the inlay
+                    if (depth < 2f) c = Color.Lerp(Outline, c, Mathf.Clamp01(depth - 1f));
+                    if (depth > rim - 2f) c = Color.Lerp(c, Outline, Mathf.Clamp01((depth - (rim - 2f)) / 1.2f));
+                }
+                else
+                {
+                    float cx = px / s * 2f - 1f, cy = py / s * 2f - 1f;
+                    float r = Mathf.Sqrt(cx * cx + cy * cy);
+                    float shade = Mathf.Lerp(0.085f, 0.035f, Mathf.Clamp01(r));
+                    c = new Color(shade, shade * 0.93f, shade * 1.06f);
+                    c = Color.Lerp(c, Outline, 0.7f * Mathf.Clamp01(1f - (depth - rim) / 7f)); // inner shadow under the ring
+                    alpha *= 0.9f; // a hint of the world behind, like the old 0.72 plate but darker
+                }
+                if (tier >= 2)
+                {
+                    float inset = RivetInset(tier), rr = RivetRadius(tier);
+                    c = Rivet(c, px, py, inset, inset, rr, ref alpha);
+                    c = Rivet(c, px, py, s - inset, inset, rr, ref alpha);
+                    c = Rivet(c, px, py, inset, s - inset, rr, ref alpha);
+                    c = Rivet(c, px, py, s - inset, s - inset, rr, ref alpha);
+                }
+                c.a = alpha;
+                return c;
+            });
+        }
+
+        /// <summary>White inlay line in the frame groove, brighter on the top half (lit metal); clear elsewhere. USS tints it
+        /// with the rarity colour.</summary>
+        private static void WriteSlotInlay(int tier)
+        {
+            const int s = SlotSize;
+            float radius = SlotRadius(tier), groove = InlayDepth(tier);
+            Write(SlotInlayPaths[tier], s, s, (x, y) =>
+            {
+                float px = x + 0.5f, py = y + 0.5f;
+                float depth = -RoundRect(px, py, s, s, radius);
+                float a = Mathf.Clamp01(InlayHalfWidth + 0.5f - Mathf.Abs(depth - groove));
+                if (tier >= 2)
+                {
+                    float inset = RivetInset(tier), gap = RivetRadius(tier) * 1.3f;
+                    float qx = Mathf.Min(Mathf.Abs(px - inset), Mathf.Abs(px - (s - inset)));
+                    float qy = Mathf.Min(Mathf.Abs(py - inset), Mathf.Abs(py - (s - inset)));
+                    a *= Mathf.Clamp01(Mathf.Sqrt(qx * qx + qy * qy) - gap);
+                }
+                if (a <= 0f) return Clear;
+                float v = py / s;
+                float lit = Mathf.Lerp(0.72f, 1f, v) + 0.25f * Gauss(depth, groove - 0.8f, 0.7f); // bright upper lip
+                lit = Mathf.Min(lit, 1f);
+                return new Color(lit, lit, lit, a);
+            });
         }
 
         // ------------------------------------------------------------ Helpers

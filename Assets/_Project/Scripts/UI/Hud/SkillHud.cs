@@ -19,7 +19,12 @@ namespace SurvivorSouls.UI.Hud
     /// <see cref="UpgradeShown"/> (GameAudio chime) and one light haptic. <see cref="SkillManager.Restore"/> (Chamber
     /// carry) and new skills do not glow.
     /// </para>
-    /// Looks: hud-skill* in GameHud.uss.
+    /// <para>
+    /// Medieval look (KAN-184): forged iron frame per tier (KAN-37 shape cue kept) with a rarity-tinted inlay, a small level
+    /// shield with the level number (pips stay), the level-up glow adds a shine sweep and two sparks (shared KAN-35 bar art),
+    /// and an optional cooldown shade (<see cref="SetCooldown"/>) for skills that recharge. Styles are written only on change.
+    /// </para>
+    /// Looks: hud-skill* in GameHud.uss; art from HudBarArtBuilder.
     /// </summary>
     [RequireComponent(typeof(UIDocument))]
     public sealed class SkillHud : MonoBehaviour
@@ -33,6 +38,18 @@ namespace SurvivorSouls.UI.Hud
         private const string PipClass = "hud-skill__pip";
         private const string PipOnClass = "hud-skill__pip--on";
         private const string PipNewClass = "hud-skill__pip--new";
+        private const string InlayClass = "hud-skill__inlay";
+        private const string ClipClass = "hud-skill__clip";
+        private const string CooldownClass = "hud-skill__cooldown";
+        private const string CoolingClass = "hud-skill--cooling";
+        private const string ShineClass = "hud-skill__shine";
+        private const string SparkClass = "hud-skill__spark";
+        private const string SparkLowClass = "hud-skill__spark--low";
+        private const string BadgeClass = "hud-skill__badge";
+        private const string LevelClass = "hud-skill__level";
+        /// <summary>Cooldown shade steps: the height is quantised so a per-frame call writes a style only ~64 times per cooldown.</summary>
+        private const int CooldownSteps = 64;
+        private static readonly string[] LevelText = BuildLevelText(20);
         private static readonly string[] RarityClasses = { "hud-skill--common", "hud-skill--rare", "hud-skill--epic", "hud-skill--legendary" };
 
         [SerializeField] private SkillManager skills;
@@ -47,7 +64,11 @@ namespace SurvivorSouls.UI.Hud
 
         private sealed class Slot
         {
-            public VisualElement Root, Icon, Glow, PipRow;
+            public VisualElement Root, Icon, Glow, PipRow, Inlay, Clip, Cooldown, Shine, SparkHigh, SparkLow, Badge;
+            public Label Level;
+            public int ShownLevel = -1;
+            /// <summary>Cooldown shade in steps of 1 / <see cref="CooldownSteps"/> (0 = ready).</summary>
+            public int CooldownStep;
             public readonly List<VisualElement> Pips = new List<VisualElement>(6);
             public SkillDefinition Skill;
             public float GlowAge = -1f;
@@ -78,6 +99,25 @@ namespace SurvivorSouls.UI.Hud
 
         /// <summary>Slot root element of owned skill <paramref name="index"/> (pick order), null when not shown. Tests, screenshots.</summary>
         public VisualElement SlotElement(int index) => index >= 0 && index < VisibleSlots && index < _slots.Count ? _slots[index].Root : null;
+
+        /// <summary>
+        /// Cooldown shade on the slot of <paramref name="skill"/> (KAN-184; for skills that recharge, e.g. KAN-192): a dark
+        /// shade over the icon covering <paramref name="remaining01"/> of the slot from the bottom (1 = just used, 0 = ready).
+        /// Safe to call every frame: the style changes only when the quantised step changes. False when the skill has no slot.
+        /// </summary>
+        public bool SetCooldown(SkillDefinition skill, float remaining01)
+        {
+            int index = SlotOf(skill);
+            if (index < 0) return false;
+            ApplyCooldown(_slots[index], Mathf.CeilToInt(Mathf.Clamp01(remaining01) * CooldownSteps));
+            return true;
+        }
+
+        /// <summary>Shown cooldown of slot <paramref name="index"/> (0..1, quantised). Tests.</summary>
+        public float CooldownOf(int index) => index >= 0 && index < _slots.Count ? _slots[index].CooldownStep / (float)CooldownSteps : 0f;
+
+        /// <summary>Level number on the slot's shield (null when not shown). Tests, screenshots.</summary>
+        public string LevelLabel(int index) => index >= 0 && index < VisibleSlots && index < _slots.Count ? _slots[index].Level.text : null;
 
         public void Setup(SkillManager manager)
         {
@@ -140,13 +180,22 @@ namespace SurvivorSouls.UI.Hud
                     continue;
                 }
                 var o = owned[i];
-                if (slot.Skill != o.Skill) EndGlow(slot); // run reset: a glow never jumps to another skill
+                if (slot.Skill != o.Skill)
+                {
+                    EndGlow(slot); // run reset: a glow never jumps to another skill
+                    ApplyCooldown(slot, 0); // nor a cooldown
+                }
                 slot.Skill = o.Skill;
                 int r = (int)o.Skill.Rarity;
                 for (int k = 0; k < RarityClasses.Length; k++) slot.Root.EnableInClassList(RarityClasses[k], k == r);
                 slot.Root.EnableInClassList(MaxClass, o.Level >= o.Skill.MaxLevel);
                 slot.Icon.style.backgroundImage = o.Skill.Icon != null ? new StyleBackground(o.Skill.Icon) : StyleKeyword.None;
                 SetPips(slot, o.Skill.MaxLevel, o.Level);
+                if (slot.ShownLevel != o.Level)
+                {
+                    slot.ShownLevel = o.Level;
+                    slot.Level.text = o.Level < LevelText.Length ? LevelText[o.Level] : o.Level.ToString();
+                }
                 if (o.Skill == _popSkill) _popSlot = i;
             }
             if (owned.Count == 0) _pending.Clear();
@@ -180,14 +229,45 @@ namespace SurvivorSouls.UI.Hud
                 Glow = new VisualElement { pickingMode = PickingMode.Ignore },
                 Icon = new VisualElement { pickingMode = PickingMode.Ignore },
                 PipRow = new VisualElement { pickingMode = PickingMode.Ignore },
+                Inlay = new VisualElement { pickingMode = PickingMode.Ignore },
+                Clip = new VisualElement { pickingMode = PickingMode.Ignore },
+                Cooldown = new VisualElement { pickingMode = PickingMode.Ignore },
+                Shine = new VisualElement { pickingMode = PickingMode.Ignore },
+                SparkHigh = new VisualElement { pickingMode = PickingMode.Ignore },
+                SparkLow = new VisualElement { pickingMode = PickingMode.Ignore },
+                Badge = new VisualElement { pickingMode = PickingMode.Ignore },
+                Level = new Label { pickingMode = PickingMode.Ignore },
             };
             slot.Root.AddToClassList(SlotClass);
             slot.Glow.AddToClassList(GlowClass);
             slot.Icon.AddToClassList(IconClass);
             slot.PipRow.AddToClassList(PipRowClass);
+            slot.Inlay.AddToClassList(InlayClass);
+            slot.Clip.AddToClassList(ClipClass);
+            slot.Cooldown.AddToClassList(CooldownClass);
+            slot.Shine.AddToClassList(ShineClass);
+            slot.SparkHigh.AddToClassList(SparkClass);
+            slot.SparkLow.AddToClassList(SparkClass);
+            slot.SparkLow.AddToClassList(SparkLowClass);
+            slot.Badge.AddToClassList(BadgeClass);
+            slot.Level.AddToClassList(LevelClass);
             slot.Glow.style.opacity = 0f;
+            slot.Shine.style.opacity = 0f;
+            slot.SparkHigh.style.opacity = 0f;
+            slot.SparkLow.style.opacity = 0f;
+            slot.Cooldown.style.height = Length.Percent(0f);
+            // Order = draw order: glow ring behind the frame, inlay on the frame, icon, then shade + shine over the icon
+            // (clipped to the field), sparks, the level shield and the pips on top.
             slot.Root.Add(slot.Glow);
+            slot.Root.Add(slot.Inlay);
             slot.Root.Add(slot.Icon);
+            slot.Clip.Add(slot.Cooldown);
+            slot.Clip.Add(slot.Shine);
+            slot.Root.Add(slot.Clip);
+            slot.Root.Add(slot.SparkHigh);
+            slot.Root.Add(slot.SparkLow);
+            slot.Badge.Add(slot.Level);
+            slot.Root.Add(slot.Badge);
             slot.Root.Add(slot.PipRow);
             _row.Add(slot.Root);
             return slot;
@@ -224,6 +304,13 @@ namespace SurvivorSouls.UI.Hud
                 float pulse = 1f + 0.2f * Mathf.Abs(Mathf.Sin(t * Mathf.PI * 2f)) * (1f - t);
                 slot.Icon.style.scale = new Scale(new Vector3(pulse, pulse, 1f));
                 // New pips blink 3 times, then stay lit.
+                // Shine (shared bar shine art) sweeps across the field once in the first 55 %.
+                float sweep = Mathf.Clamp01(t / 0.55f);
+                slot.Shine.style.opacity = sweep < 1f ? 1f : 0f;
+                slot.Shine.style.translate = new Translate(Length.Percent(-100f + 300f * sweep), Length.Percent(0f));
+                // Sparks (shared bar spark art) twinkle on two corners, the low one a beat later.
+                SetSpark(slot.SparkHigh, t);
+                SetSpark(slot.SparkLow, t - 0.18f);
                 bool blinkOn = t >= 1f || Mathf.Repeat(t * 3f, 1f) < 0.6f;
                 for (int p = slot.NewFrom; p < slot.NewTo && p < slot.Pips.Count; p++)
                     slot.Pips[p].EnableInClassList(PipNewClass, blinkOn && t < 1f);
@@ -260,10 +347,38 @@ namespace SurvivorSouls.UI.Hud
             return -1;
         }
 
+        private static void SetSpark(VisualElement spark, float t)
+        {
+            float k = Mathf.Clamp01(t / 0.6f);
+            float a = t <= 0f ? 0f : Mathf.Sin(k * Mathf.PI);
+            spark.style.opacity = a;
+            float size = 0.5f + 0.9f * a;
+            spark.style.scale = new Scale(new Vector3(size, size, 1f));
+            spark.style.rotate = new Rotate(Angle.Degrees(120f * k));
+        }
+
+        private static void ApplyCooldown(Slot slot, int step)
+        {
+            if (slot.CooldownStep == step) return;
+            slot.CooldownStep = step;
+            slot.Cooldown.style.height = Length.Percent(100f * step / CooldownSteps);
+            slot.Root.EnableInClassList(CoolingClass, step > 0);
+        }
+
+        private static string[] BuildLevelText(int max)
+        {
+            var text = new string[max + 1];
+            for (int i = 0; i <= max; i++) text[i] = i.ToString();
+            return text;
+        }
+
         private static void EndGlow(Slot slot)
         {
             slot.GlowAge = -1f;
             slot.Glow.style.opacity = 0f;
+            slot.Shine.style.opacity = 0f;
+            slot.SparkHigh.style.opacity = 0f;
+            slot.SparkLow.style.opacity = 0f;
             slot.Glow.style.scale = new Scale(Vector3.one);
             slot.Icon.style.scale = new Scale(Vector3.one);
             for (int p = 0; p < slot.Pips.Count; p++) slot.Pips[p].RemoveFromClassList(PipNewClass);

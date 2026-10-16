@@ -1205,31 +1205,125 @@
     padding: 14px 40px 0 40px;
 }
 
+/* Slot = forged iron frame per tier (KAN-184, T_UI_SkillSlot*, 2x art) with a dark glass field; the rarity colour is the
+   inlay line in the frame groove (T_UI_SkillInlay*, white, tinted here). */
 .hud-skill {
     width: 76px;
     height: 76px;
-    margin: 0 10px 28px 0;
-    border-radius: 38px;
-    border-width: 3px;
-    border-color: var(--slot-rim);
-    background-color: rgba(8, 8, 10, 0.72);
+    margin: 0 12px 28px 0;
     align-items: center;
     justify-content: center;
-    --slot-rim: rgb(150, 146, 138);
-    --slot-glow: rgb(222, 216, 204);
+    background-image: url("project://database/Assets/_Project/Art/UI/HudBars/T_UI_SkillSlotCommon.png");
+    -unity-background-scale-mode: scale-to-fit;
+    --slot-rim: rgb(176, 182, 190);
+    --slot-glow: rgb(226, 222, 212);
 }
 
-/* Tier shape (KAN-37), a second cue next to colour: circle, rounded square, square, square with a heavy rim. */
-.hud-skill--rare { --slot-rim: rgb(86, 150, 236); --slot-glow: rgb(170, 214, 255); border-radius: 24px; }
-.hud-skill--epic { --slot-rim: rgb(166, 96, 236); --slot-glow: rgb(222, 186, 255); border-radius: 12px; }
-.hud-skill--legendary { --slot-rim: rgb(244, 172, 48); --slot-glow: rgb(255, 224, 140); border-radius: 6px; border-width: 5px; }
+/* Tier shape (KAN-37), a second cue next to colour: circle, rounded square, square, heavy square with corner rivets.
+   Colours (KAN-184): common steel, rare soul blue, epic violet, legendary ember gold. */
+.hud-skill--rare { --slot-rim: rgb(86, 150, 236); --slot-glow: rgb(170, 214, 255); background-image: url("project://database/Assets/_Project/Art/UI/HudBars/T_UI_SkillSlotRare.png"); }
+.hud-skill--epic { --slot-rim: rgb(166, 96, 236); --slot-glow: rgb(222, 186, 255); background-image: url("project://database/Assets/_Project/Art/UI/HudBars/T_UI_SkillSlotEpic.png"); }
+.hud-skill--legendary { --slot-rim: rgb(250, 168, 46); --slot-glow: rgb(255, 224, 140); background-image: url("project://database/Assets/_Project/Art/UI/HudBars/T_UI_SkillSlotLegendary.png"); }
+
+.hud-skill__inlay {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    background-image: url("project://database/Assets/_Project/Art/UI/HudBars/T_UI_SkillInlayCommon.png");
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: var(--slot-rim);
+}
+
+.hud-skill--rare .hud-skill__inlay { background-image: url("project://database/Assets/_Project/Art/UI/HudBars/T_UI_SkillInlayRare.png"); }
+.hud-skill--epic .hud-skill__inlay { background-image: url("project://database/Assets/_Project/Art/UI/HudBars/T_UI_SkillInlayEpic.png"); }
+.hud-skill--legendary .hud-skill__inlay { background-image: url("project://database/Assets/_Project/Art/UI/HudBars/T_UI_SkillInlayLegendary.png"); }
+
+/* Max level: the inlay burns in the bright glow colour. */
+.hud-skill--max .hud-skill__inlay { -unity-background-image-tint-color: var(--slot-glow); }
 
 .hud-skill__icon {
-    width: 56px;
-    height: 56px;
+    width: 50px;
+    height: 50px;
     -unity-background-scale-mode: scale-to-fit;
     -unity-background-image-tint-color: var(--slot-glow);
 }
+
+/* Shade + shine box over the icon: a 44 px square fits inside every tier's field (round too), so a plain rect clip
+   (no border-radius: no stencil, no extra draw call) keeps them off the iron. */
+.hud-skill__clip {
+    position: absolute;
+    left: 16px;
+    top: 16px;
+    width: 44px;
+    height: 44px;
+    overflow: hidden;
+}
+
+/* Cooldown shade (SkillHud.SetCooldown): grows from the bottom, height set in code. */
+.hud-skill__cooldown {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(4, 4, 8, 0.72);
+    border-top-width: 2px;
+    border-color: var(--slot-glow);
+}
+
+.hud-skill--cooling .hud-skill__icon { opacity: 0.55; }
+
+/* Level-up shine (shared T_UI_BarShine): sweeps across the box, translate and opacity set in code. */
+.hud-skill__shine {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 50%;
+    background-image: url("project://database/Assets/_Project/Art/UI/HudBars/T_UI_BarShine.png");
+    -unity-background-scale-mode: stretch-to-fill;
+}
+
+/* Level-up sparks (shared T_UI_BarSpark) on two corners; opacity, scale and rotate set in code. */
+.hud-skill__spark {
+    position: absolute;
+    left: -10px;
+    top: -10px;
+    width: 30px;
+    height: 30px;
+    background-image: url("project://database/Assets/_Project/Art/UI/HudBars/T_UI_BarSpark.png");
+    -unity-background-image-tint-color: var(--slot-glow);
+}
+
+.hud-skill__spark--low { left: auto; top: auto; right: -10px; bottom: -10px; }
+
+/* Level shield (the XP level shield art, small) on the top right corner with the level number. */
+.hud-skill__badge {
+    position: absolute;
+    right: -11px;
+    top: -9px;
+    width: 28px;
+    height: 32px;
+    padding-bottom: 5px;
+    align-items: center;
+    justify-content: center;
+    background-image: url("project://database/Assets/_Project/Art/UI/HudBars/T_UI_LevelShield.png");
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.hud-skill__level {
+    margin: 0;
+    padding: 0;
+    font-size: 17px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    color: rgb(255, 226, 150);
+    -unity-text-outline-width: 2px;
+    -unity-text-outline-color: rgba(24, 6, 4, 0.95);
+}
+
+.hud-skill--max .hud-skill__level { color: var(--slot-glow); }
 
 /* Level pips under each slot (KAN-74): one per level up to the skill's max, lit in the tier rim colour, glow colour at
    max level. Absolute under the rim so the icon keeps its size; .hud-skill margin-bottom leaves room for them. */

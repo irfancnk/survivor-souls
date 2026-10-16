@@ -12,6 +12,7 @@ namespace SurvivorSouls.Tests
     /// for UI (no mips, uncompressed, alpha is transparency), referenced by GameHud.uss, and shaped right: the rim is
     /// opaque on its band and clear in the middle (the fill shows through), the shield has a clear outside and no
     /// broken pixels at its point. KAN-82: the heart medallion is round with a red heart; the cracks are thin lines.
+    /// KAN-184: skill slot frames keep the tier shape cue with a dark field; the inlay is a thin grey line (tinted in USS).
     /// </summary>
     public sealed class HudBarArtTests
     {
@@ -97,6 +98,36 @@ namespace SurvivorSouls.Tests
             Assert.That(lit, Is.LessThan(s * s / 4), "thin lines, not a filled disc");
             Object.DestroyImmediate(heart);
             Object.DestroyImmediate(cracks);
+        }
+
+        [Test]
+        public void SkillSlots_TierShapes_DarkField_InlayInGroove()
+        {
+            for (int tier = 0; tier < HudBarArtBuilder.SlotFramePaths.Length; tier++)
+            {
+                var frame = Load(HudBarArtBuilder.SlotFramePaths[tier]);
+                var inlay = Load(HudBarArtBuilder.SlotInlayPaths[tier]);
+                int s = frame.width;
+                Assert.That(s, Is.EqualTo(HudBarArtBuilder.SlotSize));
+                Assert.That(inlay.width, Is.EqualTo(s));
+                var field = frame.GetPixel(s / 2, s / 2);
+                Assert.That(field.a, Is.GreaterThan(0.8f), $"tier {tier}: field mostly opaque");
+                Assert.That(field.r + field.g + field.b, Is.LessThan(0.4f), $"tier {tier}: dark glass under the icon");
+                Assert.That(frame.GetPixel(s / 2, s - 4).a, Is.GreaterThan(0.95f), $"tier {tier}: iron band at the top");
+                float corner = frame.GetPixel(1, 1).a;
+                if (tier == 0) Assert.That(corner, Is.LessThan(0.01f), "common is round: corners clear");
+                else Assert.That(corner, Is.LessThan(0.5f), $"tier {tier}: rounded corner");
+                if (tier == 3) Assert.That(frame.GetPixel(4, s / 2).a, Is.GreaterThan(0.95f), "legendary square edge");
+
+                Assert.That(inlay.GetPixel(s / 2, s / 2).a, Is.LessThan(0.01f), $"tier {tier}: inlay clear in the middle");
+                int groove = Enumerable.Range(0, 20).Count(y => inlay.GetPixel(s / 2, s - 1 - y).a > 0.6f);
+                Assert.That(groove, Is.InRange(2, 7), $"tier {tier}: thin inlay line in the top band");
+                var lit = inlay.GetPixels().Where(p => p.a > 0.6f).ToArray();
+                Assert.That(lit.All(p => Mathf.Abs(p.r - p.b) < 0.01f), $"tier {tier}: inlay is grey (tinted in USS)");
+                Assert.That(frame.GetPixels().All(p => !float.IsNaN(p.r) && !float.IsNaN(p.a)), "no NaN pixels");
+                Object.DestroyImmediate(frame);
+                Object.DestroyImmediate(inlay);
+            }
         }
 
         private static Texture2D Load(string path)
