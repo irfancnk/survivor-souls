@@ -64,6 +64,11 @@ namespace SurvivorSouls.Editor.Boss
         public const string RotationPath = DataDir + "/BossRotation_Realm1.asset";
         /// <summary>KAN-111: the Matriarch keeps this far from the Knight (m): hard to reach, never melee.</summary>
         public const float MatriarchHoldMin = 6f, MatriarchHoldMax = 9f;
+        /// <summary>
+        /// KAN-190: a fresh boss asset (only made when the asset is missing) gets the KAN-163 numbers: max-hit cap 0.5 and
+        /// phase 2 hits x1.15. The attack specs below hold the KAN-163 shares (Docs/BALANCE.md), so a rebuilt asset = shipped.
+        /// </summary>
+        public const float FreshMaxHitShare = 0.5f, FreshPhase2Damage = 1.15f;
         public const string BossRulesPath = "Assets/_Project/Data/Chamber/ChamberRules_Boss.asset";
         private const string ArtDir = "Assets/_Project/Art/Boss";
         private const string RingTexturePath = ArtDir + "/T_TelegraphRing.png";
@@ -471,16 +476,16 @@ namespace SurvivorSouls.Editor.Boss
         /// </summary>
         public static BossAttack[] ButcherAttacks() => new[]
         {
-            BossAttack.Lane("Cleaver Chop", BossPhases.Both, 0f, 5.5f, length: 6f, width: 1.6f, telegraph: 0.9f, damage: 0.22f,
+            BossAttack.Lane("Cleaver Chop", BossPhases.Both, 0f, 5.5f, length: 6f, width: 1.6f, telegraph: 0.9f, damage: 0.4f,
                 recover: 0.8f, cooldown: 2.6f, priority: 1, weight: 2f, clip: "Chop"),
             BossAttack.Spin("Cleaver Spin", BossPhases.Both, 4.5f, radius: 3f, telegraph: 0.9f, duration: 2.5f, speed: 1.6f,
-                interval: 0.6f, damage: 0.08f, recover: 1f, cooldown: 3.2f, priority: 1, clip: "Spin"),
+                interval: 0.6f, damage: 0.14f, recover: 1f, cooldown: 3.2f, priority: 1, clip: "Spin"),
             BossAttack.Charge("Charge", BossPhases.Phase1, 4.5f, 13f, telegraph: 0.9f, speed: 15f, distance: 11f, width: 2.6f,
-                damage: 0.2f, recover: 0.8f, cooldown: 3.4f, stun: 1f, clip: "Charge"),
-            BossAttack.Lane("Chain Hook", BossPhases.Phase2, 5f, 10f, length: 10f, width: 1f, telegraph: 0.8f, damage: 0.1f,
+                damage: 0.36f, recover: 0.8f, cooldown: 3.4f, stun: 1f, clip: "Charge"),
+            BossAttack.Lane("Chain Hook", BossPhases.Phase2, 5f, 10f, length: 10f, width: 1f, telegraph: 0.8f, damage: 0.18f,
                 recover: 0.7f, cooldown: 2.4f, pull: 4f, clip: "Chop"),
             BossAttack.Charge("Triple Charge", BossPhases.Phase2, 4.5f, 14f, telegraph: 0.75f, speed: 16f, distance: 10f,
-                width: 2.6f, damage: 0.18f, recover: 1f, cooldown: 3.6f, dashes: 3, stun: 1f, weight: 2f, clip: "Charge"),
+                width: 2.6f, damage: 0.3f, recover: 1f, cooldown: 3.6f, dashes: 3, stun: 1f, weight: 2f, clip: "Charge"),
             BossAttack.BlackFireballs(), // KAN-174: side cast, 1 per s near the Knight, both phases
         };
 
@@ -505,7 +510,8 @@ namespace SurvivorSouls.Editor.Boss
             EditorAssetUtil.EnsureFolder(DataDir);
             // 8000 HP x Chamber 5 health (x1.6): a 10-pick Knight kills it in ~80 s (BossIntroTests balance check).
             data = BossData.CreateWithAttacks(body, ButcherAttacks(), health: 8000f, firstAttackDelay: 1.5f, introTime: 2.4f,
-                victoryBeat: 1.8f, roarClip: "Roar", phaseRoar: 1.2f, displayName: "THE BUTCHER OF ASHGRAVE",
+                victoryBeat: 1.8f, roarClip: "Roar", phaseRoar: 1.2f, maxHitShare: FreshMaxHitShare,
+                phase2Damage: FreshPhase2Damage, displayName: "THE BUTCHER OF ASHGRAVE",
                 title: "Headsman of the Ashen Gallows");
             AssetDatabase.CreateAsset(data, ButcherDataPath);
             AssetDatabase.SaveAssets();
@@ -526,14 +532,14 @@ namespace SurvivorSouls.Editor.Boss
             nova.clip = "CastNova";
             var spiral = BossAttack.Sample(BossFight.Move.Spiral);
             spiral.clip = "CastNova";
-            var rain = BossAttack.Sample(BossFight.Move.Rain).WithBurn(radius: 1f, life: 2f, dpsShare: 0.05f);
+            var rain = BossAttack.Sample(BossFight.Move.Rain).WithBurn(radius: 1f, life: 2f, dpsShare: 0.09f);
             rain.clip = "CastFan";
             return new[]
             {
-                BossAttack.Slam("Flame Slam", BossPhases.Both, range: 3.5f, radius: 4f, reach: 0f, telegraph: 1.1f, damage: 0.2f,
-                    recover: 0.9f, cooldown: 3.4f, priority: 1, clip: "Slam").WithBurn(radius: 2.2f, life: 3f, dpsShare: 0.05f),
+                BossAttack.Slam("Flame Slam", BossPhases.Both, range: 3.5f, radius: 4f, reach: 0f, telegraph: 1.1f, damage: 0.36f,
+                    recover: 0.9f, cooldown: 3.4f, priority: 1, clip: "Slam").WithBurn(radius: 2.2f, life: 3f, dpsShare: 0.09f),
                 BossAttack.Fan("Fireball Fan", BossPhases.Both, maxRange: 14f, bolts: 7, spread: 70f, telegraph: 0.9f, speed: 9f,
-                    distance: 15f, laneWidth: 0.6f, hitRadius: 0.6f, damage: 0.12f, recover: 0.6f, cooldown: 2.6f, weight: 2f,
+                    distance: 15f, laneWidth: 0.6f, hitRadius: 0.6f, damage: 0.22f, recover: 0.6f, cooldown: 2.6f, weight: 2f,
                     clip: "CastFan"),
                 nova,
                 spiral,
@@ -561,7 +567,8 @@ namespace SurvivorSouls.Editor.Boss
             EditorAssetUtil.EnsureFolder(DataDir);
             // 8000 HP x Chamber 5 health (x1.6): a 10-pick Knight kills it in ~73 s, no picks ~233 s (BossIntroTests balance check).
             data = BossData.CreateWithAttacks(body, PyreLordAttacks(), health: 8000f, firstAttackDelay: 1.5f, introTime: 2.4f,
-                victoryBeat: 1.8f, roarClip: "Roar", phaseRoar: 1.2f, displayName: "THE PYRE LORD",
+                victoryBeat: 1.8f, roarClip: "Roar", phaseRoar: 1.2f, maxHitShare: FreshMaxHitShare,
+                phase2Damage: FreshPhase2Damage, displayName: "THE PYRE LORD",
                 title: "Ember King of the Cinder Throne");
             AssetDatabase.CreateAsset(data, PyreLordDataPath);
             AssetDatabase.SaveAssets();
@@ -572,7 +579,7 @@ namespace SurvivorSouls.Editor.Boss
         /// The Rotting Colossus (KAN-110, Docs/ENEMY_ROSTER.md 3.14): 5.0 m roster body (the biggest), 8200 HP (Chamber 1
         /// terms; doc 11000, but then a no-pick Knight needs over 4 min, so it gets the most HP the balance rule allows), the
         /// slowest boss (1.2 m/s). Phase 1: double slam up close (two shockwave rings, warning circle r 5.5 m), grab at mid
-        /// range (1.2 s lane 7 x 1.4 m; a hit deals 20 % and drags the Knight in to the body), corpse boulder at range
+        /// range (1.2 s lane 7 x 1.4 m; a hit deals 36 % (KAN-163) and drags the Knight in to the body), corpse boulder at range
         /// (landing circle r 2.5 m, rubble r 0.9 m for 8 s that blocks the ground and boss bolts). Phase 2 (50 %): roar, then
         /// the roar summons 4 Frenzied Ghouls (only the missing ones come) and the boulders come 3 in a row. Never
         /// overwritten: edit the asset.
@@ -598,7 +605,7 @@ namespace SurvivorSouls.Editor.Boss
             return new[]
             {
                 slam,
-                BossAttack.Lane("Grab", BossPhases.Both, 2.5f, 7f, length: 7f, width: 1.4f, telegraph: 1.2f, damage: 0.2f,
+                BossAttack.Lane("Grab", BossPhases.Both, 2.5f, 7f, length: 7f, width: 1.4f, telegraph: 1.2f, damage: 0.36f,
                     recover: 0.9f, cooldown: 2.8f, pull: 7f, weight: 1.5f, clip: "Grab"),
                 boulder,
                 volley,
@@ -626,7 +633,8 @@ namespace SurvivorSouls.Editor.Boss
             EditorAssetUtil.EnsureFolder(DataDir);
             // 8200 HP x Chamber 5 health (x1.6): a 10-pick Knight kills it in ~75 s, no picks ~239 s (BossIntroTests balance check).
             data = BossData.CreateWithAttacks(body, ColossusAttacks(), health: 8200f, firstAttackDelay: 1.5f, introTime: 2.6f,
-                victoryBeat: 1.8f, roarClip: "Roar", phaseRoar: 1.4f, displayName: "THE ROTTING COLOSSUS",
+                victoryBeat: 1.8f, roarClip: "Roar", phaseRoar: 1.4f, maxHitShare: FreshMaxHitShare,
+                phase2Damage: FreshPhase2Damage, displayName: "THE ROTTING COLOSSUS",
                 title: "Carrion Giant of the Barrow Fields");
             var zoom = new SerializedObject(data);
             zoom.FindProperty("introZoom").floatValue = 1.5f; // the 5 m body: pull out further than the 4.2-4.5 m bosses
@@ -664,7 +672,7 @@ namespace SurvivorSouls.Editor.Boss
             {
                 skulls,
                 BossAttack.Nova("Soul Ring", BossPhases.Both, 14f, bolts: 24, gaps: 3, warnRadius: 3f, telegraph: 0.9f, speed: 6f,
-                    distance: 14f, hitRadius: 0.5f, damage: 0.14f, recover: 0.8f, cooldown: 2.8f, clip: "CastRing"),
+                    distance: 14f, hitRadius: 0.5f, damage: 0.25f, recover: 0.8f, cooldown: 2.8f, clip: "CastRing"),
                 BossAttack.Summon("Raise the Dead", BossPhases.Both, 0f, 30f, "GraveyardLaborer", count: 4, ring: 2.6f,
                     telegraph: 1.2f, recover: 0.8f, cooldown: 4f, weight: 0.7f, clip: "Summon"),
                 beams,
@@ -692,7 +700,8 @@ namespace SurvivorSouls.Editor.Boss
             EditorAssetUtil.EnsureFolder(DataDir);
             // 7000 HP x Chamber 5 health (x1.6): a 10-pick Knight kills it in ~64 s, no picks ~204 s (BossIntroTests balance check).
             data = BossData.CreateWithAttacks(body, MatriarchAttacks(), health: 7000f, firstAttackDelay: 1.5f, introTime: 2.6f,
-                victoryBeat: 1.8f, roarClip: "Roar", phaseRoar: 1.4f, displayName: "THE BONE MATRIARCH",
+                victoryBeat: 1.8f, roarClip: "Roar", phaseRoar: 1.4f, maxHitShare: FreshMaxHitShare,
+                phase2Damage: FreshPhase2Damage, displayName: "THE BONE MATRIARCH",
                 title: "Lich Queen of the Ossuary");
             AssetDatabase.CreateAsset(data, MatriarchDataPath);
             AssetDatabase.SaveAssets();

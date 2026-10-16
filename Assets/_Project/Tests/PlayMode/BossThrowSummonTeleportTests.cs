@@ -519,7 +519,7 @@ namespace SurvivorSouls.Tests
             var lob = BossAttack.Sample(BossFight.Move.Lobbed);
             var summon = BossAttack.Sample(BossFight.Move.Summon);
             var teleport = BossAttack.Sample(BossFight.Move.Teleport);
-            var data = Data(new[] { lob, summon, teleport });
+            var data = Data(new[] { lob, summon, teleport }, maxHitShare: 0.5f); // KAN-190: KAN-163 shares vs the shipped cap
             foreach (var a in data.Attacks)
             {
                 Assert.That(data.TelegraphFor(a.Telegraph, 2), Is.GreaterThanOrEqualTo(BossData.MinTelegraph), a.ToString());

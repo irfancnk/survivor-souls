@@ -321,18 +321,20 @@ namespace SurvivorSouls.Gameplay.Boss
 
         /// <summary>
         /// KAN-174: the Butcher of Ashgrave's black fireballs: one every 1 s in both phases, 0.6-3 m from the Knight (a
-        /// still Knight is clipped now and then; walking blind into the circles hurts), circle r 1 m, flight 0.9 s, 6 % each.
+        /// still Knight is clipped now and then; walking blind into the circles hurts), circle r 1 m, flight 0.9 s, 11 % each
+        /// (KAN-163 share; KAN-174 shipped 6 %).
         /// </summary>
         public static BossAttack BlackFireballs() =>
             Barrage("Black Fireballs", BossPhases.Both, 0f, 30f, interval: 1f, minOffset: 0.6f, maxOffset: 3f,
-                impactRadius: 1f, flight: 0.9f, damage: 0.06f);
+                impactRadius: 1f, flight: 0.9f, damage: 0.11f);
 
         /// <summary>
         /// Pyre Lord style numbers (Docs/ENEMY_ROSTER.md 3.13) for a type: the debug menu and dev screenshots add it to a
         /// boss that lacks that type; KAN-109 starts its list from these. KAN-119: Lobbed and Summon are Rotting Colossus
         /// numbers (3.14), Teleport is the Bone Matriarch's (3.15); KAN-110 / KAN-111 start from these. KAN-121: Shockwave is the
         /// Colossus double slam (3.14a), Homing and Beams are the Matriarch's skulls and cross beams (3.15a, d). KAN-174: Barrage
-        /// is the Butcher's black fireballs (<see cref="BlackFireballs"/>). Other types: a plain slam.
+        /// is the Butcher's black fireballs (<see cref="BlackFireballs"/>). Other types: a plain slam. KAN-190: damage = the
+        /// KAN-163 shares (Docs/BALANCE.md; x1.8, Cross Beams x2.1), the same as the shipped boss assets.
         /// </summary>
         public static BossAttack Sample(BossFight.Move type)
         {
@@ -340,17 +342,17 @@ namespace SurvivorSouls.Gameplay.Boss
             {
                 case BossFight.Move.Nova:
                     return Nova("Fire Nova", BossPhases.Both, 9f, bolts: 16, gaps: 0, warnRadius: 3f, telegraph: 0.9f, speed: 7f,
-                        distance: 14f, hitRadius: 0.6f, damage: 0.14f, recover: 0.8f, cooldown: 3f);
+                        distance: 14f, hitRadius: 0.6f, damage: 0.25f, recover: 0.8f, cooldown: 3f);
                 case BossFight.Move.Spiral:
                     return Spiral("Fire Spiral", BossPhases.Phase2, 12f, arms: 2, turnSpeed: 110f, duration: 3f, interval: 0.14f,
-                        warnRadius: 3f, telegraph: 1f, speed: 6.5f, distance: 14f, hitRadius: 0.55f, damage: 0.16f, recover: 1f,
+                        warnRadius: 3f, telegraph: 1f, speed: 6.5f, distance: 14f, hitRadius: 0.55f, damage: 0.29f, recover: 1f,
                         cooldown: 3.5f);
                 case BossFight.Move.Rain:
                     return Rain("Meteor Rain", BossPhases.Phase2, 3f, 16f, circles: 6, radius: 1.6f, scatter: 2.5f, interval: 0.35f,
-                        telegraph: 1f, damage: 0.15f, recover: 0.8f, cooldown: 3.5f);
+                        telegraph: 1f, damage: 0.27f, recover: 0.8f, cooldown: 3.5f);
                 case BossFight.Move.Lobbed:
                     return Lobbed("Corpse Boulder", BossPhases.Both, 3f, 14f, boulders: 1, impactRadius: 2.5f, flight: 1.1f,
-                        interval: 0.6f, rubbleRadius: 0.9f, rubbleLife: 8f, telegraph: 0.8f, damage: 0.2f, recover: 0.9f, cooldown: 3f);
+                        interval: 0.6f, rubbleRadius: 0.9f, rubbleLife: 8f, telegraph: 0.8f, damage: 0.36f, recover: 0.9f, cooldown: 3f);
                 case BossFight.Move.Summon:
                     return Summon("Summon Ghouls", BossPhases.Phase2, 0f, 30f, "FrenziedGhoul", count: 4, ring: 2.6f, telegraph: 1.2f,
                         recover: 0.8f, cooldown: 4f);
@@ -359,16 +361,16 @@ namespace SurvivorSouls.Gameplay.Boss
                         recover: 0.4f, cooldown: 2f);
                 case BossFight.Move.Shockwave:
                     return Shockwave("Double Slam", BossPhases.Both, 0f, 4f, rings: 2, radius: 5.5f, reach: 1.2f, speed: 7f,
-                        band: 0.8f, interval: 0.6f, telegraph: 1f, damage: 0.16f, recover: 1f, cooldown: 3f);
+                        band: 0.8f, interval: 0.6f, telegraph: 1f, damage: 0.29f, recover: 1f, cooldown: 3f);
                 case BossFight.Move.Homing:
                     return Homing("Homing Skulls", BossPhases.Both, 0f, 14f, orbs: 3, spread: 60f, turn: 55f, speed: 3.6f,
-                        distance: 16f, hitRadius: 0.5f, warnRadius: 2.2f, telegraph: 0.8f, damage: 0.12f, recover: 0.6f,
+                        distance: 16f, hitRadius: 0.5f, warnRadius: 2.2f, telegraph: 0.8f, damage: 0.22f, recover: 0.6f,
                         cooldown: 2.5f);
                 case BossFight.Move.Barrage:
                     return BlackFireballs();
                 case BossFight.Move.Beams:
                     return Beams("Cross Beams", BossPhases.Phase2, 0f, 30f, lanes: 4, length: 9f, width: 0.9f, turnSpeed: 45f,
-                        duration: 4f, telegraph: 1f, damage: 0.16f, recover: 0.8f, cooldown: 3f);
+                        duration: 4f, telegraph: 1f, damage: 0.34f, recover: 0.8f, cooldown: 3f);
                 default:
                     return Slam("Slam", BossPhases.Both, 4f, 3f, 1.6f, 1f, 0.22f, 0.7f, 3.2f);
             }

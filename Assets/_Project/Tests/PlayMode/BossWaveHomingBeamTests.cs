@@ -475,7 +475,7 @@ namespace SurvivorSouls.Tests
             Assert.That(beams.count, Is.EqualTo(4));
             Assert.That(beams.duration, Is.EqualTo(4f));
             Assert.That(beams.InPhase(1), Is.False, "phase 2 only");
-            var data = Data(new BossAttack[0]);
+            var data = Data(new BossAttack[0], maxHitShare: 0.5f); // KAN-190: samples carry the KAN-163 shares, checked against the shipped cap
             foreach (var a in new[] { wave, homing, beams })
             {
                 Assert.That(a.Telegraph, Is.GreaterThanOrEqualTo(BossData.MinTelegraph), a.ToString());

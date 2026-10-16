@@ -246,7 +246,7 @@ namespace SurvivorSouls.Tests
             Assert.That(a.reach, Is.GreaterThan(a.length));
             Assert.That(Mathf.Max(BossData.MinTelegraph, a.duration), Is.GreaterThanOrEqualTo(BossData.MinTelegraph));
             Assert.That(a.Telegraph, Is.GreaterThanOrEqualTo(BossData.MinTelegraph));
-            Assert.That(a.damage, Is.LessThanOrEqualTo(0.1f), "a light hit: it comes every second");
+            Assert.That(a.damage, Is.LessThanOrEqualTo(0.12f), "a light hit (KAN-163: 11 %): it comes every second");
             Assert.That(BossAttack.Sample(BossFight.Move.Barrage).label, Is.EqualTo(a.label));
         }
 

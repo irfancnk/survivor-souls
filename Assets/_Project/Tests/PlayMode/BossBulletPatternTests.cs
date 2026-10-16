@@ -463,7 +463,7 @@ namespace SurvivorSouls.Tests
             Assert.That(rain.type, Is.EqualTo(BossFight.Move.Rain));
             Assert.That(rain.count, Is.EqualTo(6));
             Assert.That(rain.Telegraph, Is.EqualTo(1f));
-            var data = Data(new BossAttack[0]);
+            var data = Data(new BossAttack[0], maxHitShare: 0.5f); // KAN-190: samples carry the KAN-163 shares, checked against the shipped cap
             foreach (var a in new[] { nova, spiral, rain })
             {
                 Assert.That(a.Telegraph, Is.GreaterThanOrEqualTo(BossData.MinTelegraph), a.ToString());
