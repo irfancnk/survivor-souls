@@ -26,6 +26,7 @@ namespace SurvivorSouls.Editor.Combat
         private const string PrefabDir = "Assets/_Project/Prefabs/Combat";
         private const string BoltMeshPath = ArtDir + "/Bolt_Mesh.asset";
         private const string BoltBlazeMeshPath = ArtDir + "/Bolt_BlazeHead_Mesh.asset"; // KAN-200
+        private const string BoltBlazeTrailTexPath = ArtDir + "/T_BoltBlazeTrail.png"; // KAN-200
         public const string BoltPrefabPath = PrefabDir + "/Bolt.prefab";
         public const string EnemyPrefabPath = PrefabDir + "/Enemy_Zombie.prefab";
         public const string RunnerPrefabPath = PrefabDir + "/Enemy_ZombieRunner.prefab";
@@ -212,12 +213,19 @@ namespace SurvivorSouls.Editor.Combat
                 hr.sharedMaterial = blazeMat;
                 Quiet(hr);
                 head.SetActive(false);
+                // Trail texture: soft across the ribbon, even along it (the soft dot would fade the trail out along its length).
+                var band = TextureFactory.Write(BoltBlazeTrailTexPath, 4, 32, (x, y) =>
+                {
+                    float a = Mathf.Clamp01((1f - Mathf.Abs((y + 0.5f) / 16f - 1f)) * 1.7f); // full core, soft edges
+                    return new Color(1f, 1f, 1f, a * a * (3f - 2f * a));
+                }, TextureFactory.Kind.Color, mipmaps: false, wrap: TextureWrapMode.Clamp, compress: false);
+                var blazeTrailMat = EditorAssetUtil.ParticleMaterial(ArtDir + "/M_FX_BoltBlazeTrail.mat", band, additive: false);
 
                 var bolt = root.AddComponent<Bolt>();
                 SetRef(bolt, "trail", trail);
                 SetRef(bolt, "model", model.transform);
                 SetRef(bolt, "blazeHead", head.transform);
-                SetRef(bolt, "blazeTrailMaterial", blazeMat);
+                SetRef(bolt, "blazeTrailMaterial", blazeTrailMat);
                 PrefabUtility.SaveAsPrefabAsset(root, BoltPrefabPath);
             }
             finally

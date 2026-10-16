@@ -359,4 +359,4 @@ MonoBehaviour:
   model: {fileID: 7597748254603613412}
   spinDegreesPerSecond: 900
   blazeHead: {fileID: 5063998725416718473}
-  blazeTrailMaterial: {fileID: 2100000, guid: 8fc591db426a74befba54d4ba2287c13, type: 2}
+  blazeTrailMaterial: {fileID: 2100000, guid: 3fa3b5daa982849d9995eaa756e977ae, type: 2}

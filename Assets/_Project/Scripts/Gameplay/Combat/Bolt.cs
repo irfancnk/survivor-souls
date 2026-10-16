@@ -141,8 +141,8 @@ namespace SurvivorSouls.Gameplay.Combat
                 {
                     if (blazeTrailMaterial != null) trail.sharedMaterial = blazeTrailMaterial;
                     trail.colorGradient = BlazeGradient(heat);
-                    trail.time = _trailTime * Mathf.Lerp(1.5f, 2.1f, heat);
-                    trail.widthMultiplier = _trailWidth * Mathf.Lerp(1.7f, 2.5f, heat);
+                    trail.time = _trailTime * Mathf.Lerp(1.05f, 1.3f, heat);
+                    trail.widthMultiplier = _trailWidth * Mathf.Lerp(3f, 4.2f, heat);
                 }
                 else
                 {
