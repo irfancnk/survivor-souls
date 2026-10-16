@@ -18,7 +18,7 @@ MonoBehaviour:
   icon: {fileID: 2800000, guid: dabb2a779a1d345f7a0d8355ba65ea3e, type: 3}
   rarity: 2
   maxStack: 3
-  weight: 1
+  weight: 0.6
   modifiers:
   - stat: 24
     kind: 0
@@ -47,5 +47,7 @@ MonoBehaviour:
       value: -6
   effectPrefab: {fileID: 3081473456292653756, guid: 8f677da42675d42e2b5b4788ae92ae78, type: 3}
   requiresUpgradableSkill: 0
-  repeatOfferWeights: []
+  repeatOfferWeights:
+  - 0.6
+  - 0.6
   upgradeOfferWeight: 1

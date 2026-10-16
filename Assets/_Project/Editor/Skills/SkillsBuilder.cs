@@ -210,9 +210,11 @@ namespace SurvivorSouls.Editor.Skills
                 } },
             // KAN-93: Temporary Shield. Every Cooldown seconds a ward blocks ALL damage for WardDuration seconds (the shield
             // pool is not touched). The cooldown counts from the end of the last ward; the effect's base is 20 s, levels
-            // subtract. Epic, from the level 4 tier.
+            // subtract. Epic, from the level 6 tier, weight 0.6 (like Soul Siphon), repeat offers at 60 %: a defensive card
+            // must not crowd out the early damage picks (power curve, 2000 runs: level 10 single-target 2.44x without it,
+            // 2.43-2.44x with it; SingleTargetBalanceTests).
             new Spec { Id = "temporary_shield", File = "TemporaryShield", Name = "Hallowed Shield", Rarity = SkillRarity.Epic,
-                Glyph = SkillIconPainter.Ward, Effect = Fx.Ward, Levels = new[]
+                Weight = 0.6f, RepeatWeights = new[] { 0.6f, 0.6f }, Glyph = SkillIconPainter.Ward, Effect = Fx.Ward, Levels = new[]
                 {
                     L("Ward: immune 3 s, every 20 s", Add(StatId.WardDuration, 3f)),
                     L("Ward: immune 4 s, every 17 s", Add(StatId.WardDuration, 4f), Add(StatId.WardCooldown, -3f)),
@@ -221,7 +223,7 @@ namespace SurvivorSouls.Editor.Skills
         };
 
         /// <summary>Skills added after the progression asset was first made: id -> tier fromLevel they join (once).</summary>
-        private static readonly (string id, int fromLevel)[] LateUnlocks = { ("reliquary_hunter", 4), ("double_shot", 2), ("temporary_shield", 4) };
+        private static readonly (string id, int fromLevel)[] LateUnlocks = { ("reliquary_hunter", 4), ("double_shot", 2), ("temporary_shield", 6) };
 
         /// <summary>Guarantees added after the progression asset was first made: id -> level (once, if that level is free).</summary>
         private static readonly (string id, int level)[] LateGuarantees = { ("double_shot", 3), ("sharpened_bolts", 2), ("quick_draw", 8) };
@@ -377,12 +379,12 @@ namespace SurvivorSouls.Editor.Skills
                     new SkillProgression.Tier
                     {
                         fromLevel = 4, common = 55f, rare = 30f, epic = 12f, legendary = 3f,
-                        unlocks = new[] { s["ricochet"], s["ember_bolts"], s["blood_covenant"], s["reliquary_hunter"], s["temporary_shield"] },
+                        unlocks = new[] { s["ricochet"], s["ember_bolts"], s["blood_covenant"], s["reliquary_hunter"] },
                     },
                     new SkillProgression.Tier
                     {
                         fromLevel = 6, common = 45f, rare = 32f, epic = 16f, legendary = 7f,
-                        unlocks = new[] { s["multishot"], s["soul_burst"] },
+                        unlocks = new[] { s["multishot"], s["soul_burst"], s["temporary_shield"] },
                     },
                     new SkillProgression.Tier
                     {

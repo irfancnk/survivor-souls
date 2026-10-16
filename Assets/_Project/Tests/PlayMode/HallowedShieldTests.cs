@@ -94,7 +94,7 @@ namespace SurvivorSouls.Tests
         }
 
         [Test]
-        public void ShippedSkill_IsEpic_ThreeLevels_InTheLevelFourTier()
+        public void ShippedSkill_IsEpic_ThreeLevels_InTheLevelSixTier()
         {
             Assert.That(_skill.Id, Is.EqualTo("temporary_shield"));
             Assert.That(_skill.DisplayName, Is.EqualTo("Hallowed Shield"));
@@ -104,7 +104,8 @@ namespace SurvivorSouls.Tests
             Assert.That(_skill.EffectPrefab, Is.InstanceOf<ShieldWardEffect>());
             var table = UnityEditor.AssetDatabase.LoadAssetAtPath<SkillProgression>("Assets/_Project/Data/Skills/SkillProgression_Run.asset");
             var tier = table.Tiers.Single(t => t.unlocks.Contains(_skill));
-            Assert.That(tier.fromLevel, Is.EqualTo(4));
+            Assert.That(tier.fromLevel, Is.EqualTo(6));
+            Assert.That(_skill.Weight, Is.EqualTo(0.6f).Within(1e-4f), "defensive card offered less often");
         }
 
         [TestCase(1, 3f, 20f)]
@@ -152,11 +153,13 @@ namespace SurvivorSouls.Tests
             _manager.Upgrade(_skill, 2);
             Assert.That(ward.Cooldown, Is.EqualTo(14f).Within(1e-4f));
             Run(ward, 20f);
-            Run(ward, 0.1f);
-            Assert.That(ward.IsActive, Is.True);
-            Assert.That(ward.ActiveLeft, Is.GreaterThan(4.5f), "level 3 ward lasts 5 s");
-            Run(ward, 5.1f);
-            Assert.That(ward.CooldownLeft, Is.EqualTo(14f).Within(0.25f));
+            Assert.That(ward.IsActive, Is.True, "the running 20 s cooldown is kept");
+            while (ward.IsActive) ward.Tick(Frame);
+            Assert.That(ward.CooldownLeft, Is.EqualTo(14f).Within(2f * Frame), "next cooldown is the level 3 one");
+            int frames = 0;
+            while (!ward.IsActive) { ward.Tick(Frame); frames++; }
+            while (ward.IsActive) { ward.Tick(Frame); frames++; }
+            Assert.That(frames * Frame, Is.EqualTo(14f + 5f).Within(3f * Frame), "level 3: 14 s down, 5 s up");
         }
 
         [Test]

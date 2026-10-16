@@ -169,9 +169,10 @@ namespace SurvivorSouls.Editor.Skills
         /// <summary>Hallowed Shield (KAN-93): heater shield rim (flat top, pointed base) with a cross inside.</summary>
         public static float Ward(Vector2 p)
         {
-            float top = RoundBox(p, new Vector2(0f, 0.24f), new Vector2(0.6f, 0.4f), 0.08f);
-            float point = Triangle(p, new Vector2(0f, -0.88f), new Vector2(0.6f, -0.08f), new Vector2(-0.6f, -0.08f));
-            float shield = SmoothMin(top, point, 0.16f);
+            // Two big discs meet in the point (0, -0.88) and pass through the top corners (+-0.62, 0.62); flat top edge.
+            const float c = 1.5045f, r = 2.1245f;
+            float shield = Mathf.Max(Mathf.Max((p - new Vector2(-c, 0.62f)).magnitude - r, (p - new Vector2(c, 0.62f)).magnitude - r),
+                p.y - 0.62f);
             float rim = Mathf.Max(shield, -(shield + 0.13f));
             float cross = Mathf.Min(Segment(p, new Vector2(0f, 0.42f), new Vector2(0f, -0.5f), 0.075f),
                 Segment(p, new Vector2(-0.3f, 0.14f), new Vector2(0.3f, 0.14f), 0.075f));
