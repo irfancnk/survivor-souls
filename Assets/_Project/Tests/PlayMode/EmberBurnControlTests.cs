@@ -233,8 +233,8 @@ namespace SurvivorSouls.Tests
                 t += Time.deltaTime;
                 yield return null;
             }
-            // KAN-205: wait game time, not a frame count (batch-mode frames can be a fraction of a millisecond).
-            for (float walked = 0f; walked < 0.5f && e.transform.position.z <= start.z + 1e-3f; walked += Time.deltaTime)
+            // Walk for a bit of game time, not a frame count: batch-mode frames can be ~0.2 ms long (KAN-201 fix).
+            for (float walk = 0f; walk < 0.25f && e.transform.position.z <= start.z + 1e-3f; walk += Time.deltaTime)
                 yield return null;
             Assert.That(e.transform.position.z, Is.GreaterThan(start.z + 1e-3f), "walks on after the stun");
         }
