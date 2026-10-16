@@ -79,6 +79,8 @@ Material:
     - _Surface: 1
     - _Wash: 0.12
     - _Wave: 0
+    - _WaveRim: 0.92
+    - _WaveStretch: 1
     - _ZWrite: 0
     m_Colors:
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}

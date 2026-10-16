@@ -53,6 +53,9 @@ namespace SurvivorSouls.Editor.Audio
             public AudioClip[] FrostFreezes;
             /// <summary>Holy Tomes (KAN-123): leather thump + faint chime on a tome hit, quiet page whoosh loop.</summary>
             public AudioClip[] TomeThumps, TomeWhooshes;
+            /// <summary>Special melee zombies (KAN-132): Bloater swell gurgle + burst pop, Ghoul screech / whoosh / thud, Brute grunt / slam boom, toxic cloud hiss loop.</summary>
+            public AudioClip[] MeleeBloaterSwells, MeleeBloaterBursts, MeleeGhoulScreeches, MeleeGhoulWhooshes, MeleeGhoulThuds, MeleeBruteGrunts, MeleeBruteSlams;
+            public AudioClip MeleeCloudHiss;
         }
 
         [MenuItem("Survivor Souls/Rebuild Sounds")]
@@ -109,6 +112,14 @@ namespace SurvivorSouls.Editor.Audio
             set.FrostFreezes = Many("sfx_frost_freeze", 2, FrostFreeze); // KAN-91
             set.TomeThumps = Many("sfx_tome_thump", 2, TomeThump); // KAN-123
             set.TomeWhooshes = Many("sfx_tome_whoosh_loop", 1, TomeWhoosh);
+            set.MeleeBloaterSwells = Many("sfx_bloater_swell", 2, BloaterSwell); // KAN-132
+            set.MeleeBloaterBursts = Many("sfx_bloater_burst", 2, BloaterPop);
+            set.MeleeGhoulScreeches = Many("sfx_ghoul_screech", 2, GhoulScreech);
+            set.MeleeGhoulWhooshes = Many("sfx_ghoul_whoosh", 1, GhoulWhoosh);
+            set.MeleeGhoulThuds = Many("sfx_ghoul_thud", 2, GhoulThud);
+            set.MeleeBruteGrunts = Many("sfx_brute_grunt", 2, BruteGrunt);
+            set.MeleeBruteSlams = Many("sfx_brute_slam", 2, BruteSlamBoom);
+            set.MeleeCloudHiss = Save("sfx_toxic_cloud_hiss_loop", Rate, ToxicHiss(), ambience: false);
             return set;
         }
 
@@ -874,6 +885,193 @@ namespace SurvivorSouls.Editor.Audio
             for (int s = 0; s < sparks; s++)
                 Click(b, 0.01f + (float)rng.NextDouble() * 0.12f, 0.0025f, 0.18f, 7500f, rng);
             return Normalize(b, 0.75f);
+        }
+
+        /// <summary>
+        /// Bloater swell (KAN-132, ~1.05 s, the 1 s swell): a wet belly gurgle. Low muffled noise that grows, bubble blips
+        /// (short sines with a fast upward glide) that come faster and higher towards the end, so the swell rises to the pop.
+        /// </summary>
+        private static float[] BloaterSwell(int seed)
+        {
+            var rng = new System.Random(seed * 8111);
+            float len = 1.05f;
+            var b = new float[(int)(Rate * len)];
+            var lp = new Biquad(); lp.SetLowPass(420f, 0.8f, Rate);
+            for (int i = 0; i < b.Length; i++)
+            {
+                float k = i / (float)b.Length;
+                b[i] += lp.Process(Noise(rng)) * (0.25f + 0.75f * k * k) * 0.9f;
+            }
+            for (float t = 0.02f; t < len - 0.08f;)
+            {
+                float k = t / len;
+                float f = Mathf.Lerp(120f, 380f, k * k) * (0.85f + 0.3f * (float)rng.NextDouble());
+                Sweep(b, t, 0.07f, f, f * 1.8f, 0.35f + 0.4f * k, 38f, 1); // bubble: pitch glides up
+                t += Mathf.Lerp(0.11f, 0.035f, k) * (0.7f + 0.6f * (float)rng.NextDouble());
+            }
+            Sweep(b, 0f, len, 58f, 96f, 0.35f, 0.4f, 2); // the belly hum rises
+            return Normalize(b, 0.75f);
+        }
+
+        /// <summary>
+        /// Bloater burst (KAN-132, ~0.7 s): a wet pop (sharp low thump + click), then a splash (band noise that dies fast)
+        /// with droplet ticks falling over 0.4 s.
+        /// </summary>
+        private static float[] BloaterPop(int seed)
+        {
+            var rng = new System.Random(seed * 8221);
+            var b = new float[(int)(Rate * 0.7f)];
+            float v = seed == 1 ? 1f : 0.9f;
+            Sweep(b, 0f, 0.18f, 150f * v, 45f * v, 1f, 18f, 2);            // pop body
+            Click(b, 0f, 0.004f, 0.9f, 3800f, rng);                          // skin snap
+            NoiseBurst(b, 0.005f, 0.4f, 0.55f, 260f, 2600f, 9f, rng);        // wet splash
+            NoiseBurst(b, 0.01f, 0.25f, 0.2f, 1800f, 6000f, 16f, rng);       // spray hiss
+            for (int k = 0; k < 9; k++)                                      // droplets land
+            {
+                float t = 0.08f + (float)rng.NextDouble() * 0.45f;
+                float f = 900f + (float)rng.NextDouble() * 1400f;
+                Sweep(b, t, 0.03f, f, f * 0.6f, 0.12f, 70f, 1);
+            }
+            return Normalize(b, 0.82f);
+        }
+
+        /// <summary>
+        /// Ghoul screech (KAN-132, ~0.45 s, the crouch): a harsh rasping shriek. Saw voice gliding up then down through two
+        /// narrow formants, with throat noise; the second clip is a little higher.
+        /// </summary>
+        private static float[] GhoulScreech(int seed)
+        {
+            var rng = new System.Random(seed * 8317);
+            float len = 0.45f;
+            var b = new float[(int)(Rate * len)];
+            float v = seed == 1 ? 1f : 1.12f;
+            var f1 = new Biquad(); var f2 = new Biquad();
+            f1.SetBandPass(1300f * v, 3.5f, Rate); f2.SetBandPass(2600f * v, 5f, Rate);
+            double phase = 0;
+            for (int i = 0; i < b.Length; i++)
+            {
+                float k = i / (float)b.Length;
+                float pitch = Mathf.Lerp(420f, 640f, Mathf.Sin(Mathf.Min(1f, k * 1.4f) * Mathf.PI * 0.5f)) * (1f - 0.25f * k * k) * v;
+                pitch *= 1f + 0.03f * Mathf.Sin(i / (float)Rate * 2f * Mathf.PI * 31f); // ragged throat
+                phase += pitch / Rate;
+                float src = Saw(phase) * 0.6f + Noise(rng) * 0.4f;
+                float env = Mathf.Min(1f, k / 0.06f) * (1f - k) * (1f - k * 0.4f);
+                b[i] = (f1.Process(src) + f2.Process(src) * 0.6f) * env * 1.6f;
+            }
+            return Normalize(b, 0.78f);
+        }
+
+        /// <summary>Ghoul take-off (KAN-132, ~0.35 s): an air whoosh (band noise sweeping 400 Hz up to 2.2 kHz and back).</summary>
+        private static float[] GhoulWhoosh(int seed)
+        {
+            var rng = new System.Random(seed * 8419);
+            var b = new float[(int)(Rate * 0.35f)];
+            var bp = new Biquad();
+            for (int i = 0; i < b.Length; i++)
+            {
+                float k = i / (float)b.Length;
+                bp.SetBandPass(Mathf.Lerp(400f, 2200f, Mathf.Sin(k * Mathf.PI)), 1.3f, Rate);
+                b[i] = bp.Process(Noise(rng)) * Mathf.Sin(k * Mathf.PI) * Mathf.Sin(k * Mathf.PI);
+            }
+            return Normalize(b, 0.7f);
+        }
+
+        /// <summary>Ghoul landing (KAN-132, ~0.35 s): a body thud on snow (low sine drop, muffled noise) + a soft snow crunch.</summary>
+        private static float[] GhoulThud(int seed)
+        {
+            var rng = new System.Random(seed * 8521);
+            var b = new float[(int)(Rate * 0.35f)];
+            float v = seed == 1 ? 1f : 0.92f;
+            Sweep(b, 0f, 0.2f, 110f * v, 48f * v, 1f, 20f, 2);
+            NoiseBurst(b, 0f, 0.12f, 0.45f, 60f, 600f, 26f, rng);
+            NoiseBurst(b, 0.01f, 0.18f, 0.18f, 1500f, 5000f, 20f, rng); // snow crunch
+            for (int k = 0; k < 5; k++) Click(b, 0.01f + (float)rng.NextDouble() * 0.08f, 0.003f, 0.12f, 4500f, rng);
+            return Normalize(b, 0.8f);
+        }
+
+        /// <summary>
+        /// Brute wind-up (KAN-132, ~0.55 s): a deep strained grunt. Low saw voice (85 to 70 Hz) through a dark formant, with
+        /// a breath rasp; lower and longer than the Knight's grunt.
+        /// </summary>
+        private static float[] BruteGrunt(int seed)
+        {
+            var rng = new System.Random(seed * 8623);
+            float len = 0.55f;
+            var b = new float[(int)(Rate * len)];
+            float v = seed == 1 ? 1f : 0.92f;
+            var f1 = new Biquad(); var f2 = new Biquad();
+            f1.SetBandPass(380f * v, 4f, Rate); f2.SetBandPass(820f * v, 5f, Rate);
+            var lp = new Biquad(); lp.SetLowPass(1600f, 0.7f, Rate);
+            double phase = 0;
+            for (int i = 0; i < b.Length; i++)
+            {
+                float k = i / (float)b.Length;
+                phase += Mathf.Lerp(88f, 70f, k) * v / Rate;
+                float src = Saw(phase) * 0.6f + Noise(rng) * 0.3f;
+                float env = Mathf.Min(1f, k / 0.12f) * (1f - k) * (0.6f + 0.4f * Mathf.Sin(k * Mathf.PI));
+                b[i] = lp.Process(f1.Process(src) * 1.2f + f2.Process(src) * 0.5f) * env * 1.6f;
+            }
+            Sweep(b, 0f, len, 70f * v, 60f * v, 0.25f, 3f, 2); // chest under the voice
+            return Normalize(b, 0.78f);
+        }
+
+        /// <summary>
+        /// Brute slam (KAN-132, ~0.95 s): a heavy ground boom. Deep sine drop (75 to 28 Hz), a low noise body, a sharp ground
+        /// crack on top, and rubble ticks rolling off for half a second.
+        /// </summary>
+        private static float[] BruteSlamBoom(int seed)
+        {
+            var rng = new System.Random(seed * 8727);
+            var b = new float[(int)(Rate * 0.95f)];
+            float v = seed == 1 ? 1f : 0.93f;
+            Sweep(b, 0f, 0.7f, 75f * v, 28f * v, 1f, 5.5f, 3);              // boom
+            NoiseBurst(b, 0f, 0.35f, 0.7f, 40f, 420f, 10f, rng);             // earth body
+            NoiseBurst(b, 0f, 0.06f, 0.5f, 900f, 5000f, 45f, rng);           // crack
+            Click(b, 0f, 0.006f, 0.8f, 3000f, rng);
+            for (int k = 0; k < 16; k++)                                     // rubble
+                Click(b, 0.05f + (float)rng.NextDouble() * 0.5f, 0.004f + (float)rng.NextDouble() * 0.004f,
+                    0.08f + (float)rng.NextDouble() * 0.12f, 2500f + (float)rng.NextDouble() * 2500f, rng);
+            var lp = new Biquad(); lp.SetLowPass(5200f, 0.7f, Rate);
+            for (int i = 0; i < b.Length; i++) b[i] = lp.Process(b[i]);
+            return Normalize(b, 0.88f);
+        }
+
+        /// <summary>
+        /// Toxic cloud hiss (KAN-132, seamless ~1.75 s loop): a quiet gas hiss (high band noise with a slow flutter) and a few
+        /// soft wet pops. The tail crossfades into the start.
+        /// </summary>
+        private static float[] ToxicHiss()
+        {
+            var rng = new System.Random(132);
+            float seconds = 2f;
+            int n = (int)(Rate * seconds), fade = Rate / 4;
+            var b = new float[n];
+            var hp = new Biquad(); hp.SetHighPass(2200f, 0.7f, Rate);
+            var lp = new Biquad(); lp.SetLowPass(7000f, 0.7f, Rate);
+            var lo = new Biquad(); lo.SetLowPass(300f, 0.7f, Rate);
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)Rate;
+                float flutter = 0.7f + 0.3f * Mathf.Sin(t * Mathf.PI * 2f * 2f) * Mathf.Sin(t * Mathf.PI * 2f * 0.5f + 1.3f);
+                b[i] = lp.Process(hp.Process(Noise(rng))) * 0.5f * flutter + lo.Process(Noise(rng)) * 0.25f;
+            }
+            for (int k = 0; k < 6; k++)
+            {
+                float t = 0.1f + (float)rng.NextDouble() * (seconds - 0.4f);
+                float f = 200f + (float)rng.NextDouble() * 200f;
+                Sweep(b, t, 0.06f, f, f * 1.6f, 0.15f, 45f, 1);
+            }
+            for (int i = 0; i < fade; i++)
+            {
+                float w = i / (float)fade;
+                b[i] = b[i] * w + b[n - fade + i] * (1f - w);
+            }
+            var loop = new float[n - fade];
+            Array.Copy(b, loop, loop.Length);
+            float max = 1e-6f; // scale only: Normalize's end fade would dip at the loop point
+            foreach (float x in loop) max = Mathf.Max(max, Mathf.Abs(x));
+            for (int i = 0; i < loop.Length; i++) loop[i] *= 0.6f / max;
+            return loop;
         }
 
         /// <summary>

@@ -14,7 +14,8 @@ namespace SurvivorSouls.Gameplay.Combat
     /// <item>Leap: it flies along the lane (<see cref="Settings.leapTime"/> s, arc <see cref="Settings.arcHeight"/> m). The
     /// Knight inside the lane (half width + <see cref="Settings.hitPadding"/>) when the Ghoul passes loses
     /// <see cref="Settings.damageShare"/> of its max health, once per leap.</item>
-    /// <item>Stun: it lands and staggers for <see cref="Settings.stun"/> s (the punish window), then sprints again.</item>
+    /// <item>Stun: it lands and staggers for <see cref="Settings.stun"/> s (the punish window), then sprints again. KAN-132: it
+    /// sways dazed (<see cref="Daze"/>) on top of the Hit clip.</item>
     /// </list>
     /// Crouch is 0.6 s, not the 0.5 s of the roster doc: every warning shows at least <see cref="SpecialAttack.MinTelegraph"/> s.
     /// Shipped band 4-5 m (doc 4-6 m): a 5 m leap from 6 m lands short of a Knight standing in the lane.
@@ -123,7 +124,12 @@ namespace SurvivorSouls.Gameplay.Combat
                     Fly(knight);
                     break;
                 case Phase.Recover:
-                    if (_time >= settings.stun) EndAttack(Mathf.Max(0f, settings.cooldown - settings.stun));
+                    if (_time >= settings.stun)
+                    {
+                        transform.rotation = Quaternion.LookRotation(_dir); // dazed sway over: stand straight
+                        EndAttack(Mathf.Max(0f, settings.cooldown - settings.stun));
+                    }
+                    else Daze();
                     break;
             }
         }
@@ -163,6 +169,20 @@ namespace SurvivorSouls.Gameplay.Combat
             Landed?.Invoke(this, next, _hit);
         }
 
+        /// <summary>
+        /// KAN-132: dazed sway in the stun (the punish window): the body rolls and turns a little from side to side, dying out
+        /// towards the end, on top of the Hit stagger clip. Reads as "stunned", not as a second flinch.
+        /// </summary>
+        private void Daze()
+        {
+            float k = settings.stun > 0f ? 1f - Mathf.Clamp01(_time / settings.stun) : 0f;
+            float w = _time * DazeRate * Mathf.PI * 2f;
+            transform.rotation = Quaternion.LookRotation(_dir) * Quaternion.Euler(0f, Mathf.Sin(w * 0.5f) * DazeYaw * k, Mathf.Sin(w) * DazeRoll * k);
+        }
+
+        /// <summary>Dazed sway: sways per second, roll and yaw (degrees) at the start of the stun.</summary>
+        public const float DazeRate = 2.2f, DazeRoll = 9f, DazeYaw = 12f;
+
         /// <summary>Planar distance from <paramref name="p"/> to the segment <paramref name="a"/>-<paramref name="b"/>.</summary>
         public static float SegmentDistance(Vector3 p, Vector3 a, Vector3 b)
         {
@@ -182,6 +202,7 @@ namespace SurvivorSouls.Gameplay.Combat
                 var p = transform.position;
                 transform.position = new Vector3(p.x, _groundY, p.z); // never left hanging in the air
             }
+            if (_phase == Phase.Recover && _dir.sqrMagnitude > 0.5f) transform.rotation = Quaternion.LookRotation(_dir); // no tilt left (KAN-132)
             base.Cancel();
         }
     }
