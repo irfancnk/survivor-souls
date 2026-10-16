@@ -7,7 +7,8 @@
 //  * Ring (_Part 1, T_TelegraphRing): the danger edge. A dark backing (reads on white snow), a bold outer rim and a thin
 //    inner rim with sundial notches (R), and between the rims a band of occult glyphs (G) that turns while the warning
 //    shows (_RuneTurns = turns since shown, from GroundTelegraph). Wave mode (_Wave 1, GroundTelegraph.ShowWave): only a
-//    shattered-earth band (B: 0.5 = earth chunk, 1 = glowing crack) at the rim share 0.92.
+//    shattered-earth band (B: 0.5 = earth chunk, 1 = glowing crack) at the rim share 0.92; KAN-132 remaps it round
+//    _WaveRim with _WaveStretch, so a wave can show a band as wide as its hit band.
 // Colours follow _BaseColor (tint + alpha from GroundTelegraph through one MaterialPropertyBlock): the hue of the tint
 // gives the scorch, the ember glow and the hot glow, so red (boss / physical), green (Bloater poison) and violet (Shaman
 // hex) all keep their colour. _Flare (0..1, the hit) blazes the runes and cracks. Premultiplied alpha, two texture fetches
@@ -33,6 +34,8 @@ Shader "SurvivorSouls/TelegraphCircle"
         _RuneTurns ("Rune Turns", Float) = 0
         _Flare ("Flare", Range(0, 1)) = 0
         _Wave ("Wave", Range(0, 1)) = 0
+        _WaveRim ("Wave Rim (front, share of the quad half size)", Float) = 0.92
+        _WaveStretch ("Wave Stretch (texture share per quad share)", Float) = 1
     }
 
     SubShader
@@ -71,6 +74,8 @@ Shader "SurvivorSouls/TelegraphCircle"
                 float _RuneTurns;
                 float _Flare;
                 float _Wave;
+                float _WaveRim;
+                float _WaveStretch;
             CBUFFER_END
 
             struct Attributes
@@ -143,9 +148,13 @@ Shader "SurvivorSouls/TelegraphCircle"
 
                 if (_Wave > 0.5)
                 {
-                    // Shattered earth band: dark chunks with glowing cracks.
-                    half earth = saturate(m.b * 2.0);
-                    half crackGlow = saturate(m.b * 2.0 - 1.0);
+                    // Shattered earth band: dark chunks with glowing cracks. KAN-132: the band is remapped round the front
+                    // (_WaveRim) so its width in metres follows the hit band (GroundTelegraph.ShowWave band), not the radius.
+                    float rt = saturate(0.92 + (r - _WaveRim) * _WaveStretch);
+                    float2 dir = r > 1e-4 ? p / r : float2(1.0, 0.0);
+                    half wb = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, dir * (rt * 0.5) + 0.5).b;
+                    half earth = saturate(wb * 2.0);
+                    half crackGlow = saturate(wb * 2.0 - 1.0);
                     half3 c = lerp(scorch * 1.6, hot, crackGlow);
                     half wa = earth * _BaseColor.a;
                     return half4(c * wa, wa);

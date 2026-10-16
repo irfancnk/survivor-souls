@@ -565,6 +565,17 @@ namespace SurvivorSouls.Gameplay.Combat
             BeginDeath();
         }
 
+        /// <summary>
+        /// KAN-132: a dying body leaves at once (hidden and back to its pool, no Death clip, no sink). The Plague Bloater bursts
+        /// into spores instead of standing up to play its Death clip. No-op while alive or already gone.
+        /// </summary>
+        public void Vanish()
+        {
+            if (IsAlive || _deadTime < 0f || !gameObject.activeSelf) return;
+            gameObject.SetActive(false);
+            _release?.Invoke(this);
+        }
+
         /// <summary>Short Hit state on a direct hit, unless attacking, already flinching or flinched within <see cref="HitCooldown"/>.</summary>
         private void Flinch()
         {
