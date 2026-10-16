@@ -63,8 +63,10 @@ Material:
     - _Flare: 0
     - _FlipbookBlending: 0
     - _FlipbookMode: 0
+    - _Glow: 0.45
     - _Hot: 0.6
     - _Mode: 0
+    - _Opacity: 1.35
     - _Part: 1
     - _Progress: 0
     - _QueueOffset: 0

@@ -23,6 +23,8 @@ Shader "SurvivorSouls/TelegraphCircle"
         _EmberShift ("Ember Shift (added to the tint hue)", Color) = (0, 0.3, 0.03, 0)
         _Hot ("Hot Share (ember to white)", Range(0, 1)) = 0.6
         _Wash ("Inner Wash", Range(0, 0.5)) = 0.12
+        _Opacity ("Fill Opacity Boost", Range(0.5, 2)) = 1.35
+        _Glow ("Glow (added light on cracks and glyphs)", Range(0, 1)) = 0.45
 
         [Header(Driven by GroundTelegraph.cs)]
         _BaseColor ("Base Colour", Color) = (0.62, 0.02, 0.01, 1)
@@ -61,6 +63,8 @@ Shader "SurvivorSouls/TelegraphCircle"
                 half4 _EmberShift;
                 half _Hot;
                 half _Wash;
+                half _Opacity;
+                half _Glow;
                 half4 _BaseColor;
                 float _Progress;
                 float _FillScale;
@@ -120,9 +124,12 @@ Shader "SurvivorSouls/TelegraphCircle"
                 half flare = saturate(_Flare);
                 col = lerp(col, hot, flare * (0.3 + 0.7 * crack));
 
-                half shape = lerp(0.75, 1.0, r * r) * (1.0 - smoothstep(0.93, 0.99, r));
-                half a = saturate(shape * _BaseColor.a * (0.88 + 0.12 * crack + 0.25 * edge));
-                return half4(col * a, a);
+                // Burnt ground reads dark on white snow: more opaque than the old flat disc; cracks and the edge also add
+                // light (premultiplied: rgb past rgb x alpha glows on the dark Realms too).
+                half shape = lerp(0.85, 1.0, r * r) * (1.0 - smoothstep(0.93, 0.99, r));
+                half a = saturate(shape * _BaseColor.a * _Opacity * (0.85 + 0.2 * glow + 0.3 * edge));
+                half3 light = (ember * glow + hot * (edge * 0.6 + flare * 0.5)) * (_Glow * shape * saturate(_BaseColor.a * 1.5));
+                return half4(col * a + light, a);
             }
 
             half4 Ring(float2 uv)
@@ -163,6 +170,7 @@ Shader "SurvivorSouls/TelegraphCircle"
                 o = o * (1.0 - m.r) + half4(lineRgb * m.r, m.r);
                 runeA = saturate(runeA);
                 o = o * (1.0 - runeA) + half4(runeRgb * runeA, runeA);
+                o.rgb += (runeRgb * runeA + lineRgb * m.r * 0.5) * _Glow; // glyphs and rims glow a little
                 return o * saturate(_BaseColor.a);
             }
 

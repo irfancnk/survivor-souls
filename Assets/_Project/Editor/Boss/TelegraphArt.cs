@@ -79,7 +79,7 @@ namespace SurvivorSouls.Editor.Boss
             // A: dark backing behind the rims and (lighter) the glyph band.
             float backOuter = TextureFactory.SmoothStep(0.88f, 0.9f, r);
             float backInner = 1f - TextureFactory.SmoothStep(0.02f, 0.03f, Mathf.Abs(r - InnerRim));
-            float backBand = (1f - TextureFactory.SmoothStep(BandHalf, BandHalf + 0.015f, Mathf.Abs(r - BandCentre))) * 0.5f;
+            float backBand = (1f - TextureFactory.SmoothStep(BandHalf, BandHalf + 0.015f, Mathf.Abs(r - BandCentre))) * 0.8f;
             float backing = Mathf.Max(backOuter, Mathf.Max(backInner, backBand)) * (1f - TextureFactory.SmoothStep(0.975f, 0.995f, r));
 
             // B: shattered-earth wave band.
