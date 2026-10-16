@@ -12,6 +12,8 @@ namespace SurvivorSouls.Gameplay.Player
     /// <see cref="OnHurt"/>, which is throttled to one pulse per <see cref="hurtPulseInterval"/>.
     /// <see cref="maxHealth"/> is the base: max health skills raise it through <see cref="PlayerStats"/>; a raise also heals
     /// by the amount gained (Archero rule), a drop only clamps.
+    /// <see cref="Shield"/> (KAN-82, for KAN-93 Temporary Shield) is a separate pool on top of health: damage takes the
+    /// shield first, the rest comes off health. No skill grants a shield yet.
     /// </summary>
     public sealed class PlayerHealth : MonoBehaviour
     {
@@ -27,12 +29,15 @@ namespace SurvivorSouls.Gameplay.Player
         public event Action OnHurt;
         /// <summary>Raised once, when health reaches 0.</summary>
         public event Action OnDeath;
+        /// <summary>Raised when the shield value changes (KAN-82): new shield.</summary>
+        public event Action<float> OnShieldChanged;
 
         private float _current;
         private float _max;
         private PlayerStats _stats;
         private float _lastHurt = float.NegativeInfinity;
         private bool _dead;
+        private float _shield;
 
         public float Current => _current;
         public float Max => _max;
@@ -40,6 +45,8 @@ namespace SurvivorSouls.Gameplay.Player
         public float BaseMax => maxHealth;
         public float Normalized => _current / _max;
         public bool IsDead => _dead;
+        /// <summary>Shield on top of health (KAN-82). Damage takes it first.</summary>
+        public float Shield => _shield;
         /// <summary>Takes no damage while set (boss intro, KAN-62: the Knight cannot move, so nothing may hurt it).</summary>
         public bool Invulnerable { get; set; }
 
@@ -74,6 +81,13 @@ namespace SurvivorSouls.Gameplay.Player
         public float TakeDamage(float amount)
         {
             if (_dead || Invulnerable || amount <= 0f) return 0f;
+            if (_shield > 0f)
+            {
+                float absorbed = Mathf.Min(_shield, amount);
+                SetShield(_shield - absorbed);
+                amount -= absorbed;
+                if (amount <= 0f) return 0f;
+            }
             float deducted = Mathf.Min(amount, _current);
             _current -= deducted; // exactly 0 when amount >= current (no float drift past zero)
             _dead = _current <= 0f;
@@ -99,6 +113,16 @@ namespace SurvivorSouls.Gameplay.Player
             if (_dead) return;
             _current = Mathf.Clamp(current, 1f, _max);
             OnHealthChanged?.Invoke(_current, _max);
+        }
+
+        /// <summary>Sets the shield (KAN-82 API for KAN-93), never below 0. No effect once dead.</summary>
+        public void SetShield(float amount)
+        {
+            if (_dead) return;
+            float shield = Mathf.Max(0f, amount);
+            if (Mathf.Approximately(shield, _shield)) return;
+            _shield = shield;
+            OnShieldChanged?.Invoke(_shield);
         }
 
         /// <summary>Adds up to <paramref name="amount"/> (capped at max). Returns the health actually added. No effect once dead.</summary>

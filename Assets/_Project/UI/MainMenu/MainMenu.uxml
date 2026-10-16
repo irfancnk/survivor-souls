@@ -61,6 +61,8 @@
             <ui:Toggle name="tgl-reload-ring" label="Reload Ring" class="ss-field" />
             <!-- KAN-159: skill pick cards land at once, no slot-machine roll. -->
             <ui:Toggle name="tgl-fast-reveal" label="Fast Skill Reveal" class="ss-field" />
+            <!-- KAN-82: no health bar shake / shards / flash, softer damage vignette, no low-health pulse. -->
+            <ui:Toggle name="tgl-reduce-fx" label="Reduce Screen Effects" class="ss-field" />
             <!-- KAN-144: dev builds always; other builds after 7 taps on the title (TestModeReveal). -->
             <ui:Toggle name="tgl-test-mode" label="Test Mode" class="ss-field ss-field--test ss-hidden" />
             <!-- KAN-142: version + build (dev builds add the commit), so a bug report names its build. -->

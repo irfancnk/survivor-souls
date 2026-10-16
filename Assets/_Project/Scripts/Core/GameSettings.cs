@@ -16,6 +16,7 @@ namespace SurvivorSouls.Core
         private const string KeyReloadRing = "settings.reloadRing";
         public const string KeyTestMode = "settings.testMode";
         private const string KeyFastSkillReveal = "settings.fastSkillReveal";
+        private const string KeyReduceScreenEffects = "settings.reduceScreenEffects";
 
         public static event Action Changed;
 
@@ -58,6 +59,16 @@ namespace SurvivorSouls.Core
         {
             get => PlayerPrefs.GetInt(KeyFastSkillReveal, 0) == 1;
             set => SetInt(KeyFastSkillReveal, value ? 1 : 0);
+        }
+
+        /// <summary>
+        /// Reduce screen effects (KAN-82, accessibility): no health bar shake, shards or white flash, a softer damage
+        /// vignette and no low-health pulse. Off by default.
+        /// </summary>
+        public static bool ReduceScreenEffects
+        {
+            get => PlayerPrefs.GetInt(KeyReduceScreenEffects, 0) == 1;
+            set => SetInt(KeyReduceScreenEffects, value ? 1 : 0);
         }
 
         /// <summary>
