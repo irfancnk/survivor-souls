@@ -9,10 +9,18 @@ namespace SurvivorSouls.Gameplay.Boss
     /// colour through one MaterialPropertyBlock, no allocation per frame. One per boss; reused for every attack.
     /// KAN-121: <see cref="ShowWave"/> shows the ring alone, bright, as a moving shockwave front (no disc).
     /// KAN-106: <see cref="Tint"/> recolours one warning until it hides (pooled warnings go back to red).
+    /// KAN-136: the look is the TelegraphCircle shader (a rune circle burnt into the ground): the block also carries the
+    /// progress, the fill's share of the full circle (the crack pattern stays fixed on the ground), the turns of the glyph
+    /// band (<see cref="runeTurnsPerSecond"/> while it warns, frozen on the hit), the hit flare and the wave mode.
     /// </summary>
     public sealed class GroundTelegraph : MonoBehaviour
     {
         private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
+        private static readonly int ProgressId = Shader.PropertyToID("_Progress");
+        private static readonly int FillScaleId = Shader.PropertyToID("_FillScale");
+        private static readonly int RuneTurnsId = Shader.PropertyToID("_RuneTurns");
+        private static readonly int FlareId = Shader.PropertyToID("_Flare");
+        private static readonly int WaveId = Shader.PropertyToID("_Wave");
         /// <summary>Where the ring texture's rim sits, as a share of the quad's half size (BossBuilder.RingPixel).</summary>
         public const float RimShare = 0.92f;
 
@@ -25,11 +33,18 @@ namespace SurvivorSouls.Gameplay.Boss
         [SerializeField, Min(0.05f)] private float flashTime = 0.3f;
         [Tooltip("Height above the ground (no z-fight with the floor).")]
         [SerializeField, Min(0f)] private float lift = 0.05f;
+        [Tooltip("KAN-136: turns per second of the glyph band while the warning shows.")]
+        [SerializeField] private float runeTurnsPerSecond = 0.3f;
 
         private MaterialPropertyBlock _mpb;
         private Color _ring, _fill, _flashC; // colours in use: the serialized ones unless Tint set others (reset on Hide)
         private float _radius = 1f;
         private float _flash = -1f;
+        private float _shownAt;     // KAN-136: Time.time of Show (glyph band turns from here)
+        private float _turns;       // glyph band turns in use (frozen on the hit flash)
+        private float _fillShare;   // fill radius / full radius
+        private bool _wave;
+        private Color _ringPaint;   // last ring colour (Tick repaints it as the glyph band turns)
 
         /// <summary>A warning or its hit flash is on screen.</summary>
         public bool IsShowing { get; private set; }
@@ -55,6 +70,8 @@ namespace SurvivorSouls.Gameplay.Boss
             transform.position = new Vector3(centre.x, centre.y + lift, centre.z);
             if (ring != null) ring.transform.localScale = Vector3.one * (_radius * 2f);
             _flash = -1f;
+            _wave = false;
+            _shownAt = Time.time;
             IsShowing = true;
             SetVisible(true);
             SetProgress(0f);
@@ -76,6 +93,7 @@ namespace SurvivorSouls.Gameplay.Boss
             }
             if (fill != null && fill.enabled) fill.enabled = false;
             _flash = -1f;
+            _wave = true;
             IsShowing = true;
             Progress = 1f;
             var c = _flashC;
@@ -96,7 +114,9 @@ namespace SurvivorSouls.Gameplay.Boss
             if (!IsShowing || _flash >= 0f) return;
             Progress = Mathf.Clamp01(progress);
             float eased = 1f - (1f - Progress) * (1f - Progress);
-            if (fill != null) fill.transform.localScale = Vector3.one * (Mathf.Max(0.02f, eased) * _radius * 2f);
+            _fillShare = Mathf.Max(0.02f, eased);
+            _turns = (Time.time - _shownAt) * runeTurnsPerSecond;
+            if (fill != null) fill.transform.localScale = Vector3.one * (_fillShare * _radius * 2f);
             float pulse = 0.75f + 0.25f * Mathf.Sin(Time.time * Mathf.Lerp(8f, 26f, Progress));
             var r = _ring;
             r.a *= pulse;
@@ -112,6 +132,7 @@ namespace SurvivorSouls.Gameplay.Boss
             if (!IsShowing) return;
             Progress = 1f;
             _flash = 0f;
+            _fillShare = 1f;
             if (fill != null) fill.transform.localScale = Vector3.one * (_radius * 2f);
         }
 
@@ -134,6 +155,7 @@ namespace SurvivorSouls.Gameplay.Boss
             _flashC = flashColor;
             IsShowing = false;
             _flash = -1f;
+            _wave = false;
             Progress = 0f;
             SetVisible(false);
         }
@@ -143,7 +165,16 @@ namespace SurvivorSouls.Gameplay.Boss
         /// <summary>Fades the hit flash (public for tests).</summary>
         public void Tick(float dt)
         {
-            if (_flash < 0f) return;
+            if (_flash < 0f)
+            {
+                // KAN-136: the glyph band keeps turning even when an owner stops calling SetProgress (held warnings).
+                if (IsShowing && !_wave)
+                {
+                    _turns = (Time.time - _shownAt) * runeTurnsPerSecond;
+                    Paint(ring, _ringPaint);
+                }
+                return;
+            }
             _flash += dt;
             float k = Mathf.Clamp01(_flash / flashTime);
             var f = Color.Lerp(_flashC, new Color(_flashC.r, _flashC.g, _flashC.b, 0f), k);
@@ -160,11 +191,23 @@ namespace SurvivorSouls.Gameplay.Boss
             if (fill != null && fill.enabled != on) fill.enabled = on;
         }
 
+        /// <summary>KAN-136: 0 = no hit flare, 1 = the hit just landed (fades with the flash).</summary>
+        public float Flare => _flash < 0f ? 0f : 1f - Mathf.Clamp01(_flash / flashTime);
+        /// <summary>KAN-136: turns of the glyph band now (frozen from the hit on).</summary>
+        public float RuneTurns => _turns;
+
+        /// <summary>Colour + the TelegraphCircle values (KAN-136).</summary>
         private void Paint(Renderer r, Color c)
         {
             if (r == null) return;
+            if (r == ring) _ringPaint = c;
             _mpb ??= new MaterialPropertyBlock();
             _mpb.SetColor(BaseColorId, c);
+            _mpb.SetFloat(ProgressId, Progress);
+            _mpb.SetFloat(FillScaleId, _fillShare);
+            _mpb.SetFloat(RuneTurnsId, _turns);
+            _mpb.SetFloat(FlareId, Flare);
+            _mpb.SetFloat(WaveId, _wave ? 1f : 0f);
             r.SetPropertyBlock(_mpb);
         }
     }
