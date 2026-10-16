@@ -10,16 +10,26 @@ namespace SurvivorSouls.Gameplay.Skills
         public float Damage, ShotsPerSecond, CritChance, CritMultiplier, MaxHealth, MoveSpeed, SpreadDamage;
         /// <summary>Damage share lost per pierce / per ricochet bounce (KAN-86, <see cref="Combat.BoltShot.PierceFalloff"/>).</summary>
         public float PierceFalloff, BounceFalloff;
+        /// <summary>
+        /// Dense-horde assumptions for the Ember Bolts perks (KAN-188, <see cref="Effects.BurnOnHitEffect"/>). SpreadFoes:
+        /// foes one bolt-lit fire keeps alight per <see cref="StatId.BurnSpread"/> (it catches one per 0.5 s tick, but most
+        /// neighbours within 2.5 m already burn from bolts). BlastFoes: foes within 2.2 m of a burning death. HitsToKill:
+        /// full-damage bolt hits a horde zombie takes (horde health follows the power index, KAN-92), so crowd kills per
+        /// second = crowd DPS / (HitsToKill x bolt damage).
+        /// </summary>
+        public float SpreadFoes, BlastFoes, HitsToKill;
 
         /// <summary>
         /// AutoShooter / PlayerHealth / PlayerMover defaults: 100 dmg, 1 shot/s, no crit, x2 crit, 400 HP, 5 m/s, angled
-        /// Spread Shot bolts at 50 % damage, -33 % damage per pierce and -30 % per bounce (KAN-86).
+        /// Spread Shot bolts at 50 % damage, -33 % damage per pierce and -30 % per bounce (KAN-86). Ember perks (KAN-188):
+        /// a spreading fire keeps 1.5 foes alight, a death blast reaches 1.5 foes, a horde zombie takes 3 bolt hits.
         /// </summary>
         public static PowerBase Default => new PowerBase
         {
             Damage = 100f, ShotsPerSecond = 1f, CritChance = 0f, CritMultiplier = 2f, MaxHealth = 400f, MoveSpeed = 5f,
             SpreadDamage = 0.5f,
             PierceFalloff = Combat.BoltShot.DefaultPierceFalloff, BounceFalloff = Combat.BoltShot.DefaultBounceFalloff,
+            SpreadFoes = 1.5f, BlastFoes = 1.5f, HitsToKill = 3f,
         };
     }
 
@@ -29,12 +39,20 @@ namespace SurvivorSouls.Gameplay.Skills
     /// target, times the Double Shot chain (every follow-up bolt hits the same target at its damage share). Crowd = dense
     /// horde: every bolt of the fan (angled bolts at their damage share) and of the chain hits, then pierces and bounces into
     /// a new target each time at the falloff damage (<see cref="HitFactor"/>, KAN-86), and every target hit keeps burning. The volley cap (12) is applied to the bolt count. Soul Burst and life steal are listed but not in the DPS (they depend on kill rate).
+    /// Ember perks (KAN-188) are crowd only: every bolt-lit fire also keeps <see cref="SpreadBurnDps"/> burning on its
+    /// neighbours, and burning deaths blast (<see cref="BlastFactor"/>). Single target has no neighbours (a boss).
     /// An index for comparing builds and levels, not a fight simulation.
     /// </summary>
     public struct PowerSnapshot
     {
         public float BoltDamage, ShotsPerSecond, CritChance, CritMultiplier, Bolts, Pierce, Ricochet, BurnDps, KillBurst,
             LifeSteal, MaxHealth, MoveSpeed, Skills, Chain, SpreadDamage, ChainDamage, PierceFalloff, BounceFalloff;
+        /// <summary>
+        /// KAN-188: Ember perk stats (<see cref="StatId.BurnSpread"/>, <see cref="StatId.BurnDeathBlast"/>), SpreadBurn =
+        /// burn DPS x BurnSpread of the same sheet (kept per sheet, so a run average does not mix a spread run with a
+        /// no-burn run), and the <see cref="PowerBase"/> horde assumptions.
+        /// </summary>
+        public float BurnSpread, SpreadBurn, BurnDeathBlast, SpreadFoes, BlastFoes, HitsToKill;
 
         public float CritFactor => 1f + CritChance * (CritMultiplier - 1f);
         /// <summary>Bolts per volley: fan x chain, capped like the shooter (<see cref="Combat.VolleyBuilder.DefaultCap"/>).</summary>
@@ -65,8 +83,22 @@ namespace SurvivorSouls.Gameplay.Skills
                 return 1f + Geometric(p, Pierce) + Mathf.Pow(p, Pierce) * Geometric(r, Ricochet);
             }
         }
+        /// <summary>
+        /// Burn DPS a bolt-lit fire adds on its neighbours (KAN-188 spread perk): the same burn on
+        /// <see cref="BurnSpread"/> x <see cref="SpreadFoes"/> foes. 0 without the perk.
+        /// </summary>
+        public float SpreadBurnDps => Mathf.Max(0f, SpreadBurn) * Mathf.Max(0f, SpreadFoes);
+        /// <summary>
+        /// Crowd damage the death blast adds, as a share of the crowd DPS (KAN-188): every kill burns, so blast DPS =
+        /// <see cref="BurnDeathBlast"/> x bolt damage x kills per second x <see cref="BlastFoes"/>, with kills per second =
+        /// crowd DPS / (<see cref="HitsToKill"/> x bolt damage). Bolt damage cancels. Blast-on-blast chains are not counted.
+        /// </summary>
+        public float BlastFactor => BurnDps > 0f && HitsToKill > 0f
+            ? Mathf.Max(0f, BurnDeathBlast) * Mathf.Max(0f, BlastFoes) / HitsToKill
+            : 0f;
         public float SingleTargetDps => BoltDamage * ShotsPerSecond * CritFactor * ChainFactor + BurnDps;
-        public float CrowdDps => (BoltDamage * ShotsPerSecond * CritFactor + BurnDps) * VolleyFactor * HitFactor;
+        public float CrowdDps => (BoltDamage * ShotsPerSecond * CritFactor + BurnDps + SpreadBurnDps) * VolleyFactor * HitFactor *
+                                 (1f + BlastFactor);
 
         /// <summary>c + c^2 + ... + c^n (n may be fractional); n when c = 1.</summary>
         private static float Geometric(float c, float n)
@@ -80,7 +112,14 @@ namespace SurvivorSouls.Gameplay.Skills
         /// Power of <paramref name="stats"/> on base <paramref name="b"/>. <paramref name="permanentOnly"/>: only the permanent
         /// sources (KAN-98 soul tree), i.e. the Knight as he enters the run.
         /// </summary>
-        public static PowerSnapshot Measure(PlayerStats stats, PowerBase b, int skills = 0, bool permanentOnly = false) => new PowerSnapshot
+        public static PowerSnapshot Measure(PlayerStats stats, PowerBase b, int skills = 0, bool permanentOnly = false)
+        {
+            var s = Sheet(stats, b, skills, permanentOnly);
+            s.SpreadBurn = s.BurnDps * Mathf.Max(0f, s.BurnSpread);
+            return s;
+        }
+
+        private static PowerSnapshot Sheet(PlayerStats stats, PowerBase b, int skills, bool permanentOnly) => new PowerSnapshot
         {
             BoltDamage = PlayerStats.Eval(stats, StatId.Damage, b.Damage, permanentOnly),
             ShotsPerSecond = Mathf.Max(0.05f, PlayerStats.Eval(stats, StatId.AttackSpeed, b.ShotsPerSecond, permanentOnly)),
@@ -93,6 +132,11 @@ namespace SurvivorSouls.Gameplay.Skills
             Pierce = stats != null ? stats.ModifyInt(StatId.Pierce, 0, permanentOnly) : 0,
             Ricochet = stats != null ? stats.ModifyInt(StatId.Ricochet, 0, permanentOnly) : 0,
             BurnDps = PlayerStats.Eval(stats, StatId.BurnDps, 0f, permanentOnly),
+            BurnSpread = PlayerStats.Eval(stats, StatId.BurnSpread, 0f, permanentOnly),
+            BurnDeathBlast = PlayerStats.Eval(stats, StatId.BurnDeathBlast, 0f, permanentOnly),
+            SpreadFoes = b.SpreadFoes,
+            BlastFoes = b.BlastFoes,
+            HitsToKill = b.HitsToKill,
             KillBurst = PlayerStats.Eval(stats, StatId.KillBurst, 0f, permanentOnly),
             LifeSteal = PlayerStats.Eval(stats, StatId.LifeSteal, 0f, permanentOnly),
             PierceFalloff = b.PierceFalloff,
@@ -109,6 +153,8 @@ namespace SurvivorSouls.Gameplay.Skills
             BurnDps += o.BurnDps * w; KillBurst += o.KillBurst * w; LifeSteal += o.LifeSteal * w; MaxHealth += o.MaxHealth * w;
             MoveSpeed += o.MoveSpeed * w; Skills += o.Skills * w; Chain += o.Chain * w; SpreadDamage += o.SpreadDamage * w;
             ChainDamage += o.ChainDamage * w; PierceFalloff += o.PierceFalloff * w; BounceFalloff += o.BounceFalloff * w;
+            BurnSpread += o.BurnSpread * w; SpreadBurn += o.SpreadBurn * w; BurnDeathBlast += o.BurnDeathBlast * w; SpreadFoes += o.SpreadFoes * w;
+            BlastFoes += o.BlastFoes * w; HitsToKill += o.HitsToKill * w;
         }
     }
 
@@ -170,12 +216,13 @@ namespace SurvivorSouls.Gameplay.Skills
             var sb = new StringBuilder();
             sb.AppendLine($"Power curve: {Runs} runs, random card of each level-up offer (no chest upgrades). Base: " +
                           $"{Base.Damage:0} dmg, {Base.ShotsPerSecond:0.##} shots/s, {Base.MaxHealth:0} HP.");
-            sb.AppendLine("Lv  skills  bolt dmg  shots/s  crit   bolts  chain  pierce  bounce  burn  1-target DPS  crowd DPS  power  max HP  move");
+            sb.AppendLine("Lv  skills  bolt dmg  shots/s  crit   bolts  chain  pierce  bounce  burn  spread  blast  1-target DPS  crowd DPS  power  max HP  move");
             for (int i = 0; i < MaxLevel; i++)
             {
                 var s = Average[i];
                 sb.AppendLine($"{i + 1,2}  {s.Skills,6:0.0}  {s.BoltDamage,8:0}  {s.ShotsPerSecond,7:0.00}  {s.CritChance,4:P0}  " +
-                              $"{s.Bolts,5:0.00}  {s.Chain,5:0.00}  {s.Pierce,6:0.00}  {s.Ricochet,6:0.00}  {s.BurnDps,4:0}  {s.SingleTargetDps,12:0}  " +
+                              $"{s.Bolts,5:0.00}  {s.Chain,5:0.00}  {s.Pierce,6:0.00}  {s.Ricochet,6:0.00}  {s.BurnDps,4:0}  {s.BurnSpread,6:0.00}  " +
+                              $"{s.BurnDeathBlast,5:0.00}  {s.SingleTargetDps,12:0}  " +
                               $"{s.CrowdDps,9:0}  {PowerAt(i + 1),4:0.0}x  {s.MaxHealth,6:0}  {s.MoveSpeed,4:0.0}");
             }
             return sb.ToString();

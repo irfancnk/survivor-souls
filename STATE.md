@@ -881,6 +881,13 @@
   - Verified: compile 0 errors; Game scene rebuild exit 0; EditMode 207 pass; PlayMode 784: 782 pass, 2 skipped (soak), 0 fail; mac dev build + 9 shot runs without exceptions. Not on iPhone (night run). Not checked: rim look on the phone screen (brightness, snow glare).
   - Limits: rim is view-based (fresnel), so it is strongest on the sides of a body; the Shaman staff glow is weight-based (the staff is skinned to the hand). Hit flash / burn tint still multiply the base colour only; the rim stays.
 
+- 2026-10-16 (KAN-188): Power curve models the Ember Bolts perks (KAN-77 follow-up). Branch `feat/kan-188-ember-power-curve`. Scheduled-task run r202610160408-71be90.
+  - `Scripts/Gameplay/Skills/SkillPowerCurve.cs`: `PowerSnapshot` reads `BurnSpread` + `BurnDeathBlast`; `CrowdDps` = (bolt + burn + `SpreadBurnDps`) x volley x hits x (1 + `BlastFactor`). Spread burn = burn x BurnSpread x `SpreadFoes` (kept per sheet in `SpreadBurn`, so run averages do not mix runs). Blast factor = blast share x `BlastFoes` / `HitsToKill` (kills per second = crowd DPS / (hits to kill x bolt damage)). New `PowerBase` assumptions: SpreadFoes 1.5, BlastFoes 1.5, HitsToKill 3 (0 = old formula). `SingleTargetDps` unchanged. Power curve table: new `spread` / `blast` columns. HordeScaler / KAN-92 power index see the perks through `CrowdDps`.
+  - Result: bare Knight + Ember L2 / L3 / L4 crowd 140 / 238 / 374 (was 140 / 155 / 175). Shipped curve (200 runs) barely moves: about 1 % of runs own Ember L3 by level 20, almost none L4. L20: 1-target 4.48x, crowd 27.25x, gap 6.1 (limit 6.5). No blast share tuning needed. `Docs/BALANCE.md` KAN-188 section.
+  - Tests: new `Tests/PlayMode/EmberPowerCurveTests` (7): spread adds neighbour burn (bare + volley), blast scales crowd, perks without burn add nothing, zero assumptions = old formula, shipped Ember levels step crowd (L3 / L4 > x1.4), shipped curve single target unchanged.
+  - Verified: compile 0 errors / 0 new warnings; Game scene rebuild exit 0, no diff; EditMode 197 pass; PlayMode 791: 789 pass, 2 skipped (soak), 0 fail; mac dev build + `-ss-power-curve` run: 0 exceptions, new columns in the log. No screenshot (no visual change).
+  - Limits: SpreadFoes / BlastFoes are estimates; check them with `BurnOnHitEffect.SpreadCount` / `BlastCount` on a phone run with an Ember L4 build. Confluence copy = KAN-186.
+
 ## DECISIONS
 - Design language: Archero / Archero 2 (menus, loop, chests, daily/weekly quests, gear merge, talents, energy). Look: Dark Souls, realistic, not dismal. User decision 2026-10-11.
 - Naming map: energy=Estus, gold=Souls, gems=Ember Shards, chests=Reliquaries, daily=Oaths, weekly=Pilgrimage, chapter=Realm, room=Chamber. See GAME_PLAN sec 2.
