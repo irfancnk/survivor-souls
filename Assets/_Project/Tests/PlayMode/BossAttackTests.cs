@@ -588,6 +588,175 @@ namespace SurvivorSouls.Tests
             Assert.That(sounds.Rumbling, Is.False, "the boss fell mid-warning");
         }
 
+        // ------------------------------------------------------------ Charge visuals (KAN-80)
+
+        /// <summary>Spine / Spine01 / Spine02 / Head chain (the roster rig's names) on the boss body, so the lean has bones.</summary>
+        private Transform[] AddSpine()
+        {
+            var names = new[] { "Spine", "Spine01", "Spine02", "Head" };
+            var bones = new Transform[names.Length];
+            Transform parent = _body.transform;
+            for (int i = 0; i < names.Length; i++)
+            {
+                bones[i] = new GameObject(names[i]).transform;
+                bones[i].SetParent(parent, false);
+                bones[i].localPosition = Vector3.up * (i == 0 ? 1f : 0.4f);
+                bones[i].localRotation = Quaternion.Euler(0f, 0f, 3f * i); // not identity: undo must restore the rest pose
+                parent = bones[i];
+            }
+            return bones;
+        }
+
+        private static Transform FindBone(Transform root, string name)
+        {
+            foreach (var t in root.GetComponentsInChildren<Transform>(true))
+                if (t.name == name) return t;
+            return null;
+        }
+
+        private BossChargeFx ChargeFx()
+        {
+            var fx = Track(new GameObject("ChargeFx")).AddComponent<BossChargeFx>();
+            fx.Setup(_fight);
+            return fx;
+        }
+
+        private void RunWithFx(BossChargeFx fx, BossFight.Attack until, float limit = 10f)
+        {
+            for (float t = 0f; t < limit && _fight.CurrentAttack != until; t += Frame)
+            {
+                _fight.Tick(Frame);
+                _bolts.Tick(Frame);
+                fx.Tick(Frame);
+            }
+        }
+
+        private void RunWithFx(BossChargeFx fx, float seconds)
+        {
+            for (float t = 0f; t < seconds; t += Frame)
+            {
+                _fight.Tick(Frame);
+                _bolts.Tick(Frame);
+                fx.Tick(Frame);
+            }
+        }
+
+        [Test]
+        public void ChargeFx_LeanAndScrapeInTheWindUp_TrailOnlyWhileDashing_EmbersInThePunishWindow()
+        {
+            AddSpine();
+            var data = Data(fanBolts: 0, charge: true);
+            StartFight(data);
+            var spine = FindBone(_fight.Boss.transform, "Spine02");
+            Assert.That(spine, Is.Not.Null);
+            Quaternion rest = spine.localRotation;
+            var fx = ChargeFx();
+            HalfHealth();
+
+            RunWithFx(fx, BossFight.Attack.WindUp);
+            Assert.That(_fight.CurrentMove, Is.EqualTo(BossFight.Move.Charge));
+            fx.Tick(Frame);
+            Assert.That(fx.Current, Is.EqualTo(BossChargeFx.Phase.WindUp));
+            Assert.That(fx.HasBones, Is.True);
+            RunWithFx(fx, _fight.WindUpTime * 0.8f);
+            Assert.That(_fight.CurrentAttack, Is.EqualTo(BossFight.Attack.WindUp));
+            Assert.That(fx.Lean, Is.GreaterThan(8f), "the boss leans in as the lane fills");
+            Assert.That(Quaternion.Angle(spine.localRotation, rest), Is.GreaterThan(1.5f), "the lean bends the spine");
+            Assert.That(fx.ScrapeEmitted, Is.GreaterThan(3), "the back foot kicks up scrape dust");
+            Assert.That(fx.TrailEmitted, Is.Zero, "no trail before the dash");
+            Assert.That(fx.EmbersEmitted, Is.Zero);
+
+            RunWithFx(fx, BossFight.Attack.Dashing);
+            int scrapes = fx.ScrapeEmitted;
+            RunWithFx(fx, BossFight.Attack.Recover);
+            Assert.That(_fight.DashesLeft, Is.Zero);
+            Assert.That(fx.TrailEmitted, Is.GreaterThan(10), "a dust trail along the dash");
+            Assert.That(fx.SkidEmitted, Is.GreaterThan(0), "a skid cloud where it stops");
+            Assert.That(fx.ScrapeEmitted, Is.EqualTo(scrapes), "no scrape dust while dashing");
+            Assert.That(fx.Lean, Is.GreaterThan(15f), "full lean in the dash");
+            int trail = fx.TrailEmitted;
+
+            RunWithFx(fx, Mathf.Min(0.4f, _fight.Data.ChargeRecover * 0.5f));
+            Assert.That(_fight.CurrentAttack, Is.EqualTo(BossFight.Attack.Recover));
+            Assert.That(fx.Current, Is.EqualTo(BossChargeFx.Phase.Punish));
+            Assert.That(fx.EmbersEmitted, Is.GreaterThan(3), "dizzy embers in the punish window");
+            Assert.That(fx.Lean, Is.GreaterThan(8f), "slumped forward");
+            Assert.That(fx.TrailEmitted, Is.EqualTo(trail), "the trail stops with the dash");
+
+            RunWithFx(fx, BossFight.Attack.Chase);
+            int embers = fx.EmbersEmitted;
+            for (float t = 0f; t < 1.5f; t += Frame)
+            {
+                _fight.Boss.transform.position = Vector3.zero; // hold still: no new attack moves it
+                _fight.Tick(Frame);
+                fx.Tick(Frame);
+                if (_fight.CurrentAttack != BossFight.Attack.Chase) break;
+            }
+            if (_fight.CurrentAttack == BossFight.Attack.Chase)
+            {
+                Assert.That(fx.Current, Is.EqualTo(BossChargeFx.Phase.None));
+                Assert.That(fx.Lean, Is.LessThan(0.5f), "the lean eases out");
+                Assert.That(Quaternion.Angle(spine.localRotation, rest), Is.LessThan(0.5f), "the spine is back at its pose, no drift");
+                Assert.That(fx.EmbersEmitted, Is.EqualTo(embers), "embers only in the punish window");
+            }
+            Assert.That(fx.TrailEmitted, Is.EqualTo(trail), "no trail outside the dash");
+        }
+
+        [Test]
+        public void ChargeFx_ManyCharges_TrailOnlyWhileDashing_SpineNeverDrifts()
+        {
+            AddSpine();
+            var data = Data(fanBolts: 0, charge: true);
+            StartFight(data);
+            var spine = FindBone(_fight.Boss.transform, "Spine");
+            Quaternion rest = spine.localRotation;
+            var fx = ChargeFx();
+            HalfHealth();
+            float maxOff = 0f;
+            for (float t = 0f; t < 40f && _charges.Count < 3; t += Frame)
+            {
+                _player.Heal(1e6f);
+                if (_fight.CurrentAttack == BossFight.Attack.Chase)
+                    _fight.Boss.transform.position = Vector3.zero;
+                int before = fx.TrailEmitted;
+                _fight.Tick(Frame);
+                _bolts.Tick(Frame);
+                fx.Tick(Frame);
+                if (_fight.CurrentAttack != BossFight.Attack.Dashing)
+                    Assert.That(fx.TrailEmitted, Is.EqualTo(before), $"trail only while dashing ({_fight.CurrentAttack} {_fight.CurrentMove})");
+                maxOff = Mathf.Max(maxOff, Quaternion.Angle(spine.localRotation, rest));
+            }
+            Assert.That(_charges.Count, Is.GreaterThanOrEqualTo(3));
+            Assert.That(maxOff, Is.LessThan(30f), "the additive lean never piles up");
+            Assert.That(fx.EmbersEmitted, Is.GreaterThan(0));
+        }
+
+        [Test]
+        public void ChargeFx_NoGcPerFrame()
+        {
+            AddSpine();
+            var data = Data(fanBolts: 0, charge: true);
+            StartFight(data);
+            var fx = ChargeFx();
+            HalfHealth();
+            RunWithFx(fx, BossFight.Attack.Dashing); // warm up: wind-up, scrape, first dash frame
+            RunWithFx(fx, BossFight.Attack.Recover);
+            RunWithFx(fx, 0.2f);
+            RunWithFx(fx, BossFight.Attack.Chase);
+            _fight.Boss.transform.position = Vector3.zero;
+            RunWithFx(fx, BossFight.Attack.WindUp);
+            Assert.That(_fight.CurrentMove, Is.EqualTo(BossFight.Move.Charge));
+            Assert.That(() =>
+            {
+                for (int i = 0; i < 200 && _fight.CurrentAttack != BossFight.Attack.Chase; i++)
+                {
+                    _fight.Tick(Frame);
+                    _bolts.Tick(Frame);
+                    fx.Tick(Frame);
+                }
+            }, Is.Not.AllocatingGCMemory());
+        }
+
         /// <summary>The built Game scene: Chamber 5's boss has the lane telegraph and bolts wired; half health is phase 2 (KAN-108: the Butcher).</summary>
         [UnityTest]
         public IEnumerator GameScene_BossHasLanesBolts_AndPhase2()
@@ -611,6 +780,9 @@ namespace SurvivorSouls.Tests
             Assert.That(chargeSounds, Is.Not.Null, "KAN-168: charge sounds in the scene");
             Assert.That(chargeSounds.Rumble.clip, Is.Not.Null, "growl loop wired");
             Assert.That(LaneSmoke.Active, Is.Not.Null, "KAN-167: one shared lane smoke in the scene");
+            var chargeFx = Object.FindAnyObjectByType<BossChargeFx>();
+            Assert.That(chargeFx, Is.Not.Null, "KAN-80: charge visuals in the scene");
+            Assert.That(chargeFx.System.GetComponent<ParticleSystemRenderer>().sharedMaterial, Is.Not.Null, "KAN-80: dust material");
             foreach (var r in fight.Lines.GetComponentsInChildren<Renderer>(true))
                 Assert.That(r.sharedMaterial.shader.name, Is.EqualTo("SurvivorSouls/TelegraphLane"), "KAN-167: " + r.name);
 

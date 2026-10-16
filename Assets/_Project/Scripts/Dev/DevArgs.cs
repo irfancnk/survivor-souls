@@ -4,7 +4,8 @@ namespace SurvivorSouls.Dev
 {
     /// <summary>
     /// Launch arguments for the dev helpers (<see cref="DevScreenshot"/>, <see cref="HealthBarShotArgs"/>,
-    /// <see cref="SpecialMeleeShotArgs"/>, <see cref="DevDebugPanel"/>; new dev arg readers use this too) (KAN-179).
+    /// <see cref="SpecialMeleeShotArgs"/>, <see cref="ChargeFxShotArgs"/>, <see cref="DevDebugPanel"/>; new dev arg readers use this too)
+    /// (KAN-179).
     /// Normally the process command line. When the command line has no
     /// <c>-ss-</c> argument, the space-separated <c>SS_ARGS</c> environment variable is used instead, so a launcher
     /// that cannot pass arguments still reaches the helpers, e.g. on iOS:
