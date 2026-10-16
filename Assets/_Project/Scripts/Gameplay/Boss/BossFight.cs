@@ -65,6 +65,8 @@ namespace SurvivorSouls.Gameplay.Boss
     /// KAN-174: <b>Barrage</b> entries are side casts, never picked: each has its own clock and, while the boss fights (any
     /// attack state) and the Knight lives, lobs a shot (<see cref="ShotKind.BlackFireball"/>, <see cref="EnemyProjectiles"/>)
     /// to a random point near the Knight with a landing circle from the shared pool (the Butcher's black fireballs, 1 per s).
+    /// KAN-164.2: aggression model (shorter cooldowns with no summon alive, phase 2 combos, enrage under
+    /// <see cref="BossData.Phase3At"/>): BossFightAggression.cs.
     /// </summary>
     public sealed partial class BossFight : MonoBehaviour
     {
@@ -464,6 +466,7 @@ namespace SurvivorSouls.Gameplay.Boss
             for (int i = 0; i < _attacks.Length; i++) _summonTypes[i] = ResolveSummon(_attacks[i]);
             _picks = 0;
             _index = -1;
+            ResetAggression(); // KAN-164.2
             if (timer != null && bossRules != null) timer.UseRules(bossRules);
             if (spawner != null)
                 spawner.SetDifficulty(plan.CapMultiplier * data.HordeCap, plan.IntervalMultiplier * data.HordeInterval, plan.HealthMultiplier);
@@ -718,6 +721,7 @@ namespace SurvivorSouls.Gameplay.Boss
         /// </summary>
         private void ChooseAttack(float distance)
         {
+            if (TryCombo(distance)) return; // KAN-164.2: a chained combo partner goes first
             for (int tries = 0; tries < _attacks.Length; tries++)
             {
                 int best = -1, bestPriority = int.MinValue;
@@ -914,7 +918,7 @@ namespace SurvivorSouls.Gameplay.Boss
         {
             int count = Mathf.Min(lines.LaneCount, _fanDirs.Length);
             for (int i = 0; i < count; i++) _fanDirs[i] = lines.LaneDirection(i);
-            int fired = projectiles.FireVolley(_attackOrigin, _fanDirs, count, _attack.speed, _attack.length,
+            int fired = projectiles.FireVolley(_attackOrigin, _fanDirs, count, BoltSpeed, _attack.length,
                 DamageNow(_attack.damage), _attack.radius);
             lines.Flash();
             BeginRecover(_attack.recover, _attack.cooldown);
@@ -1141,7 +1145,7 @@ namespace SurvivorSouls.Gameplay.Boss
         private void ReleaseNova()
         {
             int n = RingDirections(_ringDirs, _attack.count, _attack.gaps, UnityEngine.Random.value * 360f);
-            int fired = projectiles.FireVolley(_attackOrigin, _ringDirs, n, _attack.speed, _attack.length,
+            int fired = projectiles.FireVolley(_attackOrigin, _ringDirs, n, BoltSpeed, _attack.length,
                 DamageNow(_attack.damage), _attack.radius);
             if (telegraph != null) telegraph.Flash();
             BeginRecover(_attack.recover, _attack.cooldown);
@@ -1203,7 +1207,7 @@ namespace SurvivorSouls.Gameplay.Boss
                 for (int k = 0; k < arms; k++)
                 {
                     float rad = (_spiralAngle + k * 360f / arms) * Mathf.Deg2Rad;
-                    if (projectiles.Fire(_attackOrigin, new Vector3(Mathf.Sin(rad), 0f, Mathf.Cos(rad)), _attack.speed, _attack.length,
+                    if (projectiles.Fire(_attackOrigin, new Vector3(Mathf.Sin(rad), 0f, Mathf.Cos(rad)), BoltSpeed, _attack.length,
                         damage, _attack.radius)) _spiralFired++;
                 }
                 _shotWait += interval;
@@ -1697,7 +1701,7 @@ namespace SurvivorSouls.Gameplay.Boss
             while (_wavesStarted < count && _time >= _wavesStarted * interval) StartWave(_wavesStarted++);
             float half = Mathf.Max(0.05f, _attack.width) * 0.5f;
             float end = WaveEnd(half);
-            float speed = Mathf.Max(0.5f, _attack.speed);
+            float speed = Mathf.Max(0.5f, BoltSpeed);
             bool canHit = player != null && !player.IsDead;
             float knight = canHit ? PlanarDistance(player.transform.position, _attackOrigin) : -1f;
             for (int i = 0; i < _wavesStarted; i++)
@@ -1771,7 +1775,7 @@ namespace SurvivorSouls.Gameplay.Boss
             for (int k = 0; k < count; k++)
             {
                 float angle = count > 1 ? -_attack.spread * 0.5f + _attack.spread * k / (count - 1) : 0f;
-                if (projectiles.Fire(_attackOrigin, Quaternion.Euler(0f, angle, 0f) * aim, _attack.speed, _attack.length, damage,
+                if (projectiles.Fire(_attackOrigin, Quaternion.Euler(0f, angle, 0f) * aim, BoltSpeed, _attack.length, damage,
                     _attack.radius, _attack.turn)) fired++;
             }
             if (telegraph != null) telegraph.Flash();
@@ -1884,7 +1888,7 @@ namespace SurvivorSouls.Gameplay.Boss
                 _boss.ResetAction();
             }
             CurrentAttack = Attack.Chase;
-            _cooldown = data.CooldownFor(cooldown, Phase);
+            _cooldown = NextCooldown(cooldown); // KAN-164.2: phase 2 factor x aggression, or a combo gap
             _dashesLeft = 0;
             _pullLeft = 0f;
             _time = 0f;
@@ -1906,9 +1910,7 @@ namespace SurvivorSouls.Gameplay.Boss
                 if (_attacks[i].Timed && !_attacks[i].InPhase(1)) _dueAt[i] = _clock + _attacks[i].every;
             if (data.PhaseRoar > 0f && Current == Stage.Fighting && CurrentAttack == Attack.Chase && player != null && !player.IsDead)
             {
-                FaceKnight(); // stands and roars; the next attack waits
-                _boss.PlayAction(data.RoarClip);
-                BeginRecover(data.PhaseRoar, RoarCooldown, RecoverPose.Keep);
+                BeginRoar(data.PhaseRoar); // stands and roars; the next attack waits
             }
             PhaseChanged?.Invoke(2);
         }
@@ -1920,6 +1922,7 @@ namespace SurvivorSouls.Gameplay.Boss
             if (!killed)
             {
                 if (Phase == 1 && data.Phase2At > 0f && enemy.Health <= enemy.MaxHealth * data.Phase2At) EnterPhase2();
+                CheckEnrage(enemy); // KAN-164.2
                 return;
             }
             if (Current == Stage.Intro)

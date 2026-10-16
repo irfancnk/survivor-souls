@@ -18,6 +18,9 @@ namespace SurvivorSouls.Gameplay.Boss
     /// KAN-108: the fight runs a list of attacks (<see cref="Attacks"/>, <see cref="BossAttack"/> entries per phase). A boss
     /// with an empty list (the Drowned Warden asset) gets the list built from its slam / fan / charge fields above, so its
     /// fight plays as before. New bosses (The Butcher of Ashgrave) fill the list; the slam / fan / charge fields are unused.
+    /// KAN-164.2 aggression model: shorter cooldowns with no summon alive (<see cref="AloneCooldownScale"/>), back-to-back
+    /// <see cref="Combos"/> from phase 2, and the enrage (phase 3) under <see cref="Phase3At"/>. The defaults switch all of
+    /// it off, so an asset without these fields fights as before.
     /// </summary>
     [CreateAssetMenu(menuName = "Survivor Souls/Boss Data", fileName = "Boss")]
     public sealed class BossData : ScriptableObject
@@ -150,6 +153,28 @@ namespace SurvivorSouls.Gameplay.Boss
         [Tooltip("Spawn intervals x this while the boss Chamber runs (above 1 = slower).")]
         [SerializeField, Range(1f, 4f)] private float hordeInterval = 1.6f;
 
+        [Header("Aggression (KAN-164.2)")]
+        [Tooltip("Attack cooldowns x this while none of the boss's summons is alive (the duel). 1 = off.")]
+        [SerializeField, Range(0.2f, 1f)] private float aloneCooldownScale = 1f;
+        [Tooltip("Back-to-back attack pairs (indices into the attack list): when the first ends, the second may start at once.")]
+        [SerializeField] private BossCombo[] combos = new BossCombo[0];
+        [Tooltip("Chance a finished combo opener chains into its partner (phase 2, no summon alive). 0 = no combos.")]
+        [SerializeField, Range(0f, 1f)] private float comboChance;
+        [Tooltip("Seconds of chase between the opener's end and the partner's warning.")]
+        [SerializeField, Min(0f)] private float comboGap = 0.25f;
+        [Tooltip("Enrage (phase 3) starts when boss health falls to this share, never before phase 2. 0 = no enrage.")]
+        [SerializeField, Range(0f, 0.95f)] private float phase3At;
+        [Tooltip("Attack cooldowns x this while enraged (on top of phase 2 and alone).")]
+        [SerializeField, Range(0.2f, 1f)] private float enrageCooldownScale = 0.8f;
+        [Tooltip("Bolt / orb / shockwave speed x this while enraged.")]
+        [SerializeField, Range(1f, 1.5f)] private float enrageBoltSpeed = 1.15f;
+        [Tooltip("Boss walk speed x this while enraged (on top of the phase 2 speed).")]
+        [SerializeField, Range(1f, 1.5f)] private float enrageWalk = 1.1f;
+        [Tooltip("Combo chance while enraged (the higher of this and the phase 2 chance).")]
+        [SerializeField, Range(0f, 1f)] private float enrageComboChance;
+        [Tooltip("Seconds the boss stands and roars when the enrage starts (when it is not mid-attack). 0 = no roar.")]
+        [SerializeField, Min(0f)] private float enrageRoar;
+
         public string DisplayName => displayName;
         public string Title => title;
         public Enemy Prefab => prefab;
@@ -202,6 +227,48 @@ namespace SurvivorSouls.Gameplay.Boss
         public int RewardWisps => rewardWisps;
         public float HordeCap => hordeCap;
         public float HordeInterval => hordeInterval;
+        public float AloneCooldownScale => aloneCooldownScale;
+        public BossCombo[] Combos => combos ?? Array.Empty<BossCombo>();
+        public float ComboChance => comboChance;
+        public float ComboGap => comboGap;
+        public float Phase3At => phase3At;
+        public float EnrageCooldownScale => enrageCooldownScale;
+        public float EnrageBoltSpeed => enrageBoltSpeed;
+        public float EnrageWalk => enrageWalk;
+        public float EnrageComboChance => enrageComboChance;
+        public float EnrageRoar => enrageRoar;
+
+        /// <summary>KAN-164.2: cooldown factor of the aggression model: x alone share with no summon alive, x enrage share.</summary>
+        public float AggressionScale(bool alone, bool enraged) =>
+            (alone ? aloneCooldownScale : 1f) * (enraged ? enrageCooldownScale : 1f);
+
+        /// <summary>KAN-164.2: chance a combo opener chains in <paramref name="phase"/> (none in phase 1).</summary>
+        public float ComboChanceFor(int phase, bool enraged) =>
+            phase < 2 ? 0f : enraged ? Mathf.Max(comboChance, enrageComboChance) : comboChance;
+
+        /// <summary>KAN-164.2: speed of a boss bolt worth <paramref name="speed"/> m/s (faster while enraged).</summary>
+        public float BoltSpeedFor(float speed, bool enraged) => enraged ? speed * enrageBoltSpeed : speed;
+
+        /// <summary>
+        /// Tests and tools (KAN-164.2): sets the aggression model on this (runtime) instance and returns it. Never call it
+        /// on an asset in the editor (it would be saved).
+        /// </summary>
+        public BossData WithAggression(float aloneScale = 1f, BossCombo[] comboList = null, float chance = 0f, float gap = 0.25f,
+            float enrageAt = 0f, float enrageCooldown = 0.8f, float enrageSpeed = 1.15f, float walk = 1.1f, float enrageChance = 0f,
+            float roar = 0f)
+        {
+            aloneCooldownScale = Mathf.Clamp(aloneScale, 0.2f, 1f);
+            combos = comboList ?? new BossCombo[0];
+            comboChance = Mathf.Clamp01(chance);
+            comboGap = Mathf.Max(0f, gap);
+            phase3At = Mathf.Clamp(enrageAt, 0f, 0.95f);
+            enrageCooldownScale = Mathf.Clamp(enrageCooldown, 0.2f, 1f);
+            enrageBoltSpeed = Mathf.Clamp(enrageSpeed, 1f, 1.5f);
+            enrageWalk = Mathf.Clamp(walk, 1f, 1.5f);
+            enrageComboChance = Mathf.Clamp01(enrageChance);
+            enrageRoar = Mathf.Max(0f, roar);
+            return this;
+        }
 
         [NonSerialized] private BossAttack[] _legacy;
 

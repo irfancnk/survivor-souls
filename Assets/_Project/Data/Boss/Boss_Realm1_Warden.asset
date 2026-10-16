@@ -68,3 +68,17 @@ MonoBehaviour:
   rewardWisps: 6
   hordeCap: 0.45
   hordeInterval: 1.6
+  aloneCooldownScale: 0.75
+  combos:
+  - first: 2
+    second: 1
+  - first: 1
+    second: 0
+  comboChance: 0.35
+  comboGap: 0.25
+  phase3At: 0.25
+  enrageCooldownScale: 0.8
+  enrageBoltSpeed: 1.15
+  enrageWalk: 1.1
+  enrageComboChance: 0.6
+  enrageRoar: 0
