@@ -226,7 +226,7 @@ namespace SurvivorSouls.Gameplay.Boss
             Vector3 knight = canHit ? player.transform.position : Vector3.zero;
             float dx = knight.x - b.Target.x, dz = knight.z - b.Target.z;
             float d2 = dx * dx + dz * dz;
-            if (canHit && b.Damage > 0f && d2 <= b.Impact * b.Impact) dealt = player.TakeDamage(b.Damage);
+            if (canHit && b.Damage > 0f && d2 <= b.Impact * b.Impact) dealt = player.TakeDamage(b.Damage, b.Start); // KAN-187: thrown from b.Start
             EndCircle(ref b, hide: false);
             bodies[i].position = b.Target;
             if (b.Life > 0f)

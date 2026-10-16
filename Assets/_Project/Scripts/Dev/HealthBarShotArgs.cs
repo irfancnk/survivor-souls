@@ -16,7 +16,9 @@ namespace SurvivorSouls.Dev
     /// time). Events:
     /// <c>hit:&lt;share&gt;</c> deals that share of max health (works with -ss-immortal), <c>heal:&lt;share&gt;</c> heals it,
     /// <c>max:&lt;amount&gt;</c> raises max health by a flat amount (a stat source, like Vigor), <c>shield:&lt;share&gt;</c> sets the
-    /// shield to that share of max health, <c>hits:&lt;share&gt;</c> deals that share split over 1 s of contact pulses (horde).
+    /// shield to that share of max health, <c>hits:&lt;share&gt;</c> deals that share split over 1 s of contact pulses (horde),
+    /// <c>blow:&lt;share&gt;:&lt;angle&gt;</c> deals that share as a discrete hit from 6 m away at that screen angle (degrees,
+    /// 0 = from the top, 90 = from the right; KAN-187 arc, flash, shake, hit-stop, grunt).
     /// Example: <c>-ss-hp-fx hit:0.18@2~0.1</c> (chunk + number + trail, frozen 0.1 s after the hit). Dev builds only; no effect without the arg.
     /// </summary>
     public sealed class HealthBarShotArgs : MonoBehaviour
@@ -51,11 +53,12 @@ namespace SurvivorSouls.Dev
                 string[] lf = (at.Length > 1 ? at[1] : "0.5").Split('~');
                 float lead = float.Parse(lf[0], CultureInfo.InvariantCulture);
                 float freeze = lf.Length > 1 ? float.Parse(lf[1], CultureInfo.InvariantCulture) : -1f;
-                StartCoroutine(Run(kv[0], value, Mathf.Max(0f, _delay - lead), freeze));
+                float angle = kv.Length > 2 ? float.Parse(kv[2], CultureInfo.InvariantCulture) : 0f;
+                StartCoroutine(Run(kv[0], value, Mathf.Max(0f, _delay - lead), freeze, angle));
             }
         }
 
-        private IEnumerator Run(string kind, float value, float wait, float freeze)
+        private IEnumerator Run(string kind, float value, float wait, float freeze, float angle)
         {
             yield return new WaitForSecondsRealtime(wait);
             var health = FindAnyObjectByType<PlayerHealth>();
@@ -71,6 +74,10 @@ namespace SurvivorSouls.Dev
                         Hit(health, health.Max * value / 30f);
                         yield return new WaitForSeconds(1f / 30f);
                     }
+                    break;
+                case "blow": // KAN-187: discrete hit from a side (world +Z = screen up, +X = right)
+                    Vector3 from = health.transform.position + Quaternion.Euler(0f, angle, 0f) * Vector3.forward * 6f;
+                    Hit(health, health.Max * value, from);
                     break;
                 case "heal":
                     health.Heal(health.Max * value);
@@ -94,11 +101,12 @@ namespace SurvivorSouls.Dev
             Debug.Log($"[HealthBarShotArgs] frozen {freeze:0.##} s after {kind}");
         }
 
-        private static void Hit(PlayerHealth health, float amount)
+        private static void Hit(PlayerHealth health, float amount, Vector3? from = null)
         {
             bool invulnerable = health.Invulnerable; // -ss-immortal: let the scripted hit through, nothing else
             health.Invulnerable = false;
-            health.TakeDamage(amount);
+            if (from.HasValue) health.TakeDamage(amount, from.Value);
+            else health.TakeDamage(amount);
             health.Invulnerable = invulnerable;
         }
 

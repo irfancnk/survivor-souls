@@ -38,6 +38,7 @@ namespace SurvivorSouls.UI.MainMenu
         private const string ReloadRingName = "tgl-reload-ring";
         private const string FastRevealName = "tgl-fast-reveal";
         private const string ReduceFxName = "tgl-reduce-fx";
+        private const string HeartbeatName = "tgl-heartbeat";
         public const string TestModeToggleName = "tgl-test-mode";
         public const string TestModeTagName = "lbl-test-mode";
         public const string SettingsTitleName = "lbl-settings-title";
@@ -416,6 +417,13 @@ namespace SurvivorSouls.UI.MainMenu
             {
                 reduceFx.SetValueWithoutNotify(GameSettings.ReduceScreenEffects);
                 reduceFx.RegisterValueChangedCallback(e => GameSettings.ReduceScreenEffects = e.newValue);
+            }
+
+            var heartbeat = root.Q<Toggle>(HeartbeatName); // KAN-187: low-health heartbeat sound
+            if (heartbeat != null)
+            {
+                heartbeat.SetValueWithoutNotify(GameSettings.HeartbeatSound);
+                heartbeat.RegisterValueChangedCallback(e => GameSettings.HeartbeatSound = e.newValue);
             }
         }
 

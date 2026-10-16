@@ -153,7 +153,7 @@ namespace SurvivorSouls.Gameplay.Combat
         protected float Hurt(PlayerHealth knight, float share)
         {
             if (knight == null || knight.IsDead || share <= 0f) return 0f;
-            float dealt = knight.TakeDamage(share * knight.Max);
+            float dealt = knight.TakeDamage(share * knight.Max, transform.position); // KAN-187: telegraphed hit, arc on this side
             HitKnight?.Invoke(this, dealt);
             return dealt;
         }

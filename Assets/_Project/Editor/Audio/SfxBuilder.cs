@@ -39,6 +39,10 @@ namespace SurvivorSouls.Editor.Audio
             public AudioClip Ambience, PortalHum;
             /// <summary>Skill card reveal per tier (KAN-37), index = SkillRarity: Common, Rare, Epic, Legendary.</summary>
             public AudioClip[] RarityReveals;
+            /// <summary>Knight takes a discrete hit (KAN-187): dull body thud + short grunt.</summary>
+            public AudioClip[] KnightGrunts;
+            /// <summary>Low-health heartbeat (KAN-187): one quiet lub-dub, replayed at the beat rate.</summary>
+            public AudioClip Heartbeat;
         }
 
         [MenuItem("Survivor Souls/Rebuild Sounds")]
@@ -83,6 +87,8 @@ namespace SurvivorSouls.Editor.Audio
             set.PortalHum = Save("amb_portal_hum_loop", AmbienceRate, PortalHum(AmbienceRate, 4f, 13), ambience: true);
             set.PortalSeals = Many("sfx_portal_sealed", 1, PortalSealThud); // KAN-49
             set.ChargeRumble = Save("amb_charge_rumble_loop", AmbienceRate, ChargeRumble(AmbienceRate, 2f, 17), ambience: false);
+            set.KnightGrunts = Many("sfx_knight_grunt", 3, KnightGrunt); // KAN-187
+            set.Heartbeat = Save("sfx_heartbeat_01", Rate, Heartbeat(), ambience: false); // KAN-187
             return set;
         }
 
@@ -651,6 +657,51 @@ namespace SurvivorSouls.Editor.Audio
                     2400f + (float)rng.NextDouble() * 2600f, rng);
             }
             return Normalize(b, 0.92f);
+        }
+
+        /// <summary>
+        /// Knight takes a hit (KAN-187, ~0.4 s): a dull body thud under the armour (low sweep + muffled noise, a faint
+        /// mail rattle) and a short closed-mouth grunt ("hmph": saw voice through two formants, pitch falling). Each seed
+        /// shifts the voice pitch and formants a little, so repeats do not sound the same.
+        /// </summary>
+        private static float[] KnightGrunt(int seed)
+        {
+            var rng = new System.Random(seed * 6007);
+            float len = 0.42f;
+            var b = new float[(int)(Rate * len)];
+            float v = 1f + (seed - 2) * 0.06f;
+            Sweep(b, 0f, 0.22f, 96f, 52f, 0.75f, 16f, 2);                    // body thud
+            NoiseBurst(b, 0f, 0.1f, 0.35f, 60f, 520f, 30f, rng);             // muffled impact
+            for (int i = 0; i < 4; i++)                                         // mail rattle
+                Click(b, 0.005f + (float)rng.NextDouble() * 0.07f, 0.004f, 0.06f, 5200f, rng);
+            var f1 = new Biquad(); var f2 = new Biquad();
+            f1.SetBandPass(560f * v, 4.5f, Rate); f2.SetBandPass(1050f * v, 5.5f, Rate);
+            var lp = new Biquad(); lp.SetLowPass(2200f, 0.7f, Rate);
+            double phase = 0;
+            int g0 = (int)(Rate * 0.015f), g1 = (int)(Rate * 0.27f);
+            for (int i = g0; i < g1; i++)
+            {
+                float k = (i - g0) / (float)(g1 - g0);
+                phase += Mathf.Lerp(150f, 104f, k) * v / Rate;
+                float src = Saw(phase) * 0.55f + Noise(rng) * 0.22f;        // breathy voice
+                float env = Mathf.SmoothStep(0f, 1f, k / 0.08f) * (1f - k) * (1f - k);
+                b[i] += lp.Process(f1.Process(src) + f2.Process(src) * 0.45f) * env * 1.5f;
+            }
+            return Normalize(b, 0.8f);
+        }
+
+        /// <summary>
+        /// Low-health heartbeat (KAN-187, 0.5 s): a soft deep "lub" and a weaker "dub" 0.2 s later, low-passed so it sits
+        /// under the mix. Played once per beat at runtime (the beat rate is not baked in).
+        /// </summary>
+        private static float[] Heartbeat()
+        {
+            var b = new float[(int)(Rate * 0.5f)];
+            Sweep(b, 0f, 0.16f, 62f, 40f, 1f, 22f, 2);                       // lub
+            Sweep(b, 0.2f, 0.14f, 70f, 46f, 0.6f, 26f, 2);                   // dub
+            var lp = new Biquad(); lp.SetLowPass(260f, 0.7f, Rate);
+            for (int i = 0; i < b.Length; i++) b[i] = lp.Process(b[i]);
+            return Normalize(b, 0.85f);
         }
 
         /// <summary>

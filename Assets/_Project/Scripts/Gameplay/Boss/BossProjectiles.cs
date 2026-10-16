@@ -161,7 +161,7 @@ namespace SurvivorSouls.Gameplay.Boss
                 if (canHit && b.Volley != _hitVolley && SegmentDistance(from, b.Position, knight) <= b.HitRadius)
                 {
                     _hitVolley = b.Volley;
-                    float dealt = player.TakeDamage(b.Damage);
+                    float dealt = player.TakeDamage(b.Damage, b.Position - b.Velocity); // KAN-187: hit direction
                     HitPlayer?.Invoke(b.Position, dealt);
                     Remove(i);
                     canHit = !player.IsDead;
