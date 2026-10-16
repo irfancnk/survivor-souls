@@ -138,6 +138,14 @@ namespace SurvivorSouls.Tests
             new object[] { "FreezeArrow", 2, new[] { "FreezeDuration+=2", "FreezeEvery+=3" } },
             new object[] { "FreezeArrow", 3, new[] { "FreezeDuration+=2", "FreezeEvery+=2" } },
             new object[] { "FreezeArrow", 4, new[] { "FreezeDuration+=2.5", "FreezeEvery+=2" } },
+            new object[] { "HolyTomes", 1, new[] { "TomeCount+=1", "TomeRadius+=2", "TomeSpin+=2", "TomeDamage+=0.6" } }, // KAN-123
+            new object[] { "HolyTomes", 2, new[] { "TomeCount+=2", "TomeRadius+=2", "TomeSpin+=2", "TomeDamage+=0.6" } },
+            new object[] { "HolyTomes", 3, new[] { "TomeCount+=2", "TomeRadius+=2.6", "TomeSpin+=2", "TomeDamage+=0.7" } },
+            new object[] { "HolyTomes", 4, new[] { "TomeCount+=3", "TomeRadius+=2.6", "TomeSpin+=1.8", "TomeDamage+=0.7" } },
+            new object[] { "HolyTomes", 5, new[] { "TomeCount+=3", "TomeRadius+=2.6", "TomeSpin+=1.5", "TomeDamage+=0.8" } },
+            new object[] { "HolyTomes", 6, new[] { "TomeCount+=4", "TomeRadius+=3", "TomeSpin+=1.5", "TomeDamage+=0.8" } },
+            new object[] { "HolyTomes", 7, new[] { "TomeCount+=4", "TomeRadius+=3.2", "TomeSpin+=1.4", "TomeDamage+=0.9", "TomeKnockback+=3" } },
+            new object[] { "HolyTomes", 8, new[] { "TomeCount+=5", "TomeRadius+=3.4", "TomeSpin+=1.3", "TomeDamage+=1", "TomeKnockback+=3", "TomeFlash+=1.3" } },
         };
 
         [TestCaseSource(nameof(Sheet))]
@@ -172,7 +180,7 @@ namespace SurvivorSouls.Tests
         {
             var rows = Sheet.Cast<object[]>().Select(r => ((string)r[0], (int)r[1])).ToList();
             var skills = Shipped().ToList();
-            Assert.That(skills.Count, Is.EqualTo(16)); // 12 KAN-19 skills + Reliquary Hunter (KAN-72) + Double Shot (KAN-83) + Hallowed Shield (KAN-93) + Freeze Arrow (KAN-91)
+            Assert.That(skills.Count, Is.EqualTo(17)); // 12 KAN-19 skills + Reliquary Hunter (KAN-72) + Double Shot (KAN-83) + Hallowed Shield (KAN-93) + Freeze Arrow (KAN-91) + Holy Tomes (KAN-123)
             foreach (var s in skills)
             {
                 string file = s.name.Substring("Skill_".Length);
@@ -189,8 +197,9 @@ namespace SurvivorSouls.Tests
             foreach (var s in Shipped())
             {
                 Assert.That(s.HasLevelTable, Is.True, s.Id + " has a level table");
-                // Utility Epic: KAN-50 asks for 5 levels. Spread Shot (Rare): KAN-83 asks for 3 (3 / 5 / 7 bolts).
-                var (min, max) = s.Id == "reliquary_hunter" ? (5, 5) : s.Id == "multishot" ? (3, 3) : s.Rarity switch
+                // Utility Epic: KAN-50 asks for 5 levels. Spread Shot (Rare): KAN-83 asks for 3 (3 / 5 / 7 bolts). Holy Tomes
+                // (Rare): KAN-123 asks for 8 (the deeper path of KAN-124).
+                var (min, max) = s.Id == "reliquary_hunter" ? (5, 5) : s.Id == "multishot" ? (3, 3) : s.Id == "holy_tomes" ? (8, 8) : s.Rarity switch
                 {
                     SkillRarity.Common => (5, 6),
                     SkillRarity.Rare => (4, 5),

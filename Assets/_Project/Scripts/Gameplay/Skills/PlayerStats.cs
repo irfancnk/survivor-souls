@@ -55,6 +55,18 @@ namespace SurvivorSouls.Gameplay.Skills
         FreezeEvery,
         /// <summary>KAN-91 Freeze Arrow: seconds a frost hit freezes a foe (bosses and elites get a share).</summary>
         FreezeDuration,
+        /// <summary>KAN-123 Holy Tomes: books orbiting the Knight (0 = none).</summary>
+        TomeCount,
+        /// <summary>KAN-123 Holy Tomes: orbit radius in metres.</summary>
+        TomeRadius,
+        /// <summary>KAN-123 Holy Tomes: seconds per full turn of the orbit (lower = faster).</summary>
+        TomeSpin,
+        /// <summary>KAN-123 Holy Tomes: hit damage as a share of the bolt damage (0.6 = 60 %).</summary>
+        TomeDamage,
+        /// <summary>KAN-123 Holy Tomes: knockback speed of a tome hit in m/s (0 = none).</summary>
+        TomeKnockback,
+        /// <summary>KAN-123 Holy Tomes: holy flash splash radius in metres round a tome hit (0 = none).</summary>
+        TomeFlash,
     }
 
     /// <summary>Flat adds to the base value; Percent scales it (0.2 = +20 %). Percents from all sources add up.</summary>

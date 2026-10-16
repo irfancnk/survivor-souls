@@ -1,0 +1,160 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1fe610960d6a34b01a28534f0f33effb, type: 3}
+  m_Name: Skill_HolyTomes
+  m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Skills.SkillDefinition
+  id: holy_tomes
+  displayName: Holy Tomes
+  description: A holy tome circles you, 60% dmg
+  icon: {fileID: 2800000, guid: c5ff1e761045c455c88709a109a3e439, type: 3}
+  rarity: 1
+  maxStack: 8
+  weight: 1
+  modifiers:
+  - stat: 30
+    kind: 0
+    value: 1
+  - stat: 31
+    kind: 0
+    value: 2
+  - stat: 32
+    kind: 0
+    value: 2
+  - stat: 33
+    kind: 0
+    value: 0.6
+  levels:
+  - description: A holy tome circles you, 60% dmg
+    modifiers:
+    - stat: 30
+      kind: 0
+      value: 1
+    - stat: 31
+      kind: 0
+      value: 2
+    - stat: 32
+      kind: 0
+      value: 2
+    - stat: 33
+      kind: 0
+      value: 0.6
+  - description: 2 tomes circle you, 60% dmg
+    modifiers:
+    - stat: 30
+      kind: 0
+      value: 2
+    - stat: 31
+      kind: 0
+      value: 2
+    - stat: 32
+      kind: 0
+      value: 2
+    - stat: 33
+      kind: 0
+      value: 0.6
+  - description: 2 tomes, wider orbit, 70% dmg
+    modifiers:
+    - stat: 30
+      kind: 0
+      value: 2
+    - stat: 31
+      kind: 0
+      value: 2.6
+    - stat: 32
+      kind: 0
+      value: 2
+    - stat: 33
+      kind: 0
+      value: 0.7
+  - description: 3 tomes, faster spin, 70% dmg
+    modifiers:
+    - stat: 30
+      kind: 0
+      value: 3
+    - stat: 31
+      kind: 0
+      value: 2.6
+    - stat: 32
+      kind: 0
+      value: 1.8
+    - stat: 33
+      kind: 0
+      value: 0.7
+  - description: 3 tomes, faster still, 80% dmg
+    modifiers:
+    - stat: 30
+      kind: 0
+      value: 3
+    - stat: 31
+      kind: 0
+      value: 2.6
+    - stat: 32
+      kind: 0
+      value: 1.5
+    - stat: 33
+      kind: 0
+      value: 0.8
+  - description: 4 tomes, wider orbit, 80% dmg
+    modifiers:
+    - stat: 30
+      kind: 0
+      value: 4
+    - stat: 31
+      kind: 0
+      value: 3
+    - stat: 32
+      kind: 0
+      value: 1.5
+    - stat: 33
+      kind: 0
+      value: 0.8
+  - description: 4 tomes knock foes back, 90% dmg
+    modifiers:
+    - stat: 30
+      kind: 0
+      value: 4
+    - stat: 31
+      kind: 0
+      value: 3.2
+    - stat: 32
+      kind: 0
+      value: 1.4
+    - stat: 33
+      kind: 0
+      value: 0.9
+    - stat: 34
+      kind: 0
+      value: 3
+  - description: 5 tomes, holy flash, 100% dmg
+    modifiers:
+    - stat: 30
+      kind: 0
+      value: 5
+    - stat: 31
+      kind: 0
+      value: 3.4
+    - stat: 32
+      kind: 0
+      value: 1.3
+    - stat: 33
+      kind: 0
+      value: 1
+    - stat: 34
+      kind: 0
+      value: 3
+    - stat: 35
+      kind: 0
+      value: 1.3
+  effectPrefab: {fileID: 1832233264798727301, guid: 6d1e3938462f842f4b9305e973ac721a, type: 3}
+  requiresUpgradableSkill: 0
+  repeatOfferWeights: []
+  upgradeOfferWeight: 1

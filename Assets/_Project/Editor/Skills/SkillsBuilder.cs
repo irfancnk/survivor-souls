@@ -20,6 +20,7 @@ namespace SurvivorSouls.Editor.Skills
     /// Double Shot, Legendary = burning bolts / soul burst. Reliquary Hunter (KAN-72, Epic) drops upgrade chests through stats only.
     /// Hallowed Shield (KAN-93, Epic): a ward bubble that blocks all damage for a few seconds on a cooldown.
     /// Freeze Arrow (KAN-91, Rare): every Nth bolt hit freezes the foe (frost burst + rime, ice tint).
+    /// Holy Tomes (KAN-123, Rare, 8 levels): glowing books orbit the Knight and hit the foes they pass.
     /// <see cref="BuildStyles"/> makes the per-tier style asset (labels, gems, sounds).
     /// </summary>
     public static class SkillsBuilder
@@ -32,7 +33,7 @@ namespace SurvivorSouls.Editor.Skills
         private const string PrefabDir = "Assets/_Project/Prefabs/Skills";
         private const string RingTexturePath = "Assets/_Project/Art/Textures/Game/T_Ring.png"; // made by GameArtKit
 
-        private enum Fx { None, Burn, LifeSteal, KillBurst, Ward, Frost }
+        private enum Fx { None, Burn, LifeSteal, KillBurst, Ward, Frost, Tomes }
 
         private sealed class Spec
         {
@@ -63,6 +64,18 @@ namespace SurvivorSouls.Editor.Skills
         private static StatModifier Pct(StatId s, float v) => new StatModifier(s, ModifierKind.Percent, v);
         private static StatModifier Add(StatId s, float v) => new StatModifier(s, ModifierKind.Flat, v);
         private static SkillLevelData L(string text, params StatModifier[] mods) => new SkillLevelData(text, mods);
+
+        /// <summary>Holy Tomes level row (KAN-123): books first (the primary stat), then orbit, spin, damage, extras.</summary>
+        private static StatModifier[] Tome(int books, float radius, float spin, float damage, float knock = 0f, float flash = 0f)
+        {
+            var mods = new List<StatModifier>
+            {
+                Add(StatId.TomeCount, books), Add(StatId.TomeRadius, radius), Add(StatId.TomeSpin, spin), Add(StatId.TomeDamage, damage),
+            };
+            if (knock > 0f) mods.Add(Add(StatId.TomeKnockback, knock));
+            if (flash > 0f) mods.Add(Add(StatId.TomeFlash, flash));
+            return mods.ToArray();
+        }
 
         // Base numbers for reference: bolt 100 dmg / 1 shot per s, no crit / x2 crit damage, zombie 150 HP (Shambler 100),
         // player 400 HP at 5 m/s, pickup 2.6 m, burn 3 s, soul burst 2.6 m.
@@ -243,10 +256,25 @@ namespace SurvivorSouls.Editor.Skills
                     L("Every 2nd hit freezes foes 2 s", Add(StatId.FreezeDuration, 2f), Add(StatId.FreezeEvery, 2f)),
                     L("Every 2nd hit freezes foes 2.5 s", Add(StatId.FreezeDuration, 2.5f), Add(StatId.FreezeEvery, 2f)),
                 } },
+            // KAN-123: Holy Tomes. Books orbit the Knight (count, radius m, s per turn) and hit the foes they pass for a share
+            // of the bolt damage (each book hits a foe once per 0.5 s), knockback from level 7, holy flash splash at level 8.
+            // Rare with 8 levels: the ticket's table (the deeper path KAN-124 asks for), not the 4-5 level Rare rule.
+            new Spec { Id = "holy_tomes", File = "HolyTomes", Name = "Holy Tomes", Rarity = SkillRarity.Rare,
+                Glyph = SkillIconPainter.Tome, Effect = Fx.Tomes, Levels = new[]
+                {
+                    L("A holy tome circles you, 60% dmg", Tome(1, 2f, 2f, 0.6f)),
+                    L("2 tomes circle you, 60% dmg", Tome(2, 2f, 2f, 0.6f)),
+                    L("2 tomes, wider orbit, 70% dmg", Tome(2, 2.6f, 2f, 0.7f)),
+                    L("3 tomes, faster spin, 70% dmg", Tome(3, 2.6f, 1.8f, 0.7f)),
+                    L("3 tomes, faster still, 80% dmg", Tome(3, 2.6f, 1.5f, 0.8f)),
+                    L("4 tomes, wider orbit, 80% dmg", Tome(4, 3f, 1.5f, 0.8f)),
+                    L("4 tomes knock foes back, 90% dmg", Tome(4, 3.2f, 1.4f, 0.9f, knock: 3f)),
+                    L("5 tomes, holy flash, 100% dmg", Tome(5, 3.4f, 1.3f, 1f, knock: 3f, flash: 1.3f)),
+                } },
         };
 
         /// <summary>Skills added after the progression asset was first made: id -> tier fromLevel they join (once).</summary>
-        private static readonly (string id, int fromLevel)[] LateUnlocks = { ("reliquary_hunter", 4), ("double_shot", 2), ("temporary_shield", 6), ("freeze_arrow", 10) };
+        private static readonly (string id, int fromLevel)[] LateUnlocks = { ("reliquary_hunter", 4), ("double_shot", 2), ("temporary_shield", 6), ("freeze_arrow", 10), ("holy_tomes", 4) };
 
         /// <summary>Guarantees added after the progression asset was first made: id -> level (once, if that level is free).</summary>
         private static readonly (string id, int level)[] LateGuarantees = { ("double_shot", 3), ("sharpened_bolts", 2), ("quick_draw", 8) };
@@ -477,6 +505,9 @@ namespace SurvivorSouls.Editor.Skills
             var fireMat = EditorAssetUtil.ParticleMaterial(FxDir + "/M_FX_BurnFlame.mat", kit.SoftDot, additive: false);
             // KAN-91: alpha blend (pale ice on white snow needs the blue tint and real coverage, not additive light).
             var frostMat = EditorAssetUtil.ParticleMaterial(FxDir + "/M_FX_Frost.mat", kit.SoftDot, additive: false);
+            // KAN-123: gold trail / sparks alpha blended (additive gold vanishes on snow); book mesh + material.
+            var tomeGlowMat = EditorAssetUtil.ParticleMaterial(FxDir + "/M_FX_TomeGlow.mat", kit.SoftDot, additive: false);
+            var tomeArt = HolyTomeArt.Build(FxDir);
 
             return new Dictionary<Fx, SkillEffect>
             {
@@ -590,6 +621,36 @@ namespace SurvivorSouls.Editor.Skills
                     var main = frost.main;
                     main.gravityModifier = 0.35f; // shards arc and fall, mist and rime barely sink
                     Set(fx, "frost", frost);
+                }),
+                // KAN-123: 8 book children (one shared mesh + material, SRP batched; the level shows the first N) and one
+                // shared gold system for the trail motes, hit sparks and holy flash (+1 draw call for the particles).
+                [Fx.Tomes] = SavePrefab<OrbitingTomesEffect>("FX_Skill_HolyTomes", (root, fx) =>
+                {
+                    var books = new Transform[OrbitingTomesEffect.MaxTomes];
+                    for (int i = 0; i < books.Length; i++)
+                    {
+                        var book = new GameObject($"Tome {i}");
+                        book.transform.SetParent(root.transform, false);
+                        book.AddComponent<MeshFilter>().sharedMesh = tomeArt.Mesh;
+                        var mr = book.AddComponent<MeshRenderer>();
+                        mr.sharedMaterial = tomeArt.Material;
+                        mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                        mr.receiveShadows = false;
+                        mr.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off;
+                        mr.reflectionProbeUsage = UnityEngine.Rendering.ReflectionProbeUsage.Off;
+                        mr.motionVectorGenerationMode = MotionVectorGenerationMode.ForceNoMotion;
+                        book.SetActive(false);
+                        books[i] = book.transform;
+                    }
+                    var so = new SerializedObject(fx);
+                    var list = so.FindProperty("tomes");
+                    list.arraySize = books.Length;
+                    for (int i = 0; i < books.Length; i++) list.GetArrayElementAtIndex(i).objectReferenceValue = books[i];
+                    so.ApplyModifiedPropertiesWithoutUndo();
+                    var glow = Particles(root, "Tome Glow", tomeGlowMat, 300, new Vector2(0.3f, 0.45f), new Vector2(0.1f, 0.18f),
+                        new Color(1f, 0.85f, 0.4f), new Color(1f, 0.7f, 0.25f));
+                    Drag(glow, 3f);
+                    Set(fx, "glow", glow);
                 }),
             };
         }
