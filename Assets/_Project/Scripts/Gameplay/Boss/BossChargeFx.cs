@@ -43,13 +43,13 @@ namespace SurvivorSouls.Gameplay.Boss
         [SerializeField, Min(0.1f)] private float poseRate = 12f;
 
         [Header("Dust")]
-        [SerializeField] private Color dustColor = new Color(0.42f, 0.38f, 0.34f, 0.8f);
+        [SerializeField] private Color dustColor = new Color(0.86f, 0.84f, 0.82f, 0.9f); // snow powder: reads on the dark arena stone
         [SerializeField, Min(0.05f)] private float trailSpacing = 0.3f;
         [SerializeField, Min(0.01f)] private float scrapeEvery = 0.09f;
         [SerializeField, Min(0f)] private float skidPuffs = 9f;
 
         [Header("Dizzy embers")]
-        [SerializeField] private Color emberColor = new Color(1f, 0.62f, 0.2f, 1f);
+        [SerializeField] private Color emberColor = new Color(1f, 0.78f, 0.3f, 1f);
         [SerializeField, Min(0.01f)] private float emberEvery = 0.035f;
         [Tooltip("Turns per second of the ember ring over the head.")]
         [SerializeField, Min(0f)] private float emberSpin = 1.1f;
@@ -137,17 +137,20 @@ namespace SurvivorSouls.Gameplay.Boss
                 if (boss != null) _lastPos = boss.transform.position;
                 return;
             }
-            if (dt <= 0f) return; // paused: hold the pose, emit nothing
-            _clock += dt;
-            _phase = PhaseOf(fight);
-            if (_phase != Phase.Punish) _punishTime = 0f;
-
             Transform t = boss.transform;
             Vector3 pos = t.position;
             Vector3 fwd = t.forward;
             fwd.y = 0f;
             fwd = fwd.sqrMagnitude > 1e-6f ? fwd.normalized : Vector3.forward;
             Vector3 right = new Vector3(fwd.z, 0f, -fwd.x);
+            if (dt <= 0f) // paused: hold the pose (the Animator may still rewrite the bones), emit nothing
+            {
+                if (_hasWritten[0] || _hasWritten[BoneCount - 1]) Pose(right, fwd);
+                return;
+            }
+            _clock += dt;
+            _phase = PhaseOf(fight);
+            if (_phase != Phase.Punish) _punishTime = 0f;
             float r = Mathf.Max(0.4f, boss.HitRadius);
 
             float lean = 0f, sway = 0f, droop = 0f;
@@ -287,7 +290,7 @@ namespace SurvivorSouls.Gameplay.Boss
                 _trailLeft -= trailSpacing;
                 Vector3 at = pos - fwd * (r * 0.6f) + right * (r * Random.Range(-0.8f, 0.8f));
                 Vector3 vel = -fwd * Random.Range(0.4f, 1.4f) + right * Random.Range(-0.6f, 0.6f) + Vector3.up * Random.Range(0.5f, 1.2f);
-                Dust(at, vel, r * Random.Range(0.55f, 0.9f), Random.Range(0.7f, 1.1f));
+                Dust(at, vel, r * Random.Range(0.7f, 1.1f), Random.Range(0.8f, 1.2f));
                 TrailEmitted++;
             }
         }
@@ -317,11 +320,11 @@ namespace SurvivorSouls.Gameplay.Boss
         {
             var head = _bones[BoneCount - 1];
             Vector3 top = head != null ? head.position + Vector3.up * (r * 0.45f) : pos + Vector3.up * (r * 2.6f);
-            float ring = Mathf.Max(0.35f, r * 0.42f);
+            float ring = Mathf.Max(0.45f, r * 0.55f);
             float a = (_clock * emberSpin + (EmbersEmitted % 3) / 3f) * Mathf.PI * 2f;
             Vector3 off = new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a));
             Vector3 tangent = new Vector3(-off.z, 0f, off.x);
-            Puff(top + off * ring, tangent * (ring * 1.2f) + Vector3.up * 0.15f, Mathf.Max(0.12f, r * 0.12f) * Random.Range(0.8f, 1.2f),
+            Puff(top + off * ring, tangent * (ring * 1.2f) + Vector3.up * 0.15f, Mathf.Max(0.25f, r * 0.22f) * Random.Range(0.8f, 1.2f),
                 emberColor, 0.45f);
             EmbersEmitted++;
         }
