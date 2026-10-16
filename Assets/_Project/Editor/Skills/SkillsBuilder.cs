@@ -68,27 +68,29 @@ namespace SurvivorSouls.Editor.Skills
         // level. Common = one stat, shrinking steps, up to 6 levels (5 where the stat saturates: move, pickup). Rare / Epic
         // = 3-5 levels, the last level adds a second stat. Legendary = 4 levels, level 3 adds reach (burn length, burst
         // radius). Level 1 keeps the KAN-19 numbers, so the first pick feels the same as before.
+        // KAN-86 single-target pass: Sharpened Bolts / Quick Draw / Keen Eye hit harder (boss DPS 4.6x by level 20, was
+        // 3.8x), pierce -33 % and bounce -30 % damage per enemy (BoltShot falloff), Spread Shot side bolts 50 / 55 / 60 %.
         private static readonly Spec[] Specs =
         {
             new Spec { Id = "sharpened_bolts", File = "SharpenedBolts", Name = "Sharpened Bolts", Rarity = SkillRarity.Common,
                 Glyph = SkillIconPainter.Damage, Levels = new[]
                 {
-                    L("+20% bolt damage", Pct(StatId.Damage, 0.2f)),
-                    L("+36% bolt damage", Pct(StatId.Damage, 0.36f)),
-                    L("+52% bolt damage", Pct(StatId.Damage, 0.52f)),
-                    L("+66% bolt damage", Pct(StatId.Damage, 0.66f)),
-                    L("+80% bolt damage", Pct(StatId.Damage, 0.8f)),
-                    L("+95% bolt damage", Pct(StatId.Damage, 0.95f)),
+                    L("+25% bolt damage", Pct(StatId.Damage, 0.25f)),
+                    L("+45% bolt damage", Pct(StatId.Damage, 0.45f)),
+                    L("+65% bolt damage", Pct(StatId.Damage, 0.65f)),
+                    L("+85% bolt damage", Pct(StatId.Damage, 0.85f)),
+                    L("+105% bolt damage", Pct(StatId.Damage, 1.05f)),
+                    L("+125% bolt damage", Pct(StatId.Damage, 1.25f)),
                 } },
             new Spec { Id = "quick_draw", File = "QuickDraw", Name = "Quick Draw", Rarity = SkillRarity.Common,
                 Glyph = SkillIconPainter.AttackSpeed, Levels = new[]
                 {
-                    L("+15% attack speed", Pct(StatId.AttackSpeed, 0.15f)),
-                    L("+28% attack speed", Pct(StatId.AttackSpeed, 0.28f)),
-                    L("+40% attack speed", Pct(StatId.AttackSpeed, 0.4f)),
-                    L("+51% attack speed", Pct(StatId.AttackSpeed, 0.51f)),
+                    L("+18% attack speed", Pct(StatId.AttackSpeed, 0.18f)),
+                    L("+34% attack speed", Pct(StatId.AttackSpeed, 0.34f)),
+                    L("+48% attack speed", Pct(StatId.AttackSpeed, 0.48f)),
                     L("+62% attack speed", Pct(StatId.AttackSpeed, 0.62f)),
-                    L("+72% attack speed", Pct(StatId.AttackSpeed, 0.72f)),
+                    L("+76% attack speed", Pct(StatId.AttackSpeed, 0.76f)),
+                    L("+90% attack speed", Pct(StatId.AttackSpeed, 0.9f)),
                 } },
             new Spec { Id = "fleet_foot", File = "FleetFoot", Name = "Fleet Foot", Rarity = SkillRarity.Common,
                 Glyph = SkillIconPainter.MoveSpeed, Levels = new[]
@@ -121,26 +123,26 @@ namespace SurvivorSouls.Editor.Skills
             new Spec { Id = "keen_eye", File = "KeenEye", Name = "Keen Eye", Rarity = SkillRarity.Rare,
                 Glyph = SkillIconPainter.Crit, Levels = new[]
                 {
-                    L("+10% crit chance, +25% crit damage", Add(StatId.CritChance, 0.1f), Add(StatId.CritDamage, 0.25f)),
-                    L("+15% crit chance, +40% crit damage", Add(StatId.CritChance, 0.15f), Add(StatId.CritDamage, 0.4f)),
-                    L("+20% crit chance, +55% crit damage", Add(StatId.CritChance, 0.2f), Add(StatId.CritDamage, 0.55f)),
-                    L("+25% crit chance, +70% crit damage", Add(StatId.CritChance, 0.25f), Add(StatId.CritDamage, 0.7f)),
-                    L("+30% crit chance, +90% crit damage", Add(StatId.CritChance, 0.3f), Add(StatId.CritDamage, 0.9f)),
+                    L("+10% crit chance, +30% crit damage", Add(StatId.CritChance, 0.1f), Add(StatId.CritDamage, 0.3f)),
+                    L("+15% crit chance, +45% crit damage", Add(StatId.CritChance, 0.15f), Add(StatId.CritDamage, 0.45f)),
+                    L("+20% crit chance, +60% crit damage", Add(StatId.CritChance, 0.2f), Add(StatId.CritDamage, 0.6f)),
+                    L("+25% crit chance, +80% crit damage", Add(StatId.CritChance, 0.25f), Add(StatId.CritDamage, 0.8f)),
+                    L("+30% crit chance, +100% crit damage", Add(StatId.CritChance, 0.3f), Add(StatId.CritDamage, 1f)),
                 } },
             new Spec { Id = "piercing_bolts", File = "PiercingBolts", Name = "Piercing Bolts", Rarity = SkillRarity.Rare,
                 Glyph = SkillIconPainter.Pierce, Levels = new[]
                 {
-                    L("Bolts pass through +1 enemy", Add(StatId.Pierce, 1f)),
-                    L("Bolts pass through +2 enemies", Add(StatId.Pierce, 2f)),
+                    L("Pierce +1 enemy, -33% per enemy", Add(StatId.Pierce, 1f)),
+                    L("Pierce +2 enemies, -33% per enemy", Add(StatId.Pierce, 2f)),
                     L("Pierce +2 enemies, +10% damage", Add(StatId.Pierce, 2f), Pct(StatId.Damage, 0.1f)),
                     L("Pierce +3 enemies, +15% damage", Add(StatId.Pierce, 3f), Pct(StatId.Damage, 0.15f)),
                 } },
             new Spec { Id = "ricochet", File = "Ricochet", Name = "Ricochet", Rarity = SkillRarity.Rare,
                 Glyph = SkillIconPainter.Ricochet, Levels = new[]
                 {
-                    L("Bolts bounce to +1 nearby enemy", Add(StatId.Ricochet, 1f)),
-                    L("Bolts bounce to +2 nearby enemies", Add(StatId.Ricochet, 2f)),
-                    L("Bolts bounce to +3 nearby enemies", Add(StatId.Ricochet, 3f)),
+                    L("Bounce +1 enemy, -30% per bounce", Add(StatId.Ricochet, 1f)),
+                    L("Bounce +2 enemies, -30% per bounce", Add(StatId.Ricochet, 2f)),
+                    L("Bounce +3 enemies, -30% per bounce", Add(StatId.Ricochet, 3f)),
                     L("Bounce to +3 enemies, +15% damage", Add(StatId.Ricochet, 3f), Pct(StatId.Damage, 0.15f)),
                 } },
             new Spec { Id = "ember_bolts", File = "EmberBolts", Name = "Ember Bolts", Rarity = SkillRarity.Legendary,
@@ -166,8 +168,8 @@ namespace SurvivorSouls.Editor.Skills
                 Glyph = SkillIconPainter.Multishot, Levels = new[]
                 {
                     L("2 side bolts at 15°, 50% damage", Add(StatId.Multishot, 2f)),
-                    L("4 side bolts to 30°, 65% damage", Add(StatId.Multishot, 4f), Add(StatId.SpreadDamage, 0.15f)),
-                    L("6 side bolts to 45°, 80% damage", Add(StatId.Multishot, 6f), Add(StatId.SpreadDamage, 0.3f)),
+                    L("4 side bolts to 30°, 55% damage", Add(StatId.Multishot, 4f), Add(StatId.SpreadDamage, 0.05f)),
+                    L("6 side bolts to 45°, 60% damage", Add(StatId.Multishot, 6f), Add(StatId.SpreadDamage, 0.1f)),
                 } },
             // KAN-83 (KAN-36): Double Shot. The volley fires again down the same line 0.09 s later. Repeats are rare on
             // purpose: owned, its level-up weight drops to 25 % (2nd stack) and 6 % (3rd), pity and guarantees never push
@@ -208,7 +210,7 @@ namespace SurvivorSouls.Editor.Skills
         private static readonly (string id, int fromLevel)[] LateUnlocks = { ("reliquary_hunter", 4), ("double_shot", 2) };
 
         /// <summary>Guarantees added after the progression asset was first made: id -> level (once, if that level is free).</summary>
-        private static readonly (string id, int level)[] LateGuarantees = { ("double_shot", 3) };
+        private static readonly (string id, int level)[] LateGuarantees = { ("double_shot", 3), ("sharpened_bolts", 2), ("quick_draw", 8) };
 
         /// <summary>Builds the assets and adds the SkillManager (plus PlayerStats on the player when missing).</summary>
         public static SkillManager Create(GameArtKit kit, GameObject host, GameObject player, AutoShooter shooter, PlayerHealth health)
@@ -335,7 +337,8 @@ namespace SurvivorSouls.Editor.Skills
         /// <summary>
         /// Run pacing (XP curve: levels 2-4 come every few kills). Stat skills first, behaviour skills from level 4, epic
         /// game-changers from level 6. Level 3 always offers Double Shot (KAN-83, from level 2), level 4 Ember Bolts (the
-        /// first Legendary), level 6 Spread Shot.
+        /// first Legendary), level 6 Spread Shot. KAN-86: level 2 Sharpened Bolts and level 8 Quick Draw (single-target damage
+        /// for the bosses).
         /// Tier odds (KAN-37) grow with the level: 70/27/3/0 at L2, 55/30/12/3 at L4, 45/32/16/7 at L6, 38/32/20/10 from L10.
         /// Pity: at least one Rare+ card in every 3 offers.
         /// </summary>
@@ -378,6 +381,8 @@ namespace SurvivorSouls.Editor.Skills
                     new SkillProgression.Guarantee { level = 3, skill = s["double_shot"] },
                     new SkillProgression.Guarantee { level = 4, skill = s["ember_bolts"] },
                     new SkillProgression.Guarantee { level = 6, skill = s["multishot"] },
+                    new SkillProgression.Guarantee { level = 2, skill = s["sharpened_bolts"] }, // KAN-86
+                    new SkillProgression.Guarantee { level = 8, skill = s["quick_draw"] },
                 });
             AssetDatabase.CreateAsset(table, ProgressionPath);
             return table;

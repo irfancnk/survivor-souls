@@ -89,8 +89,10 @@ namespace SurvivorSouls.Tests
             Give(stats, owner, StatId.Damage, ModifierKind.Percent, 1f); // x2 single and crowd
             Assert.That(HordeScaling.PowerIndex(PowerSnapshot.Measure(stats, PowerBase.Default), Bare), Is.EqualTo(2f).Within(1e-3f));
 
-            Give(stats, owner, StatId.Pierce, ModifierKind.Flat, 3f); // crowd x4, single x1
-            var s = PowerSnapshot.Measure(stats, PowerBase.Default);
+            Give(stats, owner, StatId.Pierce, ModifierKind.Flat, 3f); // crowd x4 without the KAN-86 falloff, single x1
+            var noFalloff = PowerBase.Default;
+            noFalloff.PierceFalloff = 0f;
+            var s = PowerSnapshot.Measure(stats, noFalloff);
             Assert.That(s.SingleTargetDps / Bare.SingleTargetDps, Is.EqualTo(1f).Within(1e-3f));
             Assert.That(s.CrowdDps / Bare.CrowdDps, Is.EqualTo(4f).Within(1e-3f));
             Assert.That(HordeScaling.PowerIndex(s, Bare), Is.EqualTo(2f).Within(1e-3f), "a crowd build counts at sqrt, not x4");

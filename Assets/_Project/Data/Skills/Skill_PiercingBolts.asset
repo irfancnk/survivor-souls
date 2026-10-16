@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Skills.SkillDefinition
   id: piercing_bolts
   displayName: Piercing Bolts
-  description: Bolts pass through +1 enemy
+  description: Pierce +1 enemy, -33% per enemy
   icon: {fileID: 2800000, guid: 991054c7ab8bf4a17b91afcd37c442ba, type: 3}
   rarity: 1
   maxStack: 4
@@ -24,12 +24,12 @@ MonoBehaviour:
     kind: 0
     value: 1
   levels:
-  - description: Bolts pass through +1 enemy
+  - description: Pierce +1 enemy, -33% per enemy
     modifiers:
     - stat: 7
       kind: 0
       value: 1
-  - description: Bolts pass through +2 enemies
+  - description: Pierce +2 enemies, -33% per enemy
     modifiers:
     - stat: 7
       kind: 0

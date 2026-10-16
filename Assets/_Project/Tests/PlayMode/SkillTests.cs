@@ -350,6 +350,26 @@ namespace SurvivorSouls.Tests
         }
 
         [Test]
+        public void PierceAndBounce_LoseDamagePerEnemy_ArcheroFalloff()
+        {
+            // KAN-86: -33 % per pierce, -30 % per bounce (AutoShooter defaults). 100 dmg bolt, 150 HP enemies: no kills.
+            var front = SpawnEnemy(new Vector3(0f, 0f, 4f));
+            var middle = SpawnEnemy(new Vector3(0f, 0f, 6f));
+            var side = SpawnEnemy(new Vector3(3f, 0f, 7f));
+            _manager.Grant(Skill("pierce", SkillRarity.Rare, 3, Add(StatId.Pierce, 1f)));
+            _manager.Grant(Skill("rico", SkillRarity.Rare, 3, Add(StatId.Ricochet, 1f)));
+            _shooter.Fire(front);
+            Fly(1.2f);
+            Assert.That(_hits.Select(h => h.Enemy), Is.EqualTo(new[] { front, middle, side }), "pierce first, then the bounce");
+            Assert.That(_hits[0].Damage, Is.EqualTo(100f).Within(1e-3f));
+            Assert.That(_hits[1].Damage, Is.EqualTo(100f * (1f - BoltShot.DefaultPierceFalloff)).Within(1e-3f));
+            Assert.That(_hits[2].Damage,
+                Is.EqualTo(100f * (1f - BoltShot.DefaultPierceFalloff) * (1f - BoltShot.DefaultBounceFalloff)).Within(1e-3f));
+            Assert.That(_shooter.BasePierceFalloff, Is.EqualTo(BoltShot.DefaultPierceFalloff));
+            Assert.That(_shooter.BaseBounceFalloff, Is.EqualTo(BoltShot.DefaultBounceFalloff));
+        }
+
+        [Test]
         public void Crit_DealsTheCritMultiplier_AndMarksTheHit()
         {
             var enemy = SpawnEnemy(new Vector3(0f, 0f, 4f));

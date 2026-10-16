@@ -171,6 +171,8 @@ namespace SurvivorSouls.Editor.Skills
                 b.CritChance = shooter.BaseCritChance;
                 b.CritMultiplier = shooter.BaseCritMultiplier;
                 b.SpreadDamage = shooter.BaseSpreadDamage;
+                b.PierceFalloff = shooter.BasePierceFalloff; // KAN-86
+                b.BounceFalloff = shooter.BaseBounceFalloff;
             }
             if (health != null) b.MaxHealth = health.BaseMax;
             if (mover != null) b.MoveSpeed = mover.BaseSpeed;

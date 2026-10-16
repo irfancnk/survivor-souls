@@ -17,6 +17,17 @@ namespace SurvivorSouls.Gameplay.Combat
         /// <summary>Bounces to the nearest enemy not hit yet, after the pierces are used.</summary>
         public int Ricochet;
         public float RicochetRange;
+        /// <summary>
+        /// Share of damage lost each time the bolt pierces on (KAN-86, Archero rule): 0.33 = the next enemy takes 67 %,
+        /// the one after 45 %. 0 = full damage (the struct default).
+        /// </summary>
+        public float PierceFalloff;
+        /// <summary>Share of damage lost on each ricochet bounce (KAN-86): 0.3 = 70 % after the first bounce. 0 = full damage.</summary>
+        public float BounceFalloff;
+
+        /// <summary>Shipped falloffs (KAN-86): AutoShooter defaults and the power curve base.</summary>
+        public const float DefaultPierceFalloff = 0.33f;
+        public const float DefaultBounceFalloff = 0.3f;
     }
 
     /// <summary>One enemy hit by a bolt, reported to the shooter (life steal, burn and other on-hit skills listen).</summary>
@@ -35,6 +46,7 @@ namespace SurvivorSouls.Gameplay.Combat
     /// Crossbow bolt: flies straight and hits the nearest living <see cref="Enemy"/> its path crosses (vertical cylinder
     /// test, no physics). After a hit it pierces on (<see cref="BoltShot.Pierce"/>), then bounces to the nearest enemy it
     /// has not hit yet (<see cref="BoltShot.Ricochet"/>), else returns to its pool. Never hits the same enemy twice.
+    /// Each pierce and bounce lowers the damage for the next enemy (<see cref="BoltShot.PierceFalloff"/>, KAN-86).
     /// Pooled by <see cref="AutoShooter"/>. The model child spins around the flight axis (rifled bolt look).
     /// </summary>
     public sealed class Bolt : MonoBehaviour
@@ -126,11 +138,13 @@ namespace SurvivorSouls.Gameplay.Combat
             if (_shot.Pierce > 0)
             {
                 _shot.Pierce--;
+                _shot.Damage *= 1f - Mathf.Clamp01(_shot.PierceFalloff);
                 return;
             }
             if (_shot.Ricochet > 0 && Bounce(point))
             {
                 _shot.Ricochet--;
+                _shot.Damage *= 1f - Mathf.Clamp01(_shot.BounceFalloff);
                 return;
             }
             Finish();

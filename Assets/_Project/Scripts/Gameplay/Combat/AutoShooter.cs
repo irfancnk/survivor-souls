@@ -49,6 +49,10 @@ namespace SurvivorSouls.Gameplay.Combat
         [SerializeField, Range(8, 200)] private int maxActiveBolts = 72;
         [Tooltip("How far (m) a ricochet bolt looks for its next enemy.")]
         [SerializeField, Min(0.5f)] private float ricochetRange = 6.5f;
+        [Tooltip("KAN-86: share of bolt damage lost each time a bolt pierces on (0.33 = next enemy takes 67 %).")]
+        [SerializeField, Range(0f, 1f)] private float pierceFalloff = BoltShot.DefaultPierceFalloff;
+        [Tooltip("KAN-86: share of bolt damage lost on each ricochet bounce (0.3 = next enemy takes 70 %).")]
+        [SerializeField, Range(0f, 1f)] private float bounceFalloff = BoltShot.DefaultBounceFalloff;
 
         private const float MovingSpeed = 0.2f;
         private const float MaxCarry = 0.25f; // most reload overshoot one frame may carry into the next reload
@@ -94,6 +98,9 @@ namespace SurvivorSouls.Gameplay.Combat
         public float BaseCritMultiplier => critMultiplier;
         /// <summary>Spread Shot angled bolt damage share before skills (power curve base, KAN-83).</summary>
         public float BaseSpreadDamage => spreadDamage;
+        /// <summary>Damage share lost per pierce / per bounce (power curve base, KAN-86).</summary>
+        public float BasePierceFalloff => pierceFalloff;
+        public float BaseBounceFalloff => bounceFalloff;
         /// <summary>Bolt damage after skills (burst and similar skills scale from it).</summary>
         public float CurrentDamage => PlayerStats.Eval(_stats, StatId.Damage, damage);
         /// <summary>Seconds between shots after attack speed skills.</summary>
@@ -220,6 +227,8 @@ namespace SurvivorSouls.Gameplay.Combat
                 Pierce = _stats != null ? _stats.ModifyInt(StatId.Pierce, 0) : 0,
                 Ricochet = _stats != null ? _stats.ModifyInt(StatId.Ricochet, 0) : 0,
                 RicochetRange = ricochetRange,
+                PierceFalloff = pierceFalloff,
+                BounceFalloff = bounceFalloff,
             };
             int count = VolleyBuilder.Build(CurrentVolleySpec, _volley);
             for (int i = 0; i < count; i++)

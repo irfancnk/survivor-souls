@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Skills.SkillDefinition
   id: quick_draw
   displayName: Quick Draw
-  description: +15% attack speed
+  description: +18% attack speed
   icon: {fileID: 2800000, guid: 80dc2c78bbbb54792aeeeda7bf713228, type: 3}
   rarity: 0
   maxStack: 6
@@ -22,36 +22,36 @@ MonoBehaviour:
   modifiers:
   - stat: 1
     kind: 1
-    value: 0.15
+    value: 0.18
   levels:
-  - description: +15% attack speed
+  - description: +18% attack speed
     modifiers:
     - stat: 1
       kind: 1
-      value: 0.15
-  - description: +28% attack speed
+      value: 0.18
+  - description: +34% attack speed
     modifiers:
     - stat: 1
       kind: 1
-      value: 0.28
-  - description: +40% attack speed
+      value: 0.34
+  - description: +48% attack speed
     modifiers:
     - stat: 1
       kind: 1
-      value: 0.4
-  - description: +51% attack speed
-    modifiers:
-    - stat: 1
-      kind: 1
-      value: 0.51
+      value: 0.48
   - description: +62% attack speed
     modifiers:
     - stat: 1
       kind: 1
       value: 0.62
-  - description: +72% attack speed
+  - description: +76% attack speed
     modifiers:
     - stat: 1
       kind: 1
-      value: 0.72
+      value: 0.76
+  - description: +90% attack speed
+    modifiers:
+    - stat: 1
+      kind: 1
+      value: 0.9
   effectPrefab: {fileID: 0}

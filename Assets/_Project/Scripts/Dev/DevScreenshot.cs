@@ -857,6 +857,8 @@ namespace SurvivorSouls.Dev
                 b.CritChance = shooter.BaseCritChance;
                 b.CritMultiplier = shooter.BaseCritMultiplier;
                 b.SpreadDamage = shooter.BaseSpreadDamage;
+                b.PierceFalloff = shooter.BasePierceFalloff; // KAN-86
+                b.BounceFalloff = shooter.BaseBounceFalloff;
             }
             var health = FindAnyObjectByType<SurvivorSouls.Gameplay.Player.PlayerHealth>();
             if (health != null) b.MaxHealth = health.BaseMax;

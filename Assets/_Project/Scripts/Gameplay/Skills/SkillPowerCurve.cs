@@ -8,15 +8,18 @@ namespace SurvivorSouls.Gameplay.Skills
     public struct PowerBase
     {
         public float Damage, ShotsPerSecond, CritChance, CritMultiplier, MaxHealth, MoveSpeed, SpreadDamage;
+        /// <summary>Damage share lost per pierce / per ricochet bounce (KAN-86, <see cref="Combat.BoltShot.PierceFalloff"/>).</summary>
+        public float PierceFalloff, BounceFalloff;
 
         /// <summary>
         /// AutoShooter / PlayerHealth / PlayerMover defaults: 100 dmg, 1 shot/s, no crit, x2 crit, 400 HP, 5 m/s, angled
-        /// Spread Shot bolts at 50 % damage.
+        /// Spread Shot bolts at 50 % damage, -33 % damage per pierce and -30 % per bounce (KAN-86).
         /// </summary>
         public static PowerBase Default => new PowerBase
         {
             Damage = 100f, ShotsPerSecond = 1f, CritChance = 0f, CritMultiplier = 2f, MaxHealth = 400f, MoveSpeed = 5f,
             SpreadDamage = 0.5f,
+            PierceFalloff = Combat.BoltShot.DefaultPierceFalloff, BounceFalloff = Combat.BoltShot.DefaultBounceFalloff,
         };
     }
 
@@ -25,13 +28,13 @@ namespace SurvivorSouls.Gameplay.Skills
     /// PlayerMover, the burn effect) and two damage indexes. Single target = direct bolt DPS with crit + burn on that
     /// target, times the Double Shot chain (every follow-up bolt hits the same target at its damage share). Crowd = dense
     /// horde: every bolt of the fan (angled bolts at their damage share) and of the chain hits, then pierces and bounces into
-    /// a new target each time, and every target hit keeps burning. The volley cap (12) is applied to the bolt count. Soul Burst and life steal are listed but not in the DPS (they depend on kill rate).
+    /// a new target each time at the falloff damage (<see cref="HitFactor"/>, KAN-86), and every target hit keeps burning. The volley cap (12) is applied to the bolt count. Soul Burst and life steal are listed but not in the DPS (they depend on kill rate).
     /// An index for comparing builds and levels, not a fight simulation.
     /// </summary>
     public struct PowerSnapshot
     {
         public float BoltDamage, ShotsPerSecond, CritChance, CritMultiplier, Bolts, Pierce, Ricochet, BurnDps, KillBurst,
-            LifeSteal, MaxHealth, MoveSpeed, Skills, Chain, SpreadDamage, ChainDamage;
+            LifeSteal, MaxHealth, MoveSpeed, Skills, Chain, SpreadDamage, ChainDamage, PierceFalloff, BounceFalloff;
 
         public float CritFactor => 1f + CritChance * (CritMultiplier - 1f);
         /// <summary>Bolts per volley: fan x chain, capped like the shooter (<see cref="Combat.VolleyBuilder.DefaultCap"/>).</summary>
@@ -49,8 +52,29 @@ namespace SurvivorSouls.Gameplay.Skills
             }
         }
         public float HitsPerVolley => VolleyBolts * (1f + Pierce + Ricochet);
+        /// <summary>
+        /// Full-damage hits of one bolt in a crowd (KAN-86): the first hit, then each pierce at (1 - pierce falloff)^i, then
+        /// each bounce at the damage left after the pierces times (1 - bounce falloff)^j. No falloff = 1 + pierce + bounce.
+        /// Fractional counts (run averages) use the continuous geometric sum.
+        /// </summary>
+        public float HitFactor
+        {
+            get
+            {
+                float p = 1f - Mathf.Clamp01(PierceFalloff), r = 1f - Mathf.Clamp01(BounceFalloff);
+                return 1f + Geometric(p, Pierce) + Mathf.Pow(p, Pierce) * Geometric(r, Ricochet);
+            }
+        }
         public float SingleTargetDps => BoltDamage * ShotsPerSecond * CritFactor * ChainFactor + BurnDps;
-        public float CrowdDps => (BoltDamage * ShotsPerSecond * CritFactor + BurnDps) * VolleyFactor * (1f + Pierce + Ricochet);
+        public float CrowdDps => (BoltDamage * ShotsPerSecond * CritFactor + BurnDps) * VolleyFactor * HitFactor;
+
+        /// <summary>c + c^2 + ... + c^n (n may be fractional); n when c = 1.</summary>
+        private static float Geometric(float c, float n)
+        {
+            if (n <= 0f) return 0f;
+            if (c >= 0.9999f) return n;
+            return c * (1f - Mathf.Pow(c, n)) / (1f - c);
+        }
 
         /// <summary>
         /// Power of <paramref name="stats"/> on base <paramref name="b"/>. <paramref name="permanentOnly"/>: only the permanent
@@ -71,6 +95,8 @@ namespace SurvivorSouls.Gameplay.Skills
             BurnDps = PlayerStats.Eval(stats, StatId.BurnDps, 0f, permanentOnly),
             KillBurst = PlayerStats.Eval(stats, StatId.KillBurst, 0f, permanentOnly),
             LifeSteal = PlayerStats.Eval(stats, StatId.LifeSteal, 0f, permanentOnly),
+            PierceFalloff = b.PierceFalloff,
+            BounceFalloff = b.BounceFalloff,
             MaxHealth = PlayerStats.Eval(stats, StatId.MaxHealth, b.MaxHealth, permanentOnly),
             MoveSpeed = PlayerStats.Eval(stats, StatId.MoveSpeed, b.MoveSpeed, permanentOnly),
             Skills = skills,
@@ -82,7 +108,7 @@ namespace SurvivorSouls.Gameplay.Skills
             CritMultiplier += o.CritMultiplier * w; Bolts += o.Bolts * w; Pierce += o.Pierce * w; Ricochet += o.Ricochet * w;
             BurnDps += o.BurnDps * w; KillBurst += o.KillBurst * w; LifeSteal += o.LifeSteal * w; MaxHealth += o.MaxHealth * w;
             MoveSpeed += o.MoveSpeed * w; Skills += o.Skills * w; Chain += o.Chain * w; SpreadDamage += o.SpreadDamage * w;
-            ChainDamage += o.ChainDamage * w;
+            ChainDamage += o.ChainDamage * w; PierceFalloff += o.PierceFalloff * w; BounceFalloff += o.BounceFalloff * w;
         }
     }
 
