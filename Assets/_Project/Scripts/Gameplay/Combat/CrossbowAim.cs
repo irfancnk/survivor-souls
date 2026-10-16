@@ -46,6 +46,9 @@ namespace SurvivorSouls.Gameplay.Combat
         /// <summary>Current aim blend 0..1 (1 = full upper-body aim on the target).</summary>
         public float Weight => _weight;
 
+        /// <summary>The Crossbow_Muzzle socket (null on a model without one).</summary>
+        public Transform Muzzle => muzzle;
+
         /// <summary>World direction of the crossbow line (muzzle forward) in the current pose.</summary>
         public Vector3 MuzzleLine => muzzle != null ? muzzle.TransformDirection(muzzleAxis).normalized : transform.forward;
 
