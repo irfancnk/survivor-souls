@@ -6,7 +6,8 @@
 ## HOW TO READ THIS FILE
 - This file is short on purpose: GOAL, HOW TO, DECISIONS, KNOWN ISSUES, NEXT and the last ~10 DONE entries.
 - Every older DONE entry is in `Docs/STATE_ARCHIVE.md` (verbatim, oldest first). Do not read it whole: `grep -n "KAN-<N>" Docs/STATE_ARCHIVE.md`, then read only that entry.
-- New DONE entry: append it at the END of RECENT DONE. When RECENT DONE has more than 10 entries, move the oldest ones (whole entries, verbatim) to the END of the `## DONE` list in `Docs/STATE_ARCHIVE.md`.
+- New DONE entry (since 2026-10-16, KAN-228): one NEW file per ticket, `Docs/state/done/<YYYY-MM-DD>-KAN-<N>.md` (same entry format). Never append to RECENT DONE below: 5 parallel routines conflict there. Newest entries: `ls -t Docs/state/done | head`. The RECENT DONE list below is frozen; its entries move to `Docs/STATE_ARCHIVE.md` only when someone edits that part anyway.
+- Parallel routines (KAN-228): `Tools/routine/ROUTINE_PROMPT.md` (lanes, claims, Unity slots via `Tools/routine/unity.sh`, main merge lock `Tools/routine/main_lock.sh`, `Tools/routine/merge_main.sh`). `.claude/hooks/git_guard.py` blocks destructive git commands.
 
 ## HOW TO
 - Deploy to iPhone (3 steps, from KAN-7). Free personal team `7F44HW939L`; the profile lives 7 days, then re-deploy.
@@ -57,6 +58,7 @@
 - Next work = open KAN tickets in Jira (source of truth). The old 2026-10-12 NEXT list is in `Docs/STATE_ARCHIVE.md`.
 
 ## RECENT DONE
+- (frozen 2026-10-16, KAN-228: new entries go to `Docs/state/done/`, one file per ticket)
 - 2026-10-16 (KAN-215, KAN-130.1): Knight faces the target when he shoots: upper-body crossbow aim + head look. Branch `feat/kan-130-aim-facing`. Scheduled-task run r202610160909-086cf9. KAN-130 split into KAN-215 (this), KAN-216 (two-hand grip + aim idle / lower clips, Blender), KAN-217 (fire + reload clips synced to `CurrentInterval`), KAN-218 (iPhone feel + perf).
   - Problem: the root turned to within 15 deg (`aimTolerance`) and the crossbow is held low across the body (14 deg yaw, -5 deg pitch in `build_knight_crossbow.py`), so bolts left at an angle that did not match the pose.
   - `Gameplay/Combat/CrossbowAim.cs` (new, on the player, LateUpdate after the Animator): spine (40 %) + chest (rest, 2nd chest pass for the muzzle shift) turn so the crossbow line points at `AutoShooter.Target.AimPoint`. Yaw about world up (limit 100 deg), pitch about the horizontal axis across the line (limit 25 deg), no roll. Neck (40 %) + head yaw so the head forward looks at the target (limit 60 deg). Blend in 0.08 s, out 0.25 s (no target, moving, shooter off / dead). No GC.

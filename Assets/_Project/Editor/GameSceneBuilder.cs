@@ -158,6 +158,16 @@ namespace SurvivorSouls.Editor
             BossBuilder.CreateReward(boss, chests, skills, progression.Flow, progression.Xp); // guaranteed reward pick (KAN-62)
             SurvivorSouls.Editor.MiniBoss.MiniBossBuilder.Create(kit, spawner, health, chests, skills, progression.Flow, progression.Xp, progression.Souls); // mini boss Chambers (KAN-23)
 
+            // KAN-228: new feature wiring goes in its own IGameSceneStep file (Editor/SceneSteps), not as a new line above.
+            SceneSteps.GameSceneSteps.RunAll(new SceneSteps.GameSceneContext
+            {
+                Kit = kit, Realm = realm, Sfx = sfx, Game = game, Joystick = joystick, Player = player, Stats = stats, Health = health,
+                Death = death, World = world, Shooter = shooter, Spawner = spawner, Progression = progression, Skills = skills,
+                Chests = chests, Timer = timer, Transition = transition, Counters = counters, ChamberSetup = chamberSetup, Boss = boss,
+                Hearts = hearts, EnemyShots = enemyShots.transform, Audio = audio, Camera = camera,
+                FollowCamera = camera.GetComponent<TopDownFollowCamera>(), Hud = choice.gameObject, HudDocument = choice.GetComponent<UIDocument>(),
+            });
+
             StableAssetWriter.Remember(ScenePath);
             EditorSceneManager.SaveScene(scene, ScenePath);
             AddToBuild(ScenePath, index: 1);
