@@ -74,6 +74,7 @@ namespace SurvivorSouls.Tests
                 if (t.name == "Crossbow_Muzzle") _muzzle = t;
             Assert.That(_muzzle, Is.Not.Null, "Crossbow_Muzzle socket");
             _aim.Setup(rig, _muzzle);
+            _shooter.SetMuzzle(_muzzle); // as GameSceneBuilder.CreateCombat: bolts leave the crossbow muzzle
             var animator = _player.GetComponentInChildren<Animator>(true);
             animator.cullingMode = AnimatorCullingMode.AlwaysAnimate; // no camera in the test: keep the clips running
 

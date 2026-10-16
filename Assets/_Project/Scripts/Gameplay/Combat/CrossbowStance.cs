@@ -91,10 +91,11 @@ namespace SurvivorSouls.Gameplay.Combat
             if (aiming) goal = 1f;
             else
             {
-                // Hold the weight while the Lower clip brings the crossbow down, then fade (the base pose is the same carry).
+                // Hold the weight until the Lower clip has brought the crossbow down, then fade (the base pose is the same
+                // carry). The Animator reads the new "Aim" value after this Update, so the first frame still shows Aim: hold.
                 var state = animator.GetCurrentAnimatorStateInfo(_layer);
-                bool lowering = animator.IsInTransition(_layer) || (state.shortNameHash == LowerStateHash && state.normalizedTime < 1f);
-                goal = lowering ? _weight : 0f;
+                bool down = !animator.IsInTransition(_layer) && state.shortNameHash == LowerStateHash && state.normalizedTime >= 1f;
+                goal = down ? 0f : _weight;
             }
             _weight = Mathf.MoveTowards(_weight, goal, dt / (goal > _weight ? raiseTime : fadeTime));
             animator.SetLayerWeight(_layer, _weight);

@@ -38,7 +38,7 @@ namespace SurvivorSouls.Tests
             public Transform Crossbow;
             public Transform Muzzle;
             public float GripHeight;     // crossbow origin (grip) above the root
-            public float GripToShoulder; // crossbow origin to the right upper arm
+            public float StockToShoulder; // stock end (0.25 m behind the grip) to the right shoulder joint
             public float LeftHandToLine; // left hand to the stock-muzzle segment
             public float HeadToLine;     // head to the stock-muzzle segment
 
@@ -46,7 +46,7 @@ namespace SurvivorSouls.Tests
             {
                 Vector3 grip = Crossbow.position, muzzle = Muzzle.position;
                 GripHeight = grip.y - transform.position.y;
-                GripToShoulder = Vector3.Distance(grip, Rig.upperArmR.position);
+                StockToShoulder = Vector3.Distance(grip - (muzzle - grip).normalized * 0.25f, Rig.upperArmR.position);
                 LeftHandToLine = ToSegment(Rig.handL.position, grip, muzzle);
                 HeadToLine = ToSegment(Rig.head.position, grip - (muzzle - grip) * 0.5f, muzzle);
             }
@@ -86,6 +86,7 @@ namespace SurvivorSouls.Tests
             _crossbow = muzzle.parent;
             var aim = _player.AddComponent<CrossbowAim>();
             aim.Setup(_rig, muzzle);
+            _shooter.SetMuzzle(muzzle);
             _animator = _player.GetComponentInChildren<Animator>(true);
             _animator.cullingMode = AnimatorCullingMode.AlwaysAnimate; // no camera in the test: keep the clips running
 
@@ -180,7 +181,7 @@ namespace SurvivorSouls.Tests
             var probe = _player.GetComponent<PoseProbe>();
             yield return Wait(0.4f); // no target: hip carry
             Assert.That(_stance.Weight, Is.EqualTo(0f), "no target: no aim layer");
-            float carryHeight = probe.GripHeight, carryShoulder = probe.GripToShoulder;
+            float carryHeight = probe.GripHeight, carryShoulder = probe.StockToShoulder;
             Assert.That(probe.LeftHandToLine, Is.LessThan(0.15f), "carry: left hand on the crossbow");
 
             SpawnEnemy(new Vector3(0f, 0f, 6f));
@@ -189,8 +190,8 @@ namespace SurvivorSouls.Tests
             Assert.That(_stance.Weight, Is.EqualTo(1f), "aim layer fully up");
             Assert.That(InState(_stance.Layer, CrossbowStance.AimState), Is.True, "Aim state");
             Assert.That(probe.GripHeight, Is.GreaterThan(carryHeight + 0.15f), $"crossbow up (carry {carryHeight:F2} m, aim {probe.GripHeight:F2} m)");
-            Assert.That(probe.GripToShoulder, Is.LessThan(carryShoulder), $"grip nearer the right shoulder (carry {carryShoulder:F2} m, aim {probe.GripToShoulder:F2} m)");
-            Assert.That(probe.GripToShoulder, Is.LessThan(0.3f), "stock at the shoulder");
+            Assert.That(probe.StockToShoulder, Is.LessThan(carryShoulder), $"stock nearer the right shoulder (carry {carryShoulder:F2} m, aim {probe.StockToShoulder:F2} m)");
+            Assert.That(probe.StockToShoulder, Is.LessThan(0.2f), $"stock at the shoulder ({probe.StockToShoulder:F2} m)");
             Assert.That(probe.LeftHandToLine, Is.LessThan(0.15f), $"aim: left hand on the fore-stock ({probe.LeftHandToLine:F2} m)");
             Assert.That(probe.HeadToLine, Is.LessThan(0.2f), $"aim: cheek near the stock ({probe.HeadToLine:F2} m)");
         }

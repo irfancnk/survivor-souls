@@ -466,7 +466,13 @@ namespace SurvivorSouls.Editor.Characters
         {
             string path = $"{Dir}/Anim_{clip.name}.anim";
             var existing = AssetDatabase.LoadAssetAtPath<AnimationClip>(path);
-            if (existing == null) { AssetDatabase.CreateAsset(clip, path); return clip; }
+            if (existing == null)
+            {
+                string name = clip.name;
+                AssetDatabase.CreateAsset(clip, path);
+                clip.name = name; // CreateAsset renames it to the file name; keep the glTF name (same as a rebuild gives)
+                return clip;
+            }
             EditorUtility.CopySerialized(clip, existing);
             EditorUtility.SetDirty(existing);
             return existing;
