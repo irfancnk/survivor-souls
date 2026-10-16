@@ -31,8 +31,12 @@ namespace SurvivorSouls.Tests
         [TearDown]
         public void TearDown() => Object.DestroyImmediate(_mat);
 
-        /// <summary>Rune core strength per pixel (brightness the runes add) + the rendered colour with runes.</summary>
-        private (float[] glow, Color[] colour, int w, int h) RuneGlow(Color tint)
+        /// <summary>
+        /// Per pixel: the brightness the runes add (<c>glow</c>, core &gt; 0, carved groove &lt; 0), how much the runes
+        /// change the colour at all (<c>change</c>, sum of |RGB difference|: a rune core on a hot crack is still a new
+        /// colour) + the rendered colour with runes.
+        /// </summary>
+        private (float[] glow, float[] change, Color[] colour, int w, int h) RuneGlow(Color tint)
         {
             float spacing = _mat.GetFloat("_ChevronSpacing");
             var with = TelegraphLanePreview.Render(_mat, tint, Span, Width, Progress, 0f, Ppm);
@@ -42,12 +46,16 @@ namespace SurvivorSouls.Tests
             var a = with.GetPixels();
             var b = without.GetPixels();
             var glow = new float[a.Length];
+            var change = new float[a.Length];
             for (int i = 0; i < a.Length; i++)
+            {
                 glow[i] = a[i].maxColorComponent - b[i].maxColorComponent;
+                change[i] = Mathf.Abs(a[i].r - b[i].r) + Mathf.Abs(a[i].g - b[i].g) + Mathf.Abs(a[i].b - b[i].b);
+            }
             int w = with.width, h = with.height;
             Object.DestroyImmediate(with);
             Object.DestroyImmediate(without);
-            return (glow, a, w, h);
+            return (glow, change, a, w, h);
         }
 
         private static float At(float[] g, int w, int h, float acrossM, float alongM)
@@ -60,19 +68,28 @@ namespace SurvivorSouls.Tests
         [Test]
         public void Runes_AreArrowHeads_TipOnTheCentreLine_ArmsTrailTowardsTheAttacker()
         {
-            var (glow, _, w, h) = RuneGlow(TelegraphLanePreview.RedFill);
+            var (_, glow, _, w, h) = RuneGlow(TelegraphLanePreview.RedFill);
             float spacing = _mat.GetFloat("_ChevronSpacing"), slope = _mat.GetFloat("_RuneSlope");
             float reach = Width * 0.5f * _mat.GetFloat("_RuneReach");
             for (int k = 1; k <= 3; k++)
             {
                 float tip = (k + 0.8f) * spacing;
                 if (tip > Span - 0.4f) break;
-                float across = reach * 0.6f, armAlong = tip - across * slope;
-                Assert.That(At(glow, w, h, 0f, tip - 0.02f), Is.GreaterThan(0.08f), $"rune {k}: tip glows on the centre line");
-                Assert.That(At(glow, w, h, across, armAlong), Is.GreaterThan(0.08f), $"rune {k}: arm trails back towards the attacker");
-                Assert.That(At(glow, w, h, -across, armAlong), Is.GreaterThan(0.08f), $"rune {k}: both arms (symmetric)");
-                Assert.That(At(glow, w, h, across, tip), Is.LessThan(0.02f), $"rune {k}: nothing beside the tip (arms do not point forward)");
-                Assert.That(At(glow, w, h, 0f, tip - reach * slope), Is.GreaterThan(0.08f), $"rune {k}: stem behind the tip");
+                // Each stroke: the best of 5 points along it (a hot crack can hide a point of a rune, never a whole stroke).
+                float tipBest = 0f, armR = 0f, armL = 0f, stem = 0f;
+                for (int j = 0; j < 5; j++)
+                {
+                    float f = 0.3f + 0.1f * j;
+                    tipBest = Mathf.Max(tipBest, At(glow, w, h, (j - 2) * 0.01f, tip - 0.02f - 0.01f * j));
+                    armR = Mathf.Max(armR, At(glow, w, h, reach * f, tip - reach * f * slope));
+                    armL = Mathf.Max(armL, At(glow, w, h, -reach * f, tip - reach * f * slope));
+                    stem = Mathf.Max(stem, At(glow, w, h, 0f, tip - reach * slope * f * 2f));
+                }
+                Assert.That(tipBest, Is.GreaterThan(0.08f), $"rune {k}: tip drawn on the centre line");
+                Assert.That(armR, Is.GreaterThan(0.08f), $"rune {k}: arm trails back towards the attacker");
+                Assert.That(armL, Is.GreaterThan(0.08f), $"rune {k}: both arms (symmetric)");
+                Assert.That(At(glow, w, h, reach * 0.6f, tip), Is.LessThan(0.02f), $"rune {k}: nothing beside the tip (arms do not point forward)");
+                Assert.That(stem, Is.GreaterThan(0.08f), $"rune {k}: stem behind the tip");
             }
         }
 
@@ -94,7 +111,7 @@ namespace SurvivorSouls.Tests
         /// <summary>Mean un-premultiplied colour of the clearly glowing rune pixels.</summary>
         private Color MeanRuneColour(Color tint)
         {
-            var (glow, colour, _, _) = RuneGlow(tint);
+            var (glow, _, colour, _, _) = RuneGlow(tint);
             Color sum = Color.clear;
             int n = 0;
             for (int i = 0; i < glow.Length; i++)
