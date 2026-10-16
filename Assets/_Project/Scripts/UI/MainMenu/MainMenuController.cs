@@ -37,6 +37,7 @@ namespace SurvivorSouls.UI.MainMenu
         private const string FpsName = "tgl-fps";
         private const string ReloadRingName = "tgl-reload-ring";
         private const string FastRevealName = "tgl-fast-reveal";
+        private const string ReduceFxName = "tgl-reduce-fx";
         public const string TestModeToggleName = "tgl-test-mode";
         public const string TestModeTagName = "lbl-test-mode";
         public const string SettingsTitleName = "lbl-settings-title";
@@ -408,6 +409,13 @@ namespace SurvivorSouls.UI.MainMenu
             {
                 fastReveal.SetValueWithoutNotify(GameSettings.FastSkillReveal);
                 fastReveal.RegisterValueChangedCallback(e => GameSettings.FastSkillReveal = e.newValue);
+            }
+
+            var reduceFx = root.Q<Toggle>(ReduceFxName); // KAN-82: accessibility, calmer hurt feedback
+            if (reduceFx != null)
+            {
+                reduceFx.SetValueWithoutNotify(GameSettings.ReduceScreenEffects);
+                reduceFx.RegisterValueChangedCallback(e => GameSettings.ReduceScreenEffects = e.newValue);
             }
         }
 

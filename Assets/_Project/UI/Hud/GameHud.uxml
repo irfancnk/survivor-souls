@@ -69,13 +69,33 @@
         </ui:VisualElement>
         <ui:VisualElement class="hud-top" picking-mode="Ignore">
             <ui:Button name="btn-pause" text="II" class="hud-button" />
-            <!-- Player health (PlayerHealthHud): trail drains behind the fill. -->
+            <!-- Player health (PlayerHealthHud + HealthBarView; medieval KAN-82): shared ss-bar frame, crimson fill with a shine,
+                 heal glow ahead of it, pale ghost trail behind it, shield segment, white flash on the lost part, gold glow on new
+                 max health, quarter ticks, "180 / 240" on the bar. Heart medallion over the left cap (cracks glow at low
+                 health). Shards and "-24" / "+12" pops in the unclipped lane. Widths, opacities and pools set in code. -->
             <ui:VisualElement name="player-hp" class="hud-hp" picking-mode="Ignore">
-                <ui:VisualElement class="hud-hp__track" picking-mode="Ignore">
-                    <ui:VisualElement name="player-hp-trail" class="hud-hp__trail" picking-mode="Ignore" />
-                    <ui:VisualElement name="player-hp-fill" class="hud-hp__fill" picking-mode="Ignore" />
+                <ui:VisualElement name="player-hp-track" class="hud-hp__track ss-bar" picking-mode="Ignore">
+                    <ui:VisualElement class="ss-bar__clip" picking-mode="Ignore">
+                        <ui:VisualElement name="player-hp-heal" class="hud-hp__heal" picking-mode="Ignore" />
+                        <ui:VisualElement name="player-hp-trail" class="hud-hp__trail" picking-mode="Ignore" />
+                        <ui:VisualElement name="player-hp-fill" class="hud-hp__fill ss-bar__fill ss-bar__fill--crimson" picking-mode="Ignore">
+                            <ui:VisualElement class="ss-bar__shine" picking-mode="Ignore" />
+                        </ui:VisualElement>
+                        <ui:VisualElement name="player-hp-shield" class="hud-hp__shield" picking-mode="Ignore" />
+                        <ui:VisualElement name="player-hp-lost" class="hud-hp__lost" picking-mode="Ignore" />
+                        <ui:VisualElement name="player-hp-grow" class="hud-hp__grow" picking-mode="Ignore" />
+                        <ui:VisualElement class="hud-hp__tick hud-hp__tick--25" picking-mode="Ignore" />
+                        <ui:VisualElement class="hud-hp__tick hud-hp__tick--50" picking-mode="Ignore" />
+                        <ui:VisualElement class="hud-hp__tick hud-hp__tick--75" picking-mode="Ignore" />
+                        <ui:VisualElement name="player-hp-flash" class="ss-bar__flash hud-hp__flash" picking-mode="Ignore" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="ss-bar__rim" picking-mode="Ignore" />
+                    <ui:Label name="player-hp-value" text="" class="hud-hp__value" picking-mode="Ignore" />
+                    <ui:VisualElement name="player-hp-fx" class="ss-bar__lane hud-hp__fx" picking-mode="Ignore" />
                 </ui:VisualElement>
-                <ui:Label name="player-hp-value" text="" class="hud-hp__value" picking-mode="Ignore" />
+                <ui:VisualElement name="player-hp-emblem" class="hud-hp__emblem" picking-mode="Ignore">
+                    <ui:VisualElement name="player-hp-cracks" class="hud-hp__cracks" picking-mode="Ignore" />
+                </ui:VisualElement>
             </ui:VisualElement>
             <!-- Souls this run (SoulCounterHud, KAN-96): soul gem + number, pops when it rises. -->
             <ui:VisualElement name="run-souls" class="hud-souls" picking-mode="Ignore">
@@ -109,7 +129,8 @@
         <ui:VisualElement name="gate-arrow-icon" class="gate-arrow__icon" picking-mode="Ignore" />
     </ui:VisualElement>
 
-    <!-- Small bar over the Knight, placed in code at a world point. -->
+    <!-- Small bar over the Knight, placed in code at a world point. KAN-82: crimson, shown ~2 s after a health change
+         and always at low health, fades out otherwise (opacity set in code). -->
     <ui:VisualElement name="player-overhead" class="hud-overhead" picking-mode="Ignore">
         <ui:VisualElement name="player-overhead-fill" class="hud-overhead__fill" picking-mode="Ignore" />
     </ui:VisualElement>

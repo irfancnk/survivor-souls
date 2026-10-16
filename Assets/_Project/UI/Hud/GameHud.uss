@@ -217,52 +217,182 @@
     background-color: rgb(236, 44, 34);
 }
 
-/* Player health (PlayerHealthHud). Fill/trail widths set in code (percent). Green = the player; red = enemies. */
+/* Player health (PlayerHealthHud + HealthBarView, medieval KAN-82): shared ss-bar frame with a crimson fill (user request:
+   rich red, replaces the old green), heart medallion over the left cap, number on the bar. Max width (grows with max
+   health), widths, lefts, opacities, translate and scale set in code; pools (shards, pops) built in code. */
 .hud-hp {
     flex-grow: 1;
-    max-width: 640px;
-    margin-left: 32px;
+    max-width: 600px;
+    height: 84px;
+    margin-left: 22px;
+    padding-left: 52px;
     flex-direction: row;
     align-items: center;
 }
 
 .hud-hp__track {
     flex-grow: 1;
-    height: 34px;
-    background-color: var(--hud-hp-track);
-    border-width: 3px;
-    border-color: rgba(232, 196, 120, 0.45);
-    border-radius: 4px;
-    overflow: hidden;
+    height: 46px;
 }
 
 .hud-hp__trail,
-.hud-hp__fill {
+.hud-hp__heal,
+.hud-hp__shield,
+.hud-hp__lost,
+.hud-hp__grow {
     position: absolute;
     left: 0; top: 0; bottom: 0;
-    width: 100%;
+    width: 0;
 }
 
+/* Souls-style ghost trail: pale ember, drains after a short delay. */
 .hud-hp__trail {
-    background-color: var(--hud-hp-trail);
+    width: 100%;
+    background-color: rgb(244, 200, 150);
+}
+
+/* Heal glow: green-gold, fills ahead of the red; opacity set in code. */
+.hud-hp__heal {
+    background-color: rgb(196, 226, 112);
+    opacity: 0;
 }
 
 .hud-hp__fill {
-    background-color: var(--hud-hp-fill);
+    width: 100%;
+    border-right-width: 3px;
+    border-color: rgba(255, 210, 190, 0.9);
+}
+
+/* Shield / overheal (KAN-93 later): silver-blue segment on top of the red. */
+.hud-hp__shield {
+    background-color: rgba(176, 210, 240, 0.82);
+    border-left-width: 2px;
     border-right-width: 2px;
-    border-color: rgba(220, 255, 190, 0.5);
+    border-color: rgb(236, 248, 255);
+}
+
+/* White flash on the part a hit took off. */
+.hud-hp__lost {
+    background-color: rgb(255, 250, 240);
+    opacity: 0;
+}
+
+/* Gold glow on the part a max health raise added. */
+.hud-hp__grow {
+    background-color: rgb(255, 214, 120);
+    opacity: 0;
+}
+
+/* Quarter ticks: thin dark notches with a faint light edge. */
+.hud-hp__tick {
+    position: absolute;
+    top: 0; bottom: 0;
+    width: 3px;
+    margin-left: -1px;
+    background-color: rgba(12, 4, 4, 0.55);
+    border-right-width: 1px;
+    border-color: rgba(255, 220, 200, 0.18);
+}
+
+.hud-hp__tick--25 { left: 25%; }
+.hud-hp__tick--50 { left: 50%; }
+.hud-hp__tick--75 { left: 75%; }
+
+.hud-hp__flash {
+    background-color: rgba(255, 236, 220, 0.8);
 }
 
 .hud-hp__value {
-    min-width: 110px;
-    margin-left: 16px;
+    position: absolute;
+    left: 0; right: 0; top: 0; bottom: 0;
+    margin: 0;
     padding: 0;
-    font-size: 38px;
+    font-size: 28px;
+    letter-spacing: 1px;
     -unity-font-style: bold;
-    -unity-text-align: middle-left;
-    color: var(--hud-gold);
+    -unity-text-align: middle-center;
+    color: rgb(255, 240, 222);
     -unity-text-outline-width: 2px;
-    -unity-text-outline-color: rgba(0, 0, 0, 0.85);
+    -unity-text-outline-color: rgba(20, 2, 2, 0.95);
+}
+
+.hud-hp__fx {
+    overflow: visible;
+}
+
+/* Heart medallion (T_UI_HeartMedallion, 2x art) over the left cap. Scale set in code (hit / heal pulse). */
+.hud-hp__emblem {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 84px;
+    height: 84px;
+    background-image: url("project://database/Assets/_Project/Art/UI/HudBars/T_UI_HeartMedallion.png");
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+/* Low-health cracks: white art tinted ember red; opacity set in code (heartbeat). */
+.hud-hp__cracks {
+    position: absolute;
+    left: 0; right: 0; top: 0; bottom: 0;
+    opacity: 0;
+    background-image: url("project://database/Assets/_Project/Art/UI/HudBars/T_UI_HeartCracks.png");
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: rgb(255, 120, 48);
+}
+
+/* Red shard that a hit cracks off the fill (pooled, max 6). Position, rotate and opacity set in code. */
+.hud-hp__shard {
+    position: absolute;
+    left: 0; top: 0;
+    width: 16px;
+    height: 11px;
+    margin-left: -8px;
+    margin-top: -5px;
+    border-width: 1px;
+    border-color: rgba(30, 2, 2, 0.9);
+    border-radius: 2px;
+    background-image: url("project://database/Assets/_Project/Art/UI/HudBars/T_UI_BarFillCrimson.png");
+    -unity-background-scale-mode: stretch-to-fill;
+}
+
+/* "-24" / "+12" pops under the bar end (pooled). Translate, scale and opacity set in code. */
+.hud-hp__pop {
+    position: absolute;
+    left: 0; top: 0;
+    width: 120px;
+    margin-left: -60px;
+    margin-top: -20px;
+    padding: 0;
+    font-size: 34px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    color: rgb(255, 92, 72);
+    -unity-text-outline-width: 2px;
+    -unity-text-outline-color: rgba(26, 0, 0, 0.95);
+}
+
+.hud-hp__pop--heal {
+    color: rgb(214, 240, 128);
+    -unity-text-outline-color: rgba(10, 26, 4, 0.95);
+}
+
+/* Low health: rim warms toward red. Critical: deeper. Dead: everything goes dark. */
+.hud-hp--low .ss-bar__rim {
+    -unity-background-image-tint-color: rgb(255, 196, 180);
+}
+
+.hud-hp--critical .ss-bar__rim {
+    -unity-background-image-tint-color: rgb(255, 150, 130);
+}
+
+.hud-hp--dead .ss-bar__rim,
+.hud-hp--dead .hud-hp__emblem {
+    -unity-background-image-tint-color: rgb(90, 84, 84);
+}
+
+.hud-hp--dead .hud-hp__value {
+    color: rgb(150, 120, 116);
 }
 
 /* Souls this run (SoulCounterHud, KAN-96): right of the health bar. Scale set in code (pop on pickup). */
@@ -316,7 +446,8 @@
 .hud-overhead__fill {
     height: 100%;
     width: 100%;
-    background-color: var(--hud-hp-fill);
+    background-image: url("project://database/Assets/_Project/Art/UI/HudBars/T_UI_BarFillCrimson.png");
+    -unity-background-scale-mode: stretch-to-fill;
 }
 
 /* Damage vignette: full-screen generated texture, stretched (ellipse follows the screen shape). */
@@ -452,7 +583,7 @@
 
 /* Shared medieval bar (KAN-35): dark glass track + iron rim with a gold inlay and rivets (9-slice, one shape:
    HudBarArtBuilder BarHeight 40 / radius 16; slices 26 / 18), a clip inset on the rim's inner edge, gradient fills,
-   a faint rune strip and a shine band (HudBarFx moves both), a flash overlay. Bars: XP, boss; health follows (KAN-82). */
+   a faint rune strip and a shine band (HudBarFx moves both), a flash overlay. Bars: XP, boss, health (KAN-82). */
 .ss-bar {
     background-image: url("project://database/Assets/_Project/Art/UI/HudBars/T_UI_BarGlass.png");
     -unity-slice-left: 26;

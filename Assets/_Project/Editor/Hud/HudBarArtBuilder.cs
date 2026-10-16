@@ -7,7 +7,8 @@ namespace SurvivorSouls.Editor.Hud
 {
     /// <summary>
     /// Medieval HUD bar art (KAN-35): forged iron rim with a gold inlay and rivets, dark glass track, molten-gold and
-    /// crimson fills, a scrolling rune strip, a shine band, the heraldic level shield and a spark. All procedural PNGs
+    /// crimson fills, a scrolling rune strip, a shine band, the heraldic level shield and a spark; the heart medallion and its
+    /// crack glow for the health bar (KAN-82). All procedural PNGs
     /// (no outside art), small and uncompressed (crisp 9-slice edges), referenced by GameHud.uss (<c>.ss-bar*</c>,
     /// <c>.hud-xp__badge</c>). The PNGs are committed; run this again only after a change here:
     /// menu "Survivor Souls/Rebuild HUD Bar Art" or
@@ -26,10 +27,15 @@ namespace SurvivorSouls.Editor.Hud
         public const string ShinePath = Dir + "/T_UI_BarShine.png";
         public const string ShieldPath = Dir + "/T_UI_LevelShield.png";
         public const string SparkPath = Dir + "/T_UI_BarSpark.png";
+        public const string HeartPath = Dir + "/T_UI_HeartMedallion.png"; // KAN-82 health bar emblem
+        public const string CracksPath = Dir + "/T_UI_HeartCracks.png";   // KAN-82 low-health glow over the emblem
 
         /// <summary>Every generated texture (tests check they exist and stay small).</summary>
         public static readonly string[] All =
-            { RimPath, GlassPath, FillGoldPath, FillCrimsonPath, RunesPath, ShinePath, ShieldPath, SparkPath };
+            { RimPath, GlassPath, FillGoldPath, FillCrimsonPath, RunesPath, ShinePath, ShieldPath, SparkPath, HeartPath, CracksPath };
+
+        /// <summary>The HUD style sheet that uses this art.</summary>
+        public const string UssPath = "Assets/_Project/UI/Hud/GameHud.uss";
 
         public const int BarHeight = 40;
         public const float BarRadius = 16f;
@@ -62,7 +68,11 @@ namespace SurvivorSouls.Editor.Hud
             WriteShine();
             WriteShield();
             WriteSpark();
+            WriteHeartMedallion();
+            WriteHeartCracks();
             AssetDatabase.SaveAssets();
+            // A USS that names a texture before it exists keeps "Invalid asset path" until it imports again (KAN-82).
+            AssetDatabase.ImportAsset(UssPath, ImportAssetOptions.ForceUpdate);
             Debug.Log($"[HudBarArt] wrote {All.Length} textures to {Dir}");
         }
 
@@ -264,6 +274,115 @@ namespace SurvivorSouls.Editor.Hud
             if (s <= 0.42f) return 1f;
             float k = Mathf.Clamp01((s - 0.42f) / 0.56f);
             return Mathf.Pow(Mathf.Max(0f, Mathf.Cos(k * Mathf.PI * 0.5f)), 0.75f); // cos(pi/2) < 0 in float: NaN guard
+        }
+
+        // ------------------------------------------------------------ Health emblem (KAN-82)
+
+        /// <summary>Size of the heart medallion and its crack overlay (2x the 84 px HUD emblem).</summary>
+        public const int HeartSize = 168;
+        private const float MedallionRim = 18f;
+
+        /// <summary>Round medallion at the health bar's left end (2x art): dark outline, bevelled iron ring with a gold inlay
+        /// and four brass rivets, a deep oxblood field, and a glossy crimson heart with a gold edge in the middle.</summary>
+        private static void WriteHeartMedallion()
+        {
+            const int s = HeartSize;
+            const float radius = s * 0.5f - 2f;
+            Write(HeartPath, s, s, (x, y) =>
+            {
+                float px = x + 0.5f - s * 0.5f, py = y + 0.5f - s * 0.5f; // centre origin, y up
+                float r = Mathf.Sqrt(px * px + py * py);
+                float d = radius - r; // px inside the disc
+                float alpha = Mathf.Clamp01(d + 0.5f);
+                if (alpha <= 0f) return Clear;
+
+                Color c;
+                if (d < MedallionRim)
+                {
+                    float lit = 1.15f + 0.4f * (py / radius) - 0.15f * (px / radius); // light from the top left
+                    float forged = 0.85f + 0.3f * TextureFactory.Fbm((px + s) / s, (py + s) / s, 6, 3, 38);
+                    c = Iron * (lit * forged * (1f + 0.25f * Gauss(d, MedallionRim * 0.45f, 4f)));
+                    c = Color.Lerp(c, Gold * (1.1f + 0.25f * py / radius), 0.95f * Gauss(d, 11f, 1.3f));
+                    if (d < 3f) c = Color.Lerp(Outline, c, Mathf.Clamp01(d - 2f));
+                    if (d > MedallionRim - 2.5f) c = Color.Lerp(c, Outline, Mathf.Clamp01((d - (MedallionRim - 2.5f)) / 1.5f));
+                }
+                else
+                {
+                    float glow = Mathf.Lerp(1.3f, 0.65f, Mathf.Clamp01(r / (radius - MedallionRim)));
+                    float grain = 0.9f + 0.2f * TextureFactory.Fbm((px + s) / s, (py + s) / s, 10, 3, 39);
+                    c = new Color(0.17f, 0.04f, 0.04f) * (glow * grain);
+                    c = Color.Lerp(c, Outline, 0.6f * Mathf.Clamp01(1f - (d - MedallionRim) / 6f)); // shadow under the ring
+                    c = Heart(c, px, py, s * 0.5f);
+                }
+                for (int i = 0; i < 4; i++)
+                {
+                    float a = (45f + 90f * i) * Mathf.Deg2Rad;
+                    float rr = radius - 7.5f;
+                    c = Rivet(c, px, py, Mathf.Cos(a) * rr, Mathf.Sin(a) * rr, 4f, ref alpha);
+                }
+                c.a = alpha;
+                return c;
+            });
+        }
+
+        /// <summary>White crack lines with a soft glow, radiating from the heart (tinted ember red in USS, opacity in code:
+        /// the low-health glow). Clear outside the medallion field.</summary>
+        private static void WriteHeartCracks()
+        {
+            const int s = HeartSize;
+            const float field = s * 0.5f - 2f - MedallionRim;
+            var segments = new System.Collections.Generic.List<Vector4>();
+            for (int k = 0; k < 6; k++)
+            {
+                float angle = (k / 6f + 0.08f * TextureFactory.Hash(k, 3, 40)) * Mathf.PI * 2f;
+                var p = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * (s * 0.05f);
+                for (int j = 0; j < 4; j++)
+                {
+                    angle += (TextureFactory.Hash(k, j + 5, 40) - 0.5f) * 1.1f;
+                    float len = s * (0.09f - 0.012f * j);
+                    var q = p + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * len;
+                    segments.Add(new Vector4(p.x, p.y, q.x, q.y));
+                    p = q;
+                }
+            }
+            Write(CracksPath, s, s, (x, y) =>
+            {
+                float px = x + 0.5f - s * 0.5f, py = y + 0.5f - s * 0.5f;
+                float r = Mathf.Sqrt(px * px + py * py);
+                if (r > field) return Clear;
+                float dist = float.MaxValue;
+                foreach (var g in segments) dist = Mathf.Min(dist, Segment(px, py, g.x, g.y, g.z, g.w));
+                float core = Mathf.Clamp01(1.6f - dist);
+                float glow = 0.55f * Mathf.Exp(-dist * dist / 18f);
+                float a = Mathf.Clamp01(core + glow) * Mathf.Clamp01((field - r) / 4f);
+                return new Color(1f, 0.95f - 0.25f * (1f - core), 0.85f - 0.4f * (1f - core), a);
+            });
+        }
+
+        /// <summary>Glossy crimson heart (exact heart distance, I. Quilez) with a gold edge and a soft top-left highlight,
+        /// drawn over <paramref name="under"/>. <paramref name="size"/> = px per heart unit (the heart is ~1.06 units tall).</summary>
+        private static Color Heart(Color under, float px, float py, float size)
+        {
+            float sx = px / size, y = py / size + 0.56f; // point at y 0, lobes at y ~1.06: centred on the medallion
+            float x = Mathf.Abs(sx);
+            float sd;
+            if (x + y > 1f) sd = new Vector2(x - 0.25f, y - 0.75f).magnitude - Mathf.Sqrt(2f) / 4f;
+            else
+            {
+                float m = 0.5f * Mathf.Max(x + y, 0f);
+                float d1 = new Vector2(x, y - 1f).sqrMagnitude, d2 = new Vector2(x - m, y - m).sqrMagnitude;
+                sd = Mathf.Sqrt(Mathf.Min(d1, d2)) * Mathf.Sign(x - y);
+            }
+            float d = -sd * size; // px inside the heart
+            if (d < -1.5f) return under;
+            float v = Mathf.Clamp01(y / 1.06f); // 0 at the point, 1 at the lobes
+            var body = Color.Lerp(new Color(0.36f, 0.03f, 0.03f), new Color(0.86f, 0.12f, 0.09f), v);
+            float hl = Gauss(sx, -0.27f, 0.13f) * Gauss(y, 0.8f, 0.12f);
+            body = Color.Lerp(body, new Color(1f, 0.62f, 0.52f), 0.75f * hl);
+            const float edge = 3.5f;
+            if (d < edge) body = Color.Lerp(Gold * (0.8f + 0.45f * v), body, Mathf.Clamp01(d - edge + 1f));
+            if (d < 0.8f) body = Color.Lerp(Outline, body, Mathf.Clamp01(d - 0.2f)); // thin dark outline
+            return Color.Lerp(under, body, Mathf.Clamp01(d + 1.5f));
         }
 
         // ------------------------------------------------------------ Helpers
