@@ -516,7 +516,7 @@ namespace SurvivorSouls.Dev
 
         private static string ReadArg()
         {
-            var args = Environment.GetCommandLineArgs();
+            var args = DevArgs.All;
             for (int i = 0; i < args.Length; i++)
                 if (args[i] == ArgName)
                     return i + 1 < args.Length && !args[i + 1].StartsWith("-", StringComparison.Ordinal) ? args[i + 1] : "";

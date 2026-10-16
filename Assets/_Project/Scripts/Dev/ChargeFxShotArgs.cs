@@ -62,7 +62,7 @@ namespace SurvivorSouls.Dev
 
         private static string GetArg(string name)
         {
-            string[] args = Environment.GetCommandLineArgs();
+            string[] args = DevArgs.All;
             for (int i = 0; i < args.Length - 1; i++)
                 if (args[i] == name) return args[i + 1];
             return null;
