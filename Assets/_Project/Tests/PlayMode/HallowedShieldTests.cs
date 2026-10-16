@@ -188,6 +188,22 @@ namespace SurvivorSouls.Tests
         }
 
         [Test]
+        public void WardedDiscreteHit_RaisesNoOnHit_NoHurtFeedback()
+        {
+            var ward = Grant();
+            int hits = 0;
+            _health.OnHit += _ => hits++;
+            Run(ward, 1.1f);
+            Assert.That(ward.IsActive, Is.True);
+            Assert.That(_health.TakeDamage(120f, _player.transform.position + Vector3.right * 5f), Is.Zero);
+            Assert.That(hits, Is.Zero, "KAN-187 hit arc / hit-stop / shake stay off for a blocked hit");
+            Assert.That(ward.BlockedDamage, Is.EqualTo(120f).Within(1e-3f));
+            Run(ward, 3.1f);
+            Assert.That(_health.TakeDamage(120f, _player.transform.position + Vector3.right * 5f), Is.EqualTo(120f));
+            Assert.That(hits, Is.EqualTo(1), "after the ward a discrete hit raises OnHit again");
+        }
+
+        [Test]
         public void Bubble_ShownWhileUp_FlickersBeforeTheEnd_HiddenAfterTheFade()
         {
             var ward = Grant();

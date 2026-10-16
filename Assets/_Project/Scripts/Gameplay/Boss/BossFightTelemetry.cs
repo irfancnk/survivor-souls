@@ -47,7 +47,9 @@ namespace SurvivorSouls.Gameplay.Boss
         /// <summary>Deals a direct hit of the running attack to the Knight (caller checked the Knight is alive and inside).</summary>
         private float HitKnight(float share)
         {
-            float dealt = player.TakeDamage(DamageNow(share));
+            // KAN-187: a boss hit comes from the boss (hit direction arc, hit-stop, shake)
+            Vector3 from = _boss != null ? _boss.transform.position : player.transform.position;
+            float dealt = player.TakeDamage(DamageNow(share), from);
             ReportHit(_attack.label, dealt);
             return dealt;
         }

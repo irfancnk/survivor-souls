@@ -17,6 +17,7 @@ namespace SurvivorSouls.Core
         public const string KeyTestMode = "settings.testMode";
         private const string KeyFastSkillReveal = "settings.fastSkillReveal";
         private const string KeyReduceScreenEffects = "settings.reduceScreenEffects";
+        private const string KeyHeartbeatSound = "settings.heartbeatSound";
 
         public static event Action Changed;
 
@@ -69,6 +70,15 @@ namespace SurvivorSouls.Core
         {
             get => PlayerPrefs.GetInt(KeyReduceScreenEffects, 0) == 1;
             set => SetInt(KeyReduceScreenEffects, value ? 1 : 0);
+        }
+
+        /// <summary>
+        /// Low-health heartbeat sound (KAN-187): a quiet lub-dub below 30 % health, faster below 15 %. On by default.
+        /// </summary>
+        public static bool HeartbeatSound
+        {
+            get => PlayerPrefs.GetInt(KeyHeartbeatSound, 1) == 1;
+            set => SetInt(KeyHeartbeatSound, value ? 1 : 0);
         }
 
         /// <summary>

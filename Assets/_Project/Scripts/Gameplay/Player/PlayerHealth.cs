@@ -15,6 +15,10 @@ namespace SurvivorSouls.Gameplay.Player
     /// <see cref="Shield"/> (KAN-82, for KAN-93 Temporary Shield) is a separate pool on top of health: damage takes the
     /// shield first, the rest comes off health. No skill grants a shield yet: KAN-93 Hallowed Shield uses the full block
     /// <see cref="Warded"/> instead (the ticket asks for no damage at all while it is up).
+    /// <see cref="TakeDamage(float, Vector3)"/> (KAN-187) is a discrete hit from a known point (ranged shot, boss attack,
+    /// telegraphed special): it also raises <see cref="OnHit"/>, which drives the hit direction arc, hit-stop, camera shake,
+    /// grunt and haptic. Contact damage (horde, burning ground) keeps the plain overload and never raises it. A warded hit
+    /// (KAN-93) raises no <see cref="OnHit"/>: the ward's own flash and tink are the feedback.
     /// </summary>
     public sealed class PlayerHealth : MonoBehaviour
     {
@@ -34,6 +38,8 @@ namespace SurvivorSouls.Gameplay.Player
         public event Action<float> OnShieldChanged;
         /// <summary>Raised on every damage call a ward blocked (KAN-93): amount blocked. Can fire every frame (contact damage).</summary>
         public event Action<float> OnWardBlocked;
+        /// <summary>Discrete hit from a known point (KAN-187), after the health events. Never for contact damage.</summary>
+        public event Action<PlayerHit> OnHit;
 
         private float _current;
         private float _max;
@@ -118,6 +124,20 @@ namespace SurvivorSouls.Gameplay.Player
         }
 
         /// <summary>
+        /// Discrete hit from <paramref name="source"/> (world position the hit came from; KAN-187). Same damage rules as
+        /// <see cref="TakeDamage(float)"/>, then raises <see cref="OnHit"/> (also when the shield took it all). Returns the
+        /// health actually deducted.
+        /// </summary>
+        public float TakeDamage(float amount, Vector3 source)
+        {
+            if (_dead || Invulnerable || amount <= 0f) return 0f;
+            if (Warded) return TakeDamage(amount); // KAN-93: blocked, ward feedback only (no OnHit)
+            float dealt = TakeDamage(amount);
+            OnHit?.Invoke(new PlayerHit(dealt, _max > 0f ? dealt / _max : 0f, source, _dead));
+            return dealt;
+        }
+
+        /// <summary>
         /// Sets health to a carried value (next Chamber, KAN-40), clamped to 1..max: a living Knight stays alive.
         /// No damage or hurt events. No effect once dead.
         /// </summary>
@@ -147,6 +167,27 @@ namespace SurvivorSouls.Gameplay.Player
             _current += added;
             OnHealthChanged?.Invoke(_current, _max);
             return added;
+        }
+    }
+
+    /// <summary>A discrete hit on the Knight (KAN-187): health lost, its share of max health, where it came from.</summary>
+    public readonly struct PlayerHit
+    {
+        /// <summary>Health deducted (0 when the shield took it all).</summary>
+        public readonly float Dealt;
+        /// <summary><see cref="Dealt"/> / max health.</summary>
+        public readonly float Share;
+        /// <summary>World position the hit came from.</summary>
+        public readonly Vector3 Source;
+        /// <summary>The hit killed the Knight.</summary>
+        public readonly bool Killed;
+
+        public PlayerHit(float dealt, float share, Vector3 source, bool killed)
+        {
+            Dealt = dealt;
+            Share = share;
+            Source = source;
+            Killed = killed;
         }
     }
 }

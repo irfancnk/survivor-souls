@@ -308,7 +308,7 @@ namespace SurvivorSouls.Gameplay.Combat
                 if (canHit && s.Volley != _hitVolley && BossProjectiles.SegmentDistance(a, s.Position, knight) <= s.Radius)
                 {
                     _hitVolley = s.Volley;
-                    float dealt = player.TakeDamage(s.Damage);
+                    float dealt = player.TakeDamage(s.Damage, s.Position - s.Velocity); // KAN-187: arc on the shooter's side
                     HitPlayer?.Invoke(s.Position, dealt);
                     Remove(i);
                     canHit = !player.IsDead;
@@ -333,7 +333,7 @@ namespace SurvivorSouls.Gameplay.Combat
                 if (dx * dx + dz * dz <= s.Radius * s.Radius)
                 {
                     _hitVolley = s.Volley;
-                    float dealt = player.TakeDamage(s.Damage);
+                    float dealt = player.TakeDamage(s.Damage, s.Start); // KAN-187: lobbed from the thrower
                     HitPlayer?.Invoke(s.Target, dealt);
                 }
             }
