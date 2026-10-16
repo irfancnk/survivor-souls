@@ -522,7 +522,7 @@ namespace SurvivorSouls.Tests
                 var phase = waves.GetPhase(i);
                 var types = phase.enemies.Select(e => e.prefab != null ? e.prefab.name : "").ToArray();
                 Assert.That(types, Has.No.Member(oldBrute != null ? oldBrute.name : "Enemy_ZombieBrute"), "the Grave Brute replaced the old Brute");
-                bool late = phase.startTime >= 45f;
+                bool late = i >= 1; // every phase after the first (KAN-232: from 12 s of the 45 s Chamber)
                 Assert.That(types.Contains("Enemy_PlagueBloater"), Is.EqualTo(late), $"phase {i} Bloater");
                 Assert.That(types.Contains("Enemy_FrenziedGhoul"), Is.EqualTo(late), $"phase {i} Ghoul");
                 if (late) Assert.That(types, Has.Member("Enemy_GraveBrute"), $"phase {i} Brute");

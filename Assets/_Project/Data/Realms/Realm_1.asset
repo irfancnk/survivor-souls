@@ -20,7 +20,7 @@ MonoBehaviour:
   rewards: Souls, XP, Ember Boons
   estusCost: 5
   difficulty: {fileID: 11400000, guid: 1eace70885f8c44f98dbbbf7557aac17, type: 2}
-  chambers: 10
+  chambers: 20
   thumbnail: {fileID: 2800000, guid: acd647e9d0ebc4757bdd5a58b8080fc4, type: 3}
   accent: {r: 0.62, g: 0.8, b: 0.94, a: 1}
   playable: 1

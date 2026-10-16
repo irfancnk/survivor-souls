@@ -344,7 +344,7 @@ namespace SurvivorSouls.Tests
             yield return null;
             Assert.That(ChamberSetup.Current.Realm, Is.EqualTo(TestRealm));
             int chambers = Object.FindAnyObjectByType<ChamberSetup>().Difficulty.ChambersInRealm;
-            Assert.That(chambers, Is.EqualTo(10), "Realm difficulty asset: 10 Chambers");
+            Assert.That(chambers, Is.EqualTo(20), "Realm difficulty asset: 20 Chambers (KAN-232)");
 
             int objectsAt2 = 0, meshesAt2 = 0, materialsAt2 = 0, texturesAt2 = 0;
             float slowest = 0f;

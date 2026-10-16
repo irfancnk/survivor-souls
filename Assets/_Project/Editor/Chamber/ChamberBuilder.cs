@@ -130,8 +130,9 @@ namespace SurvivorSouls.Editor.Chamber
             var difficulty = AssetDatabase.LoadAssetAtPath<ChamberDifficulty>(DifficultyPath);
             if (difficulty != null) return difficulty;
             EditorAssetUtil.EnsureFolder(DataDir);
-            // Realm 1: 10 Chambers, boss every 5th; +15 % enemy health, +5 % caps (max x1.35), 4 % faster spawns (min x0.7) per Chamber.
-            difficulty = ChamberDifficulty.Create();
+            // Realm 1 (KAN-232): 20 Chambers, boss every 5th, mini boss on the 2nd of each 5; +15 % enemy health, +5 % caps
+            // (max x1.35), 4 % faster spawns (min x0.7) per Chamber.
+            difficulty = ChamberDifficulty.Create(20, 5, 5, miniBossOffset: 2);
             AssetDatabase.CreateAsset(difficulty, DifficultyPath);
             AssetDatabase.SaveAssets();
             return difficulty;
@@ -142,7 +143,7 @@ namespace SurvivorSouls.Editor.Chamber
             var rules = AssetDatabase.LoadAssetAtPath<ChamberRules>(RulesPath);
             if (rules != null) return rules;
             EditorAssetUtil.EnsureFolder(DataDir);
-            rules = ChamberRules.Create(120f, new[] { 60, 30 }); // 2 min Chambers (KAN-92), warnings 1 min / 30 s, 10 s pulse, 2 s opening
+            rules = ChamberRules.Create(45f, new[] { 30, 15 }); // 45 s Chambers (KAN-232), warnings 30 s / 15 s, 10 s pulse, 2 s opening
             AssetDatabase.CreateAsset(rules, RulesPath);
             AssetDatabase.SaveAssets();
             return rules;

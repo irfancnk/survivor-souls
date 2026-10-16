@@ -32,12 +32,12 @@ namespace SurvivorSouls.Editor.Progression
         private const float WispMergeRadius = 1.6f;
         private const int MoteBudget = 320;
 
-        // Run pacing (KAN-113 pacing model, ChamberPacing): first levels come quickly (5 picks in Chamber 1), then a slow
-        // +5 % per level keeps about 4 picks per 2 minute Chamber while the crowd kill rate grows with the build.
-        private const int CurveBase = 110;
-        private const float CurveGrowth = 1.05f;
+        // Run pacing (KAN-113 pacing model, ChamberPacing; KAN-232 45 s Chambers, 20 per Realm): first levels come quickly
+        // (3 picks in Chamber 1), then a slow +3 % per level keeps 2-3 picks per Chamber; level ~40 at the Realm end.
+        private const int CurveBase = 70;
+        private const float CurveGrowth = 1.03f;
         private const int CurveRound = 5;
-        private static readonly int[] CurveTable = { 30, 50, 70, 90, 110 };
+        private static readonly int[] CurveTable = { 20, 35, 50, 70 };
 
         public sealed class Result
         {

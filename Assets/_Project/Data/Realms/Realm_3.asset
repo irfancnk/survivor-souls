@@ -20,7 +20,7 @@ MonoBehaviour:
   rewards: Souls, Obsidian Reliquary
   estusCost: 5
   difficulty: {fileID: 0}
-  chambers: 10
+  chambers: 20
   thumbnail: {fileID: 0}
   accent: {r: 0.56, g: 0.7, b: 0.3, a: 1}
   playable: 0

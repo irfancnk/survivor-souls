@@ -7,7 +7,7 @@ using UnityEngine;
 namespace SurvivorSouls.Gameplay.Chamber
 {
     /// <summary>
-    /// Run pacing model (KAN-113): a deterministic estimate of what one Realm run gives per Chamber on the 2 minute clock.
+    /// Run pacing model (KAN-113): a deterministic estimate of what one Realm run gives per Chamber on the Chamber clock.
     /// Per regular Chamber (boss Chambers are skipped: no clock, the boss gives no XP) it steps the wave table like
     /// <see cref="EnemySpawner"/> does (groups of the average size every spawn interval, bursts, max alive), with the
     /// Chamber scaling of <see cref="ChamberDifficulty"/> and the power-scaled health and spawn pressure of

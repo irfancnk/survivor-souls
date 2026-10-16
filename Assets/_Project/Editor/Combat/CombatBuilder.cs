@@ -108,7 +108,8 @@ namespace SurvivorSouls.Editor.Combat
         public const string WavesPath = "Assets/_Project/Data/Combat/EnemyWaves_Realm1.asset";
 
         /// <summary>
-        /// Spawn pacing for Realm 1. KAN-29 baseline: 6 / 8 / 10 alive at 0 / 45 / 120 s, groups of 1-2, bursts of 3-4.
+        /// Spawn pacing for Realm 1 (KAN-232: phases at 0 / 12 / 24 / 36 s of the 45 s Chamber, bursts every 10 / 9 / 8 / 7.5 s;
+        /// was 0 / 45 / 120 / 240 s and 26 / 24 / 22 / 20 s). KAN-29 baseline: 6 / 8 / 10 alive at 0 / 45 / 120 s, groups of 1-2, bursts of 3-4.
         /// KAN-30 horde: 18 / 24 / 30 alive (x3) plus 36 from 240 s; groups of 1-4 every 0.8-1.1 s and bursts of 5-12 every
         /// 20-26 s so the crowd swells and drains; Runners and Brutes mixed in from 45 s.
         /// An existing asset is never overwritten (designer edits stay); only empty enemy slots get the shambler.
@@ -142,10 +143,10 @@ namespace SurvivorSouls.Editor.Combat
             table = ScriptableObject.CreateInstance<EnemyWaveTable>();
             table.Configure(firstDelay: 1f, prewarm: 12, new[]
             {
-                new EnemyWaveTable.Phase { startTime = 0f, maxAlive = 18, spawnInterval = 1.1f, groupSize = new Vector2Int(1, 2), burstInterval = 26f, burstSize = 5, enemies = Mix(1f, 0f, 0f) },
-                new EnemyWaveTable.Phase { startTime = 45f, maxAlive = 24, spawnInterval = 1f, groupSize = new Vector2Int(2, 3), burstInterval = 24f, burstSize = 7, enemies = Mix(0.82f, 0.14f, 0.04f) },
-                new EnemyWaveTable.Phase { startTime = 120f, maxAlive = 30, spawnInterval = 0.9f, groupSize = new Vector2Int(2, 3), burstInterval = 22f, burstSize = 9, enemies = Mix(0.72f, 0.18f, 0.1f) },
-                new EnemyWaveTable.Phase { startTime = 240f, maxAlive = 36, spawnInterval = 0.8f, groupSize = new Vector2Int(2, 4), burstInterval = 20f, burstSize = 12, enemies = Mix(0.66f, 0.2f, 0.14f) },
+                new EnemyWaveTable.Phase { startTime = 0f, maxAlive = 18, spawnInterval = 1.1f, groupSize = new Vector2Int(1, 2), burstInterval = 10f, burstSize = 5, enemies = Mix(1f, 0f, 0f) },
+                new EnemyWaveTable.Phase { startTime = 12f, maxAlive = 24, spawnInterval = 1f, groupSize = new Vector2Int(2, 3), burstInterval = 9f, burstSize = 7, enemies = Mix(0.82f, 0.14f, 0.04f) },
+                new EnemyWaveTable.Phase { startTime = 24f, maxAlive = 30, spawnInterval = 0.9f, groupSize = new Vector2Int(2, 3), burstInterval = 8f, burstSize = 9, enemies = Mix(0.72f, 0.18f, 0.1f) },
+                new EnemyWaveTable.Phase { startTime = 36f, maxAlive = 36, spawnInterval = 0.8f, groupSize = new Vector2Int(2, 4), burstInterval = 7.5f, burstSize = 12, enemies = Mix(0.66f, 0.2f, 0.14f) },
             });
             EditorAssetUtil.EnsureFolder(System.IO.Path.GetDirectoryName(WavesPath).Replace('\\', '/'));
             AssetDatabase.CreateAsset(table, WavesPath);

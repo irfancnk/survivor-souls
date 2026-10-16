@@ -26,9 +26,13 @@ namespace SurvivorSouls.Editor.World
     public static class WorldBuilder
     {
         public const float TileSize = 12f;
-        public const int HalfTiles = 5;   // playable width: 11 tiles = 132 m
+        public const int HalfTiles = 2;   // tile area: 5 tiles = 60 m (KAN-232: was 5 = 132 m); the room is inside it
         public const int ShoreRow = 1;    // tile row of the beach; north of it is sea
-        public const int SouthRows = 4;   // playable rows south of the spawn row
+        public const int SouthRows = 3;   // tile rows south of the spawn row (KAN-232: was 4)
+        /// <summary>KAN-232 Chamber room: 40 x 40 m walled play area, x -20..20, z -28.5..11.5 (north wall on the beach).</summary>
+        public const float RoomHalfWidth = 20f, RoomSize = 40f;
+        public static Vector2 RoomMax => new Vector2(RoomHalfWidth, ShoreLineZ - 1.5f);
+        public static Vector2 RoomMin => new Vector2(-RoomHalfWidth, RoomMax.y - RoomSize);
         public const float ShoreLineLocalZ = 1f; // average water edge inside a shore tile (local z)
         public static float ShoreLineZ => ShoreRow * TileSize + ShoreLineLocalZ;
         private const float WaterlineOffset = 1.1f; // the beach slope meets the sea this far past the land edge
@@ -96,6 +100,9 @@ namespace SurvivorSouls.Editor.World
             so.FindProperty("shoreRow").intValue = ShoreRow;
             so.FindProperty("southRows").intValue = SouthRows;
             so.FindProperty("shoreLineLocalZ").floatValue = ShoreLineLocalZ;
+            so.FindProperty("roomMin").vector2Value = RoomMin; // KAN-232
+            so.FindProperty("roomMax").vector2Value = RoomMax;
+            so.FindProperty("exitDistance").vector2IntValue = new Vector2Int(1, 2); // inside the room
 
             var variants = so.FindProperty("variants");
             variants.arraySize = Variants.Length;
@@ -792,29 +799,8 @@ namespace SurvivorSouls.Editor.World
             Glow(go.transform, lamp, 2.6f, new Color(1f, 0.78f, 0.45f, 0.85f));
         }
 
-        private static void BuildBounds(Transform root)
-        {
-            float half = (HalfTiles + 0.5f) * TileSize;
-            float south = -(SouthRows + 0.5f) * TileSize;
-            float north = ShoreLineZ + 3f; // backup: shore tile colliders already hold the water edge
-            float depth = north - south, midZ = (north + south) * 0.5f;
-            var parent = new GameObject("Bounds").transform;
-            parent.SetParent(root, false);
-            (Vector3 c, Vector3 s)[] walls =
-            {
-                (new Vector3(0f, 2f, north + 1f), new Vector3(half * 2f + 4f, 4f, 2f)),
-                (new Vector3(0f, 2f, south - 1f), new Vector3(half * 2f + 4f, 4f, 2f)),
-                (new Vector3(half + 1f, 2f, midZ), new Vector3(2f, 4f, depth + 4f)),
-                (new Vector3(-half - 1f, 2f, midZ), new Vector3(2f, 4f, depth + 4f)),
-            };
-            foreach (var (c, s) in walls)
-            {
-                var go = new GameObject("Bound");
-                go.transform.SetParent(parent, false);
-                go.transform.position = c;
-                go.AddComponent<BoxCollider>().size = s;
-            }
-        }
+        /// <summary>KAN-232: stone walls + box colliders on the room edges (hidden in a boss Chamber, see <see cref="RoomWalls"/>).</summary>
+        private static void BuildBounds(Transform root) => RoomWallBuilder.Build(root, RoomMin, RoomMax, _art.SnowStone, _art.Snow);
 
         /// <summary>Under-foot reload ring, move-direction ring and the gold arrow to the exit, all children of the player.</summary>
         private static void BuildPlayerAids(Transform player, PlayerMover mover, WorldStreamer world)

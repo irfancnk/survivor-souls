@@ -329,13 +329,13 @@ namespace SurvivorSouls.Tests
 
 #if UNITY_EDITOR
         [Test]
-        public void ShippedRules_AreTwoMinutes()
+        public void ShippedRules_Are45Seconds()
         {
             var rules = UnityEditor.AssetDatabase.LoadAssetAtPath<ChamberRules>("Assets/_Project/Data/Chamber/ChamberRules_Realm1.asset");
             Assert.That(rules, Is.Not.Null);
             Assert.That(rules.OpenCondition, Is.EqualTo(OpenCondition.Survive));
-            Assert.That(rules.SurvivalSeconds, Is.EqualTo(120f)); // KAN-92: 2 minute Chambers
-            Assert.That(rules.Warnings, Is.EquivalentTo(new[] { 60, 30 }));
+            Assert.That(rules.SurvivalSeconds, Is.EqualTo(45f)); // KAN-232: 45 s Chambers (was 2 min, KAN-92)
+            Assert.That(rules.Warnings, Is.EquivalentTo(new[] { 30, 15 }));
         }
 #endif
 

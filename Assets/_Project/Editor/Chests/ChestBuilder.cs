@@ -62,7 +62,7 @@ namespace SurvivorSouls.Editor.Chests
             var config = AssetDatabase.LoadAssetAtPath<ChestDropConfig>(ConfigPath);
             if (config != null) return config;
             EditorAssetUtil.EnsureFolder(DataDir);
-            config = ChestDropConfig.Create(pity: 60f); // pity 60 s (KAN-113: 2 minute Chambers), 2 on the ground, 40 s life, 5 s warning
+            config = ChestDropConfig.Create(pity: 25f); // pity 25 s (KAN-232: 45 s Chambers), 2 on the ground, 40 s life, 5 s warning
             AssetDatabase.CreateAsset(config, ConfigPath);
             AssetDatabase.SaveAssets();
             return config;

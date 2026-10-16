@@ -15,8 +15,8 @@ using UnityEngine;
 namespace SurvivorSouls.Tests
 {
     /// <summary>
-    /// KAN-113 acceptance on the shipped Realm 1 data: the pacing model gives 3-5 Hunter level picks in every regular
-    /// 2 minute Chamber of a run; spawn pressure keeps a strong Knight's field fuller than the table alone; max alive stays
+    /// KAN-113 / KAN-232 acceptance on the shipped Realm 1 data: the pacing model gives 3-4 Hunter level picks in Chamber 1
+    /// and 2-3 in every other regular 45 s Chamber of a 20-Chamber run; spawn pressure keeps a strong Knight's field fuller than the table alone; max alive stays
     /// inside the phone budget; the chest pity clock fits the 2 minute Chamber.
     /// </summary>
     public sealed class ChamberPacingTests
@@ -32,7 +32,7 @@ namespace SurvivorSouls.Tests
         }
 
         [Test]
-        public void ShippedPacing_ThreeToFivePicksPerChamber()
+        public void ShippedPacing_TwoToThreePicksPerChamber()
         {
             string report = BalanceReport.Pacing(Curve(), out var rows);
             Debug.Log("[ChamberPacingTests] " + report);
@@ -42,10 +42,11 @@ namespace SurvivorSouls.Tests
             {
                 if (r.Skipped) continue;
                 regular++;
-                Assert.That(r.Picks, Is.InRange(3, 5), $"Chamber {r.Chamber} ({r.Type}): {r.Picks} picks\n{report}");
+                if (r.Chamber == 1) Assert.That(r.Picks, Is.InRange(3, 4), $"Chamber 1: {r.Picks} picks\n{report}");
+                else Assert.That(r.Picks, Is.InRange(2, 3), $"Chamber {r.Chamber} ({r.Type}): {r.Picks} picks\n{report}");
                 Assert.That(r.PeakAlive, Is.LessThanOrEqualTo(50.5f), $"Chamber {r.Chamber}: phone budget (KAN-44)");
             }
-            Assert.That(regular, Is.GreaterThanOrEqualTo(6), "Realm 1 has regular Chambers to pace");
+            Assert.That(regular, Is.EqualTo(16), "Realm 1: 20 Chambers, 4 of them boss Chambers (KAN-232)");
         }
 
         [Test]
@@ -81,7 +82,7 @@ namespace SurvivorSouls.Tests
         }
 
         [Test]
-        public void ShippedChestPity_FitsTheTwoMinuteChamber()
+        public void ShippedChestPity_FitsTheChamberClock()
         {
             var config = AssetDatabase.LoadAssetAtPath<ChestDropConfig>(ChestBuilder.ConfigPath);
             var rules = AssetDatabase.LoadAssetAtPath<ChamberRules>(ChamberBuilder.RulesPath);
@@ -89,7 +90,7 @@ namespace SurvivorSouls.Tests
             Assert.That(rules, Is.Not.Null);
             Assert.That(config.PitySeconds, Is.LessThanOrEqualTo(rules.SurvivalSeconds * 0.5f + 0.01f),
                 "a Chamber without an elite chest still gets its pity chest early enough to use it");
-            Assert.That(config.PitySeconds, Is.GreaterThanOrEqualTo(30f), "pity is a safety net, not the drop rate");
+            Assert.That(config.PitySeconds, Is.GreaterThanOrEqualTo(20f), "pity is a safety net, not the drop rate");
         }
 
         [Test]

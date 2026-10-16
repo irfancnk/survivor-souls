@@ -14,6 +14,9 @@ namespace SurvivorSouls.Gameplay.World
     /// other three sides; "edge shore" tiles (headlands) close the shore row ends. Invisible walls at the bounds.
     /// Tiles are prefabs made by the editor WorldBuilder; this class only places and pools them (no runtime
     /// mesh generation, so it stays cheap on phones).
+    /// Chamber room (KAN-232): with a room set (<see cref="SetRoom"/>, WorldBuilder: 40 x 40 m), the playable area is that
+    /// rectangle inside the tiles; stone walls (<see cref="RoomWalls"/>) stand on its edges, the exit door is a cell whose
+    /// centre lies inside it, and the tiles beyond the walls stay as scenery.
     /// Walkability (<see cref="IsBlocked"/>) is answered from the tile layout itself: every cell's prefab and rotation
     /// are a pure function of the seed, and each prefab's box colliders are cached once, so loaded and not-yet-loaded
     /// tiles answer the same way with no physics query and no allocation.
@@ -59,6 +62,10 @@ namespace SurvivorSouls.Gameplay.World
         [SerializeField] private Vector3Int keep = new Vector3Int(1, 1, 2);
         [Tooltip("Exit door tile distance from spawn, in tiles (Chebyshev).")]
         [SerializeField] private Vector2Int exitDistance = new Vector2Int(3, 4);
+        [Tooltip("KAN-232: playable room corners (XZ, metres) inside the tiles. Zero size = the whole tile area.")]
+        [SerializeField] private Vector2 roomMin, roomMax;
+        [Tooltip("KAN-232: the exit cell centre stays this far (m) inside the room.")]
+        [SerializeField, Min(0f)] private float exitRoomMargin = 4f;
         [Tooltip("0 = random seed every run.")]
         [SerializeField] private int fixedSeed;
 
@@ -76,9 +83,14 @@ namespace SurvivorSouls.Gameplay.World
         /// <summary>World position of the exit door (tile centre).</summary>
         public Vector3 ExitPosition => CellCentre(ExitCell);
         public float WorldHalfSize => (halfTiles + 0.5f) * tileSize;
-        /// <summary>Playable area corners (XZ, metres). Max Z stops well before the water.</summary>
-        public Vector2 PlayableMin => new Vector2(-WorldHalfSize, -(southRows + 0.5f) * tileSize);
-        public Vector2 PlayableMax => new Vector2(WorldHalfSize, ShoreLineZ - 1.5f);
+        /// <summary>Corners of the tile area the Knight could walk (XZ, metres). Max Z stops well before the water.</summary>
+        public Vector2 TileAreaMin => new Vector2(-WorldHalfSize, -(southRows + 0.5f) * tileSize);
+        public Vector2 TileAreaMax => new Vector2(WorldHalfSize, ShoreLineZ - 1.5f);
+        /// <summary>True when a Chamber room limits the playable area (KAN-232).</summary>
+        public bool HasRoom => roomMax.x > roomMin.x && roomMax.y > roomMin.y;
+        /// <summary>Playable area corners (XZ, metres): the Chamber room inside the tile area (KAN-232), else the tile area.</summary>
+        public Vector2 PlayableMin => HasRoom ? Vector2.Max(TileAreaMin, roomMin) : TileAreaMin;
+        public Vector2 PlayableMax => HasRoom ? Vector2.Min(TileAreaMax, roomMax) : TileAreaMax;
         /// <summary>Average water edge Z (world). The real edge wiggles about a metre around it.</summary>
         public float ShoreLineZ => shoreRow * tileSize + shoreLineLocalZ;
         public event Action<Vector3> ExitPlaced;
@@ -104,6 +116,17 @@ namespace SurvivorSouls.Gameplay.World
         {
             if (fixedSeed != 0) return;
             ApplySeed(seed != 0 ? seed : 1);
+        }
+
+        /// <summary>
+        /// Tests and tools: the Chamber room (KAN-232). <paramref name="min"/> = <paramref name="max"/> = zero removes it.
+        /// Picks the exit again, so it stays inside the room.
+        /// </summary>
+        public void SetRoom(Vector2 min, Vector2 max)
+        {
+            roomMin = min;
+            roomMax = max;
+            if (_seeded) ApplySeed(_seed);
         }
 
         private void ApplySeed(int seed)
@@ -258,7 +281,10 @@ namespace SurvivorSouls.Gameplay.World
             return list[list.Length - 1];
         }
 
-        /// <summary>Random inland cell (not on the shore row) at Chebyshev distance exitDistance from the spawn.</summary>
+        /// <summary>
+        /// Random inland cell (not on the shore row) at Chebyshev distance exitDistance from the spawn; with a room
+        /// (KAN-232) only cells whose centre is <see cref="exitRoomMargin"/> inside it.
+        /// </summary>
         private Vector2Int PickExitCell()
         {
             var rng = new System.Random(_seed);
@@ -267,10 +293,19 @@ namespace SurvivorSouls.Gameplay.World
             for (int x = -halfTiles; x <= halfTiles; x++)
             {
                 int d = Mathf.Max(Mathf.Abs(x), Mathf.Abs(z));
-                if (d >= exitDistance.x && d <= exitDistance.y) cells.Add(new Vector2Int(x, z));
+                if (d < exitDistance.x || d > exitDistance.y) continue;
+                var cell = new Vector2Int(x, z);
+                if (HasRoom && !InsideRoom(CellCentre(cell), exitRoomMargin)) continue;
+                cells.Add(cell);
             }
-            if (cells.Count == 0) return new Vector2Int(halfTiles, 0);
+            if (cells.Count == 0) return HasRoom ? new Vector2Int(0, -1) : new Vector2Int(halfTiles, 0);
             return cells[rng.Next(cells.Count)];
+        }
+
+        private bool InsideRoom(Vector3 p, float margin)
+        {
+            Vector2 min = PlayableMin, max = PlayableMax;
+            return p.x >= min.x + margin && p.x <= max.x - margin && p.z >= min.y + margin && p.z <= max.y - margin;
         }
 
         /// <summary>Playable cells, the cliff ring around them and the shore row ends. Nothing north of the shore (sea).</summary>

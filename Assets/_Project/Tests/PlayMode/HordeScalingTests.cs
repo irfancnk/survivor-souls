@@ -520,7 +520,7 @@ namespace SurvivorSouls.Tests
             Assert.That(scaler.Scaling, Is.Not.Null, "scaling asset wired");
             Assert.That(spawner.Scaling, Is.SameAs(scaler.Scaling), "the spawner got it");
             Assert.That(scaler.Power, Is.EqualTo(1f).Within(0.01f), "new run: bare Knight");
-            Assert.That(timer.Duration, Is.EqualTo(120f), "2 minute Chamber");
+            Assert.That(timer.Duration, Is.EqualTo(45f), "45 s Chamber (KAN-232)");
 
             scaler.PowerOverride = 9f;
             scaler.Refresh();

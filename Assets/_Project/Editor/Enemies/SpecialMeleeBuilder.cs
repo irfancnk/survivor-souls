@@ -66,7 +66,7 @@ namespace SurvivorSouls.Editor.Enemies
             new[] { 0.07f, 0.08f },
         };
 
-        public const float JoinTime = 45f;
+        public const float JoinTime = 12f; // KAN-232: the second phase of the 45 s Chamber (was 45 s of 2 min)
 
         /// <summary>
         /// One-time change of the wave table (KAN-106): every old Brute entry (<see cref="CombatBuilder.BrutePrefabPath"/>) becomes

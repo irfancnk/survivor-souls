@@ -501,7 +501,7 @@ namespace SurvivorSouls.Editor
             string path = $"{RealmsDir}/Realm_{id}.asset";
             var realm = AssetDatabase.LoadAssetAtPath<RealmDefinition>(path);
             if (realm != null) return realm;
-            realm = RealmDefinition.Create(id, displayName, 10, playable, difficulty);
+            realm = RealmDefinition.Create(id, displayName, 20, playable, difficulty); // KAN-232: 20 Chambers per Realm
             realm.Describe(tagline, description, enemies, rewards, 5, accent, thumbnail);
             AssetDatabase.CreateAsset(realm, path);
             return realm;

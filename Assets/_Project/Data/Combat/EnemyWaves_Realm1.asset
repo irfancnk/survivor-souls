@@ -21,7 +21,7 @@ MonoBehaviour:
     maxAlive: 18
     spawnInterval: 1.1
     groupSize: {x: 1, y: 2}
-    burstInterval: 26
+    burstInterval: 10
     burstSize: 5
     enemies:
     - prefab: {fileID: 5335434802141488015, guid: 64dd4dfba50f345cea746a72f7dd7708, type: 3}
@@ -30,11 +30,11 @@ MonoBehaviour:
     - prefab: {fileID: 3682811672515521020, guid: 57f8490f179ba4061acd1f827691a040, type: 3}
       weight: 0.06
       fromChamber: 1
-  - startTime: 45
+  - startTime: 12
     maxAlive: 24
     spawnInterval: 1
     groupSize: {x: 2, y: 3}
-    burstInterval: 24
+    burstInterval: 9
     burstSize: 7
     enemies:
     - prefab: {fileID: 5335434802141488015, guid: 64dd4dfba50f345cea746a72f7dd7708, type: 3}
@@ -64,11 +64,11 @@ MonoBehaviour:
     - prefab: {fileID: 8638987078726056127, guid: 099560f2ae773494e95758cd1cd86065, type: 3}
       weight: 0.03
       fromChamber: 4
-  - startTime: 120
+  - startTime: 24
     maxAlive: 30
     spawnInterval: 0.9
     groupSize: {x: 2, y: 3}
-    burstInterval: 22
+    burstInterval: 8
     burstSize: 9
     enemies:
     - prefab: {fileID: 5335434802141488015, guid: 64dd4dfba50f345cea746a72f7dd7708, type: 3}
@@ -98,11 +98,11 @@ MonoBehaviour:
     - prefab: {fileID: 8638987078726056127, guid: 099560f2ae773494e95758cd1cd86065, type: 3}
       weight: 0.04
       fromChamber: 4
-  - startTime: 240
+  - startTime: 36
     maxAlive: 36
     spawnInterval: 0.8
     groupSize: {x: 2, y: 4}
-    burstInterval: 20
+    burstInterval: 7.5
     burstSize: 12
     enemies:
     - prefab: {fileID: 5335434802141488015, guid: 64dd4dfba50f345cea746a72f7dd7708, type: 3}

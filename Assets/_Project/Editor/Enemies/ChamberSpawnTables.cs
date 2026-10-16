@@ -17,7 +17,7 @@ namespace SurvivorSouls.Editor.Enemies
     public static class ChamberSpawnTables
     {
         public const string Pyre = "PyreThrower", Spitter = "BileSpitter";
-        public const float JoinTime = 45f;
+        public const float JoinTime = 12f; // KAN-232: the second phase of the 45 s Chamber (was 45 s of 2 min)
 
         /// <summary>First Chamber per roster id; ids not listed spawn from Chamber 1.</summary>
         public static readonly (string id, int chamber)[] Gates =

@@ -163,14 +163,18 @@ namespace SurvivorSouls.Tests
         }
 
         [Test]
-        public void ShippedRealm1_MiniBossInChambersTwoAndSeven()
+        public void ShippedRealm1_MiniBossOnTheSecondOfEveryFive()
         {
             var d = UnityEditor.AssetDatabase.LoadAssetAtPath<ChamberDifficulty>(DifficultyPath);
             Assert.That(d, Is.Not.Null, DifficultyPath);
             var minis = new List<int>();
             for (int c = 1; c <= d.ChambersInRealm; c++)
                 if (d.TypeOf(c) == ChamberType.MiniBoss) minis.Add(c);
-            Assert.That(minis, Is.EqualTo(new[] { 2, 7 }));
+            Assert.That(minis, Is.EqualTo(new[] { 2, 7, 12, 17 })); // KAN-232: 20 Chambers
+            var bosses = new List<int>();
+            for (int c = 1; c <= d.ChambersInRealm; c++)
+                if (d.TypeOf(c) == ChamberType.Boss) bosses.Add(c);
+            Assert.That(bosses, Is.EqualTo(new[] { 5, 10, 15, 20 }));
         }
 
         [Test]

@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2030327d8dbab48e394231c7898f9717, type: 3}
   m_Name: ChamberDifficulty_Realm1
   m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Chamber.ChamberDifficulty
-  chambersInRealm: 10
+  chambersInRealm: 20
   bossEvery: 5
   miniBossEvery: 5
   miniBossOffset: 2
