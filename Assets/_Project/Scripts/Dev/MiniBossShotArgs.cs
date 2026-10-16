@@ -54,7 +54,7 @@ namespace SurvivorSouls.Dev
 
         private static string GetArg(string name)
         {
-            var args = System.Environment.GetCommandLineArgs();
+            var args = DevArgs.All; // KAN-179: command line or SS_ARGS (iOS)
             for (int i = 0; i < args.Length - 1; i++)
                 if (args[i] == name) return args[i + 1];
             return null;
