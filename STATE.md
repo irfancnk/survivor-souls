@@ -1056,6 +1056,21 @@
   - Verified: compile 0 errors / 0 new warnings; Game scene rebuild exit 0 (no diff after merging main with KAN-219); EditMode 219 pass; PlayMode 926: 924 pass, 2 skipped (soak), 0 fail (MiniBossAttackTests 11/11, MiniBossTests green); mac dev build + 2 shot runs, 0 exceptions; iOS dev export + xcodebuild + install + launch on iPhone 14 Pro Max OK (charge shot taken on the phone).
   - Limits / follow-up: the dash plays the Brute's Slam / Attack clip (no run-charge clip); no own wind-up / impact sounds yet (KAN-213 feel pass: spawn sound, kill marker, name label, iPhone check); charge damage tuning needs a phone playtest. No version bump (KAN-173 not decided).
 
+- 2026-10-16 (KAN-220, KAN-124.2): the 5 effect skills go to 7 levels (second part of KAN-124 deeper skill levels). Branch `feat/kan-220-effect-skill-levels`. Scheduled-task run r202610161058-4a8a90.
+  - Tables (`Data/Skills/Skill_*.asset` + `SkillsBuilder` seed rows, edit both; levels 1-4 kept, `maxStack` 7, card texts <= 35 chars). Level 7 = milestone:
+    - Ember Bolts: L5 fire 90/s 5 s, 70 % blast, slow 26 %; L6 105/s 6 s, 80 %, 28 %; L7 130/s 6 s, fire spreads to 2 foes per tick (`BurnSpread` 2), 100 % death blast, slow 30 %. Ignite flinch stays 0.2 s.
+    - Soul Burst: 140 % in 3.8 m, 160 % in 4 m, L7 200 % in 4.4 m (bigger jump).
+    - Blood Covenant: heal 14 % + 80 max HP, 16 % + 100, L7 20 % + 160 (bigger jump).
+    - Piercing Bolts: pierce 3 + 25 % damage, pierce 4 + 25 %, L7 pierce 4 + 35 % and a pierce loses 15 % instead of 33 %.
+    - Ricochet: bounce 3 + 25 %, bounce 4 + 25 %, L7 bounce 4 + 35 % and a bounce loses 15 % instead of 30 %.
+  - Code: `StatId.PierceFalloff`, `StatId.BounceFalloff` appended at the END (flat change of the KAN-86 falloff share). `AutoShooter.CurrentPierceFalloff` / `CurrentBounceFalloff` (base + stat, clamped 0..1) feed every `BoltShot`; `PowerSnapshot` reads the same stats.
+  - Tests: `SkillLevelTableTests` sheet rows L5-7, tier rule (7, 7) for the 5 skills, new `EffectSkills_HaveSevenLevels_LevelSevenIsTheMilestone`, new `PierceAndRicochetLevelSeven_BoltsLoseLessPerHit` (shooter falloff 0.33 / 0.3 at L6, 0.15 at L7, power curve reads it, run reset drops it); Ember burn length / radius tests to L7; `EmberPerkTests`, `EmberBurnControlTests`, `EmberPowerCurveTests` to 7 levels (L7 is the biggest crowd step).
+  - Balance (`SingleTargetBalanceTests`, 2000 runs, random card per level-up, no chest upgrades): level 10 single target 2.53x, level 20 4.35x, crowd / single gap 5.4: same as KAN-219 (random picks rarely reach level 5-7 by level 20). A focused build gets the extra power.
+  - Shots (Mac dev 540x1170, `-ss-scene Game -ss-quality Mobile -ss-immortal`): `Docs/screenshots/kan220-levelup-cards-pierce-ricochet-ember.png` (`-ss-run-seed 9001 -ss-delay 5 -ss-skills piercing_bolts:6,ricochet:6,ember_bolts:6 -ss-xp 40 -ss-xp-lead 3 -ss-offer piercing_bolts,ricochet,ember_bolts`: `LV 6 -> 7` cards, 7 pips, L7 texts), `kan220-levelup-cards-burst-covenant.png` (same with `soul_burst:6,blood_covenant:6,sharpened_bolts:1`), `kan220-ember-l7-horde.png` (`-ss-run-seed 7701 -ss-skills ember_bolts:7 -ss-horde 30 -ss-hold 60 -ss-delay 7`: death blast rings; 59 foes, 164 draw calls, frame 17.1 ms on the Mac), `kan220-soulburst-l7.png` (`-ss-run-seed 9001 -ss-skills soul_burst:7 -ss-horde 24 -ss-burst 3,0.15,3 -ss-delay 4`: 4.4 m rings).
+  - Verified: compile 0 errors / 0 new warnings; Game scene rebuild exit 0, no diff; EditMode 219 pass; PlayMode 943: 941 pass, 2 skipped (soak), 0 fail; Mac dev build + 4 shot runs, 0 exceptions.
+  - Limits: the pierce / bounce falloff perk has no own look (only bigger numbers on the 2nd-5th foe). The blazing bolt look (KAN-200) is hottest from Ember L4 (75/s): L5-7 bolts look the same. iPhone pacing / feel check is in KAN-222.
+  - Next: KAN-221 (Double / Spread Shot to 5), then KAN-222 (pacing sim with chests, Confluence sheet, iPhone).
+
 ## DECISIONS
 - Design language: Archero / Archero 2 (menus, loop, chests, daily/weekly quests, gear merge, talents, energy). Look: Dark Souls, realistic, not dismal. User decision 2026-10-11.
 - Naming map: energy=Estus, gold=Souls, gems=Ember Shards, chests=Reliquaries, daily=Oaths, weekly=Pilgrimage, chapter=Realm, room=Chamber. See GAME_PLAN sec 2.
