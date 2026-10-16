@@ -1078,7 +1078,7 @@
   - Tests: `SkillLevelTableTests` sheet rows L4-5, tier rule (5, 5) for both skills (`FiveLevelBoltSkills`), new `BoltSkills_HaveFiveLevels_LevelsFourAndFiveAddDamageNotBolts` (bolt counts flat after L3, side share 50/55/60/70/80 %, follow-up share 100/100/90/100/115 %, maxed at 5); `MultiArrowTests` shipped bolt counts at L4-5 + max level 5.
   - Balance (`SingleTargetBalanceTests`, 2000 runs, random card, no chests): level 10 single target 2.53x, level 20 4.34x: same as KAN-220 (random picks rarely reach level 4-5).
   - Shot (Mac dev 540x1170, `-ss-scene Game -ss-quality Mobile -ss-immortal -ss-run-seed 9001 -ss-delay 5 -ss-skills double_shot:4,multishot:4,sharpened_bolts:1 -ss-xp 40 -ss-xp-lead 3 -ss-offer double_shot,multishot,sharpened_bolts`): `Docs/screenshots/kan221-levelup-cards-double-spread-l5.png` (`LV 4 -> 5` cards, 5 pips, L5 texts).
-  - Verified: compile 0 errors; Game scene rebuild exit 0, no diff; EditMode 219 pass; PlayMode 952: 951 pass after the max-level fix, 2 skipped (soak); Mac dev build + shot, 0 exceptions.
+  - Verified: compile 0 errors; Game scene rebuild exit 0, no diff; EditMode 219 pass; PlayMode 952: 950 pass + 2 skipped (soak) after the max-level test fix (re-run of MultiArrow + SkillLevelTable + SingleTargetBalance: 155/155); Mac dev build + shot, 0 exceptions.
   - Limits: no new look for L4-5 (same bolts, bigger numbers). Pacing with chest upgrades + iPhone check: KAN-222.
 
 ## DECISIONS
