@@ -237,16 +237,17 @@ namespace SurvivorSouls.Editor.Enemies
 
         /// <summary>
         /// Time (s) at which the hands or feet move fastest in the untrimmed clip: the strike (chop, throw, leap, shot release).
-        /// Sampled at 30 Hz on the clip's own skeleton, speeds smoothed over 3 samples.
+        /// Sampled at 30 Hz on the clip's own skeleton, speeds smoothed over 3 samples. <paramref name="handsOnly"/>: the
+        /// hands alone (a cast: the release of the spell, KAN-138).
         /// </summary>
-        public static float StrikeTime(string clipPath)
+        public static float StrikeTime(string clipPath, bool handsOnly = false)
         {
             var clip = LoadClip(clipPath);
             var instance = (GameObject)Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>(clipPath));
             try
             {
                 var bones = instance.GetComponentsInChildren<Transform>(true);
-                var limbs = new[] { "LeftHand", "RightHand", "LeftFoot", "RightFoot" }
+                var limbs = (handsOnly ? new[] { "LeftHand", "RightHand" } : new[] { "LeftHand", "RightHand", "LeftFoot", "RightFoot" })
                     .Select(n => bones.FirstOrDefault(b => b.name == n)).Where(b => b != null).ToArray();
                 if (limbs.Length == 0) return clip.length * 0.5f;
                 int n = Mathf.Max(2, Mathf.CeilToInt(clip.length * 30f));

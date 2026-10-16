@@ -60,6 +60,8 @@ namespace SurvivorSouls.Editor.Audio
             public AudioClip MeleeCloudHiss;
             /// <summary>Shadow Ranger bow shot (KAN-227, KAN-231): finger release tick, short twang, whistling arrow.</summary>
             public AudioClip[] BowTwangs;
+            /// <summary>Hexbound Shaman (KAN-138): wind-up hum, orb ring whoosh, hex chime, raise ground crack, blink pop.</summary>
+            public AudioClip[] ShamanHums, ShamanWhooshes, ShamanChimes, ShamanCracks, ShamanPops;
         }
 
         [MenuItem("Survivor Souls/Rebuild Sounds")]
@@ -125,6 +127,11 @@ namespace SurvivorSouls.Editor.Audio
             set.MeleeBruteSlams = Many("sfx_brute_slam", 2, BruteSlamBoom);
             set.MeleeCloudHiss = Save("sfx_toxic_cloud_hiss_loop", Rate, ToxicHiss(), ambience: false);
             set.BowTwangs = Many(BowTwangName, 3, BowTwang); // KAN-227
+            set.ShamanHums = Many("sfx_shaman_hum", 2, ShamanHum); // KAN-138
+            set.ShamanWhooshes = Many("sfx_shaman_orb_whoosh", 2, ShamanWhoosh);
+            set.ShamanChimes = Many("sfx_shaman_hex_chime", 2, ShamanChime);
+            set.ShamanCracks = Many("sfx_shaman_raise_crack", 2, ShamanCrack);
+            set.ShamanPops = Many("sfx_shaman_blink_pop", 2, ShamanPop);
             return set;
         }
 
@@ -1119,6 +1126,112 @@ namespace SurvivorSouls.Editor.Audio
             foreach (float x in loop) max = Mathf.Max(max, Mathf.Abs(x));
             for (int i = 0; i < loop.Length; i++) loop[i] *= 0.6f / max;
             return loop;
+        }
+
+        /// <summary>
+        /// Shaman wind-up hum (KAN-138, ~0.8 s, the 0.7-0.8 s cast wind-ups): a low throat drone (saw through a dark "oo"
+        /// formant) that swells and rises a fourth, a faint whisper of breath noise on top, and a soft violet shimmer
+        /// (two detuned high sines) that grows towards the release. Fades out fast at the end: the release sound takes over.
+        /// </summary>
+        private static float[] ShamanHum(int seed)
+        {
+            var rng = new System.Random(seed * 9137);
+            float len = 0.8f;
+            var b = new float[(int)(Rate * len)];
+            float v = seed == 1 ? 1f : 1.06f;
+            var f1 = new Biquad(); f1.SetBandPass(300f * v, 3f, Rate);
+            var f2 = new Biquad(); f2.SetBandPass(720f * v, 4f, Rate);
+            var air = new Biquad(); air.SetBandPass(2400f, 1.2f, Rate);
+            double phase = 0, s1 = 0, s2 = 0;
+            for (int i = 0; i < b.Length; i++)
+            {
+                float k = i / (float)b.Length, t = i / (float)Rate;
+                phase += Mathf.Lerp(98f, 131f, k * k) * v * (1f + 0.012f * Mathf.Sin(t * Mathf.PI * 2f * 5.5f)) / Rate;
+                float src = Saw(phase) * 0.7f + Noise(rng) * 0.15f;
+                float env = Mathf.Min(1f, k / 0.25f) * Mathf.Min(1f, (1f - k) / 0.08f) * (0.55f + 0.45f * k);
+                b[i] = (f1.Process(src) * 1.3f + f2.Process(src) * 0.45f) * env;
+                b[i] += air.Process(Noise(rng)) * 0.12f * env * k;                         // whisper
+                s1 += 1046f * v / Rate; s2 += 1052f * v / Rate;
+                b[i] += (Mathf.Sin((float)(s1 * Math.PI * 2)) + Mathf.Sin((float)(s2 * Math.PI * 2))) * 0.05f * k * k * env; // shimmer
+            }
+            return Normalize(b, 0.7f);
+        }
+
+        /// <summary>
+        /// Shaman orb ring (KAN-138, ~0.5 s): a soft airy whoosh going out (band noise sweeping 600 Hz up to 1.8 kHz and
+        /// down), a hollow "whum" under it (sine 190 to 110 Hz) and a faint glassy tail, so it reads as magic, not a swing.
+        /// </summary>
+        private static float[] ShamanWhoosh(int seed)
+        {
+            var rng = new System.Random(seed * 9241);
+            float len = 0.5f;
+            var b = new float[(int)(Rate * len)];
+            float v = seed == 1 ? 1f : 0.93f;
+            var bp = new Biquad();
+            for (int i = 0; i < b.Length; i++)
+            {
+                float k = i / (float)b.Length;
+                float shape = Mathf.Sin(Mathf.Min(1f, k * 1.6f) * Mathf.PI * 0.5f) * (1f - k);
+                bp.SetBandPass(Mathf.Lerp(600f, 1800f, Mathf.Sin(k * Mathf.PI)) * v, 1.4f, Rate);
+                b[i] = bp.Process(Noise(rng)) * shape * 1.1f;
+            }
+            Sweep(b, 0f, 0.35f, 190f * v, 110f * v, 0.35f, 9f, 2);                         // whum
+            Swell(b, 0.05f, 0.4f, 1760f * v, 0.05f, 0.03f, 10f, 1);                         // glassy tail
+            return Normalize(b, 0.68f);
+        }
+
+        /// <summary>
+        /// Shaman hex lands (KAN-138, ~0.8 s): a glassy chime with an eerie edge. Bell partials on E6 (inharmonic 2.76 and
+        /// 5.4 ratios), a second voice a semitone above that beats against it, and a soft low tone under it.
+        /// </summary>
+        private static float[] ShamanChime(int seed)
+        {
+            var rng = new System.Random(seed * 9343);
+            var b = new float[(int)(Rate * 0.8f)];
+            float f = seed == 1 ? 1318.5f : 1244.5f;
+            Click(b, 0f, 0.003f, 0.25f, 9000f, rng);
+            Swell(b, 0.002f, 0.78f, f, 0.22f, 0.004f, 5f, 1);
+            Swell(b, 0.002f, 0.55f, f * 2.76f, 0.08f, 0.004f, 9f, 1);
+            Swell(b, 0.002f, 0.35f, f * 5.4f, 0.04f, 0.004f, 14f, 1);
+            Swell(b, 0.03f, 0.7f, f * 1.0595f, 0.1f, 0.02f, 6f, 1);                        // semitone beat: eerie
+            Swell(b, 0f, 0.6f, f * 0.25f, 0.1f, 0.03f, 6f, 2);                              // low body
+            return Normalize(b, 0.7f);
+        }
+
+        /// <summary>
+        /// Shaman raises the dead (KAN-138, ~0.7 s): an earthy crack. A dull ground split (low noise burst + a click), a deep
+        /// rumble (sine 70 to 38 Hz), then dirt and pebbles falling off (soft low ticks) for half a second.
+        /// </summary>
+        private static float[] ShamanCrack(int seed)
+        {
+            var rng = new System.Random(seed * 9431);
+            var b = new float[(int)(Rate * 0.7f)];
+            float v = seed == 1 ? 1f : 0.92f;
+            Click(b, 0f, 0.005f, 0.7f, 2400f, rng);
+            NoiseBurst(b, 0f, 0.12f, 0.6f, 300f, 2200f, 30f, rng);                          // split
+            NoiseBurst(b, 0.005f, 0.4f, 0.45f, 40f, 380f, 8f, rng);                          // earth body
+            Sweep(b, 0f, 0.5f, 70f * v, 38f * v, 0.8f, 6f, 3);                              // rumble
+            for (int k = 0; k < 12; k++)                                                     // dirt falls
+                Click(b, 0.06f + (float)rng.NextDouble() * 0.5f, 0.004f + (float)rng.NextDouble() * 0.005f,
+                    0.06f + (float)rng.NextDouble() * 0.1f, 1200f + (float)rng.NextDouble() * 1600f, rng);
+            var lp = new Biquad(); lp.SetLowPass(3800f, 0.7f, Rate);
+            for (int i = 0; i < b.Length; i++) b[i] = lp.Process(b[i]);
+            return Normalize(b, 0.82f);
+        }
+
+        /// <summary>
+        /// Shaman blink (KAN-138, ~0.28 s): a small hollow pop (sine glide 260 up to 820 Hz in 90 ms, like a cork) with a
+        /// puff of air; the second clip is a little higher.
+        /// </summary>
+        private static float[] ShamanPop(int seed)
+        {
+            var rng = new System.Random(seed * 9533);
+            var b = new float[(int)(Rate * 0.28f)];
+            float v = seed == 1 ? 1f : 1.12f;
+            Sweep(b, 0f, 0.09f, 260f * v, 820f * v, 0.9f, 28f, 2);
+            NoiseBurst(b, 0.004f, 0.2f, 0.3f, 500f, 3500f, 20f, rng);
+            Swell(b, 0.02f, 0.25f, 1500f * v, 0.06f, 0.01f, 16f, 1);
+            return Normalize(b, 0.6f);
         }
 
         /// <summary>

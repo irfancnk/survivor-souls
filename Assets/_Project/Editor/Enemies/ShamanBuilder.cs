@@ -2,6 +2,7 @@ using SurvivorSouls.Editor.Procedural;
 using SurvivorSouls.Editor.World;
 using SurvivorSouls.Gameplay.Combat;
 using UnityEditor;
+using UnityEditor.Animations;
 using UnityEngine;
 
 namespace SurvivorSouls.Editor.Enemies
@@ -47,7 +48,44 @@ namespace SurvivorSouls.Editor.Enemies
             var raise = EnemyRosterBuilder.LoadPrefab(RaiseId);
             if (raise == null) Debug.LogWarning("[ShamanBuilder] Graveyard Laborer prefab missing: the Shaman cannot raise the dead");
             root.AddComponent<HexShaman>().Configure(Spec, raise);
+            TimeCastStates(root);
         }
+
+        /// <summary>Slowest / fastest Cast and Summon state speed: a clip far off its wind-up keeps a readable motion.</summary>
+        public const float MinCastSpeed = 0.4f, MaxCastSpeed = 3f;
+
+        /// <summary>
+        /// KAN-138: Cast (orb ring, <see cref="HexShaman.Settings.orbWindUp"/>) and Summon (hex / raise,
+        /// <see cref="HexShaman.Settings.castWindUp"/>) state speeds, so the hand peak of the clip (hands moving fastest,
+        /// <see cref="EnemyRosterBuilder.StrikeTime"/>) lands on the release: speed = peak time / wind-up. HexShaman starts the
+        /// state at the wind-up start (cross-fade from time 0).
+        /// </summary>
+        private static void TimeCastStates(GameObject root)
+        {
+            var animator = root.GetComponentInChildren<Animator>(true);
+            var controller = animator != null ? animator.runtimeAnimatorController as AnimatorController : null;
+            if (controller == null)
+            {
+                Debug.LogWarning("[ShamanBuilder] no animator controller: Cast / Summon not timed to the release");
+                return;
+            }
+            foreach (var child in controller.layers[0].stateMachine.states)
+            {
+                var state = child.state;
+                float windUp = WindUpOf(state.name);
+                if (windUp <= 0f || !(state.motion is AnimationClip clip)) continue;
+                float peak = EnemyRosterBuilder.StrikeTime(AssetDatabase.GetAssetPath(clip), handsOnly: true);
+                state.speed = CastSpeed(peak, windUp);
+                Debug.Log($"[ShamanBuilder] {state.name}: hand peak {peak:F2} s of {clip.length:F2} s, wind-up {windUp:F2} s -> speed {state.speed:F2}");
+            }
+            EditorUtility.SetDirty(controller);
+        }
+
+        /// <summary>Wind-up (s) that plays the state <paramref name="state"/>; 0 = not a cast state.</summary>
+        public static float WindUpOf(string state) => state == "Cast" ? Spec.orbWindUp : state == "Summon" ? Spec.castWindUp : 0f;
+
+        /// <summary>State speed that puts a clip time of <paramref name="peak"/> s at <paramref name="windUp"/> s of play.</summary>
+        public static float CastSpeed(float peak, float windUp) => Mathf.Clamp(peak / Mathf.Max(0.05f, windUp), MinCastSpeed, MaxCastSpeed);
 
         // ------------------------------------------------------------ Scene
 

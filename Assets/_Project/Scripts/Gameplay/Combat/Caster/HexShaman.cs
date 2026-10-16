@@ -118,6 +118,12 @@ namespace SurvivorSouls.Gameplay.Combat
         public static event Action<HexShaman, int> Raised;
         /// <summary>A blink ended: caster, from, to.</summary>
         public static event Action<HexShaman, Vector3, Vector3> Blinked;
+        /// <summary>KAN-138: a wind-up started (its warning shows): caster, cast. Sounds.</summary>
+        public static event Action<HexShaman, Cast> CastStarted;
+        /// <summary>KAN-138: a wind-up ended without its release (blink, kill, dead Knight): caster. Sounds stop the cast hum.</summary>
+        public static event Action<HexShaman> Interrupted;
+        /// <summary>KAN-138: a blink started (the Shaman shrinks away): caster, from.</summary>
+        public static event Action<HexShaman, Vector3> BlinkStarted;
 
         [SerializeField] private Settings settings;
         [Tooltip("Spawner type raised by cast B (Graveyard Laborer).")]
@@ -355,6 +361,7 @@ namespace SurvivorSouls.Gameplay.Combat
             _phase = Phase.WindUp;
             _time = 0f;
             Enemy.Halted = true;
+            CastStarted?.Invoke(this, cast);
             return true;
         }
 
@@ -525,6 +532,7 @@ namespace SurvivorSouls.Gameplay.Combat
             Enemy.Halted = true;
             var fx = HexFx.Current;
             if (fx != null) fx.Puff(_blinkFrom);
+            BlinkStarted?.Invoke(this, _blinkFrom);
         }
 
         /// <summary>
@@ -600,6 +608,7 @@ namespace SurvivorSouls.Gameplay.Combat
         /// <summary>Ends a cast or blink: hides its warnings, restores the size, frees the enemy. Orbs in the air fly on.</summary>
         public void Cancel()
         {
+            if (_phase == Phase.WindUp) Interrupted?.Invoke(this);
             for (int i = 0; i < _circles.Length; i++) ReleaseCircle(i, hide: true);
             _planned = 0;
             RestoreScale();
