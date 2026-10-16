@@ -319,7 +319,7 @@ namespace SurvivorSouls.Tests
             HitHandler(ember)(new BoltHit { Enemy = a });
             Assert.That(flare.particleCount, Is.GreaterThan(10), "flash + puffs + sparks");
 
-            ember.EmitFlames(0.25f); // 12 per s x 0.25 s = 3 per burning foe
+            ember.EmitFlames(0.125f); // 24 per s x 0.125 s = 3 per burning foe
             Assert.That(flames.particleCount, Is.EqualTo(3), "flames only on the burning foe");
             Assert.That(cold.IsBurning, Is.False);
 

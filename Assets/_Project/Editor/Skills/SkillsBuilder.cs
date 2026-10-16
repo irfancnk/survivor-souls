@@ -458,6 +458,8 @@ namespace SurvivorSouls.Editor.Skills
             var ringMat = EditorAssetUtil.ParticleMaterial(FxDir + "/M_FX_SoulBurstRing.mat", ringTex, additive: true);
             var glowMat = EditorAssetUtil.ParticleMaterial(FxDir + "/M_FX_SkillGlow.mat", kit.SoftDot, additive: true);
             var wardMat = EditorAssetUtil.LoadOrCreateMaterial(FxDir + "/M_FX_WardBubble.mat", "SurvivorSouls/WardBubble"); // KAN-93
+            // KAN-134: alpha blend, not additive: additive fire vanishes on the white snow of Realm 1.
+            var fireMat = EditorAssetUtil.ParticleMaterial(FxDir + "/M_FX_BurnFlame.mat", kit.SoftDot, additive: false);
 
             return new Dictionary<Fx, SkillEffect>
             {
@@ -469,15 +471,15 @@ namespace SurvivorSouls.Editor.Skills
                     Drag(embers, 1.5f);
                     Set(fx, "embers", embers);
                     // KAN-134: flame tongues on burning foes + the ignite flare: two more shared systems (+2 draw calls).
-                    var flames = Particles(root, "Flames", kit.Flame, 480, new Vector2(0.28f, 0.46f), new Vector2(0.26f, 0.46f),
-                        new Color(1f, 0.82f, 0.45f), new Color(1f, 0.5f, 0.15f));
+                    var flames = Particles(root, "Flames", fireMat, 800, new Vector2(0.32f, 0.52f), new Vector2(0.42f, 0.72f),
+                        new Color(1f, 0.78f, 0.3f), new Color(1f, 0.45f, 0.1f));
                     FlameColour(flames);
                     var fr = flames.GetComponent<ParticleSystemRenderer>();
                     fr.renderMode = ParticleSystemRenderMode.Stretch;
                     fr.velocityScale = 0.12f;
                     fr.lengthScale = 1.5f;
                     Drag(flames, 2f);
-                    var flare = Particles(root, "Ignite Flare", kit.Flame, 240, new Vector2(0.18f, 0.28f), new Vector2(0.4f, 0.65f),
+                    var flare = Particles(root, "Ignite Flare", fireMat, 240, new Vector2(0.18f, 0.28f), new Vector2(0.4f, 0.65f),
                         new Color(1f, 0.7f, 0.25f), new Color(1f, 0.5f, 0.12f));
                     FlameColour(flare);
                     Drag(flare, 6f);
@@ -585,13 +587,13 @@ namespace SurvivorSouls.Editor.Skills
             return ps;
         }
 
-        /// <summary>Fire over its life (KAN-134): white-hot at birth, orange, then a dull red fade.</summary>
+        /// <summary>Fire over its life (KAN-134): yellow at birth, orange, then a dark red fade (alpha blend reads on snow).</summary>
         private static void FlameColour(ParticleSystem ps)
         {
             var col = ps.colorOverLifetime;
             col.enabled = true;
             col.color = PropKit.Gradient(
-                new[] { (Color.white, 0f), (new Color(1f, 0.62f, 0.32f), 0.55f), (new Color(0.75f, 0.22f, 0.08f), 1f) },
+                new[] { (new Color(1f, 0.95f, 0.65f), 0f), (new Color(1f, 0.55f, 0.18f), 0.45f), (new Color(0.5f, 0.12f, 0.05f), 1f) },
                 new[] { (0f, 0f), (1f, 0.08f), (0.75f, 0.5f), (0f, 1f) });
             var sol = ps.sizeOverLifetime;
             sol.enabled = true;

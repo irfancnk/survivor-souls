@@ -42,7 +42,7 @@ namespace SurvivorSouls.Gameplay.Skills.Effects
         [Tooltip("Shared ignite flare: flash + flame puffs + sparks (world space, Emit only).")]
         [SerializeField] private ParticleSystem flare;
         [Tooltip("Flame tongues per second per burning foe.")]
-        [SerializeField, Min(0f)] private float flameRate = 12f;
+        [SerializeField, Min(0f)] private float flameRate = 24f;
         [Tooltip("Burn damage per second that looks coolest (level 1) and hottest (level 4): flame size and lift scale between them.")]
         [SerializeField] private Vector2 heatDps = new Vector2(25f, 75f);
         [Tooltip("Seconds after an ignite flinch before the same foe can flinch again.")]
@@ -293,11 +293,12 @@ namespace SurvivorSouls.Gameplay.Skills.Effects
                 Vector3 root = e.transform.position;
                 for (int k = 0; k < perEnemy; k++)
                 {
-                    Vector2 ring = Random.insideUnitCircle * e.HitRadius * 0.75f;
-                    p.position = root + new Vector3(ring.x, Random.Range(0.15f, e.Height * 0.8f), ring.y);
-                    p.velocity = new Vector3(ring.x * 0.6f, Random.Range(1.1f, 2f) * heat, ring.y * 0.6f);
-                    p.startSize = Random.Range(0.26f, 0.46f) * scale * heat;
-                    p.startLifetime = Random.Range(0.28f, 0.46f);
+                    // On the body's skin, not inside it (the body would hide them), licking up past the shoulders.
+                    Vector2 ring = Random.insideUnitCircle.normalized * (e.HitRadius * Random.Range(0.8f, 1.15f));
+                    p.position = root + new Vector3(ring.x, Random.Range(0.2f, e.Height * 0.95f), ring.y);
+                    p.velocity = new Vector3(ring.x * 0.5f, Random.Range(1.3f, 2.3f) * heat, ring.y * 0.5f);
+                    p.startSize = Random.Range(0.42f, 0.72f) * scale * heat;
+                    p.startLifetime = Random.Range(0.32f, 0.52f);
                     flames.Emit(p, 1);
                 }
             }
@@ -315,7 +316,7 @@ namespace SurvivorSouls.Gameplay.Skills.Effects
             p.velocity = Vector3.zero;
             p.startSize = 1.5f * scale * heat;
             p.startLifetime = 0.14f;
-            p.startColor = new Color(1f, 0.92f, 0.7f);
+            p.startColor = new Color(1f, 0.78f, 0.25f);
             flare.Emit(p, 1);
             for (int i = 0; i < flarePuffs; i++)
             {
