@@ -1268,10 +1268,11 @@
     right: 0;
     bottom: 0;
     background-color: rgba(4, 4, 8, 0.72);
-    border-top-width: 2px;
     border-color: var(--slot-glow);
 }
 
+/* The edge line only while cooling: a 2 px border draws even at 0 % height. */
+.hud-skill--cooling .hud-skill__cooldown { border-top-width: 2px; }
 .hud-skill--cooling .hud-skill__icon { opacity: 0.55; }
 
 /* Level-up shine (shared T_UI_BarShine): sweeps across the box, translate and opacity set in code. */
