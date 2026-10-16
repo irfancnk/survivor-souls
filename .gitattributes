@@ -8,3 +8,14 @@
 *.meta text eol=lf
 *.cs text diff=csharp eol=lf
 # TODO: enable Git LFS for binary assets (png, psd, fbx, wav, ...) once git-lfs is installed
+
+# KAN-228 parallel routines: builder output is never text-merged. On a conflict take main's file
+# (Tools/routine/merge_main.sh does it) and run the builders again. List: Tools/routine/generated_paths.txt
+Assets/_Project/Scenes/Game.unity merge=binary
+Assets/_Project/Scenes/MainMenu.unity merge=binary
+Assets/_Project/Prefabs/World/Tile_*.prefab merge=binary
+Assets/_Project/Art/Characters/**/AC_*.controller merge=binary
+# Append-only notes: keep the lines of both sides
+STATE.md merge=union
+Docs/STATE_ARCHIVE.md merge=union
+CHANGELOG.md merge=union

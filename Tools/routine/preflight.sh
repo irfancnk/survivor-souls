@@ -38,6 +38,8 @@ echo "== KAN keys named in origin/main commit subjects (a ticket here has work o
 git log origin/main --format=%s | grep -oE 'KAN-[0-9]+' | sort -t- -k2 -n -u | tr '\n' ' '
 echo
 
+BUSY_AREAS=""
+LIVE_BRANCHES=""
 echo
 echo "== claims / locks on origin (git side only: also check the last Jira comment before you call one STALE)"
 found=0
@@ -62,12 +64,28 @@ while read -r ref sha ts; do
     state=$([ $((NOW - newest)) -lt $LIVE_SECS ] && echo LIVE || echo STALE)
   fi
   echo "$state $name sha=$sha ref-age=$(age_h "$ts")h newest-activity=$(age_h "$newest")h branch=$branch"
+  if [ "$state" = LIVE ] && [[ $name == claim/* ]]; then
+    areas=$(git log -1 --format=%s "$sha" | sed -n 's/.*areas=\([^ ]*\).*/\1/p')
+    BUSY_AREAS="$BUSY_AREAS ${areas//,/ }"
+    [ "$branch" != "-" ] && LIVE_BRANCHES="$LIVE_BRANCHES origin/$branch"
+  fi
   echo "      $(git log -1 --format=%s "$sha")"
   if [ "$branch" != "-" ]; then
     git diff --name-only "origin/main...origin/$branch" | sed 's/^/      file: /'
   fi
 done < <(git for-each-ref --format='%(refname) %(objectname:short) %(committerdate:unix)' refs/remotes/origin/claim refs/remotes/origin/lock)
 [ $found = 0 ] && echo "(none)"
+
+echo
+echo "== BUSY AREAS (KAN-228: do not pick a ticket whose areas meet one of these)"
+echo "$BUSY_AREAS" | tr ' ' '\n' | grep . | sort | uniq -c | awk '{printf "%s(%s) ", $2, $1} END {print ""}'
+
+echo
+echo "== OVERLAP: files changed on 2+ unmerged feat branches (expect a merge conflict; the later merger resolves it)"
+for b in $(git for-each-ref --format='%(refname:strip=2)' refs/remotes/origin/feat); do
+  [ "$(git rev-list --count "origin/main..$b")" = 0 ] && continue
+  git diff --name-only "origin/main...$b" | sed "s|$| ${b#origin/}|"
+done | sort | awk '{n[$1]++; l[$1]=l[$1]" "$2} END {for (f in n) if (n[f]>1) print f " <-" l[f]}' | head -30
 
 echo
 echo "== origin feat/* branches with commits not on main (claude/* app branches are skipped)"
@@ -133,6 +151,15 @@ echo "dirty=$dirty clean=$clean (of which build-noise-only=$noisy) prunable-rout
 [ $PRUNE = 1 ] && git worktree prune
 echo "Library clone source: ${best_lib:-none} (behind origin/main by $best_behind commits)"
 echo "Unity batch processes: $(echo "$UNITY" | grep -c . || true)"
+
+echo
+echo "== Unity slots (Tools/routine/unity.sh, max ${SS_UNITY_SLOTS:-2} at once)"
+"$TOP/Tools/routine/unity.sh" status 2>/dev/null || echo "(unity.sh missing on this branch)"
+
+echo
+echo "== disk: $(df -h /System/Volumes/Data | awk 'NR==2 {print $4 " free (" $5 " used)"}')"
+free_gb=$(df -g /System/Volumes/Data | awk 'NR==2 {print $4}')
+[ "${free_gb:-0}" -lt 50 ] && echo "WARN: less than 50 GB free: no Mac / iOS build until old scratch builds are deleted (KAN-207)"
 
 echo
 echo "== iPhone lock"

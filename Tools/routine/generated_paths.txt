@@ -1,0 +1,7 @@
+# Files the scene builders write (KAN-228). merge_main.sh takes main's version of these on a conflict, then you rebuild:
+# GameSceneBuilder.BuildFromCommandLine + MainMenuSceneBuilder.BuildFromCommandLine. Never merge them by hand.
+# Same globs are marked merge=binary in .gitattributes, so git never text-merges them into broken YAML.
+Assets/_Project/Scenes/Game.unity
+Assets/_Project/Scenes/MainMenu.unity
+Assets/_Project/Prefabs/World/Tile_*.prefab
+Assets/_Project/Art/Characters/**/AC_*.controller

@@ -171,6 +171,14 @@ namespace SurvivorSouls.Dev
 
         private const float XpLead = 1.5f; // realtime seconds between the XP grant and the capture (cards fully in)
 
+        /// <summary>
+        /// KAN-228: new dev args do NOT go in this file. Put them in an own <c>&lt;Feature&gt;ShotArgs.cs</c> next to it (pattern:
+        /// <see cref="MiniBossShotArgs"/>: own Bootstrap + GetArg) and hook these events. SceneReady: after <c>-ss-scene</c>
+        /// loaded (2 frames). BeforeCapture: last frame before the screenshot (freeze time, pop an effect, frame the camera).
+        /// </summary>
+        public static event Action SceneReady;
+        public static event Action BeforeCapture;
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void Bootstrap()
         {
@@ -295,6 +303,7 @@ namespace SurvivorSouls.Dev
                 yield return null;
                 yield return null;
             }
+            SceneReady?.Invoke(); // KAN-228
             if (_nearExit) MoveNearExit();
             if (!string.IsNullOrEmpty(_pos))
             {
@@ -381,6 +390,7 @@ namespace SurvivorSouls.Dev
                 yield return new WaitForSecondsRealtime(0.3f); // glow near its peak, new pips mid-blink
             }
             if (!string.IsNullOrEmpty(_hitMarker)) ShowHitMarker(_hitMarker == "kill");
+            BeforeCapture?.Invoke(); // KAN-228
             yield return null;
             yield return new WaitForEndOfFrame();
             ScreenCapture.CaptureScreenshot(_path);
