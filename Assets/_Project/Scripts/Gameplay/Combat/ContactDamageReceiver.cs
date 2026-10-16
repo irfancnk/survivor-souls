@@ -41,6 +41,7 @@ namespace SurvivorSouls.Gameplay.Combat
             for (int i = 0; i < enemies.Count; i++)
             {
                 var e = enemies[i];
+                if (e.IsFrozen) continue; // KAN-91: a frozen foe does not bite
                 Vector3 d = e.transform.position - p;
                 float sq = d.x * d.x + d.z * d.z;
                 float r = e.ContactRange;

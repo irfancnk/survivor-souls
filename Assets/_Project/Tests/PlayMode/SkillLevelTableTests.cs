@@ -134,6 +134,10 @@ namespace SurvivorSouls.Tests
             new object[] { "TemporaryShield", 1, new[] { "WardDuration+=3" } }, // Hallowed Shield (KAN-93)
             new object[] { "TemporaryShield", 2, new[] { "WardDuration+=4", "WardCooldown+=-3" } },
             new object[] { "TemporaryShield", 3, new[] { "WardDuration+=5", "WardCooldown+=-6" } },
+            new object[] { "FreezeArrow", 1, new[] { "FreezeDuration+=1.5", "FreezeEvery+=3" } }, // KAN-91
+            new object[] { "FreezeArrow", 2, new[] { "FreezeDuration+=2", "FreezeEvery+=3" } },
+            new object[] { "FreezeArrow", 3, new[] { "FreezeDuration+=2", "FreezeEvery+=2" } },
+            new object[] { "FreezeArrow", 4, new[] { "FreezeDuration+=2.5", "FreezeEvery+=2" } },
         };
 
         [TestCaseSource(nameof(Sheet))]
@@ -168,7 +172,7 @@ namespace SurvivorSouls.Tests
         {
             var rows = Sheet.Cast<object[]>().Select(r => ((string)r[0], (int)r[1])).ToList();
             var skills = Shipped().ToList();
-            Assert.That(skills.Count, Is.EqualTo(15)); // 12 KAN-19 skills + Reliquary Hunter (KAN-72) + Double Shot (KAN-83) + Hallowed Shield (KAN-93)
+            Assert.That(skills.Count, Is.EqualTo(16)); // 12 KAN-19 skills + Reliquary Hunter (KAN-72) + Double Shot (KAN-83) + Hallowed Shield (KAN-93) + Freeze Arrow (KAN-91)
             foreach (var s in skills)
             {
                 string file = s.name.Substring("Skill_".Length);

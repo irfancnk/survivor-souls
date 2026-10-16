@@ -72,6 +72,7 @@ namespace SurvivorSouls.Gameplay.Combat
                 Cancel();
                 return;
             }
+            if (Enemy.IsFrozenSolid) return; // KAN-91: a frozen foe's attack pauses (wind-up and cooldown resume after the thaw)
             if (_cooldown > 0f) _cooldown -= dt;
             if (_phase == Phase.Idle)
             {

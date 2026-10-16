@@ -51,6 +51,10 @@ namespace SurvivorSouls.Gameplay.Skills
         WardCooldown,
         BurnSlow,
         IgniteStun,
+        /// <summary>KAN-91 Freeze Arrow: every Nth bolt hit is a frost hit (N, 0 = no frost).</summary>
+        FreezeEvery,
+        /// <summary>KAN-91 Freeze Arrow: seconds a frost hit freezes a foe (bosses and elites get a share).</summary>
+        FreezeDuration,
     }
 
     /// <summary>Flat adds to the base value; Percent scales it (0.2 = +20 %). Percents from all sources add up.</summary>

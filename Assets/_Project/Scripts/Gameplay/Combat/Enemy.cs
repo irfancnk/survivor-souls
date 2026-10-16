@@ -35,6 +35,10 @@ namespace SurvivorSouls.Gameplay.Combat
     /// Burn control (KAN-134): <see cref="ApplySlow"/> lowers the move speed for a while (highest slow wins, no stacking,
     /// bosses take half) and <see cref="Stun"/> stops the chase for a moment and plays the Hit flinch (not on bosses, with
     /// its own per-enemy cooldown). Ember Bolts uses both when a bolt sets a foe on fire.
+    /// Freeze (KAN-91 Freeze Arrow): <see cref="Freeze"/> roots the foe for a while with an ice tint: no chase, no turning,
+    /// no contact damage (<see cref="ContactDamageReceiver"/>), its special / ranged / hex attacks pause, and the body holds
+    /// its pose (animator stopped, no Hit flinch). Bosses are only rooted and tinted (their attack patterns and clips keep
+    /// their timing). A per-enemy cooldown (from the freeze start) stops a fast fire rate from locking a foe.
     /// </summary>
     public sealed class Enemy : MonoBehaviour
     {
@@ -181,6 +185,10 @@ namespace SurvivorSouls.Gameplay.Combat
         private float _slowLeft;
         private float _stunLeft;     // KAN-134: seconds the chase stays stopped (ignite flinch)
         private float _stunCooldown; // seconds until the next stun may start
+        private float _freezeLeft;     // KAN-91: seconds the foe stays frozen
+        private float _freezeCooldown; // seconds until the next freeze may start
+        private float _freezeTotal;    // length of the running freeze (tint fade)
+        private static readonly Color IceTint = new Color(0.62f, 1.05f, 1.9f); // KAN-91 frozen body (pale blue, HDR)
 
         /// <summary>Northmost Z an enemy may walk to (the sea edge). Set by the spawner from the world; +inf = no limit.</summary>
         public static float LandMaxZ = float.PositiveInfinity;
@@ -272,6 +280,14 @@ namespace SurvivorSouls.Gameplay.Combat
         public bool IsStunned => _stunLeft > 0f && IsAlive;
         /// <summary>Seconds until this enemy can be stunned again (0 = ready).</summary>
         public float StunCooldown => Mathf.Max(0f, _stunCooldown);
+        /// <summary>Frozen by <see cref="Freeze"/> (KAN-91): rooted, no contact damage, attacks paused, ice tint.</summary>
+        public bool IsFrozen => _freezeLeft > 0f && IsAlive;
+        /// <summary>Seconds of freeze left (0 when not frozen).</summary>
+        public float FreezeLeft => IsFrozen ? _freezeLeft : 0f;
+        /// <summary>Seconds until a new <see cref="Freeze"/> may start on this foe.</summary>
+        public float FreezeCooldown => Mathf.Max(0f, _freezeCooldown);
+        /// <summary>Frozen and not a boss: the body holds its pose and plays no attack.</summary>
+        public bool IsFrozenSolid => !isBoss && IsFrozen;
         /// <summary>A slow never takes more than this share of the move speed.</summary>
         public const float MaxSlow = 0.8f;
         /// <summary>Share of a slow a boss takes (KAN-134: bosses half).</summary>
@@ -308,6 +324,8 @@ namespace SurvivorSouls.Gameplay.Combat
             _slowLeft = 0f;
             _stunLeft = 0f;
             _stunCooldown = 0f;
+            _freezeLeft = 0f;
+            _freezeCooldown = 0f;
             _burnPhase = UnityEngine.Random.value * Mathf.PI * 2f;
             _detourSide = UnityEngine.Random.value < 0.5f ? -1f : 1f;
             _detouring = false;
@@ -496,13 +514,28 @@ namespace SurvivorSouls.Gameplay.Combat
             if (!IsAlive || isBoss || seconds <= 0f || _stunCooldown > 0f) return false;
             _stunLeft = seconds;
             _stunCooldown = Mathf.Max(seconds, cooldown);
-            if (_hasHit && !_attacking && _hitLeft <= 0f && animator != null && animator.isActiveAndEnabled)
+            if (_hasHit && !_attacking && _hitLeft <= 0f && !IsFrozenSolid && animator != null && animator.isActiveAndEnabled)
             {
                 _hitLeft = hitHold;
                 _hitCooldown = HitCooldown;
                 animator.speed = 1f;
                 animator.CrossFadeInFixedTime(_hitHash, HitBlend, 0, 0f);
             }
+            return true;
+        }
+
+        /// <summary>
+        /// Freezes the foe for <paramref name="seconds"/> (KAN-91 Freeze Arrow): see the class summary for what a frozen foe
+        /// does. Refused for dead foes and while the last freeze's <paramref name="cooldown"/> (s, counted from its start)
+        /// runs. The caller picks the length (Freeze Arrow gives bosses and elites a shorter one). Returns true when it took.
+        /// </summary>
+        public bool Freeze(float seconds, float cooldown)
+        {
+            if (!IsAlive || seconds <= 0f || _freezeCooldown > 0f) return false;
+            _freezeLeft = seconds;
+            _freezeTotal = seconds;
+            _freezeCooldown = Mathf.Max(seconds, cooldown);
+            _hitLeft = 0f; // a running flinch ends: the body holds the pose it has now
             return true;
         }
 
@@ -535,7 +568,7 @@ namespace SurvivorSouls.Gameplay.Combat
         /// <summary>Short Hit state on a direct hit, unless attacking, already flinching or flinched within <see cref="HitCooldown"/>.</summary>
         private void Flinch()
         {
-            if (!_hasHit || _attacking || _hitLeft > 0f || _hitCooldown > 0f || !animator.isActiveAndEnabled) return;
+            if (!_hasHit || _attacking || _hitLeft > 0f || _hitCooldown > 0f || IsFrozenSolid || !animator.isActiveAndEnabled) return;
             _hitLeft = hitHold;
             _hitCooldown = HitCooldown;
             animator.speed = 1f;
@@ -548,6 +581,7 @@ namespace SurvivorSouls.Gameplay.Combat
             _deadTime = 0f;
             _deathStart = transform.rotation;
             _hitLeft = 0f;
+            _freezeLeft = 0f; // KAN-91: a frozen foe thaws as it dies (the death clip plays)
             if (animator == null) return;
             if (_hasDeath && animator.isActiveAndEnabled)
             {
@@ -578,7 +612,7 @@ namespace SurvivorSouls.Gameplay.Combat
                 Vector3 to = _target.position - pos;
                 to.y = 0f;
                 dist = to.magnitude;
-                if (dist > 0.01f && _stunLeft <= 0f) // KAN-134: a stunned foe stands (crowd push and knockback still move it)
+                if (dist > 0.01f && _stunLeft <= 0f && _freezeLeft <= 0f) // KAN-134 / KAN-91: a stunned foe stands (crowd push and knockback still move it)
                 {
                     Vector3 heading = to / dist;
                     if (holdMax > 0f) move = KeepDistance(pos, heading, dist, dt);
@@ -638,6 +672,12 @@ namespace SurvivorSouls.Gameplay.Combat
         {
             if (animator == null || !_synced) return;
             if (dt <= 0f) return; // paused (timeScale 0): speed = 0 / 0 would poison _groundSpeed and freeze the walk for good
+            if (IsFrozenSolid) // KAN-91: hold the pose; the walk / attack logic resumes where it was after the thaw
+            {
+                animator.speed = 0f;
+                _groundSpeed = 0f;
+                return;
+            }
             float dx = to.x - from.x, dz = to.z - from.z;
             float speed = Mathf.Sqrt(dx * dx + dz * dz) / dt;
             _groundSpeed += (speed - _groundSpeed) * (1f - Mathf.Exp(-dt * 10f));
@@ -790,6 +830,8 @@ namespace SurvivorSouls.Gameplay.Combat
             if (_slowLeft > 0f && (_slowLeft -= dt) <= 0f) { _slowLeft = 0f; _slow = 0f; }
             if (_stunLeft > 0f) _stunLeft -= dt;
             if (_stunCooldown > 0f) _stunCooldown -= dt;
+            if (_freezeLeft > 0f && (_freezeLeft -= dt) <= 0f) _freezeLeft = 0f;
+            if (_freezeCooldown > 0f) _freezeCooldown -= dt;
         }
 
         private void UpdateBurn(float dt)
@@ -826,6 +868,11 @@ namespace SurvivorSouls.Gameplay.Combat
             {
                 float pulse = 0.55f + 0.25f * Mathf.Sin(Time.time * 11f + _burnPhase);
                 c = Color.Lerp(c, BurnTint, pulse * Mathf.Clamp01(_burnLeft / 0.3f));
+            }
+            if (_freezeLeft > 0f) // KAN-91: ice over fire and hex; fades in fast, thaws over the last 0.3 s
+            {
+                float k = Mathf.Clamp01(_freezeLeft / 0.3f) * Mathf.Clamp01((_freezeTotal - _freezeLeft) / 0.08f + 0.35f);
+                c = Color.Lerp(c, IceTint, 0.9f * k);
             }
             if (_flash > 0f)
             {
