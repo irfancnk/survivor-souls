@@ -25,6 +25,7 @@ namespace SurvivorSouls.Audio
         [SerializeField, Min(0f)] private float minInterval = 0.06f;
 
         private AudioSource[] _pool;
+        private float[] _busyUntil; // own voice clock (unscaled s): does not depend on the audio device
         private float _last = float.NegativeInfinity;
         private int _lastClip = -1;
 
@@ -41,6 +42,8 @@ namespace SurvivorSouls.Audio
         private void Awake()
         {
             _pool = new AudioSource[voices];
+            _busyUntil = new float[voices];
+            for (int i = 0; i < voices; i++) _busyUntil[i] = float.NegativeInfinity;
             for (int i = 0; i < voices; i++)
             {
                 var go = new GameObject($"Soul Burst Voice {i}");
@@ -62,10 +65,11 @@ namespace SurvivorSouls.Audio
         {
             if (bursts == null || bursts.Length == 0 || _pool == null) return false;
             if (now - _last < minInterval) { Dropped++; return false; }
-            AudioSource free = null;
+            int slot = -1;
             for (int i = 0; i < _pool.Length; i++)
-                if (!_pool[i].isPlaying) { free = _pool[i]; break; }
-            if (free == null) { Dropped++; return false; }
+                if (now >= _busyUntil[i]) { slot = i; break; }
+            if (slot < 0) { Dropped++; return false; }
+            var free = _pool[slot];
             _last = now;
             int c = Random.Range(0, bursts.Length);
             if (bursts.Length > 1 && c == _lastClip) c = (c + 1) % bursts.Length;
@@ -76,6 +80,7 @@ namespace SurvivorSouls.Audio
             free.pitch = 1f + chainPitchStep * Mathf.Min(d, 6) + Random.Range(-pitchJitter, pitchJitter);
             free.volume = v * GameSettings.SfxVolume;
             free.Play();
+            _busyUntil[slot] = now + bursts[c].length / Mathf.Max(0.1f, free.pitch);
             Played++;
             return true;
         }

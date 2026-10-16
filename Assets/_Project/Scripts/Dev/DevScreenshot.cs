@@ -49,6 +49,8 @@ namespace SurvivorSouls.Dev
     /// disabled "x0" button.
     /// <c>-ss-pick &lt;card&gt;[,&lt;seconds&gt;]</c> (KAN-54, with -ss-xp) picks card 0-2 once picks arm and captures that many
     /// unscaled seconds later (default 0.12: pulse peak, pick burst out) with the pick animation frozen.
+    /// <c>-ss-burst &lt;seconds&gt;[,&lt;freeze&gt;[,&lt;count&gt;]]</c> (KAN-66, with -ss-skills soul_burst) kills the nearest enemies that long
+    /// after load and stops time freeze s later, so the capture shows the Soul Burst explosion mid-way.
     /// <c>-ss-xp-lead &lt;seconds&gt;</c> (KAN-159) replaces the 1.5 s between the -ss-xp grant and the capture (e.g. 1.0 shows the
     /// skill cards mid slot-machine roll; the Knight's level-up burst opens the pick ~0.5 s after the grant).
     /// <c>-ss-horde &lt;n&gt;</c> places n enemies (wave table mix of the last phase) on a ring 4-11 m round the player after
@@ -132,6 +134,7 @@ namespace SurvivorSouls.Dev
         private string _offer;
         private int _rerolls;
         private string _pick; // -ss-pick (KAN-54)
+        private string _burst; // -ss-burst (KAN-66)
         private float _xpLead = XpLead; // -ss-xp-lead (KAN-159): shorter = capture the skill reel mid-roll
         private int _horde;
         private float _hordePower;
@@ -200,6 +203,7 @@ namespace SurvivorSouls.Dev
             shot._offer = GetArg("-ss-offer");
             shot._rerolls = int.TryParse(GetArg("-ss-reroll"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int rr) ? rr : 0;
             shot._pick = GetArg("-ss-pick");
+            shot._burst = GetArg("-ss-burst"); // KAN-66
             if (float.TryParse(GetArg("-ss-xp-lead"), NumberStyles.Float, CultureInfo.InvariantCulture, out float xl)) shot._xpLead = Mathf.Max(0f, xl);
             shot._openChest = GetArg("-ss-open-chest");
             shot._xp = int.TryParse(GetArg("-ss-xp"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int x) ? x : 0;
@@ -303,6 +307,7 @@ namespace SurvivorSouls.Dev
 
             if (_souls > 0) DropSouls(_souls);
             if (_soulsPull >= 0f) StartCoroutine(PullSouls(_soulsPull, _soulsFreeze));
+            if (!string.IsNullOrEmpty(_burst)) StartCoroutine(SoulBurstShot(_burst)); // KAN-66
             if (_immortal)
             {
                 foreach (var c in FindObjectsByType<ContactDamageReceiver>()) c.enabled = false;
@@ -653,6 +658,34 @@ namespace SurvivorSouls.Dev
             cc.enabled = false;
             player.transform.position = position;
             cc.enabled = true;
+        }
+
+        /// <summary>
+        /// -ss-burst (KAN-66): &lt;seconds&gt;[,&lt;freeze&gt;[,&lt;count&gt;]] after load, kills the count (default 3) live enemies nearest
+        /// the Knight (with Soul Burst owned, each bursts), then stops time freeze seconds later (default 0.15: explosion mid-way).
+        /// </summary>
+        private static IEnumerator SoulBurstShot(string arg)
+        {
+            string[] a = arg.Split(',');
+            float after = float.Parse(a[0], CultureInfo.InvariantCulture);
+            float freeze = a.Length > 1 ? float.Parse(a[1], CultureInfo.InvariantCulture) : 0.15f;
+            int count = a.Length > 2 ? int.Parse(a[2], CultureInfo.InvariantCulture) : 3;
+            yield return new WaitForSeconds(after);
+            var player = FindAnyObjectByType<PlayerMover>();
+            var list = new System.Collections.Generic.List<Enemy>(Enemy.Active);
+            Vector3 p = player != null ? player.transform.position : Vector3.zero;
+            list.Sort((x, y) => (x.transform.position - p).sqrMagnitude.CompareTo((y.transform.position - p).sqrMagnitude));
+            int killed = 0;
+            foreach (var e in list)
+            {
+                if (killed >= count) break;
+                if (e == null || !e.IsAlive) continue;
+                e.TakeDamage(e.Health + 1f, e.transform.position - p);
+                killed++;
+            }
+            Debug.Log($"[DevScreenshot] -ss-burst: killed {killed} at t={Time.time:F2}, freeze in {freeze:F2} s");
+            yield return new WaitForSeconds(freeze);
+            Time.timeScale = 0f;
         }
 
         private static IEnumerator PullSouls(float after, float freeze)

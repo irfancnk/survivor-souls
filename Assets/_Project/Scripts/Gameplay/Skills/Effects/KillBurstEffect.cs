@@ -232,8 +232,8 @@ namespace SurvivorSouls.Gameplay.Skills.Effects
             }
         }
 
-        private int MergedFire(int weight) => Mathf.Min(fireCount + 4, fireCount + 2 * Mathf.Max(0, weight - 1));
-        private int MergedSparks(int weight) => Mathf.Min(sparkCount + 6, sparkCount + 3 * Mathf.Max(0, weight - 1));
+        private int MergedFire(int weight) => fireCount + 2 * Mathf.Clamp(weight - 1, 0, 2);
+        private int MergedSparks(int weight) => sparkCount + 3 * Mathf.Clamp(weight - 1, 0, 2);
 
         private void PlayFx(Vector3 centre, int depth, int weight)
         {

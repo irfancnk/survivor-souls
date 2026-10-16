@@ -197,18 +197,21 @@ namespace SurvivorSouls.Tests
         }
 
         [Test]
-        public void BurstSound_RateLimited_AndQuieterDownTheChain()
+        public void BurstSound_RateLimited_AndVoiceCapped()
         {
             var sounds = Track(new GameObject("Soul Burst Sounds")).AddComponent<SoulBurstSounds>();
-            var clip = AudioClip.Create("burst", 4410, 1, 44100, false);
+            var clip = AudioClip.Create("burst", 44100, 1, 44100, false);
             Track(clip);
             sounds.Setup(new[] { clip });
             Assert.That(sounds.Voices, Is.EqualTo(3), "voice cap");
             Assert.That(sounds.Play(0, 10f), Is.True);
             Assert.That(sounds.Play(1, 10.01f), Is.False, "two bursts in one moment give one sound");
             Assert.That(sounds.Play(1, 10.2f), Is.True);
-            Assert.That(sounds.Played, Is.EqualTo(2));
-            Assert.That(sounds.Dropped, Is.EqualTo(1));
+            Assert.That(sounds.Play(2, 10.3f), Is.True);
+            Assert.That(sounds.Play(3, 10.4f), Is.False, "3 voices still ring (1 s clip): the 4th burst is dropped");
+            Assert.That(sounds.Play(3, 11.2f), Is.True, "the first voice is free again");
+            Assert.That(sounds.Played, Is.EqualTo(4));
+            Assert.That(sounds.Dropped, Is.EqualTo(2));
         }
     }
 }
