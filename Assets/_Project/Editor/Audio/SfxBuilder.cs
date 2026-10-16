@@ -11,7 +11,7 @@ namespace SurvivorSouls.Editor.Audio
     /// Each sound = layers of simple DSP parts (decaying sines, filtered noise bursts, pitch sweeps).
     /// Tune a sound: change its layer numbers below, run "Survivor Souls/Rebuild Sounds", listen in the editor.
     /// </summary>
-    public static class SfxBuilder
+    public static partial class SfxBuilder
     {
         public const string Dir = "Assets/_Project/Audio/Sfx";
         /// <summary>File name stem of the Shadow Ranger bow shots (KAN-227): <c>sfx_bow_twang_01..03.wav</c>.</summary>

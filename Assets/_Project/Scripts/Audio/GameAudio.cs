@@ -41,6 +41,8 @@ namespace SurvivorSouls.Audio
         [SerializeField] private ChestDropper chests;
         [Tooltip("HUD skill row (KAN-74): chime when an owned skill's slot glows after a level-up.")]
         [SerializeField] private SkillHud skillHud;
+        [Tooltip("Zombie deaths (KAN-234): set = enemy kills play there; the deaths clips below stay for the player death and the boss groans.")]
+        [SerializeField] private ZombieDeathSounds zombieDeaths;
 
         [Header("Clips")]
         [SerializeField] private AudioClip[] shots;
@@ -309,7 +311,7 @@ namespace SurvivorSouls.Audio
 
         private void OnDamaged(Enemy enemy, float amount, bool killed)
         {
-            if (killed && Time.unscaledTime - _lastDeath >= deathInterval)
+            if (killed && zombieDeaths == null && Time.unscaledTime - _lastDeath >= deathInterval) // KAN-234: else ZombieDeathSounds
             {
                 _lastDeath = Time.unscaledTime;
                 Play(deaths, deathVolume, 0.08f);
