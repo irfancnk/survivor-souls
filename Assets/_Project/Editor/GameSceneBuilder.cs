@@ -140,6 +140,7 @@ namespace SurvivorSouls.Editor
             SetRef(audio, "skillHud", choice.GetComponent<SkillHud>()); // chime when a skill slot glows after a level-up (KAN-74)
             SetRef(audio, "boss", boss); // boss groans + slam thud
             CreateChargeSounds(audio.gameObject, sfx, boss); // charge growl, dash, stop / crash (KAN-168)
+            CreateSoulBurstSounds(audio.gameObject, sfx); // Soul Burst whump + dark chime, 3 voices (KAN-66)
             // Knight hurt feel (KAN-187): hit direction arc, hit-stop, shake, haptic, grunt + low-health heartbeat
             HurtFeedbackBuilder.Create(health, camera.GetComponent<TopDownFollowCamera>(), camera, choice.gameObject, audio.gameObject, sfx);
             BossBuilder.CreateLaneSmoke(kit, boss.transform.parent); // smoke wisps along every warning lane (KAN-167)
@@ -318,6 +319,15 @@ namespace SurvivorSouls.Editor
             SetClips(so.FindProperty("dashes"), sfx.ChargeDashes);
             SetClips(so.FindProperty("stops"), sfx.ChargeStops);
             SetClips(so.FindProperty("crashes"), sfx.ChargeCrashes);
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        /// <summary>Soul Burst sound (KAN-66): own small voice pool on the audio object.</summary>
+        private static void CreateSoulBurstSounds(GameObject host, SfxBuilder.Set sfx)
+        {
+            var sounds = host.AddComponent<SoulBurstSounds>();
+            var so = new SerializedObject(sounds);
+            SetClips(so.FindProperty("bursts"), sfx.SoulBursts);
             so.ApplyModifiedPropertiesWithoutUndo();
         }
 

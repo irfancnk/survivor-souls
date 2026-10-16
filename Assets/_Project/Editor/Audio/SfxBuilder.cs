@@ -45,6 +45,8 @@ namespace SurvivorSouls.Editor.Audio
             public AudioClip[] KnightGrunts;
             /// <summary>Low-health heartbeat (KAN-187): one quiet lub-dub, replayed at the beat rate.</summary>
             public AudioClip Heartbeat;
+            /// <summary>Soul Burst (KAN-66): dull low whump with a short dark chime tail.</summary>
+            public AudioClip[] SoulBursts;
         }
 
         [MenuItem("Survivor Souls/Rebuild Sounds")]
@@ -94,6 +96,7 @@ namespace SurvivorSouls.Editor.Audio
             set.ChargeRumble = Save("amb_charge_rumble_loop", AmbienceRate, ChargeRumble(AmbienceRate, 2f, 17), ambience: false);
             set.KnightGrunts = Many("sfx_knight_grunt", 3, KnightGrunt); // KAN-187
             set.Heartbeat = Save("sfx_heartbeat_01", Rate, Heartbeat(), ambience: false); // KAN-187
+            set.SoulBursts = Many("sfx_soul_burst", 2, SoulBurst); // KAN-66
             return set;
         }
 
@@ -753,6 +756,26 @@ namespace SurvivorSouls.Editor.Audio
             var lp = new Biquad(); lp.SetLowPass(260f, 0.7f, Rate);
             for (int i = 0; i < b.Length; i++) b[i] = lp.Process(b[i]);
             return Normalize(b, 0.85f);
+        }
+
+        /// <summary>
+        /// Soul Burst (KAN-66, ~0.6 s): a dull low "whump" (falling sine + muffled noise body, low-passed), a soft air puff,
+        /// and a short dark chime tail (minor third, low bell partials) that dies fast. Quiet top end: many play in a chain.
+        /// </summary>
+        private static float[] SoulBurst(int seed)
+        {
+            var rng = new System.Random(seed * 6607);
+            var b = new float[(int)(Rate * 0.62f)];
+            float v = seed == 1 ? 1f : 0.94f;
+            Sweep(b, 0f, 0.3f, 96f * v, 38f * v, 1f, 12f, 2);                 // whump
+            NoiseBurst(b, 0f, 0.16f, 0.5f, 50f, 380f, 18f, rng);               // muffled body
+            NoiseBurst(b, 0.005f, 0.22f, 0.12f, 700f, 2600f, 14f, rng);        // air puff
+            var lp = new Biquad(); lp.SetLowPass(900f, 0.7f, Rate);
+            for (int i = 0; i < b.Length; i++) b[i] = lp.Process(b[i]);
+            Swell(b, 0.03f, 0.55f, 293.7f * v, 0.13f, 0.01f, 7f, 2);          // D4
+            Swell(b, 0.05f, 0.5f, 349.2f * v, 0.09f, 0.01f, 8f, 2);           // F4: dark minor third
+            Sweep(b, 0.03f, 0.35f, 293.7f * 2.76f * v, 293.7f * 2.76f * v, 0.03f, 14f, 1); // bell partial
+            return Normalize(b, 0.8f);
         }
 
         /// <summary>
