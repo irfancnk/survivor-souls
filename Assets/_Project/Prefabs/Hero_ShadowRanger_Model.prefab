@@ -76,7 +76,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d2d15f03167544608aa3bfc7e83fcc3d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Heroes.BowShootDriver
-  animator: {fileID: 8489685110399842474}
+  animator: {fileID: 7224415010387945355}
   releaseAt: 0.63
 --- !u!1001 &1187501368823870941
 PrefabInstance:
@@ -269,32 +269,32 @@ PrefabInstance:
       insertIndex: -1
       addedObject: {fileID: 4038464853213427085}
     m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: f39141b4cefd94ba4bddf4e08c977933, type: 3}
+    - targetCorrespondingSourceObject: {fileID: 636916370207160397, guid: f39141b4cefd94ba4bddf4e08c977933, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 8489685110399842474}
+      addedObject: {fileID: 7224415010387945355}
   m_SourcePrefab: {fileID: 100100000, guid: f39141b4cefd94ba4bddf4e08c977933, type: 3}
 --- !u!4 &1724987824441397814 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: f39141b4cefd94ba4bddf4e08c977933, type: 3}
   m_PrefabInstance: {fileID: 1187501368823870941}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &2070446253845792908 stripped
+--- !u!1 &1777815900458405264 stripped
 GameObject:
-  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: f39141b4cefd94ba4bddf4e08c977933, type: 3}
+  m_CorrespondingSourceObject: {fileID: 636916370207160397, guid: f39141b4cefd94ba4bddf4e08c977933, type: 3}
   m_PrefabInstance: {fileID: 1187501368823870941}
   m_PrefabAsset: {fileID: 0}
---- !u!95 &8489685110399842474
+--- !u!95 &7224415010387945355
 Animator:
   serializedVersion: 7
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2070446253845792908}
+  m_GameObject: {fileID: 1777815900458405264}
   m_Enabled: 1
   m_Avatar: {fileID: 0}
   m_Controller: {fileID: 9100000, guid: b7a54e14817df403fbcd4624bbffff76, type: 2}
-  m_CullingMode: 1
+  m_CullingMode: 0
   m_UpdateMode: 0
   m_ApplyRootMotion: 0
   m_LinearVelocityBlending: 0
