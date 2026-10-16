@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1709ed5b559c24e4a9274a390c225bcd, type: 3}
+  m_Name: MiniBoss_Realm1_Gravewarden
+  m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.MiniBosses.MiniBossData
+  displayName: Gravewarden Brute
+  enemyType: Enemy_GraveBrute
+  healthMultiplier: 4
+  sizeMultiplier: 1.35
+  tint: {r: 1.25, g: 0.55, b: 0.45, a: 1}
+  auraColor: {r: 0.62, g: 0.05, b: 0.04, a: 0.9}
+  auraRadius: 1.1
+  spawnDelay: 20
+  warningTime: 1.6
+  warningRadius: 1.8
+  spawnDistance: 6.5
+  bonusXp: 100
+  bonusWisps: 6
+  chestTier: 0
+  chestChoices: 3
+  chestUpgrades: 1
+  hunterBonusUpgrades: 1
+  hunterSkillId: reliquary_hunter

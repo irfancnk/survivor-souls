@@ -8,7 +8,8 @@ using UnityEngine.UIElements;
 namespace SurvivorSouls.UI.Hud
 {
     /// <summary>
-    /// World-anchored combat UI on the HUD document: a thin health bar over every wounded living enemy (KAN-30: a fresh
+    /// World-anchored combat UI on the HUD document: a thin health bar over every wounded living enemy and a wider one over
+    /// the mini boss from its rise, also at full health (KAN-23) (KAN-30: a fresh
     /// horde shows no bars, which keeps the screen readable and the per-frame UI work small) and a
     /// floating "-N" number per hit (health actually deducted; red on the killing blow, gold "N!" on a crit, small orange for
     /// fire ticks, pale blue for soul bursts), and "+N SHARDS" in ember red over a Rare chest that gave Ember Shards (KAN-97).
@@ -22,6 +23,7 @@ namespace SurvivorSouls.UI.Hud
         private const string LayerClass = "combat-layer";
         private const string BarClass = "combat-bar";
         private const string BarFillClass = "combat-bar__fill";
+        private const string BarMiniBossClass = "combat-bar--miniboss"; // KAN-23: wider, always on
         private const string NumberClass = "combat-number";
         private const string NumberKillClass = "combat-number--kill";
         private const string NumberCritClass = "combat-number--crit";
@@ -121,7 +123,7 @@ namespace SurvivorSouls.UI.Hud
         {
             _stale.Clear();
             foreach (var kv in _bars)
-                if (!kv.Key.IsAlive || !kv.Key.IsHurt || !kv.Key.isActiveAndEnabled) _stale.Add(kv.Key);
+                if (!kv.Key.IsAlive || !(kv.Key.IsHurt || kv.Key.IsMiniBoss) || !kv.Key.isActiveAndEnabled) _stale.Add(kv.Key);
             foreach (var e in _stale)
             {
                 var bar = _bars[e];
@@ -132,11 +134,13 @@ namespace SurvivorSouls.UI.Hud
 
             foreach (var enemy in Enemy.Active)
             {
-                if (!enemy.IsHurt || enemy.IsBoss) continue; // the boss has the HUD bar (BossHud)
+                // the boss has the HUD bar (BossHud); the mini boss shows its bar from the rise (KAN-23)
+                if (!(enemy.IsHurt || enemy.IsMiniBoss) || enemy.IsBoss) continue;
                 if (!_bars.TryGetValue(enemy, out var bar))
                 {
                     bar = _freeBars.Count > 0 ? _freeBars.Pop() : NewBar();
                     bar.Root.style.display = DisplayStyle.Flex;
+                    bar.Root.EnableInClassList(BarMiniBossClass, enemy.IsMiniBoss);
                     _bars[enemy] = bar;
                 }
                 bar.Fill.style.width = Length.Percent(100f * enemy.Health / enemy.MaxHealth);

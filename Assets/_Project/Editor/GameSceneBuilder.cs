@@ -154,6 +154,7 @@ namespace SurvivorSouls.Editor
             SetRef(choice.gameObject.AddComponent<BossHud>(), "fight", boss); // boss bar in the timer's place
             SetRef(choice.gameObject.AddComponent<BossBannerHud>(), "fight", boss); // name at the intro, "felled" at the kill (KAN-62)
             BossBuilder.CreateReward(boss, chests, skills, progression.Flow, progression.Xp); // guaranteed reward pick (KAN-62)
+            SurvivorSouls.Editor.MiniBoss.MiniBossBuilder.Create(kit, spawner, health, chests, skills, progression.Flow, progression.Xp, progression.Souls); // mini boss Chambers (KAN-23)
 
             StableAssetWriter.Remember(ScenePath);
             EditorSceneManager.SaveScene(scene, ScenePath);

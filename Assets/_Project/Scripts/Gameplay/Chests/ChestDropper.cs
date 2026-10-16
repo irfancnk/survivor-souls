@@ -126,7 +126,8 @@ namespace SurvivorSouls.Gameplay.Chests
 
         private void OnDamaged(Enemy enemy, float amount, bool killed)
         {
-            if (killed && config != null) OnKill(enemy.transform.position, config.IsElite(enemy));
+            // KAN-23: a mini boss kill drops its own guaranteed chest (MiniBossDirector), never a second skill chest.
+            if (killed && config != null && !enemy.IsMiniBoss) OnKill(enemy.transform.position, config.IsElite(enemy));
         }
 
         private void Update() => Tick(Time.deltaTime);

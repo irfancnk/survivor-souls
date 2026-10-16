@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Chamber.ChamberDifficulty
   chambersInRealm: 10
   bossEvery: 5
-  miniBossEvery: 0
+  miniBossEvery: 5
+  miniBossOffset: 2
   healthGrowth: 0.15
   maxHealthMultiplier: 4
   capGrowth: 0.05
