@@ -41,6 +41,7 @@ namespace SurvivorSouls.Gameplay.Combat
         [SerializeField, Min(1f)] private float leadFactor = 1.4f;
 
         private AutoShooter _shooter;
+        private CrossbowStance _stance; // KAN-225: eases the turn while the Knight flinches (optional)
         private Vector3 _headForwardLocal; // the character forward in head space at rest
         private Vector3 _point;
         private float _weight;
@@ -71,6 +72,7 @@ namespace SurvivorSouls.Gameplay.Combat
         private void Awake()
         {
             _shooter = GetComponent<AutoShooter>();
+            _stance = GetComponent<CrossbowStance>();
             Init();
         }
 
@@ -90,9 +92,10 @@ namespace SurvivorSouls.Gameplay.Combat
             float goal = target != null ? 1f : 0f;
             float time = goal > _weight ? blendIn : blendOut;
             _weight = Mathf.MoveTowards(_weight, goal, Time.deltaTime / time);
-            if (_weight <= 0f) return;
-            Solve(_point, _weight);
-            Look(_point, _weight);
+            float weight = _stance != null ? _weight * _stance.AimShare : _weight;
+            if (weight <= 0f) return;
+            Solve(_point, weight);
+            Look(_point, weight);
         }
 
         /// <summary>

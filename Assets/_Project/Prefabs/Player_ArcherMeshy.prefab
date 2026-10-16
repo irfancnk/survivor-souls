@@ -471,6 +471,10 @@ MonoBehaviour:
   standSpeed: 0.25
   stepCooldown: 0.45
   turnForget: 40
+  hitLayerWeight: 0.3
+  hitAimWeight: 0.5
+  hitDipTime: 0.05
+  hitRecoverTime: 0.2
 --- !u!114 &123722646794526657
 MonoBehaviour:
   m_ObjectHideFlags: 0
