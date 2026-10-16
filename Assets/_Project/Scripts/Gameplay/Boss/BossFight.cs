@@ -66,7 +66,7 @@ namespace SurvivorSouls.Gameplay.Boss
     /// attack state) and the Knight lives, lobs a shot (<see cref="ShotKind.BlackFireball"/>, <see cref="EnemyProjectiles"/>)
     /// to a random point near the Knight with a landing circle from the shared pool (the Butcher's black fireballs, 1 per s).
     /// </summary>
-    public sealed class BossFight : MonoBehaviour
+    public sealed partial class BossFight : MonoBehaviour
     {
         public enum Stage
         {
@@ -438,6 +438,7 @@ namespace SurvivorSouls.Gameplay.Boss
             CancelPending();
             RestoreScale();
             ClearFireballs();
+            StopFightTelemetry(); // KAN-163
         }
 
         private void Start() => Begin(ChamberSetup.Current);
@@ -889,7 +890,7 @@ namespace SurvivorSouls.Gameplay.Boss
         {
             float dealt = 0f;
             if (player != null && !player.IsDead && PlanarDistance(player.transform.position, _slamCentre) <= _attack.radius)
-                dealt = player.TakeDamage(data.DamageFor(_attack.damage, player.Max));
+                dealt = HitKnight(_attack.damage);
             if (telegraph != null) telegraph.Flash();
             BeginRecover(_attack.recover, _attack.cooldown);
             Burn(_slamCentre);
@@ -914,7 +915,7 @@ namespace SurvivorSouls.Gameplay.Boss
             int count = Mathf.Min(lines.LaneCount, _fanDirs.Length);
             for (int i = 0; i < count; i++) _fanDirs[i] = lines.LaneDirection(i);
             int fired = projectiles.FireVolley(_attackOrigin, _fanDirs, count, _attack.speed, _attack.length,
-                data.DamageFor(_attack.damage, player != null ? player.Max : 0f), _attack.radius);
+                DamageNow(_attack.damage), _attack.radius);
             lines.Flash();
             BeginRecover(_attack.recover, _attack.cooldown);
             FanFired?.Invoke(_attackOrigin, fired);
@@ -991,7 +992,7 @@ namespace SurvivorSouls.Gameplay.Boss
                 && BossProjectiles.SegmentDistance(from, next, player.transform.position) <= _attack.width * 0.5f)
             {
                 _dashHit = true;
-                _dashDealt = player.TakeDamage(data.DamageFor(_attack.damage, player.Max));
+                _dashDealt = HitKnight(_attack.damage);
             }
             if (_dashLeft > 0.0001f) return;
             if (_dashBlocked) _dashesLeft = 0; // crashed: stunned, the combo ends
@@ -1027,7 +1028,7 @@ namespace SurvivorSouls.Gameplay.Boss
             float dealt = 0f;
             if (player != null && !player.IsDead && InLane(_attackOrigin, _attackDir, _dashLeft, _attack.width, player.transform.position))
             {
-                dealt = player.TakeDamage(data.DamageFor(_attack.damage, player.Max));
+                dealt = HitKnight(_attack.damage);
                 if (_attack.pull > 0f)
                 {
                     Vector3 to = _attackOrigin - player.transform.position;
@@ -1107,7 +1108,7 @@ namespace SurvivorSouls.Gameplay.Boss
             _spinHitWait -= dt;
             if (!playerDead && _spinHitWait <= 0f && PlanarDistance(player.transform.position, pos) <= _attack.radius)
             {
-                float dealt = player.TakeDamage(data.DamageFor(_attack.damage, player.Max));
+                float dealt = HitKnight(_attack.damage);
                 _spinDealt += dealt;
                 _spinHitWait = Mathf.Max(0.1f, _attack.interval);
                 SpinHit?.Invoke(player.transform.position, dealt);
@@ -1139,7 +1140,7 @@ namespace SurvivorSouls.Gameplay.Boss
         {
             int n = RingDirections(_ringDirs, _attack.count, _attack.gaps, UnityEngine.Random.value * 360f);
             int fired = projectiles.FireVolley(_attackOrigin, _ringDirs, n, _attack.speed, _attack.length,
-                data.DamageFor(_attack.damage, player != null ? player.Max : 0f), _attack.radius);
+                DamageNow(_attack.damage), _attack.radius);
             if (telegraph != null) telegraph.Flash();
             BeginRecover(_attack.recover, _attack.cooldown);
             NovaFired?.Invoke(_attackOrigin, fired);
@@ -1193,7 +1194,7 @@ namespace SurvivorSouls.Gameplay.Boss
         {
             float interval = Mathf.Max(0.05f, _attack.interval);
             int arms = Mathf.Clamp(_attack.count, 1, MaxRingBolts);
-            float damage = data.DamageFor(_attack.damage, player.Max);
+            float damage = DamageNow(_attack.damage);
             _shotWait -= dt;
             while (_shotWait <= 0f && _castLeft > 0f)
             {
@@ -1267,7 +1268,7 @@ namespace SurvivorSouls.Gameplay.Boss
                 }
                 float dealt = 0f;
                 if (player != null && !player.IsDead && PlanarDistance(player.transform.position, _rainAt[i]) <= _attack.radius)
-                    dealt = player.TakeDamage(data.DamageFor(_attack.damage, player.Max));
+                    dealt = HitKnight(_attack.damage);
                 circle.Flash();
                 if (_rainPool != null) _rainPool.Release(circle);
                 _rain[i] = null;
@@ -1370,7 +1371,7 @@ namespace SurvivorSouls.Gameplay.Boss
             _thrown++;
             var rocks = Boulders;
             bool thrown = rocks != null && rocks.Throw(_attackOrigin, target, Flight(_attack), _attack.radius,
-                data.DamageFor(_attack.damage, player != null ? player.Max : 0f), _attack.width, _attack.obstacle, circle,
+                DamageNow(_attack.damage), _attack.width, _attack.obstacle, circle,
                 _throwPool, progressStart);
             if (!thrown && circle != null)
             {
@@ -1517,7 +1518,7 @@ namespace SurvivorSouls.Gameplay.Boss
             float dealt = 0f;
             if (_attack.damage > 0f && player != null && !player.IsDead
                 && PlanarDistance(player.transform.position, _teleportTo) <= _attack.radius)
-                dealt = player.TakeDamage(data.DamageFor(_attack.damage, player.Max));
+                dealt = HitKnight(_attack.damage);
             if (telegraph != null) telegraph.Flash();
             BeginRecover(Mathf.Max(_attack.recover, VanishTime), _attack.cooldown);
             _growLeft = VanishTime;
@@ -1617,7 +1618,7 @@ namespace SurvivorSouls.Gameplay.Boss
             Vector3 from = _boss.transform.position;
             Vector3 hand = new Vector3(from.x, from.y + BarrageHand, from.z) + _boss.transform.forward * 0.6f;
             bool thrown = pool.FireLobbed(pool.NextVolley(), ShotKind.BlackFireball, hand, target, Flight(a), BarrageArc, a.radius,
-                data.DamageFor(a.damage, player.Max), default, BarrageOwner, 0, false, circle, 0f);
+                DamageNow(a.damage), default, BarrageOwner, 0, false, circle, 0f);
             if (!thrown)
             {
                 circle.Hide();
@@ -1706,7 +1707,7 @@ namespace SurvivorSouls.Gameplay.Boss
                 if (canHit && !_waveHit[i] && knight >= prev - half && knight <= next + half) // the band swept over the Knight
                 {
                     _waveHit[i] = true;
-                    float dealt = player.TakeDamage(data.DamageFor(_attack.damage, player.Max));
+                    float dealt = HitKnight(_attack.damage);
                     _wavesDealt += dealt;
                     canHit = !player.IsDead;
                     WaveHit?.Invoke(player.transform.position, dealt);
@@ -1762,7 +1763,7 @@ namespace SurvivorSouls.Gameplay.Boss
         {
             Vector3 aim = FaceKnight();
             int count = Mathf.Clamp(_attack.count, 1, MaxRingBolts);
-            float damage = data.DamageFor(_attack.damage, player != null ? player.Max : 0f);
+            float damage = DamageNow(_attack.damage);
             projectiles.NewVolley(); // the whole volley hits once
             int fired = 0;
             for (int k = 0; k < count; k++)
@@ -1815,7 +1816,7 @@ namespace SurvivorSouls.Gameplay.Boss
                 {
                     if (!InLane(_attackOrigin, lines.LaneDirection(i), lines.LaneLength(i), _attack.width, knight)) continue;
                     _beamHit = true; // the whole cast hits once
-                    _beamDealt = player.TakeDamage(data.DamageFor(_attack.damage, player.Max));
+                    _beamDealt = HitKnight(_attack.damage);
                     break;
                 }
             }
@@ -1994,6 +1995,7 @@ namespace SurvivorSouls.Gameplay.Boss
         {
             Current = stage;
             _time = 0f;
+            OnStageTelemetry(stage); // KAN-163
         }
 
         private static float PlanarDistance(Vector3 a, Vector3 b)

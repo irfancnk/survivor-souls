@@ -13,6 +13,8 @@ namespace SurvivorSouls.Gameplay.Boss
     /// overwrites it (it only fills an empty prefab slot). Hearts have their own asset (<see cref="HeartRules"/>).
     /// KAN-62: intro (Knight held, camera pulled out), victory beat (slow motion, then reward + portal) and the guaranteed
     /// reward pick. <see cref="Create"/> has no intro and no beat (tests of the fight itself).
+    /// KAN-163: boss hits hurt a lot (3 clean hits of the biggest attack kill a fresh Knight): max-hit cap 0.5, and phase 2
+    /// hits x <see cref="Phase2Damage"/> on top (still capped). <see cref="DamageFor(float, float, int)"/> is the one formula.
     /// KAN-108: the fight runs a list of attacks (<see cref="Attacks"/>, <see cref="BossAttack"/> entries per phase). A boss
     /// with an empty list (the Drowned Warden asset) gets the list built from its slam / fan / charge fields above, so its
     /// fight plays as before. New bosses (The Butcher of Ashgrave) fill the list; the slam / fan / charge fields are unused.
@@ -84,7 +86,7 @@ namespace SurvivorSouls.Gameplay.Boss
         [Tooltip("Slam damage as a share of the Knight's max health.")]
         [SerializeField, Range(0f, 1f)] private float slamDamage = 0.22f;
         [Tooltip("No single boss hit takes more than this share of max health (no instant kill).")]
-        [SerializeField, Range(0.05f, 1f)] private float maxHitShare = 0.35f;
+        [SerializeField, Range(0.05f, 1f)] private float maxHitShare = 0.5f; // KAN-163: was 0.35
 
         [Header("Projectile fan (KAN-61)")]
         [Tooltip("Bolts per volley. 0 = no fan.")]
@@ -134,6 +136,8 @@ namespace SurvivorSouls.Gameplay.Boss
         [SerializeField, Range(0.3f, 1f)] private float phase2Telegraph = 0.85f;
         [Tooltip("Boss walk speed x this in phase 2.")]
         [SerializeField, Range(1f, 2f)] private float phase2Speed = 1.25f;
+        [Tooltip("KAN-163: boss hit damage x this in phase 2 (the max-hit cap still holds). 1 = same as phase 1.")]
+        [SerializeField, Range(1f, 2f)] private float phase2Damage = 1.15f;
 
         [Header("Reward")]
         [Tooltip("XP (= souls) dropped when the boss dies, split over the wisps below.")]
@@ -190,6 +194,7 @@ namespace SurvivorSouls.Gameplay.Boss
         public float Phase2Cooldown => phase2Cooldown;
         public float Phase2Telegraph => phase2Telegraph;
         public float Phase2Speed => phase2Speed;
+        public float Phase2Damage => phase2Damage;
         public string RoarClip => roarClip;
         public float PhaseRoar => phaseRoar;
         public float MaxHitShare => maxHitShare;
@@ -229,6 +234,16 @@ namespace SurvivorSouls.Gameplay.Boss
         /// <summary>Damage of a hit worth <paramref name="share"/> of max health, capped at the max-hit share.</summary>
         public float DamageFor(float share, float playerMax) => HitFor(share, playerMax);
 
+        /// <summary>
+        /// KAN-163: share of max health a hit worth <paramref name="share"/> takes in <paramref name="phase"/>: phase 2 x
+        /// <see cref="Phase2Damage"/>, then the max-hit cap.
+        /// </summary>
+        public float ShareFor(float share, int phase) =>
+            Mathf.Min(Mathf.Max(0f, share) * (phase >= 2 ? phase2Damage : 1f), maxHitShare);
+
+        /// <summary>KAN-163: damage of a hit worth <paramref name="share"/> in <paramref name="phase"/> (<see cref="ShareFor"/>).</summary>
+        public float DamageFor(float share, float playerMax, int phase) => ShareFor(share, phase) * Mathf.Max(0f, playerMax);
+
         /// <summary>Slam damage for a Knight with <paramref name="playerMax"/> health, capped at <see cref="maxHitShare"/>.</summary>
         public float SlamDamageFor(float playerMax) => HitFor(slamDamage, playerMax);
 
@@ -250,13 +265,14 @@ namespace SurvivorSouls.Gameplay.Boss
         /// <summary>
         /// Tests and tools: a boss without an asset. Slam only unless asked: <paramref name="fanBolts"/> 0 = no fan,
         /// <paramref name="charge"/> false = no dash (the asset defaults have both). Phase 2 at <paramref name="phase2At"/>.
+        /// Phase 2 hits x <paramref name="phase2Damage"/> (default 1: plain numbers; the asset default is 1.15).
         /// </summary>
         public static BossData Create(Enemy body, float health = 3200f, float introDelay = 2f, float spawnWarning = 1.2f,
             float slamTelegraph = 1f, float slamDamage = 0.22f, float maxHitShare = 0.35f, int rewardXp = 600, int rewardWisps = 6,
             float slamRange = 4f, float slamRadius = 3f, float slamReach = 1.6f, float firstSlamDelay = 1.5f, float slamCooldown = 3.2f,
             float slamRecover = 0.7f, int fanBolts = 0, float fanTelegraph = 0.9f, float fanDamage = 0.12f, bool charge = false,
             float chargeTelegraph = 0.9f, float chargeDamage = 0.2f, float phase2At = 0.5f, float introTime = 0f,
-            float victoryBeat = 0f)
+            float victoryBeat = 0f, float phase2Damage = 1f)
         {
             var data = CreateInstance<BossData>();
             data.prefab = body;
@@ -283,6 +299,7 @@ namespace SurvivorSouls.Gameplay.Boss
             data.phase2At = phase2At;
             data.introTime = introTime;
             data.victoryBeat = victoryBeat;
+            data.phase2Damage = phase2Damage;
             return data;
         }
 
@@ -292,11 +309,11 @@ namespace SurvivorSouls.Gameplay.Boss
         public static BossData CreateWithAttacks(Enemy body, BossAttack[] attackList, float health = 3200f, float introDelay = 2f,
             float spawnWarning = 1.2f, float firstAttackDelay = 1.5f, float maxHitShare = 0.35f, float phase2At = 0.5f,
             float introTime = 0f, float victoryBeat = 0f, string roarClip = "", float phaseRoar = 0f, int rewardXp = 600,
-            int rewardWisps = 6, string displayName = null, string title = null)
+            int rewardWisps = 6, string displayName = null, string title = null, float phase2Damage = 1f)
         {
             var data = Create(body, health, introDelay, spawnWarning, maxHitShare: maxHitShare, rewardXp: rewardXp,
                 rewardWisps: rewardWisps, firstSlamDelay: firstAttackDelay, phase2At: phase2At, introTime: introTime,
-                victoryBeat: victoryBeat);
+                victoryBeat: victoryBeat, phase2Damage: phase2Damage);
             data.attacks = attackList ?? new BossAttack[0];
             data.roarClip = roarClip ?? "";
             data.phaseRoar = phaseRoar;

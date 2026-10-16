@@ -53,6 +53,11 @@ namespace SurvivorSouls.Core
         public const string ChestDropped = "ChestDropped";
         public const string ChestOpened = "ChestOpened";
         public const string ChestExpired = "ChestExpired";
+        /// <summary>KAN-163: a boss hit the Knight. Subject = attack label, From = share of max health (%), To = health lost,
+        /// Source = boss name.</summary>
+        public const string BossHitTaken = "BossHitTaken";
+        /// <summary>KAN-163: a boss fight ended. Subject = boss name, From = phase, To = fight seconds, Source = win / death.</summary>
+        public const string BossFightResult = "BossFightResult";
 
         public const int RecentCapacity = 64;
 

@@ -63,6 +63,7 @@ MonoBehaviour:
   phase2Cooldown: 0.7
   phase2Telegraph: 0.85
   phase2Speed: 1.25
+  phase2Damage: 1.15
   rewardXp: 600
   rewardWisps: 6
   hordeCap: 0.45

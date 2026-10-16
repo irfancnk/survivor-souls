@@ -61,12 +61,18 @@ namespace SurvivorSouls.Editor.Enemies
             new Spec { Id = id, Move = move, Attack = attack, Health = hp, Speed = speed, Dps = dps, Xp = xp, Knockback = knock };
 
         /// <summary>
+        /// KAN-163: boss body contact damage per second. Flat, not a share: 45 = 11 % of a fresh Knight (400) per second, below
+        /// every telegraphed big hit (no unfair deaths from bumping).
+        /// </summary>
+        public const float BossContactDps = 45f;
+
+        /// <summary>
         /// Bosses: health is the type base only (BossData holds the fight's health, KAN-58); no XP of their own; hard to push.
         /// Their contact damage is a placeholder until their attack patterns land (KAN-108..110); the Bone Matriarch has none
-        /// (KAN-111, BossBuilder.ConfigurePrefab).
+        /// (KAN-111, BossBuilder.ConfigurePrefab). KAN-163: contact <see cref="BossContactDps"/> (was 30).
         /// </summary>
         private static Spec Boss(string id, string move, string attack, float hp, float speed) =>
-            new Spec { Id = id, Move = move, Attack = attack, Health = hp, Speed = speed, Dps = 30f, Xp = 0, Knockback = 0.1f, Boss = true, SpeedJitter = 0f, ScaleJitter = 0f };
+            new Spec { Id = id, Move = move, Attack = attack, Health = hp, Speed = speed, Dps = BossContactDps, Xp = 0, Knockback = 0.1f, Boss = true, SpeedJitter = 0f, ScaleJitter = 0f };
 
         private static Spec Lava(Spec spec)
         {

@@ -268,7 +268,7 @@ namespace SurvivorSouls.Tests
             var grab = Shipped("Grab");
             Assert.That(grab.type, Is.EqualTo(BossFight.Move.Lane));
             Assert.That(grab.Telegraph, Is.EqualTo(1.2f), "1.2 s reach lane");
-            Assert.That(grab.damage, Is.EqualTo(0.2f), "20 %");
+            Assert.That(grab.damage, Is.EqualTo(0.36f), "36 % (KAN-163, was 20 %)");
             Assert.That(grab.pull, Is.GreaterThan(0f), "pulls the Knight in");
             Assert.That(grab.phases, Is.EqualTo(BossPhases.Both));
 
@@ -359,13 +359,13 @@ namespace SurvivorSouls.Tests
                 warned += Frame;
             }
             Assert.That(warned, Is.GreaterThanOrEqualTo(1.2f - Frame));
-            Assert.That(_player.Max - _player.Current, Is.EqualTo(0.2f * _player.Max).Within(0.01f), "20 % of max health");
+            Assert.That(_player.Max - _player.Current, Is.EqualTo(grab.damage * _player.Max).Within(0.01f), "36 % of max health (KAN-163)");
 
             Run(1f); // the drag runs during the recovery
             float gap = Planar(_player.transform.position, Vector3.zero);
             Assert.That(gap, Is.LessThan(_fight.Boss.HitRadius + 1f), "dragged in to the body");
             Assert.That(gap, Is.GreaterThanOrEqualTo(_fight.Boss.HitRadius), "never into the body");
-            Assert.That(_player.Max - _player.Current, Is.EqualTo(0.2f * _player.Max).Within(0.01f), "one hit");
+            Assert.That(_player.Max - _player.Current, Is.EqualTo(grab.damage * _player.Max).Within(0.01f), "one hit");
         }
 
         [Test]

@@ -338,7 +338,7 @@ MonoBehaviour:
   height: 4.4999995
   separation: 2.3624997
   contactRange: 2.7268333
-  damagePerSecond: 30
+  damagePerSecond: 45
   xpValue: 0
   body: {fileID: 2888292102429917517}
   baseTint: {r: 1, g: 1, b: 1, a: 1}
