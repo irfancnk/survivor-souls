@@ -375,6 +375,7 @@ namespace SurvivorSouls.Editor
             SetRef(xpHud, "flow", progression.Flow);
             SetRef(xpHud, "player", player);
             SetRef(xpHud, "worldCamera", camera);
+            go.AddComponent<HudBarFx>(); // medieval bars: shine sweep + rune scroll on every .ss-bar (KAN-35)
             var choice = go.AddComponent<SkillChoiceScreen>();
             SetRef(choice, "skills", skills);
             SetRef(choice, "styles", rarityStyles);
