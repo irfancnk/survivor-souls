@@ -51,7 +51,7 @@ namespace SurvivorSouls.Gameplay.Skills.Effects
         [Tooltip("Rune mark on the ground (rune circle texture, horizontal).")]
         [SerializeField] private ParticleSystem mark;
         [SerializeField, Min(0)] private int fireCount = 10;
-        [SerializeField, Min(0)] private int smokeCount = 4;
+        [SerializeField, Min(0)] private int smokeCount = 3;
         [SerializeField, Min(0)] private int sparkCount = 12;
         [Header("Limits")]
         [Tooltip("Live fire + smoke + shard particles from all bursts. Over it a burst plays the flash + ring only.")]
@@ -66,9 +66,9 @@ namespace SurvivorSouls.Gameplay.Skills.Effects
         private static readonly Color FlashColor = new Color(0.93f, 0.85f, 1f, 1f);
         private static readonly Color RingColor = new Color(0.6f, 0.2f, 0.92f, 0.95f);
         private static readonly Color ShellColor = new Color(0.72f, 0.45f, 1f, 0.32f);
-        private static readonly Color FireDark = new Color(0.36f, 0.08f, 0.56f, 1f);
-        private static readonly Color FireRim = new Color(0.72f, 0.22f, 0.86f, 1f);
-        private static readonly Color SmokeColor = new Color(0.1f, 0.06f, 0.14f, 0.7f);
+        private static readonly Color FireDark = new Color(0.36f, 0.08f, 0.56f, 0.8f);
+        private static readonly Color FireRim = new Color(0.72f, 0.22f, 0.86f, 0.8f);
+        private static readonly Color SmokeColor = new Color(0.1f, 0.06f, 0.14f, 0.42f);
         private static readonly Color ShardA = new Color(1f, 0.62f, 1f, 1f);
         private static readonly Color ShardB = new Color(0.72f, 0.42f, 1f, 1f);
         private static readonly Color MarkColor = new Color(0.32f, 0.06f, 0.5f, 0.6f);
@@ -297,15 +297,17 @@ namespace SurvivorSouls.Gameplay.Skills.Effects
             }
             if (fire != null)
             {
+                float smokeScale = scale * scale; // fire / smoke thin out faster down a chain: the Knight stays visible
+                float start = 0.3f + reach * 0.15f; // a ring of soul fire round an open core, not one dark blot
                 float speed = Mathf.Lerp(0.7f, 1f, scale) * (1.6f + reach * 0.7f);
                 for (int i = 0; i < fires; i++)
                 {
                     float a = i / (float)fires * Mathf.PI * 2f + UnityEngine.Random.Range(-0.3f, 0.3f);
                     var dir = new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a));
-                    p.position = centre + dir * 0.25f + Vector3.up * UnityEngine.Random.Range(0.3f, 0.8f);
+                    p.position = centre + dir * start + Vector3.up * UnityEngine.Random.Range(0.3f, 0.8f);
                     p.velocity = dir * (speed * UnityEngine.Random.Range(0.75f, 1.15f)) + Vector3.up * UnityEngine.Random.Range(1f, 2.4f);
                     p.startSize = UnityEngine.Random.Range(0.6f, 1f) * Mathf.Lerp(0.75f, 1f, scale);
-                    p.startColor = Color.Lerp(FireDark, FireRim, UnityEngine.Random.value);
+                    p.startColor = Fade(Color.Lerp(FireDark, FireRim, UnityEngine.Random.value), smokeScale);
                     p.rotation = UnityEngine.Random.Range(0f, 360f);
                     p.startLifetime = UnityEngine.Random.Range(0.42f, 0.62f);
                     fire.Emit(p, 1);
@@ -317,7 +319,7 @@ namespace SurvivorSouls.Gameplay.Skills.Effects
                     p.position = centre + dir * (reach * 0.35f) + Vector3.up * 0.5f;
                     p.velocity = dir * 1.2f + Vector3.up * UnityEngine.Random.Range(0.8f, 1.4f);
                     p.startSize = UnityEngine.Random.Range(1f, 1.4f);
-                    p.startColor = SmokeColor;
+                    p.startColor = Fade(SmokeColor, smokeScale);
                     p.rotation = UnityEngine.Random.Range(0f, 360f);
                     p.startLifetime = UnityEngine.Random.Range(0.6f, RichLife);
                     fire.Emit(p, 1);
@@ -349,7 +351,7 @@ namespace SurvivorSouls.Gameplay.Skills.Effects
             Burst?.Invoke(centre, depth);
         }
 
-        private static Color Fade(Color c, float scale) => new Color(c.r, c.g, c.b, c.a * Mathf.Lerp(0.55f, 1f, (scale - MinChainScale) / (1f - MinChainScale)));
+        private static Color Fade(Color c, float scale) => new Color(c.r, c.g, c.b, c.a * Mathf.Lerp(0.4f, 1f, Mathf.Clamp01((scale - MinChainScale * MinChainScale) / (1f - MinChainScale * MinChainScale))));
 
         private void Spend(int count)
         {

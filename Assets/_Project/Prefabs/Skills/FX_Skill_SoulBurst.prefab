@@ -4654,7 +4654,7 @@ MonoBehaviour:
   sparks: {fileID: 6796929458398405849}
   mark: {fileID: 913913627624896756}
   fireCount: 10
-  smokeCount: 4
+  smokeCount: 3
   sparkCount: 12
   particleCap: 400
   mergeDistance: 1.2
