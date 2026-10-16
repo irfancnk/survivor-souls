@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Skills.SkillDefinition
   id: sharpened_bolts
   displayName: Sharpened Bolts
-  description: +25% bolt damage
+  description: +20% bolt damage
   icon: {fileID: 2800000, guid: a4ab223ed64eb46a5abb25f0dc3ba642, type: 3}
   rarity: 0
   maxStack: 6
@@ -22,33 +22,33 @@ MonoBehaviour:
   modifiers:
   - stat: 0
     kind: 1
-    value: 0.25
+    value: 0.2
   levels:
-  - description: +25% bolt damage
+  - description: +20% bolt damage
     modifiers:
     - stat: 0
       kind: 1
-      value: 0.25
-  - description: +45% bolt damage
+      value: 0.2
+  - description: +38% bolt damage
     modifiers:
     - stat: 0
       kind: 1
-      value: 0.45
-  - description: +65% bolt damage
+      value: 0.38
+  - description: +58% bolt damage
     modifiers:
     - stat: 0
       kind: 1
-      value: 0.65
-  - description: +85% bolt damage
+      value: 0.58
+  - description: +80% bolt damage
     modifiers:
     - stat: 0
       kind: 1
-      value: 0.85
-  - description: +105% bolt damage
+      value: 0.8
+  - description: +102% bolt damage
     modifiers:
     - stat: 0
       kind: 1
-      value: 1.05
+      value: 1.02
   - description: +125% bolt damage
     modifiers:
     - stat: 0

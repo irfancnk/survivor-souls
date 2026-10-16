@@ -67,15 +67,15 @@ namespace SurvivorSouls.Tests
         /// </summary>
         private static readonly object[] Sheet =
         {
-            new object[] { "SharpenedBolts", 1, new[] { "Damage%=0.25" } },
-            new object[] { "SharpenedBolts", 2, new[] { "Damage%=0.45" } },
-            new object[] { "SharpenedBolts", 3, new[] { "Damage%=0.65" } },
-            new object[] { "SharpenedBolts", 4, new[] { "Damage%=0.85" } },
-            new object[] { "SharpenedBolts", 5, new[] { "Damage%=1.05" } },
+            new object[] { "SharpenedBolts", 1, new[] { "Damage%=0.2" } },
+            new object[] { "SharpenedBolts", 2, new[] { "Damage%=0.38" } },
+            new object[] { "SharpenedBolts", 3, new[] { "Damage%=0.58" } },
+            new object[] { "SharpenedBolts", 4, new[] { "Damage%=0.8" } },
+            new object[] { "SharpenedBolts", 5, new[] { "Damage%=1.02" } },
             new object[] { "SharpenedBolts", 6, new[] { "Damage%=1.25" } },
-            new object[] { "QuickDraw", 1, new[] { "AttackSpeed%=0.18" } },
-            new object[] { "QuickDraw", 2, new[] { "AttackSpeed%=0.34" } },
-            new object[] { "QuickDraw", 3, new[] { "AttackSpeed%=0.48" } },
+            new object[] { "QuickDraw", 1, new[] { "AttackSpeed%=0.15" } },
+            new object[] { "QuickDraw", 2, new[] { "AttackSpeed%=0.3" } },
+            new object[] { "QuickDraw", 3, new[] { "AttackSpeed%=0.46" } },
             new object[] { "QuickDraw", 4, new[] { "AttackSpeed%=0.62" } },
             new object[] { "QuickDraw", 5, new[] { "AttackSpeed%=0.76" } },
             new object[] { "QuickDraw", 6, new[] { "AttackSpeed%=0.9" } },
@@ -95,7 +95,7 @@ namespace SurvivorSouls.Tests
             new object[] { "SoulSiphon", 3, new[] { "PickupRadius%=0.95" } },
             new object[] { "SoulSiphon", 4, new[] { "PickupRadius%=1.15" } },
             new object[] { "SoulSiphon", 5, new[] { "PickupRadius%=1.3" } },
-            new object[] { "KeenEye", 1, new[] { "CritChance+=0.1", "CritDamage+=0.3" } },
+            new object[] { "KeenEye", 1, new[] { "CritChance+=0.1", "CritDamage+=0.25" } },
             new object[] { "KeenEye", 2, new[] { "CritChance+=0.15", "CritDamage+=0.45" } },
             new object[] { "KeenEye", 3, new[] { "CritChance+=0.2", "CritDamage+=0.6" } },
             new object[] { "KeenEye", 4, new[] { "CritChance+=0.25", "CritDamage+=0.8" } },
@@ -224,12 +224,12 @@ namespace SurvivorSouls.Tests
         {
             var skill = Load("SharpenedBolts");
             _manager.Grant(skill);
-            Assert.That(skill.DescriptionAt(_manager.GetLevel(skill) + 1), Is.EqualTo("+36% bolt damage"), "card for 1 -> 2");
+            Assert.That(skill.DescriptionAt(_manager.GetLevel(skill) + 1), Is.EqualTo("+38% bolt damage"), "card for 1 -> 2");
             Assert.That(_manager.Upgrade(skill, 99), Is.True);
             Assert.That(_manager.GetLevel(skill), Is.EqualTo(6));
             Assert.That(_manager.CanUpgrade(skill), Is.False);
             Assert.That(_manager.CanTake(skill), Is.False, "maxed: never offered again");
-            Assert.That(_stats.Modify(StatId.Damage, 100f), Is.EqualTo(195f).Within(1e-3f));
+            Assert.That(_stats.Modify(StatId.Damage, 100f), Is.EqualTo(225f).Within(1e-3f), "level 6: +125 % (KAN-86)");
         }
 
         // ------------------------------------------------------------ New secondary stats reach their consumers

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Skills.SkillDefinition
   id: keen_eye
   displayName: Keen Eye
-  description: +10% crit chance, +30% crit damage
+  description: +10% crit chance, +25% crit damage
   icon: {fileID: 2800000, guid: 77e4e110e47f84c34b70d50ab8cdb367, type: 3}
   rarity: 1
   maxStack: 5
@@ -25,16 +25,16 @@ MonoBehaviour:
     value: 0.1
   - stat: 5
     kind: 0
-    value: 0.3
+    value: 0.25
   levels:
-  - description: +10% crit chance, +30% crit damage
+  - description: +10% crit chance, +25% crit damage
     modifiers:
     - stat: 4
       kind: 0
       value: 0.1
     - stat: 5
       kind: 0
-      value: 0.3
+      value: 0.25
   - description: +15% crit chance, +45% crit damage
     modifiers:
     - stat: 4

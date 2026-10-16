@@ -1,0 +1,52 @@
+# Survivor Souls balance sheet (repo copy)
+
+Source of numbers: the KAN-75 power curve (`SkillPowerCurve`, 200 simulated runs, one random card of each level-up offer, no chest upgrades) with the shipped table `Data/Skills/SkillProgression_Run.asset`.
+
+Print it again:
+
+- Editor menu: `Survivor Souls/Debug/Print Balance Report`
+- Batch: `Unity -batchmode -nographics -projectPath . -executeMethod SurvivorSouls.Editor.Skills.BalanceReport.PrintFromCommandLine -logFile <log>`
+- Dev build: `-ss-power-curve`
+
+The Confluence sheet (SS > 01 Product & Game Design) is the design copy. Keep the two in sync.
+
+## KAN-86 single-target pass (2026-10-16)
+
+### Decision
+
+| Metric (growth over the bare Knight) | Target | Before | After |
+| --- | --- | --- | --- |
+| 1-target DPS, level 10 | at least 2.5x | 2.32x | 2.54x |
+| 1-target DPS, level 20 | 4-6x | 3.80x | 4.36x |
+| Crowd DPS, level 20 | (no hard cap) | 37.3x | 25.6x |
+| Crowd / 1-target gap, level 20 | at most 6.5 | 9.8 | 5.9 |
+
+When the ticket was written, the numbers were 2.1x for 1-target and 16.5x for crowd at level 20. That was before KAN-83 (Double Shot and Spread Shot). Double Shot then raised 1-target DPS to 3.8x. Spread Shot raised crowd DPS to 37x.
+
+We did not use the ticket's example crowd target of 8-10x. Since KAN-92, horde health scales with a power index that includes crowd DPS, so more crowd power already makes zombies tougher. To reach 8-10x, we would have to cut Spread Shot almost completely. The real risk was the gap between crowd and 1-target damage, because boss health does not follow the power index. The `SingleTargetBalanceTests` test guards these targets.
+
+### Changes
+
+- Pierce: each enemy pierced lowers the damage by 33 %. Ricochet: each bounce lowers the damage by 30 %. These are the Archero rules. Implemented in `BoltShot.PierceFalloff` / `BounceFalloff` and the `AutoShooter` fields `pierceFalloff` / `bounceFalloff`. The power curve uses `PowerSnapshot.HitFactor`.
+- Sharpened Bolts: +20 / 38 / 58 / 80 / 102 / 125 % damage (was 20 / 36 / 52 / 66 / 80 / 95). Level 1 stays the same (KAN-71 rule). The late levels grow the most.
+- Quick Draw: +15 / 30 / 46 / 62 / 76 / 90 % attack speed (was 15 / 28 / 40 / 51 / 62 / 72).
+- Keen Eye: crit damage +25 / 45 / 60 / 80 / 100 % (was 25 / 40 / 55 / 70 / 90). Crit chance stays the same.
+- Spread Shot: side bolts deal 50 / 55 / 60 % damage (was 50 / 65 / 80).
+- Guarantees: level 2 always offers Sharpened Bolts, and level 8 always offers Quick Draw. The existing guarantees stay: level 3 Double Shot, level 4 Ember Bolts, level 6 Spread Shot.
+
+### Power curve after the change
+
+| Lv | skills | bolt dmg | shots/s | crit | bolts | chain | pierce | bounce | burn | 1-target DPS | crowd DPS | crowd x |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | 0.0 | 100 | 1.00 | 0 % | 1.00 | 0.00 | 0.00 | 0.00 | 0 | 100 | 100 | 1.0x |
+| 5 | 3.5 | 114 | 1.08 | 2 % | 1.00 | 0.37 | 0.19 | 0.11 | 8 | 181 | 226 | 2.3x |
+| 10 | 6.6 | 124 | 1.19 | 6 % | 2.30 | 0.55 | 0.51 | 0.54 | 10 | 254 | 735 | 7.3x |
+| 15 | 8.5 | 135 | 1.26 | 9 % | 3.07 | 0.69 | 0.86 | 0.95 | 13 | 334 | 1473 | 14.7x |
+| 20 | 10.1 | 145 | 1.35 | 12 % | 3.81 | 0.83 | 1.17 | 1.26 | 15 | 436 | 2562 | 25.6x |
+
+Horde scaling (KAN-92, unchanged asset) at level 20: power index 8.11, zombie health x3.51 at the Chamber start and x4.56 at the end. The Knight's edge is 1.24x on 1-target and 7.30x on crowd. All `HordeScalingTests` shipped-balance checks still pass. The first boss with the typical 10-pick build (`BossIntroTests` balance check) stays inside the KAN-22 band of 60-90 s.
+
+### Open points
+
+- Phone feel check for these numbers: KAN-53 (Chamber balance pass) and KAN-85 (boss playtest).
+- No boss-damage perk yet. If bosses still feel long on the phone, add one (follow-up ticket).
