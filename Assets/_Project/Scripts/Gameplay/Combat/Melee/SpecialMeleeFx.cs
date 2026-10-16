@@ -27,27 +27,27 @@ namespace SurvivorSouls.Gameplay.Combat
         [SerializeField] private TopDownFollowCamera followCamera;
 
         [Header("Bloater burst")]
-        [SerializeField, Min(0)] private int sporeCount = 22;
+        [SerializeField, Min(0)] private int sporeCount = 34;
         [SerializeField] private Vector2 sporeSpeed = new Vector2(2.2f, 5.5f);
-        [SerializeField] private Color sporeColor = new Color(0.55f, 0.82f, 0.12f, 0.95f);
-        [SerializeField] private Color sporeDark = new Color(0.25f, 0.42f, 0.04f, 0.95f);
-        [SerializeField, Min(0)] private int puffCount = 5;
-        [SerializeField] private Color puffColor = new Color(0.6f, 0.8f, 0.25f, 0.7f);
+        [SerializeField] private Color sporeColor = new Color(0.45f, 0.75f, 0.08f, 1f);
+        [SerializeField] private Color sporeDark = new Color(0.18f, 0.34f, 0.03f, 1f);
+        [SerializeField, Min(0)] private int puffCount = 6;
+        [SerializeField] private Color puffColor = new Color(0.36f, 0.56f, 0.1f, 0.8f);
         [SerializeField, Min(0f)] private float burstShake = 0.08f;
 
         [Header("Ghoul leap")]
         [SerializeField, Min(0)] private int kickCount = 6;
-        [SerializeField, Min(0)] private int landCount = 12;
-        [SerializeField] private Color snowDust = new Color(0.86f, 0.88f, 0.92f, 0.8f);
-        [SerializeField] private Color earthDust = new Color(0.42f, 0.38f, 0.34f, 0.8f);
+        [SerializeField, Min(0)] private int landCount = 20;
+        [SerializeField] private Color snowDust = new Color(0.6f, 0.6f, 0.64f, 0.9f);
+        [SerializeField] private Color earthDust = new Color(0.3f, 0.25f, 0.21f, 0.9f);
 
         [Header("Brute slam")]
-        [SerializeField, Min(0.1f)] private float crackSize = 3.4f;
+        [SerializeField, Min(0.1f)] private float crackSize = 3.8f;
         [SerializeField, Min(0.1f)] private float crackLife = 1.5f;
-        [SerializeField] private Color crackColor = new Color(0.16f, 0.1f, 0.07f, 0.92f);
+        [SerializeField] private Color crackColor = new Color(0.11f, 0.07f, 0.05f, 0.96f);
         [SerializeField, Min(0)] private int slamDustCount = 14;
         [Tooltip("Dust particles per metre of wave front per second while the ring grows.")]
-        [SerializeField, Min(0f)] private float ringDustDensity = 9f;
+        [SerializeField, Min(0f)] private float ringDustDensity = 12f;
         [SerializeField, Min(1)] private int ringDustMaxPerFrame = 14;
         [SerializeField, Min(0f)] private float shakeRange = 6f;
         [SerializeField, Min(0f)] private float slamShake = 0.14f;
@@ -121,7 +121,7 @@ namespace SurvivorSouls.Gameplay.Combat
                         position = centre + new Vector3(d.x * 0.3f, height + Random.Range(-0.25f, 0.25f), d.y * 0.3f),
                         velocity = new Vector3(d.x * speed, Random.Range(1.5f, 4.5f), d.y * speed),
                         startColor = Color.Lerp(sporeDark, sporeColor, Random.value),
-                        startSize = Random.Range(0.12f, 0.3f),
+                        startSize = Random.Range(0.32f, 0.62f),
                         startLifetime = Random.Range(0.55f, 0.95f),
                     };
                     spores.Emit(e, 1);
@@ -137,7 +137,7 @@ namespace SurvivorSouls.Gameplay.Combat
                         position = centre + new Vector3(d.x, height * Random.Range(0.6f, 1.1f), d.y),
                         velocity = new Vector3(d.x * 2f, Random.Range(0.4f, 1.2f), d.y * 2f),
                         startColor = puffColor,
-                        startSize = Random.Range(1.3f, 2.1f),
+                        startSize = Random.Range(1.6f, 2.4f),
                         startLifetime = Random.Range(0.45f, 0.7f),
                     };
                     puffs.Emit(e, 1);
@@ -149,7 +149,7 @@ namespace SurvivorSouls.Gameplay.Combat
         private void OnLanded(GhoulLeap ghoul, Vector3 at, bool hit)
         {
             Landings++;
-            DustRing(at, landCount, 0.35f, new Vector2(1.6f, 3f), new Vector2(0.5f, 0.9f));
+            DustRing(at, landCount, 0.45f, new Vector2(2f, 3.6f), new Vector2(0.95f, 1.5f));
         }
 
         private void OnStruck(SpecialAttack attack)
@@ -165,7 +165,7 @@ namespace SurvivorSouls.Gameplay.Combat
                         position = attack.transform.position + new Vector3(j.x * 0.4f, 0.1f, j.y * 0.4f),
                         velocity = new Vector3(back.x * 2.2f + j.x, Random.Range(0.8f, 1.8f), back.z * 2.2f + j.y),
                         startColor = Color.Lerp(snowDust, earthDust, Random.value * 0.35f),
-                        startSize = Random.Range(0.35f, 0.6f),
+                        startSize = Random.Range(0.55f, 0.9f),
                         startLifetime = Random.Range(0.4f, 0.65f),
                     };
                     dust.Emit(e, 1);
@@ -189,7 +189,7 @@ namespace SurvivorSouls.Gameplay.Combat
                 cracks.Emit(e, 1);
             }
             Vector3 fwd = slam.transform.forward;
-            DustRing(o + new Vector3(fwd.x, 0f, fwd.z) * 0.9f, slamDustCount, 0.5f, new Vector2(1.2f, 3.2f), new Vector2(0.6f, 1.1f));
+            DustRing(o + new Vector3(fwd.x, 0f, fwd.z) * 0.9f, slamDustCount, 0.5f, new Vector2(1.2f, 3.2f), new Vector2(0.85f, 1.4f));
             Track(slam);
             Vector3 knight = KnightPosition(out bool has);
             if (has)
@@ -230,8 +230,8 @@ namespace SurvivorSouls.Gameplay.Combat
                     {
                         position = new Vector3(o.x + cx * front, o.y + 0.15f, o.z + sz * front),
                         velocity = new Vector3(cx * 1.4f, Random.Range(0.6f, 1.5f), sz * 1.4f),
-                        startColor = Color.Lerp(snowDust, earthDust, Random.Range(0.2f, 0.6f)),
-                        startSize = Random.Range(0.45f, 0.8f),
+                        startColor = Color.Lerp(snowDust, earthDust, Random.Range(0.4f, 0.9f)),
+                        startSize = Random.Range(0.65f, 1.05f),
                         startLifetime = Random.Range(0.35f, 0.6f),
                     };
                     dust.Emit(e, 1);
@@ -263,7 +263,7 @@ namespace SurvivorSouls.Gameplay.Combat
                 {
                     position = new Vector3(at.x + cx * radius, at.y + 0.12f, at.z + sz * radius),
                     velocity = new Vector3(cx * v, Random.Range(0.5f, 1.6f), sz * v),
-                    startColor = Color.Lerp(snowDust, earthDust, Random.value * 0.4f),
+                    startColor = Color.Lerp(snowDust, earthDust, Random.Range(0.3f, 0.85f)),
                     startSize = Random.Range(size.x, size.y),
                     startLifetime = Random.Range(0.45f, 0.75f),
                 };

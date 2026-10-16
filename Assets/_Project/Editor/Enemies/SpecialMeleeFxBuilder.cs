@@ -98,7 +98,7 @@ namespace SurvivorSouls.Editor.Enemies
                 if (r > len) continue;
                 float wiggle = (TextureFactory.ValueNoise(r * 7f, i * 3.7f, 64, Seed + i) - 0.5f) * 0.5f;
                 float d = Mathf.Abs(Mathf.DeltaAngle(ang * Mathf.Rad2Deg, (a0 + wiggle) * Mathf.Rad2Deg)) * Mathf.Deg2Rad * r;
-                float w = Mathf.Lerp(0.035f, 0.007f, r / len);
+                float w = Mathf.Lerp(0.06f, 0.014f, r / len);
                 float c = 1f - TextureFactory.SmoothStep(w * 0.5f, w, d);
                 crack = Mathf.Max(crack, c * Mathf.Lerp(1f, 0.55f, r / len));
                 // One side branch per crack, from half its length.
