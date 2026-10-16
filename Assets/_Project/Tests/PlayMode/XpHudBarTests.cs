@@ -136,7 +136,9 @@ namespace SurvivorSouls.Tests
             Assert.That(_fx.RuneCount, Is.EqualTo(1), "rune strip on the XP fill");
 
             _xp.AddXp(60); // the shine needs a fill to cross
-            for (int i = 0; i < 60; i++) yield return null; // bar eases in, layout runs
+            // Bar eases in on unscaled time, layout runs: wait real time, not a frame count (batch frames can be very short).
+            float until = Time.realtimeSinceStartup + 1f;
+            while (Time.realtimeSinceStartup < until) yield return null;
             var fill = _root.Q("xp-fill");
             Assert.That(fill.resolvedStyle.width, Is.GreaterThan(100f), "fill laid out");
 
