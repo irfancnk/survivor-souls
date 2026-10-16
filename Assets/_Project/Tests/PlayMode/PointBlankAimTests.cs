@@ -132,16 +132,25 @@ namespace SurvivorSouls.Tests
             Assert.That(start.z, Is.LessThan(root.z), "set-up: the bolt starts behind the root");
             Assert.That(PointBlankAim.Guard(root, start, front.AimPoint), Is.GreaterThan(0.25f), "set-up: guarded path behind the root");
 
+            // Pin both enemies: bolt knockback would push the front one away until the one behind is the nearest (and then
+            // rightly the target). This test is about the bolt path, not target choice.
+            Vector3 frontAt = front.transform.position, behindAt = behind.transform.position;
+            float behindHealth = behind.Health;
+            var targets = new List<Enemy>();
+            _shooter.Fired += (_, __) => targets.Add(_shooter.Target);
             float t = 0f;
             while ((_hits.Count < 4 || _dirs.Count < 4) && t < 6f)
             {
                 yield return null;
                 t += Time.deltaTime;
+                front.transform.position = frontAt;
+                behind.transform.position = behindAt;
             }
+            foreach (var target in targets) Assert.That(target, Is.SameAs(front), "set-up: the Knight aims at the enemy in front");
             Assert.That(_dirs.Count, Is.GreaterThanOrEqualTo(4), "the Knight shoots");
             Assert.That(_hits.Count, Is.GreaterThanOrEqualTo(4), "every bolt hits");
             foreach (var hit in _hits) Assert.That(hit, Is.SameAs(front), "the enemy in front takes the bolt, never the one behind");
-            Assert.That(behind.Health, Is.EqualTo(100000f), "the enemy behind is never hit");
+            Assert.That(behind.Health, Is.EqualTo(behindHealth), "the enemy behind is never hit");
         }
 
         [UnityTest]

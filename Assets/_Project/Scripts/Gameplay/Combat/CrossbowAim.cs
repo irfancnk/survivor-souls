@@ -146,7 +146,14 @@ namespace SurvivorSouls.Gameplay.Combat
             if (rig.spine != null) Turn(rig.spine, point, spineShare * weight);
             Turn(rig.chest, point, weight);
             Turn(rig.chest, point, weight);
+            // KAN-226: a close target (1.5-2 m) moves the muzzle a lot per degree of chest turn, so two passes left up to
+            // ~4 deg. At full weight, up to 2 more chest passes while the error is above SettleError.
+            if (weight < 1f) return;
+            for (int i = 0; i < ExtraPasses && AimError(point) > SettleError; i++) Turn(rig.chest, point, 1f);
         }
+
+        private const int ExtraPasses = 2;
+        private const float SettleError = 0.5f; // degrees
 
         /// <summary>Turns <paramref name="bone"/> by <paramref name="share"/> of the yaw + pitch that puts the muzzle line on the point.</summary>
         private void Turn(Transform bone, Vector3 point, float share)
