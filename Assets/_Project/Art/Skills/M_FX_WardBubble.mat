@@ -26,7 +26,7 @@ Material:
     m_Ints: []
     m_Floats:
     - _Alpha: 1
-    - _BandStrength: 0.45
+    - _BandStrength: 0.3
     - _Drift: 0.12
     - _Flash: 0
     - _Fringe: 0.35
@@ -35,7 +35,7 @@ Material:
     - _InnerAlpha: 0.08
     - _Opacity: 0.9
     - _RimPower: 2.6
-    - _RimStrength: 1
+    - _RimStrength: 1.3
     m_Colors:
     - _FringeColor: {r: 0.11999995, g: 0.07999996, b: 0.02, a: 1}
     - _InnerColor: {r: 0.62, g: 0.78, b: 1, a: 1}

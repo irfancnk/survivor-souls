@@ -13,12 +13,12 @@ Shader "SurvivorSouls/WardBubble"
         _InnerColor ("Inner Tint", Color) = (0.62, 0.78, 1.0, 1)
         _FringeColor ("Dark Fringe", Color) = (0.12, 0.08, 0.02, 1)
         _RimPower ("Rim Power", Range(0.5, 8)) = 2.6
-        _RimStrength ("Rim Strength", Range(0, 2)) = 1.0
+        _RimStrength ("Rim Strength", Range(0, 2)) = 1.3
         _InnerAlpha ("Inner Alpha", Range(0, 0.5)) = 0.08
         _Fringe ("Fringe Strength", Range(0, 1)) = 0.35
         _HexScale ("Hex Lattice Scale", Range(1, 20)) = 7
         _HexStrength ("Hex Lattice Strength", Range(0, 1)) = 0.28
-        _BandStrength ("Rune Band Strength", Range(0, 1)) = 0.45
+        _BandStrength ("Rune Band Strength", Range(0, 1)) = 0.3
         _Drift ("Lattice Drift (per s)", Range(0, 1)) = 0.12
         _Opacity ("Opacity", Range(0, 1)) = 0.9
 
@@ -120,8 +120,8 @@ Shader "SurvivorSouls/WardBubble"
                 float hex = 1.0 - smoothstep(0.0, aa * 1.5 + 0.02, edge);
 
                 // Rune band: a thin bright ring round the middle with dashes (glyph rhythm).
-                float band = 1.0 - smoothstep(0.02, 0.05, abs(q.y - 0.05));
-                float dash = step(0.35, frac(lon * 28.0 + _Time.y * 0.05));
+                float band = 1.0 - smoothstep(0.012, 0.03, abs(q.y - 0.05));
+                float dash = step(0.45, frac(lon * 48.0 + _Time.y * 0.05));
                 band *= dash;
 
                 half flash = _Flash;
