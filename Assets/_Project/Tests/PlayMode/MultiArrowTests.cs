@@ -228,6 +228,8 @@ namespace SurvivorSouls.Tests
         [TestCase(1, 2)]
         [TestCase(2, 3)]
         [TestCase(3, 4)]
+        [TestCase(4, 4)] // KAN-221: levels 4-5 add damage, not bolts
+        [TestCase(5, 4)]
         public void DoubleShot_ShippedLevels_FireTwoThreeFourBolts(int level, int bolts)
         {
             _manager.SetLevel(Load("DoubleShot"), level);
@@ -240,6 +242,8 @@ namespace SurvivorSouls.Tests
         [TestCase(1, 3)]
         [TestCase(2, 5)]
         [TestCase(3, 7)]
+        [TestCase(4, 7)] // KAN-221: levels 4-5 add damage, not bolts
+        [TestCase(5, 7)]
         public void SpreadShot_ShippedLevels_MainBoltForward_SideBoltsBothWays(int level, int bolts)
         {
             _manager.SetLevel(Load("Multishot"), level);

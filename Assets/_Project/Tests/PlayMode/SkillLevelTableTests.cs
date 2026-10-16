@@ -146,9 +146,13 @@ namespace SurvivorSouls.Tests
             new object[] { "Multishot", 1, new[] { "Multishot+=2" } }, // Spread Shot (KAN-83)
             new object[] { "Multishot", 2, new[] { "Multishot+=4", "SpreadDamage+=0.05" } },
             new object[] { "Multishot", 3, new[] { "Multishot+=6", "SpreadDamage+=0.1" } },
+            new object[] { "Multishot", 4, new[] { "Multishot+=6", "SpreadDamage+=0.2" } }, // KAN-221 (KAN-124.3)
+            new object[] { "Multishot", 5, new[] { "Multishot+=6", "SpreadDamage+=0.3" } },
             new object[] { "DoubleShot", 1, new[] { "DoubleShot+=1" } },
             new object[] { "DoubleShot", 2, new[] { "DoubleShot+=2" } },
             new object[] { "DoubleShot", 3, new[] { "DoubleShot+=3", "ChainDamage%=-0.1" } },
+            new object[] { "DoubleShot", 4, new[] { "DoubleShot+=3" } }, // KAN-221 (KAN-124.3)
+            new object[] { "DoubleShot", 5, new[] { "DoubleShot+=3", "ChainDamage%=0.15" } },
             new object[] { "SoulBurst", 1, new[] { "KillBurst+=0.5" } },
             new object[] { "SoulBurst", 2, new[] { "KillBurst+=0.7" } },
             new object[] { "SoulBurst", 3, new[] { "KillBurst+=0.9", "BurstRadius+=0.6" } },
@@ -228,6 +232,57 @@ namespace SurvivorSouls.Tests
         /// <summary>KAN-220 (KAN-124.2): effect skills with 7 levels; level 7 is the milestone perk or the bigger jump.</summary>
         private static readonly string[] SevenLevelEffectSkills =
             { "ember_bolts", "soul_burst", "blood_covenant", "piercing_bolts", "ricochet" };
+
+        /// <summary>KAN-221 (KAN-124.3): multi-bolt skills with 5 levels; levels 4-5 add damage, never more bolts.</summary>
+        private static readonly string[] FiveLevelBoltSkills = { "multishot", "double_shot" };
+
+        [Test]
+        public void BoltSkills_HaveFiveLevels_LevelsFourAndFiveAddDamageNotBolts()
+        {
+            var bolts = new Dictionary<string, StatId> { { "multishot", StatId.Multishot }, { "double_shot", StatId.DoubleShot } };
+            foreach (string id in FiveLevelBoltSkills)
+            {
+                var s = Shipped().Single(k => k.Id == id);
+                Assert.That(s.MaxLevel, Is.EqualTo(5), id);
+                float Total(int level, StatId stat) => s.Levels[level - 1].modifiers.Where(m => m.stat == stat).Sum(m => m.value);
+                for (int level = 4; level <= 5; level++)
+                    Assert.That(Total(level, bolts[id]), Is.EqualTo(Total(3, bolts[id])), $"{id} L{level}: no extra bolt (frame time)");
+            }
+
+            // The damage share of the extra bolts grows at levels 4 and 5 and reaches the shooter.
+            var go = Track(new GameObject("Shooter"));
+            go.SetActive(false);
+            var stats = go.AddComponent<PlayerStats>();
+            go.AddComponent<CharacterController>();
+            go.AddComponent<SurvivorSouls.Gameplay.Player.PlayerMover>();
+            var shooter = go.AddComponent<SurvivorSouls.Gameplay.Combat.AutoShooter>();
+            go.SetActive(true);
+            shooter.enabled = false;
+            var manager = Track(new GameObject("Skills 3")).AddComponent<SkillManager>();
+            manager.Setup(Track(ScriptableObject.CreateInstance<SkillProgression>()), stats, shooter, null, go.transform, rngSeed: 221);
+            var spread = Load("Multishot");
+            var chain = Load("DoubleShot");
+            manager.Grant(spread);
+            manager.Grant(chain);
+            float[] spreadShare = { 0.5f, 0.55f, 0.6f, 0.7f, 0.8f };
+            float[] chainShare = { 1f, 1f, 0.9f, 1f, 1.15f };
+            for (int level = 1; level <= 5; level++)
+            {
+                if (level > 1)
+                {
+                    manager.Upgrade(spread);
+                    manager.Upgrade(chain);
+                }
+                Assert.That(manager.GetLevel(spread), Is.EqualTo(level));
+                var p = PowerSnapshot.Measure(stats, PowerBase.Default);
+                Assert.That(p.SpreadDamage, Is.EqualTo(spreadShare[level - 1]).Within(1e-4f), $"Spread Shot L{level} side bolt share");
+                Assert.That(p.ChainDamage, Is.EqualTo(chainShare[level - 1]).Within(1e-4f), $"Double Shot L{level} follow-up share");
+                Assert.That(p.Bolts, Is.EqualTo(level == 1 ? 3f : level == 2 ? 5f : 7f), $"L{level} bolts");
+                Assert.That(p.Chain, Is.EqualTo(Mathf.Min(level, 3)), $"L{level} follow-ups");
+            }
+            Assert.That(manager.CanUpgrade(spread), Is.False, "Spread Shot maxed at 5");
+            Assert.That(manager.CanUpgrade(chain), Is.False, "Double Shot maxed at 5");
+        }
 
         [Test]
         public void EffectSkills_HaveSevenLevels_LevelSevenIsTheMilestone()
@@ -315,9 +370,10 @@ namespace SurvivorSouls.Tests
                 // Utility Epic: KAN-50 asks for 5 levels. Spread Shot (Rare): KAN-83 asks for 3 (3 / 5 / 7 bolts). Holy Tomes
                 // (Rare): KAN-123 asks for 8 (the deeper path of KAN-124). The 6 stat skills: KAN-219 (KAN-124.1) asks for 8.
                 // The 5 effect skills: KAN-220 (KAN-124.2) asks for 7.
+                // Spread Shot (Rare) + Double Shot (Epic): KAN-221 (KAN-124.3) asks for 5, levels 4-5 add damage, not bolts.
                 bool deep = s.Id == "holy_tomes" || System.Array.IndexOf(EightLevelStatSkills, s.Id) >= 0;
                 bool seven = System.Array.IndexOf(SevenLevelEffectSkills, s.Id) >= 0;
-                var (min, max) = s.Id == "reliquary_hunter" ? (5, 5) : s.Id == "multishot" ? (3, 3) : deep ? (8, 8) : seven ? (7, 7) : s.Rarity switch
+                var (min, max) = s.Id == "reliquary_hunter" ? (5, 5) : System.Array.IndexOf(FiveLevelBoltSkills, s.Id) >= 0 ? (5, 5) : deep ? (8, 8) : seven ? (7, 7) : s.Rarity switch
                 {
                     SkillRarity.Common => (5, 6),
                     SkillRarity.Rare => (4, 5),

@@ -237,6 +237,9 @@ namespace SurvivorSouls.Editor.Skills
                     L("2 side bolts at 15°, 50% damage", Add(StatId.Multishot, 2f)),
                     L("4 side bolts to 30°, 55% damage", Add(StatId.Multishot, 4f), Add(StatId.SpreadDamage, 0.05f)),
                     L("6 side bolts to 45°, 60% damage", Add(StatId.Multishot, 6f), Add(StatId.SpreadDamage, 0.1f)),
+                    // KAN-221 (KAN-124.3): levels 4-5 add side bolt damage, not bolts (more bolts cost frame time: KAN-83 / KAN-88).
+                    L("6 side bolts to 45°, 70% damage", Add(StatId.Multishot, 6f), Add(StatId.SpreadDamage, 0.2f)),
+                    L("6 side bolts to 45°, 80% damage", Add(StatId.Multishot, 6f), Add(StatId.SpreadDamage, 0.3f)),
                 } },
             // KAN-83 (KAN-36): Double Shot. The volley fires again down the same line 0.09 s later. Repeats are rare on
             // purpose: owned, its level-up weight drops to 25 % (2nd stack) and 6 % (3rd), pity and guarantees never push
@@ -247,6 +250,9 @@ namespace SurvivorSouls.Editor.Skills
                     L("1 extra bolt down the same line", Add(StatId.DoubleShot, 1f)),
                     L("2 extra bolts down the same line", Add(StatId.DoubleShot, 2f)),
                     L("3 extra bolts, 90% damage each", Add(StatId.DoubleShot, 3f), Pct(StatId.ChainDamage, -0.1f)),
+                    // KAN-221 (KAN-124.3): levels 4-5 add follow-up bolt damage, not bolts (frame time: KAN-83 / KAN-88).
+                    L("3 extra bolts, full damage each", Add(StatId.DoubleShot, 3f)),
+                    L("3 extra bolts, 115% damage each", Add(StatId.DoubleShot, 3f), Pct(StatId.ChainDamage, 0.15f)),
                 } },
             new Spec { Id = "soul_burst", File = "SoulBurst", Name = "Soul Burst", Rarity = SkillRarity.Legendary,
                 Glyph = SkillIconPainter.KillBurst, Effect = Fx.KillBurst, Levels = new[]
