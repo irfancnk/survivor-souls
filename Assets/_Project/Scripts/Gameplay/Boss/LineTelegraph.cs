@@ -15,6 +15,7 @@ namespace SurvivorSouls.Gameplay.Boss
     /// carries the quad length, lane width, progress and the "snap" of the last <see cref="snapTime"/> s. While a lane
     /// warns, dark-red smoke wisps rise along its sides through the scene's one shared <see cref="LaneSmoke"/> (wide lanes
     /// smoke more than thin fan / aim lanes).
+    /// KAN-136: <see cref="Tint"/> recolours one warning until it hides (same API as <see cref="GroundTelegraph.Tint"/>).
     /// </summary>
     public sealed class LineTelegraph : MonoBehaviour
     {
@@ -47,6 +48,7 @@ namespace SurvivorSouls.Gameplay.Boss
         private readonly Vector3[] _dirs = new Vector3[MaxLanes];
         private readonly float[] _lengths = new float[MaxLanes];
         private MaterialPropertyBlock _mpb;
+        private Color _edge, _fill, _flashC; // KAN-136: colours in use: the serialized ones unless Tint set others (reset on Hide)
         private Vector3 _origin;
         private float _length = 1f, _width = 1f;
         private float _flash = -1f;
@@ -151,9 +153,9 @@ namespace SurvivorSouls.Gameplay.Boss
             _snap = secondsLeft >= 0f ? 1f - Mathf.Clamp01(secondsLeft / snapTime) : Mathf.InverseLerp(0.88f, 1f, Progress);
             float eased = Eased();
             float pulse = 0.75f + 0.25f * Mathf.Sin(Time.time * Mathf.Lerp(8f, 26f, Progress));
-            var e = edgeColor;
+            var e = _edge;
             e.a *= pulse;
-            var f = fillColor;
+            var f = _fill;
             f.a *= Mathf.Lerp(0.55f, 1f, Progress);
             for (int i = 0; i < LaneCount; i++)
             {
@@ -193,8 +195,8 @@ namespace SurvivorSouls.Gameplay.Boss
             for (int i = 0; i < LaneCount; i++)
             {
                 Place(fills[i], _dirs[i], _lengths[i]);
-                Paint(fills[i], flashColor);
-                Paint(edges[i], edgeColor);
+                Paint(fills[i], _flashC);
+                Paint(edges[i], _edge);
             }
         }
 
@@ -222,9 +224,23 @@ namespace SurvivorSouls.Gameplay.Boss
             for (int i = 0; i < LaneCount; i++) Place(fills[i], _dirs[i], _lengths[i]);
         }
 
+        /// <summary>
+        /// KAN-136: other colours for this warning until it hides (e.g. a poison or hex lane). Call after
+        /// <see cref="ShowFan"/>; <see cref="Hide"/> (also the end of the hit flash) goes back to the serialized red.
+        /// </summary>
+        public void Tint(Color edgeTint, Color fillTint, Color flashTint)
+        {
+            _edge = edgeTint;
+            _fill = fillTint;
+            _flashC = flashTint;
+        }
+
         /// <summary>Hides at once (attack cancelled, boss died).</summary>
         public void Hide()
         {
+            _edge = edgeColor;
+            _fill = fillColor;
+            _flashC = flashColor;
             IsShowing = false;
             _flash = -1f;
             _held = false;
@@ -243,9 +259,9 @@ namespace SurvivorSouls.Gameplay.Boss
             if (_flash < 0f) return;
             _flash += dt;
             float k = Mathf.Clamp01(_flash / flashTime);
-            var f = flashColor;
+            var f = _flashC;
             f.a *= 1f - k;
-            var e = edgeColor;
+            var e = _edge;
             e.a *= 1f - k;
             for (int i = 0; i < LaneCount; i++)
             {

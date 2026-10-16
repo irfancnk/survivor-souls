@@ -88,7 +88,6 @@ namespace SurvivorSouls.Editor.Boss
         public static float LaneChevronTip(int i) => 0.76f + i * 0.09f;
         private const int BoltTextureSize = 64;
         private const int BoltCapacity = 64; // KAN-116: a 2-arm spiral keeps ~40 bolts in the air
-        private const int TextureSize = 256;
         /// <summary>KAN-119: boulders in the pool (a 3-boulder volley plus rubble of the last throws, 8 s each).</summary>
         public const int BoulderCount = 6;
         private const string BoulderMeshPath = ArtDir + "/Mesh_BossBoulder.asset";
@@ -154,13 +153,9 @@ namespace SurvivorSouls.Editor.Boss
         /// <summary>One red circle warning (ring + growing disc) under <paramref name="parent"/>. Also used by the ranged zombies (KAN-105).</summary>
         public static GroundTelegraph CreateTelegraph(GameArtKit kit, Transform parent, string name = "Telegraph")
         {
-            var ringTex = TextureFactory.Write(RingTexturePath, TextureSize, TextureSize, RingPixel, TextureFactory.Kind.Color,
-                wrap: TextureWrapMode.Clamp, maxSize: TextureSize);
-            var discTex = TextureFactory.Write(DiscTexturePath, TextureSize, TextureSize, DiscPixel, TextureFactory.Kind.Color,
-                wrap: TextureWrapMode.Clamp, maxSize: TextureSize);
-            // Alpha blend, not additive: a dark red reads on white snow, additive red would vanish there.
-            var ringMat = EditorAssetUtil.ParticleMaterial(ArtDir + "/M_FX_TelegraphRing.mat", ringTex, additive: false);
-            var discMat = EditorAssetUtil.ParticleMaterial(ArtDir + "/M_FX_TelegraphDisc.mat", discTex, additive: false);
+            // KAN-136: rune circle (TelegraphCircle shader, premultiplied alpha blend: the dark backing reads on white snow).
+            var (ringMat, discMat) = TelegraphArt.CreateMaterials(RingTexturePath, DiscTexturePath,
+                ArtDir + "/M_FX_TelegraphRing.mat", ArtDir + "/M_FX_TelegraphDisc.mat");
 
             var go = new GameObject(name);
             go.transform.SetParent(parent, false);
@@ -363,26 +358,6 @@ namespace SurvivorSouls.Editor.Boss
             return r;
         }
 
-        /// <summary>Danger edge: a bold rim at the radius, a dark inner line for contrast on snow, a faint wash inside.</summary>
-        private static Color RingPixel(int x, int y)
-        {
-            float r = Radius(x, y);
-            float rim = 1f - TextureFactory.SmoothStep(0.03f, 0.07f, Mathf.Abs(r - 0.92f));
-            float inner = (1f - TextureFactory.SmoothStep(0.01f, 0.03f, Mathf.Abs(r - 0.84f))) * 0.6f;
-            float wash = r < 0.9f ? 0.14f : 0f;
-            float a = Mathf.Clamp01(Mathf.Max(rim, Mathf.Max(inner, wash))) * (1f - TextureFactory.SmoothStep(0.97f, 1f, r));
-            float shade = rim >= inner ? 1f : 0.45f; // inner line darker
-            return new Color(shade, shade, shade, a);
-        }
-
-        /// <summary>Filled disc, slightly stronger towards the edge (reads as a pressure wave), soft outer edge.</summary>
-        private static Color DiscPixel(int x, int y)
-        {
-            float r = Radius(x, y);
-            float a = Mathf.Lerp(0.7f, 1f, r * r) * (1f - TextureFactory.SmoothStep(0.9f, 0.99f, r));
-            return new Color(1f, 1f, 1f, a);
-        }
-
         /// <summary>Lane edge: bold rims along both sides, a faint wash between, a rounded far end and a soft start.</summary>
         private static Color LanePixel(int x, int y)
         {
@@ -433,12 +408,6 @@ namespace SurvivorSouls.Editor.Boss
             if (r >= 0.78f && r < 0.8f) a = 1f;
             c.a = a;
             return c;
-        }
-
-        private static float Radius(int x, int y)
-        {
-            float u = (x + 0.5f) / TextureSize * 2f - 1f, v = (y + 0.5f) / TextureSize * 2f - 1f;
-            return Mathf.Sqrt(u * u + v * v);
         }
 
         private static BossData LoadOrCreateData()
