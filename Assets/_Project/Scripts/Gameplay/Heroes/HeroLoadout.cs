@@ -39,6 +39,7 @@ namespace SurvivorSouls.Gameplay.Heroes
         [SerializeField] private GameAudio sound;
 
         private Bolt _sceneBolt; // the scene's projectile (Knight bolt), restored for heroes without their own
+        private float _sceneTurnSpeed = -1f, _sceneTurnSmoothing; // the scene's aim turn, restored likewise (KAN-229)
 
         /// <summary>The hero applied by the last <see cref="Apply"/> (null without a roster).</summary>
         public HeroDefinition Hero { get; private set; }
@@ -91,7 +92,7 @@ namespace SurvivorSouls.Gameplay.Heroes
             Applied?.Invoke(hero);
         }
 
-        /// <summary>The hero's projectile and shot sounds, or the scene defaults (KAN-227).</summary>
+        /// <summary>The hero's projectile, shot sounds (KAN-227) and aim turn (KAN-229), or the scene defaults.</summary>
         private void ApplyShot(HeroDefinition hero)
         {
             var shooter = GetComponent<AutoShooter>();
@@ -99,6 +100,13 @@ namespace SurvivorSouls.Gameplay.Heroes
             {
                 if (_sceneBolt == null) _sceneBolt = shooter.BoltPrefab;
                 shooter.SetBoltPrefab(hero.Projectile != null ? hero.Projectile : _sceneBolt);
+                if (_sceneTurnSpeed < 0f)
+                {
+                    _sceneTurnSpeed = shooter.AimTurnSpeed;
+                    _sceneTurnSmoothing = shooter.AimTurnSmoothing;
+                }
+                if (hero.AimTurnSpeed > 0f) shooter.SetAimTurn(hero.AimTurnSpeed, hero.AimTurnSmoothing);
+                else shooter.SetAimTurn(_sceneTurnSpeed, _sceneTurnSmoothing);
             }
             if (sound == null) sound = FindFirstObjectByType<GameAudio>();
             if (sound != null) sound.SetPlayerShots(hero.ShotClips.Length > 0 ? hero.ShotClips : null);

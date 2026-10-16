@@ -47,6 +47,10 @@ namespace SurvivorSouls.Gameplay.Heroes
         [SerializeField] private Bolt projectile;
         [Tooltip("The hero's own shot sounds (KAN-227: the Ranger's bow twang). Empty = the scene's crossbow shots.")]
         [SerializeField] private AudioClip[] shotClips = Array.Empty<AudioClip>();
+        [Tooltip("Aim turn max rate (deg/s) toward a new target. 0 = the scene's shooter value (Knight 720, constant rate).")]
+        [SerializeField, Min(0f)] private float aimTurnSpeed;
+        [Tooltip("Aim turn smoothing (s): > 0 eases in and out (smooth damp) instead of a constant-rate turn. Used when aimTurnSpeed > 0.")]
+        [SerializeField, Min(0f)] private float aimTurnSmoothing;
 
         public string Id => id;
         public string DisplayName => displayName;
@@ -65,6 +69,10 @@ namespace SurvivorSouls.Gameplay.Heroes
         public Bolt Projectile => projectile;
         /// <summary>Own shot clips; empty for the scene default (the crossbow shots).</summary>
         public AudioClip[] ShotClips => shotClips ?? Array.Empty<AudioClip>();
+        /// <summary>Own aim turn (KAN-229): max deg/s, 0 = scene default.</summary>
+        public float AimTurnSpeed => aimTurnSpeed;
+        /// <summary>Own aim turn smoothing (s), used with <see cref="AimTurnSpeed"/>.</summary>
+        public float AimTurnSmoothing => aimTurnSmoothing;
 
         /// <summary>Final value of <paramref name="stat"/> for a base value, with this profile only (card numbers, tests).</summary>
         public float Apply(StatId stat, float baseValue)
@@ -109,6 +117,13 @@ namespace SurvivorSouls.Gameplay.Heroes
         public void SetModel(GameObject prefab) => modelPrefab = prefab;
 
         /// <summary>Own projectile + shot sounds (null / empty = the scene defaults). Builder and tests.</summary>
+        /// <summary>Own aim turn (0 speed = scene default). Builder and tests.</summary>
+        public void SetAimTurn(float degreesPerSecond, float smoothing)
+        {
+            aimTurnSpeed = Mathf.Max(0f, degreesPerSecond);
+            aimTurnSmoothing = Mathf.Max(0f, smoothing);
+        }
+
         public void SetShot(Bolt prefab, AudioClip[] clips)
         {
             projectile = prefab;

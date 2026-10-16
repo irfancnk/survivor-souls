@@ -31,6 +31,9 @@ namespace SurvivorSouls.Gameplay.Combat
         [SerializeField, Min(1f)] private float boltSpeed = 26f;
         [SerializeField] private bool fireWhileMoving;
         [SerializeField, Min(0f)] private float aimTurnSpeed = 720f; // degrees per second
+        [Tooltip("0 = constant-rate turn at aimTurnSpeed (Knight). > 0 = eased turn (smooth damp, this many seconds), " +
+                 "capped at aimTurnSpeed; set per hero by HeroLoadout (KAN-229: the Ranger no longer snaps round).")]
+        [SerializeField, Min(0f)] private float aimTurnSmoothing;
         [SerializeField, Range(1f, 90f)] private float aimTolerance = 15f;
         [Tooltip("KAN-215: with fireWhileMoving, most degrees between the run direction and the target; beyond it the upper body cannot twist that far, so no shot.")]
         [SerializeField, Range(0f, 180f)] private float maxMovingTwist = 100f;
@@ -96,6 +99,7 @@ namespace SurvivorSouls.Gameplay.Combat
         private PlayerMover _mover;
         private PlayerStats _stats;
         private CrossbowAim _aim;
+        private float _yawVelocity; // eased aim turn (deg/s)
         private Enemy _target;
         private Action<Bolt> _release;
         private Action<BoltHit> _onHit;
@@ -176,6 +180,24 @@ namespace SurvivorSouls.Gameplay.Combat
         /// <summary>Wiring for code-built objects and tests: bolts leave from this socket (the scene builder sets it).</summary>
         public void SetMuzzle(Transform socket) => muzzle = socket;
 
+        /// <summary>Aim turn: max rate (deg/s) and smoothing (s, 0 = constant rate). Per hero (KAN-229).</summary>
+        public void SetAimTurn(float degreesPerSecond, float smoothing)
+        {
+            aimTurnSpeed = Mathf.Max(0f, degreesPerSecond);
+            aimTurnSmoothing = Mathf.Max(0f, smoothing);
+            _yawVelocity = 0f;
+        }
+
+        /// <summary>
+        /// One frame of the eased aim turn (KAN-229): smooth damp of the yaw towards <paramref name="target"/>, capped at
+        /// <paramref name="maxSpeed"/> deg/s, shortest way round. Public for tests.
+        /// </summary>
+        public static float TurnYaw(float yaw, float target, ref float velocity, float smoothing, float maxSpeed, float dt) =>
+            Mathf.SmoothDampAngle(yaw, target, ref velocity, smoothing, maxSpeed, dt);
+
+        public float AimTurnSpeed => aimTurnSpeed;
+        public float AimTurnSmoothing => aimTurnSmoothing;
+
         /// <summary>Volley cap and active bolt budget (tests, perf runs).</summary>
         public void SetBoltLimits(int perVolley, int active)
         {
@@ -220,7 +242,11 @@ namespace SurvivorSouls.Gameplay.Combat
             _engaged = true;
             _target = target;
             var look = Quaternion.LookRotation(to);
-            if (!moving) transform.rotation = Quaternion.RotateTowards(transform.rotation, look, aimTurnSpeed * dt);
+            if (moving) _yawVelocity = 0f; // the mover turns the body
+            else if (aimTurnSmoothing > 0f)
+                transform.rotation = Quaternion.Euler(0f,
+                    TurnYaw(transform.eulerAngles.y, look.eulerAngles.y, ref _yawVelocity, aimTurnSmoothing, aimTurnSpeed, dt), 0f);
+            else transform.rotation = Quaternion.RotateTowards(transform.rotation, look, aimTurnSpeed * dt);
 
             if (_reload < 1f) return;
             if (!moving && Quaternion.Angle(transform.rotation, look) > aimTolerance) return;
