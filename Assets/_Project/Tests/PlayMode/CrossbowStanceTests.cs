@@ -179,6 +179,9 @@ namespace SurvivorSouls.Tests
         public IEnumerator Target_Raises_The_Crossbow_To_The_Shoulder_With_Both_Hands()
         {
             var probe = _player.GetComponent<PoseProbe>();
+            // KAN-217: shots play Fire / Reload on this layer; this test checks the held aim pose itself, so no shoot cycle.
+            var cycle = _player.GetComponent<CrossbowCycle>();
+            if (cycle != null) Object.DestroyImmediate(cycle);
             yield return Wait(0.4f); // no target: hip carry
             Assert.That(_stance.Weight, Is.EqualTo(0f), "no target: no aim layer");
             float carryHeight = probe.GripHeight, carryShoulder = probe.StockToShoulder;
