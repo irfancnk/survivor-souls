@@ -45,6 +45,7 @@ namespace SurvivorSouls.Tests
         [SetUp]
         public void SetUp()
         {
+            Enemy.Active.Clear();
             _savedWalk = Enemy.Walkability;
             Enemy.Walkability = null;
             _savedLandMaxZ = Enemy.LandMaxZ;
@@ -93,6 +94,7 @@ namespace SurvivorSouls.Tests
             foreach (var o in _objects)
                 if (o != null) Object.DestroyImmediate(o);
             _objects.Clear();
+            Enemy.Active.Clear(); // bodies under the inactive spawner never ran OnDisable
             Enemy.Walkability = _savedWalk;
             Enemy.LandMaxZ = _savedLandMaxZ;
             GamePause.Clear();
