@@ -181,6 +181,37 @@ namespace SurvivorSouls.Tests
             foreach (float e in _errors) Assert.That(e, Is.LessThan(3f));
         }
 
+        [UnityTest]
+        public IEnumerator Target_Behind_The_Upper_Body_Swings_Round_Without_A_Jump()
+        {
+            // KAN-231: the chest jumped up to maxYaw (100 deg) in one frame when the next target was behind the Knight.
+            _shooter.SetAimTurn(840f, 0.12f); // the Knight's hero turn (HeroBuilder)
+            var front = SpawnEnemy(new Vector3(0f, 0f, 6f));
+            float t = 0f;
+            while (_errors.Count < 1 && t < 4f) { yield return null; t += Time.deltaTime; }
+            Assert.That(_errors.Count, Is.GreaterThanOrEqualTo(1), "aimed and shot at the front enemy");
+            front.gameObject.SetActive(false);
+            SpawnEnemy(new Vector3(0.5f, 0f, -6f)); // behind
+            float last = Yaw(_aim.MuzzleLine), maxRate = 0f;
+            int shots = _errors.Count;
+            t = 0f;
+            while (t < 1.5f && _errors.Count == shots)
+            {
+                yield return null;
+                float dt = Mathf.Max(Time.deltaTime, 1e-4f);
+                float now = Yaw(_aim.MuzzleLine);
+                if (dt > 0.004f) maxRate = Mathf.Max(maxRate, Mathf.Abs(Mathf.DeltaAngle(last, now)) / dt);
+                else Assert.That(Mathf.Abs(Mathf.DeltaAngle(last, now)), Is.LessThan(15f), "no jump in a short frame");
+                last = now;
+                t += Time.deltaTime;
+            }
+            Assert.That(_errors.Count, Is.GreaterThan(shots), "turns round and shoots the enemy behind");
+            Assert.That(maxRate, Is.LessThan(840f * 1.4f * 1.6f), "crossbow swings at the capped rate, not a jump");
+            foreach (float e in _errors) Assert.That(e, Is.LessThan(3f), "still on the bolt line at each shot");
+        }
+
+        private static float Yaw(Vector3 v) => Mathf.Atan2(v.x, v.z) * Mathf.Rad2Deg;
+
         [Test]
         public void Align_Allocates_Nothing()
         {
