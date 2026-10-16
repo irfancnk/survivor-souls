@@ -291,6 +291,9 @@ namespace SurvivorSouls.Editor
             SetClips(so.FindProperty("portalEnters"), sfx.PortalEnters);
             SetClips(so.FindProperty("chamberArrives"), sfx.ChamberArrives);
             SetClips(so.FindProperty("portalSealed"), sfx.PortalSeals); // sealed-portal thud (KAN-49)
+            SetClips(so.FindProperty("wardUps"), sfx.WardUps); // Hallowed Shield ward (KAN-93)
+            SetClips(so.FindProperty("wardBlocks"), sfx.WardBlocks);
+            SetClips(so.FindProperty("wardDowns"), sfx.WardDowns);
             SetClips(so.FindProperty("soulChimes"), sfx.SoulChimes);
             SetClips(so.FindProperty("levelUps"), sfx.LevelUps);
             SetClips(so.FindProperty("shots"), sfx.Shots);

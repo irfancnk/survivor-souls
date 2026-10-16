@@ -34,6 +34,8 @@ namespace SurvivorSouls.Editor.Audio
             public AudioClip[] ChargeScrapes, ChargeDashes, ChargeStops, ChargeCrashes;
             /// <summary>Knight walks up to the sealed portal (KAN-49): muted low stone thud.</summary>
             public AudioClip[] PortalSeals;
+            /// <summary>Hallowed Shield ward (KAN-93): rises, blocks a hit (glassy tink), runs out (soft shatter).</summary>
+            public AudioClip[] WardUps, WardBlocks, WardDowns;
             /// <summary>Boss charge wind-up growl (KAN-168): seamless loop, pitch raised with the lane fill at runtime.</summary>
             public AudioClip ChargeRumble;
             public AudioClip Ambience, PortalHum;
@@ -86,6 +88,9 @@ namespace SurvivorSouls.Editor.Audio
             set.Ambience = Save("amb_shore_wind_surf_loop", AmbienceRate, ShoreAmbience(AmbienceRate, 24f, 9), ambience: true);
             set.PortalHum = Save("amb_portal_hum_loop", AmbienceRate, PortalHum(AmbienceRate, 4f, 13), ambience: true);
             set.PortalSeals = Many("sfx_portal_sealed", 1, PortalSealThud); // KAN-49
+            set.WardUps = Many("sfx_ward_up", 1, WardUp); // KAN-93
+            set.WardBlocks = Many("sfx_ward_block", 2, WardBlock);
+            set.WardDowns = Many("sfx_ward_down", 1, WardDown);
             set.ChargeRumble = Save("amb_charge_rumble_loop", AmbienceRate, ChargeRumble(AmbienceRate, 2f, 17), ambience: false);
             set.KnightGrunts = Many("sfx_knight_grunt", 3, KnightGrunt); // KAN-187
             set.Heartbeat = Save("sfx_heartbeat_01", Rate, Heartbeat(), ambience: false); // KAN-187
@@ -619,6 +624,52 @@ namespace SurvivorSouls.Editor.Audio
             for (int i = 0; i < 4; i++)
                 Click(b, 0.03f + (float)rng.NextDouble() * 0.2f, 0.005f, 0.14f, 3000f, rng);
             return Normalize(b, 0.85f);
+        }
+
+        /// <summary>
+        /// Hallowed Shield ward rises (KAN-93, ~0.9 s): an airy whoosh up, a low hum swell (D3) and a holy fifth (D5 A5)
+        /// that rings out with a little shimmer. Warm, not a loot sound.
+        /// </summary>
+        private static float[] WardUp(int seed)
+        {
+            var rng = new System.Random(seed * 2311);
+            var b = new float[(int)(Rate * 0.95f)];
+            NoiseBurst(b, 0f, 0.3f, 0.22f, 700f, 3600f, 9f, rng);              // whoosh up
+            Sweep(b, 0f, 0.35f, 300f, 600f, 0.08f, 8f, 1);                     // rising air tone
+            Swell(b, 0f, 0.9f, 146.8f, 0.3f, 0.06f, 3.5f, 3);                  // D3 hum
+            Swell(b, 0.06f, 0.85f, 587.3f, 0.2f, 0.03f, 4.5f, 2);              // D5
+            Swell(b, 0.1f, 0.8f, 880f, 0.16f, 0.03f, 5f, 2);                   // A5
+            NoiseBurst(b, 0.12f, 0.6f, 0.05f, 6000f, 11000f, 7f, rng);         // shimmer
+            return Normalize(b, 0.6f);
+        }
+
+        /// <summary>Ward blocks a hit (KAN-93, ~0.3 s): a short glassy tink (bell partials) over a dull knock. Quiet.</summary>
+        private static float[] WardBlock(int seed)
+        {
+            var rng = new System.Random(seed * 2333);
+            var b = new float[(int)(Rate * 0.32f)];
+            float f = seed == 1 ? 1760f : 1975.5f;                             // A6 / B6
+            Click(b, 0f, 0.008f, 0.4f, 6000f, rng);
+            Sweep(b, 0f, 0.3f, f, f, 0.22f, 16f, 1);
+            Sweep(b, 0f, 0.2f, f * 2.76f, f * 2.76f, 0.07f, 26f, 1);           // bell partial
+            Swell(b, 0f, 0.15f, 180f, 0.18f, 0.004f, 30f, 2);                  // knock
+            return Normalize(b, 0.45f);
+        }
+
+        /// <summary>Ward runs out (KAN-93, ~0.7 s): a soft glass shatter falling in pitch, a down-sweep, and the fifth fading.</summary>
+        private static float[] WardDown(int seed)
+        {
+            var rng = new System.Random(seed * 2341);
+            var b = new float[(int)(Rate * 0.7f)];
+            NoiseBurst(b, 0f, 0.35f, 0.16f, 3500f, 10000f, 10f, rng);          // shatter grit
+            for (int k = 0; k < 5; k++)                                        // falling glass tinks
+            {
+                float f = 2400f - k * 260f + (float)rng.NextDouble() * 120f;
+                Sweep(b, 0.01f + k * 0.035f, 0.18f, f, f, 0.08f, 22f, 1);
+            }
+            Sweep(b, 0.02f, 0.5f, 880f, 440f, 0.14f, 6f, 2);                   // fifth falls away
+            Swell(b, 0f, 0.4f, 146.8f, 0.12f, 0.01f, 7f, 2);
+            return Normalize(b, 0.5f);
         }
 
         /// <summary>
