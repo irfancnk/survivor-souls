@@ -48,6 +48,13 @@ namespace SurvivorSouls.Editor.Enemies
             public bool Boss;
             /// <summary>KAN-109: bake an emission map from the lava cracks of the base colour (<see cref="LavaEmissionBaker"/>).</summary>
             public bool LavaGlow;
+            /// <summary>KAN-145: rim colour (HDR) of the <see cref="RimShader"/> material; alpha 0 = plain Simple Lit (no rim).</summary>
+            public Color Rim;
+            public float RimPower = 2.5f;
+            /// <summary>KAN-145: hand glow colour baked into the emission map (<see cref="HandGlowBaker"/>); alpha 0 = none.</summary>
+            public Color HandGlow;
+            /// <summary>KAN-145: only the hand that holds the staff glows (Hexbound Shaman).</summary>
+            public bool StaffHandOnly;
             public float Health, Speed, Dps, Knockback = 1f, SpeedJitter = 0.08f, ScaleJitter = 0.04f;
             public int Xp;
             public string ArtDir => $"{(Boss ? BossesArt : EnemiesArt)}/{Id}";
@@ -80,6 +87,29 @@ namespace SurvivorSouls.Editor.Enemies
             return spec;
         }
 
+        /// <summary>KAN-145: the shader of the rim materials (Simple Lit + a coloured fresnel rim, same properties).</summary>
+        public const string RimShader = "SurvivorSouls/CharacterRim";
+
+        /// <summary>
+        /// KAN-145: the hooded Meshy enemies (same silhouette since KAN-112) read apart by one accent each: Pyre Thrower ember
+        /// rim + glowing hands, Hexbound Shaman violet rim + hex glow on the staff hand, The Butcher of Ashgrave dark red rim
+        /// (his bigger scale stays). Rim = emissive, no light, no extra draw call.
+        /// </summary>
+        private static Spec Accent(Spec spec, Color rim, float rimPower, Color handGlow = default, bool staffHandOnly = false)
+        {
+            spec.Rim = rim;
+            spec.RimPower = rimPower;
+            spec.HandGlow = handGlow;
+            spec.StaffHandOnly = staffHandOnly;
+            return spec;
+        }
+
+        public static readonly Color PyreRim = new Color(1.5f, 0.52f, 0.1f, 1f);
+        public static readonly Color PyreHands = new Color(1f, 0.5f, 0.12f, 1f);
+        public static readonly Color ShamanRim = new Color(0.85f, 0.32f, 1.5f, 1f);
+        public static readonly Color ShamanHand = new Color(0.72f, 0.3f, 1f, 1f);
+        public static readonly Color ButcherRim = new Color(0.8f, 0.05f, 0.04f, 1f);
+
         /// <summary>
         /// Melee tiers first: they join the waves (KAN-128 cut the Fallen Militiaman, the Gravebound Knight and the Bone
         /// Archer; their art, prefabs and wave slots are gone). Specials melee on contact (8 dps) on top
@@ -91,12 +121,12 @@ namespace SurvivorSouls.Editor.Enemies
             Zombie("GraveyardLaborer", "Shamble", "Attack", 100f, 1.75f, 12f, 5),
             Zombie("RustedWatchman", "Shamble", "Attack", 200f, 1.6f, 16f, 8),
             Zombie("PlagueBloater", "Walk", "Burst", 180f, 1.2f, 8f, 8),
-            Zombie("PyreThrower", "Walk", "Throw", 110f, 1.6f, 8f, 8),
+            Accent(Zombie("PyreThrower", "Walk", "Throw", 110f, 1.6f, 8f, 8), PyreRim, 2.2f, PyreHands),
             Zombie("BileSpitter", "Walk", "Spit", 90f, 1.7f, 8f, 7),
             Zombie("FrenziedGhoul", "Sprint", "Leap", 60f, 4.2f, 8f, 6),
             Zombie("GraveBrute", "Walk", "Slam", 520f, 1.25f, 26f, 25, knock: 0f),
-            Zombie("HexboundShaman", "Walking", "Cast", 130f, 1.5f, 8f, 12),
-            Boss("AshgraveButcher", "Walk", "Chop", 8000f, 1.55f),
+            Accent(Zombie("HexboundShaman", "Walking", "Cast", 130f, 1.5f, 8f, 12), ShamanRim, 2.2f, ShamanHand, staffHandOnly: true),
+            Accent(Boss("AshgraveButcher", "Walk", "Chop", 8000f, 1.55f), ButcherRim, 3f),
             Lava(Boss("PyreLord", "Walk", "Slam", 9000f, 1.4f)),
             Boss("RottingColossus", "Walk", "Slam", 11000f, 1.2f),
             Boss("BoneMatriarch", "Walking", "CastOrbs", 7000f, 1.3f),
@@ -268,6 +298,8 @@ namespace SurvivorSouls.Editor.Enemies
         {
             string tex = $"{spec.ArtDir}/T_{spec.Id}";
             if (spec.LavaGlow) LavaEmissionBaker.Ensure(tex + "_BaseColor.jpg", tex + "_Emission.jpg"); // KAN-109
+            if (spec.HandGlow.a > 0f) // KAN-145
+                HandGlowBaker.Ensure($"{spec.ArtDir}/SK_{spec.Id}.fbx", tex + "_BaseColor.jpg", tex + "_Emission.jpg", spec.HandGlow, spec.StaffHandOnly);
             ConfigureTexture(tex + "_BaseColor.jpg", false);
             ConfigureTexture(tex + "_Normal.png", true);
             ConfigureTexture(tex + "_Emission.jpg", false);
@@ -286,7 +318,22 @@ namespace SurvivorSouls.Editor.Enemies
             // Emission changed after SimpleLitMaterial: run the URP inspector pass again, so the editor / a test session
             // finds nothing to change (KAN-157, KAN-158).
             EditorAssetUtil.ValidateSimpleLit(mat);
+            if (spec.Rim.a > 0f) ApplyRim(mat, spec);
             return mat;
+        }
+
+        /// <summary>
+        /// KAN-145: swaps the validated Simple Lit material to <see cref="RimShader"/> (same properties and keywords, so the
+        /// look is the same plus the rim) and sets the rim. No validation pass runs on SurvivorSouls/* shaders.
+        /// </summary>
+        private static void ApplyRim(Material mat, Spec spec)
+        {
+            var shader = Shader.Find(RimShader);
+            if (shader == null) throw new System.InvalidOperationException($"Shader not found: {RimShader}");
+            mat.shader = shader;
+            mat.SetColor("_RimColor", spec.Rim);
+            mat.SetFloat("_RimPower", spec.RimPower);
+            EditorUtility.SetDirty(mat);
         }
 
         /// <summary>
