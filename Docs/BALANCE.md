@@ -50,3 +50,46 @@ Horde scaling (KAN-92, unchanged asset) at level 20: power index 8.11, zombie he
 
 - Phone feel check for these numbers: KAN-53 (Chamber balance pass) and KAN-85 (boss playtest).
 - No boss-damage perk yet. If bosses still feel long on the phone, add one (follow-up ticket).
+
+## KAN-163 boss damage pass (2026-10-16)
+
+### Decision
+
+- Boss hits hurt a lot: 3 clean hits of each boss's biggest attack kill a fresh Knight (400 HP). Every damaging attack still warns at least 0.6 s (also after the phase 2 wind-up factor).
+- All boss attack shares x1.8 (rounded), the Butcher numbers from the ticket table. Bone Matriarch Cross Beams 34 % (x2.1) so her biggest attack also kills in 3 hits.
+- Max-hit cap 0.35 -> **0.5** (no one-shot, no two-shot from full health).
+- Phase 2: every boss hit x**1.15** on top (`BossData.phase2Damage`), then the cap. Burning patches (Pyre Lord) are not scaled by phase.
+- Contact damage (walking into the boss body): 30 -> **45** dps (11 % of a fresh Knight per second), flat, below every telegraphed big hit. The Bone Matriarch has none.
+- Damage stays a share of max health (decision for now). Future gear armor (KAN-139) should subtract a `DamageTaken` stat after the share, so armor matters against bosses.
+- Boss health and fight length unchanged (fight-time band 60-90 s, `BossIntroTests` balance check).
+
+### Hits to kill a fresh Knight (400 HP)
+
+Printed by `BossDamageBalanceTests.HitsToKill_Table` (EditMode). "-" = the attack is not in that phase.
+
+| Boss | Attack | Share (was) | Phase 1 | Phase 2 |
+| --- | --- | --- | --- | --- |
+| Butcher of Ashgrave | Cleaver Chop | 40 % (22) | 3 | 3 |
+| | Cleaver Spin (per tick, 0.6 s) | 14 % (8) | 8 | 7 |
+| | Charge | 36 % (20) | 3 | - |
+| | Chain Hook | 18 % (10) | - | 5 |
+| | Triple Charge (each dash) | 30 % (18) | - | 3 |
+| | Black Fireballs | 11 % (6) | 10 | 8 |
+| Pyre Lord | Flame Slam (+ burn 9 %/s, was 5) | 36 % (20) | 3 | 3 |
+| | Fireball Fan (volley hits once) | 22 % (12) | 5 | 4 |
+| | Fire Nova (volley hits once) | 25 % (14) | 4 | 4 |
+| | Fire Spiral | 29 % (16) | - | 3 |
+| | Meteor Rain (+ burn 9 %/s, was 5) | 27 % (15) | - | 4 |
+| Rotting Colossus | Double Slam (per ring) | 29 % (16) | 4 | 3 |
+| | Grab | 36 % (20) | 3 | 3 |
+| | Corpse Boulder | 36 % (20) | 3 | - |
+| | Boulder Volley (each boulder) | 36 % (20) | - | 3 |
+| Bone Matriarch | Homing Skulls (volley hits once) | 22 % (12) | 5 | 4 |
+| | Soul Ring (volley hits once) | 25 % (14) | 4 | 4 |
+| | Cross Beams (cast hits once) | 34 % (16) | - | 3 |
+
+### Open points
+
+- Phone playtest of the Butcher and one other boss (deaths from readable mistakes, fight time): human step, see KAN-163 follow-up.
+- Hearts (KAN-60) and life steal unchanged; re-check after the playtest.
+- The Confluence balance sheet sync (KAN-186) should also take this table.

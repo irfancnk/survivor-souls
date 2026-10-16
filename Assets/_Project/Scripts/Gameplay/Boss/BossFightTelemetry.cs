@@ -20,6 +20,13 @@ namespace SurvivorSouls.Gameplay.Boss
         public const string ResultWin = "win";
         public const string ResultDeath = "death";
 
+        // Copies made at type init: a string literal in a method body is interned when that method is first compiled, which
+        // would allocate on the first boss hit of the run (no-GC-per-frame tests).
+        private static readonly string HitEvent = GameTelemetry.BossHitTaken;
+        private static readonly string ResultEvent = GameTelemetry.BossFightResult;
+        private static readonly string BoltName = BoltLabel;
+        private static readonly string BoulderName = BoulderLabel;
+
         /// <summary>A boss hit the Knight: attack label, health lost (above 0).</summary>
         public event Action<string, float> KnightHit;
 
@@ -52,7 +59,7 @@ namespace SurvivorSouls.Gameplay.Boss
             float max = player != null ? player.Max : 0f;
             int sharePercent = max > 0f ? Mathf.RoundToInt(dealt / max * 100f) : 0;
             Vector3 at = player != null ? player.transform.position : Vector3.zero;
-            GameTelemetry.Track(new TelemetryEvent(GameTelemetry.BossHitTaken, label, sharePercent, Mathf.RoundToInt(dealt),
+            GameTelemetry.Track(new TelemetryEvent(HitEvent, label, sharePercent, Mathf.RoundToInt(dealt),
                 data != null ? data.DisplayName : null, Time.timeSinceLevelLoad, at));
         }
 
@@ -78,8 +85,8 @@ namespace SurvivorSouls.Gameplay.Boss
         {
             _fightStarted = true;
             _resultTracked = false;
-            _onBoltHit ??= (_, dealt) => ReportHit(BoltLabel, dealt);
-            _onBoulderLanded ??= (_, dealt) => ReportHit(BoulderLabel, dealt);
+            _onBoltHit ??= (_, dealt) => ReportHit(BoltName, dealt);
+            _onBoulderLanded ??= (_, dealt) => ReportHit(BoulderName, dealt);
             _onKnightDeath ??= OnKnightDeath;
             StopFightTelemetry();
             _trackedBolts = projectiles;
@@ -114,7 +121,7 @@ namespace SurvivorSouls.Gameplay.Boss
             float seconds = FightTime;
             FightEnded?.Invoke(result, seconds);
             Vector3 at = player != null ? player.transform.position : Vector3.zero;
-            GameTelemetry.Track(new TelemetryEvent(GameTelemetry.BossFightResult, data != null ? data.DisplayName : null, Phase,
+            GameTelemetry.Track(new TelemetryEvent(ResultEvent, data != null ? data.DisplayName : null, Phase,
                 Mathf.RoundToInt(seconds), result, Time.timeSinceLevelLoad, at));
         }
     }
