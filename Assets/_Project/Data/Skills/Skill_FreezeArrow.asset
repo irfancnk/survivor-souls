@@ -1,0 +1,65 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1fe610960d6a34b01a28534f0f33effb, type: 3}
+  m_Name: Skill_FreezeArrow
+  m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Skills.SkillDefinition
+  id: freeze_arrow
+  displayName: Freeze Arrow
+  description: Every 3rd hit freezes foes 1.5 s
+  icon: {fileID: 2800000, guid: bd0173a5ca87242acb60029d51eae11b, type: 3}
+  rarity: 1
+  maxStack: 4
+  weight: 0.5
+  modifiers:
+  - stat: 29
+    kind: 0
+    value: 1.5
+  - stat: 28
+    kind: 0
+    value: 3
+  levels:
+  - description: Every 3rd hit freezes foes 1.5 s
+    modifiers:
+    - stat: 29
+      kind: 0
+      value: 1.5
+    - stat: 28
+      kind: 0
+      value: 3
+  - description: Every 3rd hit freezes foes 2 s
+    modifiers:
+    - stat: 29
+      kind: 0
+      value: 2
+    - stat: 28
+      kind: 0
+      value: 3
+  - description: Every 2nd hit freezes foes 2 s
+    modifiers:
+    - stat: 29
+      kind: 0
+      value: 2
+    - stat: 28
+      kind: 0
+      value: 2
+  - description: Every 2nd hit freezes foes 2.5 s
+    modifiers:
+    - stat: 29
+      kind: 0
+      value: 2.5
+    - stat: 28
+      kind: 0
+      value: 2
+  effectPrefab: {fileID: 2725342003098994369, guid: f6ff983da818c468bbf5a1a3a91225bf, type: 3}
+  requiresUpgradableSkill: 0
+  repeatOfferWeights: []
+  upgradeOfferWeight: 1

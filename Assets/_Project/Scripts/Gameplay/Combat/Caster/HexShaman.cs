@@ -208,6 +208,7 @@ namespace SurvivorSouls.Gameplay.Combat
                 Cancel();
                 return;
             }
+            if (enemy.IsFrozenSolid) return; // KAN-91: a frozen Shaman's casts pause
             if (_orbCooldown > 0f) _orbCooldown -= dt;
             if (_castCooldown > 0f) _castCooldown -= dt;
             if (_blinkCooldown > 0f) _blinkCooldown -= dt;

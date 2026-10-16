@@ -179,6 +179,22 @@ namespace SurvivorSouls.Editor.Skills
             return Mathf.Min(rim, cross);
         }
 
+        /// <summary>Frost star (KAN-91 Freeze Arrow): six arms with two branch pairs each and a small hex core.</summary>
+        public static float Frost(Vector2 p)
+        {
+            float d = (p.magnitude) - 0.16f;
+            for (int i = 0; i < 6; i++)
+            {
+                float a = i * Mathf.PI / 3f + Mathf.PI / 2f;
+                Vector2 dir = new Vector2(Mathf.Cos(a), Mathf.Sin(a)), n = new Vector2(-dir.y, dir.x);
+                d = Mathf.Min(d, Segment(p, Vector2.zero, dir * 0.86f, 0.065f));
+                Vector2 b1 = dir * 0.42f, b2 = dir * 0.64f;
+                d = Mathf.Min(d, Mathf.Min(Segment(p, b1, b1 + (dir + n * 1.1f) * 0.2f, 0.05f), Segment(p, b1, b1 + (dir - n * 1.1f) * 0.2f, 0.05f)));
+                d = Mathf.Min(d, Mathf.Min(Segment(p, b2, b2 + (dir + n * 1.1f) * 0.13f, 0.045f), Segment(p, b2, b2 + (dir - n * 1.1f) * 0.13f, 0.045f)));
+            }
+            return d;
+        }
+
         // ------------------------------------------------------------ SDF primitives
 
         /// <summary>Reliquary chest: box body, domed lid split by a gap, keyhole cut out, two light rays above.</summary>

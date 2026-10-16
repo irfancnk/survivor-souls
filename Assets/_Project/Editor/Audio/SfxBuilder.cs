@@ -49,6 +49,8 @@ namespace SurvivorSouls.Editor.Audio
             public AudioClip[] SoulBursts;
             /// <summary>Ember Bolts (KAN-201): ignite whoomp + sizzle, seamless burning crackle loops, hot shot fire layer.</summary>
             public AudioClip[] EmberIgnites, EmberCrackles, EmberHotShots;
+            /// <summary>Freeze Arrow (KAN-91): ice crack + glassy crystal ring on a freeze.</summary>
+            public AudioClip[] FrostFreezes;
             /// <summary>Special melee zombies (KAN-132): Bloater swell gurgle + burst pop, Ghoul screech / whoosh / thud, Brute grunt / slam boom, toxic cloud hiss loop.</summary>
             public AudioClip[] MeleeBloaterSwells, MeleeBloaterBursts, MeleeGhoulScreeches, MeleeGhoulWhooshes, MeleeGhoulThuds, MeleeBruteGrunts, MeleeBruteSlams;
             public AudioClip MeleeCloudHiss;
@@ -105,6 +107,7 @@ namespace SurvivorSouls.Editor.Audio
             set.EmberIgnites = Many("sfx_ember_ignite", 2, EmberIgnite); // KAN-201
             set.EmberCrackles = Many("sfx_ember_crackle_loop", 2, EmberCrackle);
             set.EmberHotShots = Many("sfx_ember_hot_shot", 2, EmberHotShot);
+            set.FrostFreezes = Many("sfx_frost_freeze", 2, FrostFreeze); // KAN-91
             set.MeleeBloaterSwells = Many("sfx_bloater_swell", 2, BloaterSwell); // KAN-132
             set.MeleeBloaterBursts = Many("sfx_bloater_burst", 2, BloaterPop);
             set.MeleeGhoulScreeches = Many("sfx_ghoul_screech", 2, GhoulScreech);
@@ -1071,6 +1074,36 @@ namespace SurvivorSouls.Editor.Audio
         /// Open portal hum (KAN-39, 3D loop near the arch): low drone with a slow beat, a faint airy swirl.
         /// Every partial and the swirl modulation make whole cycles over the loop length, so it loops without a seam.
         /// </summary>
+        /// <summary>
+        /// Freeze Arrow freeze (KAN-91, ~0.7 s): ice forming over a body. A sharp crack (bright click + short high noise
+        /// snap), a crunchy crystallising rustle (band noise with fast random grain), and a cold glassy ring (inharmonic
+        /// high partials, like a struck icicle) that fades out. Thin low end: it sits on top of the horde mix.
+        /// </summary>
+        private static float[] FrostFreeze(int seed)
+        {
+            var rng = new System.Random(seed * 5153);
+            var b = new float[(int)(Rate * 0.72f)];
+            float v = seed == 1 ? 1f : 1.07f;
+            Click(b, 0f, 0.004f, 0.9f, 9000f, rng);                             // crack
+            NoiseBurst(b, 0.002f, 0.09f, 0.55f, 2500f, 9500f, 34f, rng);         // snap
+            var bp = new Biquad(); bp.SetBandPass(4200f * v, 1.1f, Rate);
+            for (int i = (int)(Rate * 0.01f); i < (int)(Rate * 0.32f); i++)       // crystallising crunch
+            {
+                float t = i / (float)Rate;
+                float env = Mathf.Min(1f, (t - 0.01f) / 0.03f) * Mathf.Exp(-Mathf.Max(0f, t - 0.04f) * 11f);
+                float grain = rng.NextDouble() < 0.18 ? 1f : 0.2f;
+                b[i] += bp.Process(Noise(rng)) * env * grain * 0.9f;
+            }
+            for (int k = 0; k < 6; k++)                                            // ice ticks
+                Click(b, 0.03f + (float)rng.NextDouble() * 0.22f, 0.002f, 0.22f + (float)rng.NextDouble() * 0.15f, 11000f, rng);
+            float f = 1568f * v;                                                    // G6 glassy ring, inharmonic partials
+            Swell(b, 0.012f, 0.68f, f, 0.16f, 0.004f, 6f, 1);
+            Swell(b, 0.012f, 0.5f, f * 2.32f, 0.08f, 0.004f, 9f, 1);
+            Swell(b, 0.015f, 0.4f, f * 3.73f, 0.05f, 0.004f, 13f, 1);
+            Sweep(b, 0f, 0.12f, 340f * v, 180f * v, 0.18f, 30f, 1);               // small body knock
+            return Normalize(b, 0.78f);
+        }
+
         private static float[] PortalHum(int rate, float seconds, int seed)
         {
             var rng = new System.Random(seed);
