@@ -153,13 +153,17 @@ namespace SurvivorSouls.Editor.Skills
             new Spec { Id = "ember_bolts", File = "EmberBolts", Name = "Ember Bolts", Rarity = SkillRarity.Legendary,
                 Glyph = SkillIconPainter.Burn, Effect = Fx.Burn, Levels = new[]
                 {
-                    L("Hits burn: 25 fire damage/s for 3 s", Add(StatId.BurnDps, 25f)),
-                    L("Hits burn: 40 fire damage/s for 3 s", Add(StatId.BurnDps, 40f)),
+                    // KAN-134: burning foes move 15-25 % slower (bosses half), an ignite stops a foe 0.2 s (not bosses).
+                    L("Bolts set foes ablaze, slow 15%", Add(StatId.BurnDps, 25f), Add(StatId.BurnSlow, 0.15f),
+                        Add(StatId.IgniteStun, 0.2f)),
+                    L("Fire 40/s for 3 s, slows 18%", Add(StatId.BurnDps, 40f), Add(StatId.BurnSlow, 0.18f),
+                        Add(StatId.IgniteStun, 0.2f)),
                     // KAN-77 perks: L3 fire spreads to the nearest foe (one step), L4 burning deaths blast 60 % bolt damage.
-                    L("Burn 55/s for 4 s, spreads to a foe", Add(StatId.BurnDps, 55f), Add(StatId.BurnDuration, 1f),
-                        Add(StatId.BurnSpread, 1f)),
-                    L("Burn 75/s for 5 s + 60% death blast", Add(StatId.BurnDps, 75f), Add(StatId.BurnDuration, 2f),
-                        Add(StatId.BurnSpread, 1f), Add(StatId.BurnDeathBlast, 0.6f)),
+                    L("Fire 55/s 4 s, spreads, slow 21%", Add(StatId.BurnDps, 55f), Add(StatId.BurnDuration, 1f),
+                        Add(StatId.BurnSpread, 1f), Add(StatId.BurnSlow, 0.21f), Add(StatId.IgniteStun, 0.2f)),
+                    L("Fire 75/s 5 s, 60% blast, slow 25%", Add(StatId.BurnDps, 75f), Add(StatId.BurnDuration, 2f),
+                        Add(StatId.BurnSpread, 1f), Add(StatId.BurnDeathBlast, 0.6f), Add(StatId.BurnSlow, 0.25f),
+                        Add(StatId.IgniteStun, 0.2f)),
                 } },
             new Spec { Id = "blood_covenant", File = "BloodCovenant", Name = "Blood Covenant", Rarity = SkillRarity.Epic,
                 Glyph = SkillIconPainter.LifeSteal, Effect = Fx.LifeSteal, Levels = new[]
@@ -454,6 +458,8 @@ namespace SurvivorSouls.Editor.Skills
             var burstMats = SoulBurstArt.Build(FxDir, ringTex); // KAN-66
             var glowMat = EditorAssetUtil.ParticleMaterial(FxDir + "/M_FX_SkillGlow.mat", kit.SoftDot, additive: true);
             var wardMat = EditorAssetUtil.LoadOrCreateMaterial(FxDir + "/M_FX_WardBubble.mat", "SurvivorSouls/WardBubble"); // KAN-93
+            // KAN-134: alpha blend, not additive: additive fire vanishes on the white snow of Realm 1.
+            var fireMat = EditorAssetUtil.ParticleMaterial(FxDir + "/M_FX_BurnFlame.mat", kit.SoftDot, additive: false);
 
             return new Dictionary<Fx, SkillEffect>
             {
@@ -464,6 +470,21 @@ namespace SurvivorSouls.Editor.Skills
                         new Color(1f, 0.62f, 0.2f), new Color(1f, 0.32f, 0.08f));
                     Drag(embers, 1.5f);
                     Set(fx, "embers", embers);
+                    // KAN-134: flame tongues on burning foes + the ignite flare: two more shared systems (+2 draw calls).
+                    var flames = Particles(root, "Flames", fireMat, 800, new Vector2(0.32f, 0.52f), new Vector2(0.42f, 0.72f),
+                        new Color(1f, 0.78f, 0.3f), new Color(1f, 0.45f, 0.1f));
+                    FlameColour(flames);
+                    var fr = flames.GetComponent<ParticleSystemRenderer>();
+                    fr.renderMode = ParticleSystemRenderMode.Stretch;
+                    fr.velocityScale = 0.12f;
+                    fr.lengthScale = 1.5f;
+                    Drag(flames, 2f);
+                    var flare = Particles(root, "Ignite Flare", fireMat, 240, new Vector2(0.18f, 0.28f), new Vector2(0.4f, 0.65f),
+                        new Color(1f, 0.7f, 0.25f), new Color(1f, 0.5f, 0.12f));
+                    FlameColour(flare);
+                    Drag(flare, 6f);
+                    Set(fx, "flames", flames);
+                    Set(fx, "flare", flare);
                 }),
                 [Fx.LifeSteal] = SavePrefab<LifeStealEffect>("FX_Skill_BloodCovenant", (root, fx) =>
                 {
@@ -592,6 +613,19 @@ namespace SurvivorSouls.Editor.Skills
             size.enabled = true;
             size.size = new ParticleSystem.MinMaxCurve(max, new AnimationCurve(
                 new Keyframe(0f, from / max, 0f, 3f * (to - from) / max), new Keyframe(1f, to / max, 0f, 0f)));
+        }
+
+        /// <summary>Fire over its life (KAN-134): yellow at birth, orange, then a dark red fade (alpha blend reads on snow).</summary>
+        private static void FlameColour(ParticleSystem ps)
+        {
+            var col = ps.colorOverLifetime;
+            col.enabled = true;
+            col.color = PropKit.Gradient(
+                new[] { (new Color(1f, 0.95f, 0.65f), 0f), (new Color(1f, 0.55f, 0.18f), 0.45f), (new Color(0.5f, 0.12f, 0.05f), 1f) },
+                new[] { (0f, 0f), (1f, 0.08f), (0.75f, 0.5f), (0f, 1f) });
+            var sol = ps.sizeOverLifetime;
+            sol.enabled = true;
+            sol.size = new ParticleSystem.MinMaxCurve(1f, new AnimationCurve(new Keyframe(0f, 0.7f), new Keyframe(0.3f, 1f), new Keyframe(1f, 0.25f)));
         }
 
         private static void Drag(ParticleSystem ps, float drag)

@@ -13,6 +13,13 @@ namespace SurvivorSouls.Gameplay.Skills.Effects
     /// spread on (one step). With <see cref="StatId.BurnDeathBlast"/>, a burning enemy's death blasts that share of the bolt
     /// damage to every foe within <see cref="blastRadius"/>. Deaths are queued (fixed ring buffer) and resolved in Update,
     /// never inside the damage event, like <see cref="KillBurstEffect"/>. Both perks reuse the ember system for their FX.
+    /// Readable burn (KAN-134): every burning foe moves <see cref="StatId.BurnSlow"/> slower (<see cref="Enemy.ApplySlow"/>,
+    /// bosses half) for as long as it burns. The hit that sets a foe on fire (it was not burning) is an ignite: the foe stops
+    /// for <see cref="StatId.IgniteStun"/> s and flinches (<see cref="Enemy.Stun"/>, at most once per
+    /// <see cref="igniteCooldown"/> s per foe, never bosses), a flare bursts at its chest and <see cref="Ignited"/> fires
+    /// (KAN-201 sounds). Burning foes carry flame tongues from ONE shared system (<see cref="flames"/>, hotter and bigger at
+    /// higher burn damage), the flare uses one more (<see cref="flare"/>): +2 draw calls for any number of fires. A burning
+    /// death throws a last flame puff and a fan of embers.
     /// </summary>
     public sealed class BurnOnHitEffect : SkillEffect
     {
@@ -29,6 +36,26 @@ namespace SurvivorSouls.Gameplay.Skills.Effects
         [SerializeField, Min(0)] private int spreadEmbers = 8;
         [SerializeField, Min(0)] private int blastEmbers = 22;
 
+        [Header("Readable burn (KAN-134)")]
+        [Tooltip("Shared flame tongues on burning foes (world space, Emit only).")]
+        [SerializeField] private ParticleSystem flames;
+        [Tooltip("Shared ignite flare: flash + flame puffs + sparks (world space, Emit only).")]
+        [SerializeField] private ParticleSystem flare;
+        [Tooltip("Flame tongues per second per burning foe.")]
+        [SerializeField, Min(0f)] private float flameRate = 24f;
+        [Tooltip("Burn damage per second that looks coolest (level 1) and hottest (level 4): flame size and lift scale between them.")]
+        [SerializeField] private Vector2 heatDps = new Vector2(25f, 75f);
+        [Tooltip("Seconds after an ignite flinch before the same foe can flinch again.")]
+        [SerializeField, Min(0f)] private float igniteCooldown = 1.5f;
+        [SerializeField, Min(0)] private int flarePuffs = 8;
+        [SerializeField, Min(0)] private int flareSparks = 10;
+        [SerializeField, Min(0)] private int deathEmbers = 16;
+
+        /// <summary>A bolt set a foe on fire that was not burning (KAN-134). For sounds (KAN-201); raised after the stun.</summary>
+        public static event System.Action<Enemy> Ignited;
+
+        private float _flameDebt;
+
         private float _emitDebt;
         private readonly Vector3[] _queue = new Vector3[QueueSize];
         private int _head, _count;
@@ -43,6 +70,18 @@ namespace SurvivorSouls.Gameplay.Skills.Effects
         public int SpreadCount { get; private set; }
         /// <summary>Death blasts resolved this run (KAN-77).</summary>
         public int BlastCount { get; private set; }
+        /// <summary>Move speed share a burning foe loses (KAN-134; bosses take half, see <see cref="Enemy.ApplySlow"/>).</summary>
+        public float SlowShare => Mathf.Clamp(PlayerStats.Eval(Context?.Stats, StatId.BurnSlow, 0f), 0f, Enemy.MaxSlow);
+        /// <summary>Seconds an ignited foe stops (KAN-134). 0 = no flinch.</summary>
+        public float IgniteStun => Mathf.Max(0f, PlayerStats.Eval(Context?.Stats, StatId.IgniteStun, 0f));
+        /// <summary>Minimum seconds between two ignite flinches of one foe.</summary>
+        public float IgniteCooldown => igniteCooldown;
+        /// <summary>Foes a bolt set on fire this run (they were not burning) (KAN-134).</summary>
+        public int IgniteCount { get; private set; }
+        /// <summary>Ignites that also stunned the foe (not a boss, not on cooldown) (KAN-134).</summary>
+        public int StunCount { get; private set; }
+        /// <summary>Burning deaths this run (KAN-134 death puff).</summary>
+        public int BurningDeathCount { get; private set; }
 
         private System.Action<BoltHit> _onHit;
         private System.Action<Enemy, float, bool> _onDamaged;
@@ -64,7 +103,19 @@ namespace SurvivorSouls.Gameplay.Skills.Effects
         private void OnHit(BoltHit hit)
         {
             float dps = PlayerStats.Eval(Context.Stats, StatId.BurnDps, 0f);
-            if (dps > 0f && !hit.Killed) hit.Enemy.ApplyBurn(dps, Duration);
+            if (dps <= 0f || hit.Killed) return;
+            var enemy = hit.Enemy;
+            bool ignite = !enemy.IsBurning;
+            float length = Duration;
+            enemy.ApplyBurn(dps, length);
+            float slow = SlowShare;
+            if (slow > 0f) enemy.ApplySlow(slow, length);
+            if (!ignite) return;
+            IgniteCount++;
+            float stun = IgniteStun;
+            if (stun > 0f && enemy.Stun(stun, igniteCooldown)) StunCount++;
+            EmitFlare(enemy);
+            Ignited?.Invoke(enemy);
         }
 
         private void OnDamaged(Enemy enemy, float amount, bool killed)
@@ -72,6 +123,8 @@ namespace SurvivorSouls.Gameplay.Skills.Effects
             if (killed)
             {
                 if (enemy.BurnTimeLeft <= 0f) return;
+                BurningDeathCount++;
+                EmitDeath(enemy);
                 if (PlayerStats.Eval(Context.Stats, StatId.BurnDeathBlast, 0f) <= 0f) return;
                 if (_count == QueueSize) { _head = (_head + 1) % QueueSize; _count--; } // drop the oldest under a flood
                 _queue[(_head + _count) % QueueSize] = enemy.transform.position;
@@ -92,6 +145,7 @@ namespace SurvivorSouls.Gameplay.Skills.Effects
             float dps = source.BurnDps;
             if (dps <= 0f) return;
             float length = Duration;
+            float slow = SlowShare;
             Vector3 from = source.transform.position;
             float r2 = spreadRadius * spreadRadius;
             var enemies = Enemy.Active;
@@ -112,6 +166,7 @@ namespace SurvivorSouls.Gameplay.Skills.Effects
                 }
                 if (best == null) return;
                 best.ApplyBurn(dps, length, spread: true);
+                if (slow > 0f) best.ApplySlow(slow, length);
                 SpreadCount++;
                 EmitLink(from, best.transform.position);
             }
@@ -121,6 +176,7 @@ namespace SurvivorSouls.Gameplay.Skills.Effects
         {
             Tick();
             EmitEmbers();
+            EmitFlames(Time.deltaTime);
         }
 
         /// <summary>Resolves the death blasts queued so far (blast kills of burning foes queue for the next call). Public for tests.</summary>
@@ -207,6 +263,108 @@ namespace SurvivorSouls.Gameplay.Skills.Effects
                 p.position = centre + dir * 0.25f + Vector3.up * 0.5f;
                 p.velocity = dir * (blastRadius * Random.Range(2.2f, 3f)) + Vector3.up * Random.Range(0.6f, 1.8f);
                 p.startSize = Random.Range(0.14f, 0.24f);
+                embers.Emit(p, 1);
+            }
+        }
+
+        /// <summary>0 at the coolest burn (<see cref="heatDps"/>.x), 1 at the hottest (.y): flame size and lift.</summary>
+        private float Heat(float dps) => Mathf.InverseLerp(heatDps.x, heatDps.y, dps);
+
+        /// <summary>
+        /// Flame tongues licking up round every burning foe (KAN-134): one shared system, bigger and faster at higher burn
+        /// damage, sized to the body. Public for tests (Update calls it).
+        /// </summary>
+        public void EmitFlames(float dt)
+        {
+            if (flames == null || flameRate <= 0f) return;
+            _flameDebt += flameRate * dt;
+            int perEnemy = (int)_flameDebt;
+            if (perEnemy <= 0) return;
+            _flameDebt -= perEnemy;
+            if (perEnemy > 4) perEnemy = 4; // a hitch never dumps a burst
+            var p = new ParticleSystem.EmitParams { applyShapeToPosition = false };
+            var enemies = Enemy.Active;
+            for (int i = 0; i < enemies.Count; i++)
+            {
+                var e = enemies[i];
+                if (!e.IsBurning) continue;
+                float heat = 0.75f + 0.5f * Heat(e.BurnDps);
+                float scale = e.Scale;
+                Vector3 root = e.transform.position;
+                for (int k = 0; k < perEnemy; k++)
+                {
+                    // On the body's skin, not inside it (the body would hide them), licking up past the shoulders.
+                    Vector2 ring = Random.insideUnitCircle.normalized * (e.HitRadius * Random.Range(0.8f, 1.15f));
+                    p.position = root + new Vector3(ring.x, Random.Range(0.2f, e.Height * 0.95f), ring.y);
+                    p.velocity = new Vector3(ring.x * 0.5f, Random.Range(1.3f, 2.3f) * heat, ring.y * 0.5f);
+                    p.startSize = Random.Range(0.42f, 0.72f) * scale * heat;
+                    p.startLifetime = Random.Range(0.32f, 0.52f);
+                    flames.Emit(p, 1);
+                }
+            }
+        }
+
+        /// <summary>Ignite flare at the chest (KAN-134): a white-hot flash, flame puffs thrown out, sparks.</summary>
+        private void EmitFlare(Enemy e)
+        {
+            if (flare == null) return;
+            float heat = 0.8f + 0.4f * Heat(e.BurnDps);
+            float scale = e.Scale;
+            Vector3 c = e.AimPoint;
+            var p = new ParticleSystem.EmitParams { applyShapeToPosition = false };
+            p.position = c;
+            p.velocity = Vector3.zero;
+            p.startSize = 1.5f * scale * heat;
+            p.startLifetime = 0.14f;
+            p.startColor = new Color(1f, 0.78f, 0.25f);
+            flare.Emit(p, 1);
+            for (int i = 0; i < flarePuffs; i++)
+            {
+                Vector3 dir = Random.onUnitSphere;
+                dir.y = Mathf.Abs(dir.y) * 0.7f + 0.2f;
+                p.position = c + dir * (0.15f * scale);
+                p.velocity = dir * Random.Range(1.4f, 2.6f) * heat;
+                p.startSize = Random.Range(0.4f, 0.65f) * scale * heat;
+                p.startLifetime = Random.Range(0.18f, 0.28f);
+                p.startColor = new Color(1f, Random.Range(0.45f, 0.7f), 0.15f);
+                flare.Emit(p, 1);
+            }
+            for (int i = 0; i < flareSparks; i++)
+            {
+                Vector3 dir = Random.onUnitSphere;
+                dir.y = Mathf.Abs(dir.y) + 0.3f;
+                p.position = c;
+                p.velocity = dir.normalized * Random.Range(3.5f, 6f);
+                p.startSize = Random.Range(0.06f, 0.1f);
+                p.startLifetime = Random.Range(0.2f, 0.32f);
+                p.startColor = new Color(1f, 0.85f, 0.45f);
+                flare.Emit(p, 1);
+            }
+        }
+
+        /// <summary>Burning death (KAN-134): a last flame puff over the body and a fan of rising embers.</summary>
+        private void EmitDeath(Enemy e)
+        {
+            Vector3 root = e.transform.position;
+            float scale = e.Scale;
+            var p = new ParticleSystem.EmitParams { applyShapeToPosition = false };
+            if (flames != null)
+                for (int i = 0; i < 6; i++)
+                {
+                    Vector2 ring = Random.insideUnitCircle * e.HitRadius;
+                    p.position = root + new Vector3(ring.x, Random.Range(0.2f, e.Height * 0.6f), ring.y);
+                    p.velocity = new Vector3(ring.x, Random.Range(1.6f, 2.6f), ring.y);
+                    p.startSize = Random.Range(0.5f, 0.8f) * scale;
+                    p.startLifetime = Random.Range(0.35f, 0.5f);
+                    flames.Emit(p, 1);
+                }
+            if (embers == null || deathEmbers <= 0) return;
+            p = new ParticleSystem.EmitParams { applyShapeToPosition = false };
+            for (int i = 0; i < deathEmbers; i++)
+            {
+                Vector2 ring = Random.insideUnitCircle * e.HitRadius;
+                p.position = root + new Vector3(ring.x, Random.Range(0.3f, e.Height * 0.7f), ring.y);
+                p.velocity = new Vector3(ring.x * 2.5f, Random.Range(1.5f, 3.2f), ring.y * 2.5f);
                 embers.Emit(p, 1);
             }
         }

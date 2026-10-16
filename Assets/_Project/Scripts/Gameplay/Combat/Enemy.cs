@@ -32,6 +32,9 @@ namespace SurvivorSouls.Gameplay.Combat
     /// until it is inside the band, backs off when the Knight comes closer than the band, and stands facing the Knight
     /// inside it. <see cref="NeedsClearShot"/> (set by <see cref="RangedAttack"/> when a pillar blocks the line of fire)
     /// makes it walk in again. 0 / 0 = melee chaser.
+    /// Burn control (KAN-134): <see cref="ApplySlow"/> lowers the move speed for a while (highest slow wins, no stacking,
+    /// bosses take half) and <see cref="Stun"/> stops the chase for a moment and plays the Hit flinch (not on bosses, with
+    /// its own per-enemy cooldown). Ember Bolts uses both when a bolt sets a foe on fire.
     /// </summary>
     public sealed class Enemy : MonoBehaviour
     {
@@ -174,6 +177,10 @@ namespace SurvivorSouls.Gameplay.Combat
         private float _hitLeft;      // seconds left in the current Hit flinch
         private float _hitCooldown;  // seconds until the next flinch may start
         private bool _holding;       // ranged: standing inside the hold band
+        private float _slow;         // KAN-134: move speed share lost while _slowLeft > 0
+        private float _slowLeft;
+        private float _stunLeft;     // KAN-134: seconds the chase stays stopped (ignite flinch)
+        private float _stunCooldown; // seconds until the next stun may start
 
         /// <summary>Northmost Z an enemy may walk to (the sea edge). Set by the spawner from the world; +inf = no limit.</summary>
         public static float LandMaxZ = float.PositiveInfinity;
@@ -197,8 +204,8 @@ namespace SurvivorSouls.Gameplay.Combat
         public bool IsHurt => _health < MaxHealth;
         public float HitRadius => hitRadius * _scale;
         public float Height => height * _scale;
-        /// <summary>This spawn's move speed (type speed x random spread x <see cref="SpeedBoost"/>).</summary>
-        public float MoveSpeed => moveSpeed * _speedMul * SpeedBoost;
+        /// <summary>This spawn's move speed (type speed x random spread x <see cref="SpeedBoost"/> x what <see cref="Slow"/> leaves).</summary>
+        public float MoveSpeed => moveSpeed * _speedMul * SpeedBoost * (1f - Slow);
         /// <summary>Extra walk speed factor set by an attack pattern (KAN-61 boss phase 2). Reset to 1 on spawn.</summary>
         public float SpeedBoost { get; set; } = 1f;
         /// <summary>True while a Hexbound Shaman buff runs (KAN-107): faster, violet tint.</summary>
@@ -257,6 +264,18 @@ namespace SurvivorSouls.Gameplay.Combat
         /// </summary>
         public bool Halted { get; set; }
         public bool IsBurning => _burnLeft > 0f && IsAlive;
+        /// <summary>Move speed share lost to a slow right now (KAN-134 burn slow), 0..<see cref="MaxSlow"/>.</summary>
+        public float Slow => _slowLeft > 0f && IsAlive ? _slow : 0f;
+        /// <summary>Seconds of slow left (0 = none).</summary>
+        public float SlowLeft => IsAlive ? Mathf.Max(0f, _slowLeft) : 0f;
+        /// <summary>The chase is stopped by a <see cref="Stun"/> (KAN-134 ignite flinch).</summary>
+        public bool IsStunned => _stunLeft > 0f && IsAlive;
+        /// <summary>Seconds until this enemy can be stunned again (0 = ready).</summary>
+        public float StunCooldown => Mathf.Max(0f, _stunCooldown);
+        /// <summary>A slow never takes more than this share of the move speed.</summary>
+        public const float MaxSlow = 0.8f;
+        /// <summary>Share of a slow a boss takes (KAN-134: bosses half).</summary>
+        public const float BossSlowShare = 0.5f;
         public float BurnDps => IsBurning ? _burnDps : 0f;
         /// <summary>Burning from a fire caught from a neighbour (KAN-77 Ember Bolts spread), not from a bolt hit. Spread fires do not spread on.</summary>
         public bool BurnFromSpread => IsBurning && _burnSpread;
@@ -285,6 +304,10 @@ namespace SurvivorSouls.Gameplay.Combat
             _burnDps = 0f;
             _burnLeft = 0f;
             _burnSpread = false;
+            _slow = 0f;
+            _slowLeft = 0f;
+            _stunLeft = 0f;
+            _stunCooldown = 0f;
             _burnPhase = UnityEngine.Random.value * Mathf.PI * 2f;
             _detourSide = UnityEngine.Random.value < 0.5f ? -1f : 1f;
             _detouring = false;
@@ -448,6 +471,42 @@ namespace SurvivorSouls.Gameplay.Combat
         }
 
         /// <summary>
+        /// Slows the walk by <paramref name="share"/> of the move speed for <paramref name="duration"/> s (KAN-134 burn slow).
+        /// No stacking: while a slow runs, the higher share wins and the longer time wins. Bosses take
+        /// <see cref="BossSlowShare"/> of the share. Capped at <see cref="MaxSlow"/>. Returns the share now in effect.
+        /// </summary>
+        public float ApplySlow(float share, float duration)
+        {
+            if (!IsAlive || share <= 0f || duration <= 0f) return Slow;
+            if (isBoss) share *= BossSlowShare;
+            share = Mathf.Min(share, MaxSlow);
+            _slow = _slowLeft > 0f ? Mathf.Max(_slow, share) : share;
+            _slowLeft = Mathf.Max(_slowLeft, duration);
+            return _slow;
+        }
+
+        /// <summary>
+        /// Stops the chase (no walking, no turning; crowd push and knockback still move it) for <paramref name="seconds"/> and
+        /// plays the Hit flinch when the controller has one (KAN-134 ignite flinch). Refused for bosses, dead enemies and
+        /// while the last stun's <paramref name="cooldown"/> (s, counted from its start) runs, so a fast fire rate cannot
+        /// lock a foe. Returns true when the stun took.
+        /// </summary>
+        public bool Stun(float seconds, float cooldown)
+        {
+            if (!IsAlive || isBoss || seconds <= 0f || _stunCooldown > 0f) return false;
+            _stunLeft = seconds;
+            _stunCooldown = Mathf.Max(seconds, cooldown);
+            if (_hasHit && !_attacking && _hitLeft <= 0f && animator != null && animator.isActiveAndEnabled)
+            {
+                _hitLeft = hitHold;
+                _hitCooldown = HitCooldown;
+                animator.speed = 1f;
+                animator.CrossFadeInFixedTime(_hitHash, HitBlend, 0, 0f);
+            }
+            return true;
+        }
+
+        /// <summary>
         /// Hexbound Shaman buff (KAN-107): <see cref="SpeedBoost"/> = <paramref name="boost"/> and a violet tint for
         /// <paramref name="duration"/> s. A new hex refreshes the time and keeps the stronger boost (no stacking). Bosses
         /// (their own phase speed) and dead enemies ignore it. Returns true when the hex took.
@@ -519,7 +578,7 @@ namespace SurvivorSouls.Gameplay.Combat
                 Vector3 to = _target.position - pos;
                 to.y = 0f;
                 dist = to.magnitude;
-                if (dist > 0.01f)
+                if (dist > 0.01f && _stunLeft <= 0f) // KAN-134: a stunned foe stands (crowd push and knockback still move it)
                 {
                     Vector3 heading = to / dist;
                     if (holdMax > 0f) move = KeepDistance(pos, heading, dist, dt);
@@ -716,12 +775,21 @@ namespace SurvivorSouls.Gameplay.Combat
             }
         }
 
-        /// <summary>Burn ticks and body tint (hit flash, ember glow). Public for tests (Update calls it).</summary>
+        /// <summary>Burn ticks, slow / stun timers and body tint (hit flash, ember glow). Public for tests (Update calls it).</summary>
         public void TickStatus(float dt)
         {
             UpdateBurn(dt);
             UpdateHex(dt);
+            UpdateControl(dt);
             UpdateTint(dt);
+        }
+
+        /// <summary>Slow and stun timers (KAN-134).</summary>
+        private void UpdateControl(float dt)
+        {
+            if (_slowLeft > 0f && (_slowLeft -= dt) <= 0f) { _slowLeft = 0f; _slow = 0f; }
+            if (_stunLeft > 0f) _stunLeft -= dt;
+            if (_stunCooldown > 0f) _stunCooldown -= dt;
         }
 
         private void UpdateBurn(float dt)

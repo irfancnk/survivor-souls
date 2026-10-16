@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Skills.SkillDefinition
   id: ember_bolts
   displayName: Ember Bolts
-  description: 'Hits burn: 25 fire damage/s for 3 s'
+  description: Bolts set foes ablaze, slow 15%
   icon: {fileID: 2800000, guid: d77f8799bb3134fb28e6b70fb005cdef, type: 3}
   rarity: 3
   maxStack: 4
@@ -23,18 +23,36 @@ MonoBehaviour:
   - stat: 9
     kind: 0
     value: 25
+  - stat: 26
+    kind: 0
+    value: 0.15
+  - stat: 27
+    kind: 0
+    value: 0.2
   levels:
-  - description: 'Hits burn: 25 fire damage/s for 3 s'
+  - description: Bolts set foes ablaze, slow 15%
     modifiers:
     - stat: 9
       kind: 0
       value: 25
-  - description: 'Hits burn: 40 fire damage/s for 3 s'
+    - stat: 26
+      kind: 0
+      value: 0.15
+    - stat: 27
+      kind: 0
+      value: 0.2
+  - description: Fire 40/s for 3 s, slows 18%
     modifiers:
     - stat: 9
       kind: 0
       value: 40
-  - description: Burn 55/s for 4 s, spreads to a foe
+    - stat: 26
+      kind: 0
+      value: 0.18
+    - stat: 27
+      kind: 0
+      value: 0.2
+  - description: Fire 55/s 4 s, spreads, slow 21%
     modifiers:
     - stat: 9
       kind: 0
@@ -45,7 +63,13 @@ MonoBehaviour:
     - stat: 22
       kind: 0
       value: 1
-  - description: Burn 75/s for 5 s + 60% death blast
+    - stat: 26
+      kind: 0
+      value: 0.21
+    - stat: 27
+      kind: 0
+      value: 0.2
+  - description: Fire 75/s 5 s, 60% blast, slow 25%
     modifiers:
     - stat: 9
       kind: 0
@@ -59,4 +83,10 @@ MonoBehaviour:
     - stat: 23
       kind: 0
       value: 0.6
+    - stat: 26
+      kind: 0
+      value: 0.25
+    - stat: 27
+      kind: 0
+      value: 0.2
   effectPrefab: {fileID: 8373298847089911843, guid: 43a86f129c1e64b03be3a8acbaf44c79, type: 3}
