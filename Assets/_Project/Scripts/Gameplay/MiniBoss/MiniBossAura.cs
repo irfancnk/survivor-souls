@@ -21,7 +21,7 @@ namespace SurvivorSouls.Gameplay.MiniBosses
         [Tooltip("Ring turns (degrees per second).")]
         [SerializeField] private float spin = 40f;
         [Tooltip("Disc alpha x the aura colour alpha.")]
-        [SerializeField, Range(0f, 1f)] private float discShare = 0.55f;
+        [SerializeField, Range(0f, 1f)] private float discShare = 0.75f;
         [Tooltip("Height above the ground (no z-fight).")]
         [SerializeField, Min(0f)] private float lift = 0.04f;
 
@@ -67,7 +67,7 @@ namespace SurvivorSouls.Gameplay.MiniBosses
         private void LateUpdate()
         {
             if (_target == null) return;
-            if (!_target.IsAlive || !_target.isActiveAndEnabled)
+            if (!_target.IsAlive || !_target.gameObject.activeSelf) // dead or back in its pool
             {
                 Stop();
                 return;

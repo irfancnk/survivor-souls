@@ -16,8 +16,8 @@ MonoBehaviour:
   enemyType: Enemy_GraveBrute
   healthMultiplier: 4
   sizeMultiplier: 1.35
-  tint: {r: 1.25, g: 0.55, b: 0.45, a: 1}
-  auraColor: {r: 0.62, g: 0.05, b: 0.04, a: 0.9}
+  tint: {r: 1.15, g: 0.6, b: 0.52, a: 1}
+  auraColor: {r: 0.5, g: 0.02, b: 0.03, a: 0.95}
   auraRadius: 1.1
   spawnDelay: 20
   warningTime: 1.6

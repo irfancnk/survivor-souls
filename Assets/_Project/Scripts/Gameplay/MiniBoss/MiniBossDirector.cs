@@ -131,7 +131,7 @@ namespace SurvivorSouls.Gameplay.MiniBosses
                     if (t >= 1f) Rise();
                     break;
                 case Phase.Alive:
-                    if (Boss != null && !Boss.isActiveAndEnabled) Finish(); // pooled away without a kill (tools)
+                    if (Boss != null && !Boss.gameObject.activeSelf) Finish(); // pooled away without a kill (tools)
                     break;
             }
         }

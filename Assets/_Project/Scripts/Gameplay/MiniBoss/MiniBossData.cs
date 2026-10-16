@@ -23,9 +23,9 @@ namespace SurvivorSouls.Gameplay.MiniBosses
         [Tooltip("Body size x this (hit radius, height and the health bar follow).")]
         [SerializeField, Min(0.5f)] private float sizeMultiplier = 1.35f;
         [Tooltip("Calm body colour (x the texture). Above 1 brightens.")]
-        [SerializeField] private Color tint = new Color(1.25f, 0.55f, 0.45f, 1f);
+        [SerializeField] private Color tint = new Color(1.15f, 0.6f, 0.52f, 1f);
         [Tooltip("Ground aura under the mini boss (alpha blend: dark colours read on snow).")]
-        [SerializeField] private Color auraColor = new Color(0.62f, 0.05f, 0.04f, 0.9f);
+        [SerializeField] private Color auraColor = new Color(0.5f, 0.02f, 0.03f, 0.95f);
         [Tooltip("Aura radius (m) at size 1; it grows with the body.")]
         [SerializeField, Min(0.2f)] private float auraRadius = 1.1f;
 

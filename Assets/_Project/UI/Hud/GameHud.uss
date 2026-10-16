@@ -154,10 +154,10 @@
 
 /* KAN-23: mini boss bar, wider and taller, gilded rim, deeper red; shown from the rise (CombatHud). */
 .combat-bar--miniboss {
-    width: 168px;
-    height: 14px;
-    margin-left: -84px;
-    margin-top: -7px;
+    width: 184px;
+    height: 16px;
+    margin-left: -92px;
+    margin-top: -8px;
     border-width: 2px;
     border-color: rgb(196, 150, 72);
     border-radius: 3px;
