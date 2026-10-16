@@ -174,6 +174,7 @@ namespace SurvivorSouls.Dev
             if (Application.isEditor || !Debug.isDebugBuild) return;
             string path = GetArg("-ss-screenshot");
             if (string.IsNullOrEmpty(path)) return;
+            Debug.Log($"[DevScreenshot] Args from {DevArgs.Source} ({DevArgs.All.Length - 1})"); // KAN-179: iOS launch path
 
             Application.runInBackground = true; // keep frames ticking when the window is not focused
             ApplyQualityOverride(GetArg("-ss-quality"));
@@ -186,7 +187,7 @@ namespace SurvivorSouls.Dev
             shot._scene = GetArg("-ss-scene");
             shot._move = GetArg("-ss-move");
             shot._closeup = GetArg("-ss-closeup");
-            shot._nearExit = Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-near-exit") >= 0;
+            shot._nearExit = Array.IndexOf(DevArgs.All, "-ss-near-exit") >= 0;
             shot._pos = GetArg("-ss-pos");
             shot._exitOffset = GetArg("-ss-exit-offset"); // KAN-176
             shot._playerHp = GetArg("-ss-player-hp");
@@ -198,8 +199,8 @@ namespace SurvivorSouls.Dev
             shot._soulsPull = float.TryParse(pull[0], NumberStyles.Float, CultureInfo.InvariantCulture, out float sp) ? sp : -1f;
             shot._soulsFreeze = pull.Length > 1 && float.TryParse(pull[1], NumberStyles.Float, CultureInfo.InvariantCulture, out float sf) ? sf : -1f;
             shot._skills = GetArg("-ss-skills");
-            shot._powerCurve = Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-power-curve") >= 0;
-            shot._volley = Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-volley") >= 0;
+            shot._powerCurve = Array.IndexOf(DevArgs.All, "-ss-power-curve") >= 0;
+            shot._volley = Array.IndexOf(DevArgs.All, "-ss-volley") >= 0;
             shot._upgrade = GetArg("-ss-upgrade");
             shot._chests = int.TryParse(GetArg("-ss-chests"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int ch) ? ch : 0;
             shot._offer = GetArg("-ss-offer");
@@ -212,36 +213,36 @@ namespace SurvivorSouls.Dev
             shot._xp = int.TryParse(GetArg("-ss-xp"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int x) ? x : 0;
             shot._horde = int.TryParse(GetArg("-ss-horde"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int h) ? h : 0;
             shot._hordePower = float.TryParse(GetArg("-ss-horde-power"), NumberStyles.Float, CultureInfo.InvariantCulture, out float hp) ? hp : 0f;
-            shot._hordeTiers = Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-horde-tiers") >= 0;
+            shot._hordeTiers = Array.IndexOf(DevArgs.All, "-ss-horde-tiers") >= 0;
             shot._enemy = GetArg("-ss-enemy");
             shot._shamanCast = GetArg("-ss-shaman-cast");
             shot._hold = int.TryParse(GetArg("-ss-hold"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int hold) ? hold : 0;
-            shot._immortal = Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-immortal") >= 0;
+            shot._immortal = Array.IndexOf(DevArgs.All, "-ss-immortal") >= 0;
             shot._timer = GetArg("-ss-timer");
-            shot._portal = Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-portal") >= 0;
+            shot._portal = Array.IndexOf(DevArgs.All, "-ss-portal") >= 0;
             shot._soak = int.TryParse(GetArg("-ss-portal-soak"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int sk) ? sk : 0;
             shot._realmDetail = int.TryParse(GetArg("-ss-realm"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int rd) ? rd : 0;
-            shot._realms = shot._realmDetail > 0 || Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-realms") >= 0;
+            shot._realms = shot._realmDetail > 0 || Array.IndexOf(DevArgs.All, "-ss-realms") >= 0;
             shot._best = GetArg("-ss-best");
             shot._soulNode = GetArg("-ss-soul-node");
-            shot._soulTree = !string.IsNullOrEmpty(shot._soulNode) || Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-soul-tree") >= 0;
+            shot._soulTree = !string.IsNullOrEmpty(shot._soulNode) || Array.IndexOf(DevArgs.All, "-ss-soul-tree") >= 0;
             shot._treeLevels = GetArg("-ss-tree-levels");
             shot._storeTab = GetArg("-ss-store-tab");
             shot._storeItem = GetArg("-ss-store-item");
-            shot._storeBuy = Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-store-buy") >= 0;
+            shot._storeBuy = Array.IndexOf(DevArgs.All, "-ss-store-buy") >= 0;
             shot._store = shot._storeBuy || !string.IsNullOrEmpty(shot._storeTab) || !string.IsNullOrEmpty(shot._storeItem)
-                || Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-store") >= 0;
+                || Array.IndexOf(DevArgs.All, "-ss-store") >= 0;
             shot._boss = GetArg("-ss-boss");
             shot._bossAttack = GetArg("-ss-boss-attack");
-            shot._bossStay = Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-boss-stay") >= 0;
+            shot._bossStay = Array.IndexOf(DevArgs.All, "-ss-boss-stay") >= 0;
             // KAN-109: which boss the boss Chambers get (before the Game scene wakes: BossFight picks in Start).
             SurvivorSouls.Gameplay.Boss.BossFight.ForcedBoss = GetArg("-ss-boss-type");
             shot._hearts = int.TryParse(GetArg("-ss-hearts"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int hs) ? hs : 0;
             shot._cleared = int.TryParse(GetArg("-ss-cleared"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int cl) ? cl : 0;
-            shot._settings = Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-settings") >= 0;
+            shot._settings = Array.IndexOf(DevArgs.All, "-ss-settings") >= 0;
             shot._startChamber = int.TryParse(GetArg("-ss-start-chamber"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int sc) ? sc : 0;
             // KAN-151: simulate a store build before Test Mode is read anywhere.
-            if (Array.IndexOf(Environment.GetCommandLineArgs(), "-ss-store-sim") >= 0)
+            if (Array.IndexOf(DevArgs.All, "-ss-store-sim") >= 0)
             {
                 SurvivorSouls.Core.TestMode.SimulateStoreBuild = true;
                 Debug.Log("[DevScreenshot] Store build simulated: Test Mode locked off");
@@ -1136,7 +1137,7 @@ namespace SurvivorSouls.Dev
 
         private static string GetArg(string name)
         {
-            string[] args = Environment.GetCommandLineArgs();
+            string[] args = DevArgs.All;
             for (int i = 0; i < args.Length - 1; i++)
                 if (args[i] == name) return args[i + 1];
             return null;
