@@ -1,4 +1,9 @@
+using SurvivorSouls.Editor.Chamber;
+using SurvivorSouls.Editor.Combat;
+using SurvivorSouls.Editor.Progression;
+using SurvivorSouls.Gameplay.Chamber;
 using SurvivorSouls.Gameplay.Combat;
+using SurvivorSouls.Gameplay.Progression;
 using SurvivorSouls.Gameplay.Skills;
 using UnityEditor;
 using UnityEngine;
@@ -8,7 +13,7 @@ namespace SurvivorSouls.Editor.Skills
     /// <summary>
     /// Balance report (KAN-86): the KAN-75 power curve with the shipped skill table (200 runs, levels 1-20), the
     /// single-target and crowd DPS growth at levels 5 / 10 / 20 against the KAN-86 targets, and the KAN-92 horde scaling
-    /// table. Menu "Survivor Souls/Debug/Print Balance Report"; batch:
+    /// table, and the KAN-113 Chamber pacing model (picks, kills, alive per 2 minute Chamber of a Realm run). Menu "Survivor Souls/Debug/Print Balance Report"; batch:
     /// <c>-executeMethod SurvivorSouls.Editor.Skills.BalanceReport.PrintFromCommandLine</c> (exit code 0, report in the log).
     /// </summary>
     public static class BalanceReport
@@ -35,7 +40,27 @@ namespace SurvivorSouls.Editor.Skills
             }
             var scaling = AssetDatabase.LoadAssetAtPath<HordeScaling>(HordeScalingPath);
             if (scaling != null) sb.AppendLine(scaling.Table(curve));
+            sb.AppendLine(Pacing(curve, out _));
             return sb.ToString();
+        }
+
+        /// <summary>
+        /// KAN-113 pacing model of the shipped Realm 1 data (wave table, Chamber difficulty and clock, horde scaling, run XP
+        /// curve) on <paramref name="curve"/>. <paramref name="rows"/> null when an asset is missing.
+        /// </summary>
+        public static string Pacing(SkillPowerCurve curve, out ChamberPacing.Row[] rows)
+        {
+            rows = null;
+            var waves = AssetDatabase.LoadAssetAtPath<EnemyWaveTable>(CombatBuilder.WavesPath);
+            var difficulty = AssetDatabase.LoadAssetAtPath<ChamberDifficulty>(ChamberBuilder.DifficultyPath);
+            var rules = AssetDatabase.LoadAssetAtPath<ChamberRules>(ChamberBuilder.RulesPath);
+            var xp = AssetDatabase.LoadAssetAtPath<XpCurve>(ProgressionBuilder.CurvePath);
+            var scaling = AssetDatabase.LoadAssetAtPath<HordeScaling>(HordeScalingPath);
+            if (waves == null || difficulty == null || rules == null || xp == null || scaling == null)
+                return "Chamber pacing: missing a Realm 1 data asset.";
+            var a = ChamberPacing.Assumptions.Default;
+            rows = ChamberPacing.Simulate(waves, difficulty, scaling, curve, xp, rules.SurvivalSeconds, a);
+            return ChamberPacing.Table(rows, rules.SurvivalSeconds, a);
         }
 
         /// <summary>Batchmode entry point. Exit code 0 on success.</summary>

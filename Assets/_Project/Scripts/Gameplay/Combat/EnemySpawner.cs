@@ -143,6 +143,7 @@ namespace SurvivorSouls.Gameplay.Combat
         private float _headingBias;
         private bool _started;
         private float _capMul = 1f, _intervalMul = 1f, _healthMul = 1f;
+        private float _pressureCap = 1f, _pressureInterval = 1f; // KAN-113 spawn pressure from the power index
         private int _chamber = 1; // KAN-112: Chamber of the Realm, gates wave entries
         private float _dynamicMul = 1f;
         private HordeScaling _scaling;
@@ -164,6 +165,10 @@ namespace SurvivorSouls.Gameplay.Combat
         public float CapMultiplier => _capMul;
         public float IntervalMultiplier => _intervalMul;
         public float HealthMultiplier => _healthMul;
+        /// <summary>Spawn pressure (KAN-113): max alive and burst size factor from the Knight's power, on top of the Chamber.</summary>
+        public float PressureCapFactor => _pressureCap;
+        /// <summary>Spawn pressure (KAN-113): group and burst interval factor from the Knight's power, on top of the Chamber.</summary>
+        public float PressureIntervalFactor => _pressureInterval;
         /// <summary>Chamber of the Realm the wave entries are gated by (KAN-112). 1 until <see cref="SetChamber"/>.</summary>
         public int Chamber => _chamber;
         /// <summary>Power x time health factor of regular spawns (KAN-92, <see cref="HordeScaling"/>). 1 = none.</summary>
@@ -212,11 +217,26 @@ namespace SurvivorSouls.Gameplay.Combat
             _dynamicMul = Mathf.Max(1f, dynamicHealth);
         }
 
+        /// <summary>
+        /// Spawn pressure to the Knight's power (KAN-113): max alive and burst sizes x <paramref name="cap"/>, group and
+        /// burst intervals x <paramref name="interval"/>, on top of the Chamber scaling. Max alive stays inside the
+        /// <see cref="HordeScaling.MaxAliveBudget"/> of the scaling asset. Set every frame by <see cref="Chamber.HordeScaler"/>.
+        /// </summary>
+        public void SetHordePressure(float cap, float interval)
+        {
+            _pressureCap = Mathf.Max(1f, cap);
+            _pressureInterval = Mathf.Clamp(interval, 0.1f, 1f);
+        }
+
         /// <summary>Danger tier colour step a regular zombie would spawn with now (0 = calm or no scaling).</summary>
         public int DangerStep => _scaling != null ? _scaling.StepOf(_scaling.TierValue(SpawnHealthMultiplier)) : 0;
 
-        /// <summary>Max alive of <paramref name="phase"/> after Chamber scaling.</summary>
-        public int MaxAliveOf(in EnemyWaveTable.Phase phase) => Mathf.RoundToInt(phase.maxAlive * _capMul);
+        /// <summary>Max alive of <paramref name="phase"/> after Chamber scaling and spawn pressure (KAN-113, phone budget).</summary>
+        public int MaxAliveOf(in EnemyWaveTable.Phase phase)
+        {
+            int table = Mathf.RoundToInt(phase.maxAlive * _capMul);
+            return _scaling != null && _pressureCap > 1f ? _scaling.PressuredMaxAlive(table, _pressureCap) : table; // KAN-113
+        }
 
         /// <summary>The scene's spawner (casters raise their dead through it, KAN-107). Set while enabled.</summary>
         public static EnemySpawner Current { get; private set; }
@@ -306,9 +326,9 @@ namespace SurvivorSouls.Gameplay.Combat
             {
                 _phase = index;
                 _groupTimer = 0f; // a new phase opens with a group
-                _burstTimer = phase.burstInterval * _intervalMul;
+                _burstTimer = phase.burstInterval * _intervalMul * _pressureInterval;
             }
-            float interval = phase.spawnInterval * _intervalMul;
+            float interval = phase.spawnInterval * _intervalMul * _pressureInterval;
             int maxAlive = MaxAliveOf(phase);
 
             _groupTimer -= dt;
@@ -322,8 +342,8 @@ namespace SurvivorSouls.Gameplay.Combat
                 _burstTimer -= dt;
                 if (_burstTimer <= 0f)
                 {
-                    _pending += Mathf.RoundToInt(phase.burstSize * _capMul);
-                    _burstTimer = phase.burstInterval * _intervalMul;
+                    _pending += Mathf.RoundToInt(phase.burstSize * _capMul * _pressureCap);
+                    _burstTimer = phase.burstInterval * _intervalMul * _pressureInterval;
                 }
             }
             _pending = Mathf.Clamp(_pending, 0, Mathf.Max(0, maxAlive - _live.Count)); // groups top up, never bank
