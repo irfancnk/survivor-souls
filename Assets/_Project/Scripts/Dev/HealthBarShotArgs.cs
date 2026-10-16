@@ -10,12 +10,14 @@ namespace SurvivorSouls.Dev
 {
     /// <summary>
     /// Dev-build screenshot helper for the medieval health bar (KAN-82), next to <see cref="DevScreenshot"/>:
-    /// <c>-ss-hp-fx &lt;event&gt;@&lt;lead&gt;[,...]</c> runs health events that many seconds before the capture
-    /// (<c>-ss-delay</c>, realtime after the Game scene loads), so a shot catches the effect mid-flight. Events:
+    /// <c>-ss-hp-fx &lt;event&gt;@&lt;lead&gt;[~&lt;freeze&gt;][,...]</c> runs health events about that many seconds before the
+    /// capture (<c>-ss-delay</c>, realtime after the Game scene loads; the capture itself drifts by ~1 s); with a freeze,
+    /// time stops that many seconds after the event, so the shot catches the effect mid-flight (the bar runs on scaled
+    /// time). Events:
     /// <c>hit:&lt;share&gt;</c> deals that share of max health (works with -ss-immortal), <c>heal:&lt;share&gt;</c> heals it,
     /// <c>max:&lt;amount&gt;</c> raises max health by a flat amount (a stat source, like Vigor), <c>shield:&lt;share&gt;</c> sets the
     /// shield to that share of max health, <c>hits:&lt;share&gt;</c> deals that share split over 1 s of contact pulses (horde).
-    /// Example: <c>-ss-hp-fx hit:0.18@0.12</c> (chunk + number + trail). Dev builds only; no effect without the arg.
+    /// Example: <c>-ss-hp-fx hit:0.18@2~0.1</c> (chunk + number + trail, frozen 0.1 s after the hit). Dev builds only; no effect without the arg.
     /// </summary>
     public sealed class HealthBarShotArgs : MonoBehaviour
     {
@@ -46,12 +48,14 @@ namespace SurvivorSouls.Dev
                 string[] kv = at[0].Split(':');
                 if (kv.Length < 2) continue;
                 float value = float.Parse(kv[1], CultureInfo.InvariantCulture);
-                float lead = at.Length > 1 ? float.Parse(at[1], CultureInfo.InvariantCulture) : 0.5f;
-                StartCoroutine(Run(kv[0], value, Mathf.Max(0f, _delay - lead)));
+                string[] lf = (at.Length > 1 ? at[1] : "0.5").Split('~');
+                float lead = float.Parse(lf[0], CultureInfo.InvariantCulture);
+                float freeze = lf.Length > 1 ? float.Parse(lf[1], CultureInfo.InvariantCulture) : -1f;
+                StartCoroutine(Run(kv[0], value, Mathf.Max(0f, _delay - lead), freeze));
             }
         }
 
-        private IEnumerator Run(string kind, float value, float wait)
+        private IEnumerator Run(string kind, float value, float wait, float freeze)
         {
             yield return new WaitForSecondsRealtime(wait);
             var health = FindAnyObjectByType<PlayerHealth>();
@@ -84,6 +88,10 @@ namespace SurvivorSouls.Dev
                     break;
             }
             Debug.Log($"[HealthBarShotArgs] {kind} {value} -> {health.Current:0}/{health.Max:0} shield {health.Shield:0}");
+            if (freeze < 0f) yield break;
+            yield return new WaitForSecondsRealtime(freeze);
+            Time.timeScale = 0f; // dev shot only: the frame holds the effect for the capture
+            Debug.Log($"[HealthBarShotArgs] frozen {freeze:0.##} s after {kind}");
         }
 
         private static void Hit(PlayerHealth health, float amount)

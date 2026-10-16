@@ -132,7 +132,7 @@ namespace SurvivorSouls.Tests
         [UnityTest]
         public IEnumerator BarFx_FindsXpAndBossBars_SweepsShine_ScrollsRunes()
         {
-            Assert.That(_fx.ShineCount, Is.EqualTo(2), "XP + boss shine");
+            Assert.That(_fx.ShineCount, Is.EqualTo(3), "XP + boss + health (KAN-82) shine");
             Assert.That(_fx.RuneCount, Is.EqualTo(1), "rune strip on the XP fill");
 
             _xp.AddXp(60); // the shine needs a fill to cross

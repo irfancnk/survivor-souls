@@ -34,6 +34,9 @@ namespace SurvivorSouls.Editor.Hud
         public static readonly string[] All =
             { RimPath, GlassPath, FillGoldPath, FillCrimsonPath, RunesPath, ShinePath, ShieldPath, SparkPath, HeartPath, CracksPath };
 
+        /// <summary>The HUD style sheet that uses this art.</summary>
+        public const string UssPath = "Assets/_Project/UI/Hud/GameHud.uss";
+
         public const int BarHeight = 40;
         public const float BarRadius = 16f;
         /// <summary>Iron band width (px). The USS clip inset (8 px) sits on its inner edge.</summary>
@@ -68,6 +71,8 @@ namespace SurvivorSouls.Editor.Hud
             WriteHeartMedallion();
             WriteHeartCracks();
             AssetDatabase.SaveAssets();
+            // A USS that names a texture before it exists keeps "Invalid asset path" until it imports again (KAN-82).
+            AssetDatabase.ImportAsset(UssPath, ImportAssetOptions.ForceUpdate);
             Debug.Log($"[HudBarArt] wrote {All.Length} textures to {Dir}");
         }
 

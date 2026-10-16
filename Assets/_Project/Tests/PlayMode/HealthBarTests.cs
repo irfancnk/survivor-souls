@@ -92,6 +92,7 @@ namespace SurvivorSouls.Tests
             Assert.That(_bar.LastPopText, Is.EqualTo("-100"));
             Assert.That(_bar.PopsAlive, Is.EqualTo(1));
             Assert.That(_bar.ShardsAlive, Is.EqualTo(4), "a quarter of max health: 4 shards");
+            Assert.That(_bar.Text, Is.Not.EqualTo("300 / 400"), "the number counts down with the fill");
             Assert.That(_bar.LostFlash, Is.GreaterThan(0.3f), "white flash on the lost part");
             Assert.That(maxShake, Is.GreaterThan(1f), "bar shakes");
 

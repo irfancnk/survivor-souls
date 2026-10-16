@@ -411,7 +411,8 @@ namespace SurvivorSouls.UI.Hud
                 float k = p.Age / _feel.popTime;
                 float drift = p.Label.ClassListContains(PopHealClass) ? -_feel.popDrift : _feel.popDrift;
                 float scale = 1f + 0.35f * Mathf.Exp(-k * 10f);
-                p.Label.style.translate = new Translate(0f, 58f + drift * k);
+                float side = (i & 1) == 0 ? -16f : 16f; // back-to-back pops (horde pulses) sit apart
+                p.Label.style.translate = new Translate(side, 58f + drift * k);
                 p.Label.style.scale = new Scale(new Vector2(scale, scale));
                 p.Label.style.opacity = k < 0.6f ? 1f : 1f - (k - 0.6f) / 0.4f;
             }
@@ -517,7 +518,7 @@ namespace SurvivorSouls.UI.Hud
         {
             int max = Mathf.CeilToInt(_max);
             int n = _dead ? 0 : Mathf.Clamp(Mathf.CeilToInt(_shown * _max - 0.001f), 0, max);
-            if (_shown >= Mathf.Clamp01(_current / _max) && !_dead) n = Mathf.CeilToInt(_current - 0.001f); // settled: exact
+            if (_shown == Mathf.Clamp01(_current / _max) && !_dead) n = Mathf.CeilToInt(_current - 0.001f); // settled: exact
             if (n == _lastNumber && max == _numbersMax) return;
             if (max != _numbersMax)
             {
