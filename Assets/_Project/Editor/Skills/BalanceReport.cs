@@ -19,6 +19,8 @@ namespace SurvivorSouls.Editor.Skills
     public static class BalanceReport
     {
         public const string HordeScalingPath = "Assets/_Project/Data/Combat/HordeScaling_Realm1.asset";
+        /// <summary>Power curve length for the pacing model (KAN-113): a Realm 1 run ends around level 35.</summary>
+        public const int PacingLevels = 50;
 
         [MenuItem("Survivor Souls/Debug/Print Balance Report")]
         private static void Print() => Debug.Log("[Balance] " + Build());
@@ -40,7 +42,8 @@ namespace SurvivorSouls.Editor.Skills
             }
             var scaling = AssetDatabase.LoadAssetAtPath<HordeScaling>(HordeScalingPath);
             if (scaling != null) sb.AppendLine(scaling.Table(curve));
-            sb.AppendLine(Pacing(curve, out _));
+            // A run reaches level 30+ in Realm 1 (KAN-113): pace on a longer curve so the late Chambers do not clamp at 20.
+            sb.AppendLine(Pacing(levels >= PacingLevels ? curve : SkillPowerCurve.Simulate(table, PowerBase.Default, runs, PacingLevels), out _));
             return sb.ToString();
         }
 
