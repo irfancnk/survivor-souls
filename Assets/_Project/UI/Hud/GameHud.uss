@@ -1399,6 +1399,13 @@
 .hud-skill-glow--epic .hud-skill__glow { border-radius: 25px; }
 .hud-skill-glow--legendary .hud-skill__glow { border-radius: 19px; left: -15px; top: -15px; right: -15px; bottom: -15px; }
 
+/* Recharging skill's effect is up (KAN-192, e.g. the Hallowed Shield ward): the inlay burns gold and the glow ring holds a
+   steady gold (SkillHud sets the ring opacity). After the tier and max rules, so gold wins while the effect is up. */
+.hud-skill--active .hud-skill__inlay { -unity-background-image-tint-color: rgb(255, 214, 110); }
+.hud-skill--active .hud-skill__level { color: rgb(255, 236, 170); }
+.hud-skill-glow--active { --slot-glow: rgb(255, 206, 96); }
+.hud-skill-glow--active .hud-skill__glow { background-color: rgba(255, 214, 110, 0.16); }
+
 /* Crit and fire damage numbers (CombatHud, KAN-19). */
 .combat-number--crit {
     color: rgb(255, 214, 92);

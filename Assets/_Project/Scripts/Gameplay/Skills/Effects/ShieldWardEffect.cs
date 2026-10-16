@@ -14,7 +14,7 @@ namespace SurvivorSouls.Gameplay.Skills.Effects
     /// <see cref="warnTime"/> seconds, swell + fade out) and motes on one shared particle system. One MPB write per frame
     /// while visible, renderer off otherwise, no alloc. Static events drive the sounds (GameAudio); light haptic on a raise.
     /// </summary>
-    public sealed class ShieldWardEffect : SkillEffect
+    public sealed class ShieldWardEffect : SkillEffect, ISkillCooldown
     {
         [SerializeField, Min(1f)] private float cooldown = 20f;
         [SerializeField, Min(0f)] private float firstDelay = 1f;
@@ -65,6 +65,11 @@ namespace SurvivorSouls.Gameplay.Skills.Effects
         /// <summary>Damage the wards blocked this run.</summary>
         public float BlockedDamage { get; private set; }
         public Renderer Bubble => bubble;
+
+        /// <summary>HUD slot shade (KAN-192): <see cref="CooldownLeft"/> over <see cref="Cooldown"/> (the 1 s first delay shows as a sliver).</summary>
+        public float CooldownRemaining01 => IsActive ? 0f : Mathf.Clamp01(CooldownLeft / Cooldown);
+        /// <summary>HUD slot gold ring (KAN-192): the ward is up.</summary>
+        public bool CooldownEffectActive => IsActive;
 
         protected override void Subscribe()
         {

@@ -30,6 +30,11 @@ namespace SurvivorSouls.UI.Hud
     /// every frame, level shield and pip row (a ring reaches 13 px + growth past its slot, into the 12 px gap where the left
     /// neighbour's shield sits). Same elements, same draw calls, nothing per frame.
     /// </para>
+    /// <para>
+    /// Recharging skills (KAN-192): every frame the row reads each owned effect that is an <see cref="ISkillCooldown"/>
+    /// (Hallowed Shield): the cooldown shade follows <see cref="ISkillCooldown.CooldownRemaining01"/> and, while the effect
+    /// is up, the slot shows a steady gold ring (glow layer) and a gold inlay. Writes only on change, no GC.
+    /// </para>
     /// Looks: hud-skill* in GameHud.uss; art from HudBarArtBuilder.
     /// </summary>
     [RequireComponent(typeof(UIDocument))]
@@ -55,6 +60,10 @@ namespace SurvivorSouls.UI.Hud
         private const string LevelClass = "hud-skill__level";
         private const string GlowLayerClass = "hud-skills__glows";
         private const string GlowAnchorClass = "hud-skill-glow";
+        private const string ActiveClass = "hud-skill--active";
+        private const string GlowActiveClass = "hud-skill-glow--active";
+        /// <summary>Opacity of the steady gold ring while a recharging skill's effect is up (KAN-192).</summary>
+        private const float ActiveRingOpacity = 0.9f;
         /// <summary>Cooldown shade steps: the height is quantised so a per-frame call writes a style only ~64 times per cooldown.</summary>
         private const int CooldownSteps = 64;
         private static readonly string[] LevelText = BuildLevelText(20);
@@ -81,6 +90,10 @@ namespace SurvivorSouls.UI.Hud
             public int ShownLevel = -1;
             /// <summary>Cooldown shade in steps of 1 / <see cref="CooldownSteps"/> (0 = ready).</summary>
             public int CooldownStep;
+            /// <summary>Effect up (KAN-192): gold inlay + steady ring.</summary>
+            public bool Active;
+            /// <summary>The steady ring is on the glow element (a level-up glow takes the element over while it plays).</summary>
+            public bool ActiveRing;
             public readonly List<VisualElement> Pips = new List<VisualElement>(6);
             public SkillDefinition Skill;
             public float GlowAge = -1f;
@@ -131,6 +144,9 @@ namespace SurvivorSouls.UI.Hud
 
         /// <summary>Shown cooldown of slot <paramref name="index"/> (0..1, quantised). Tests.</summary>
         public float CooldownOf(int index) => index >= 0 && index < _slots.Count ? _slots[index].CooldownStep / (float)CooldownSteps : 0f;
+
+        /// <summary>True while slot <paramref name="index"/> shows its recharging skill's effect as up (gold ring, KAN-192). Tests.</summary>
+        public bool IsActiveShown(int index) => index >= 0 && index < VisibleSlots && index < _slots.Count && _slots[index].Active;
 
         /// <summary>Level number on the slot's shield (null when not shown). Tests, screenshots.</summary>
         public string LevelLabel(int index) => index >= 0 && index < VisibleSlots && index < _slots.Count ? _slots[index].Level.text : null;
@@ -195,6 +211,8 @@ namespace SurvivorSouls.UI.Hud
                 {
                     slot.Skill = null;
                     EndGlow(slot);
+                    ApplyCooldown(slot, 0);
+                    ApplyActive(slot, false);
                     continue;
                 }
                 var o = owned[i];
@@ -202,6 +220,7 @@ namespace SurvivorSouls.UI.Hud
                 {
                     EndGlow(slot); // run reset: a glow never jumps to another skill
                     ApplyCooldown(slot, 0); // nor a cooldown
+                    ApplyActive(slot, false); // nor an active ring
                 }
                 slot.Skill = o.Skill;
                 int r = (int)o.Skill.Rarity;
@@ -342,6 +361,42 @@ namespace SurvivorSouls.UI.Hud
                     slot.Pips[p].EnableInClassList(PipNewClass, blinkOn && t < 1f);
                 if (t >= 1f) EndGlow(slot);
             }
+
+            PollCooldowns();
+        }
+
+        /// <summary>
+        /// Recharging skills (KAN-192): shade + active ring from each owned <see cref="ISkillCooldown"/> effect. Reads the
+        /// manager's list (no copy), an interface type test per slot; style writes only on change.
+        /// </summary>
+        private void PollCooldowns()
+        {
+            if (skills == null) return;
+            var owned = skills.OwnedSkills;
+            for (int i = 0; i < VisibleSlots && i < _slots.Count && i < owned.Count; i++)
+            {
+                var slot = _slots[i];
+                if (owned[i].Skill != slot.Skill || !(owned[i].Effect is ISkillCooldown cd)) continue;
+                ApplyCooldown(slot, Mathf.CeilToInt(Mathf.Clamp01(cd.CooldownRemaining01) * CooldownSteps));
+                ApplyActive(slot, cd.CooldownEffectActive);
+                if (slot.Active && !slot.ActiveRing && slot.GlowAge < 0f)
+                {
+                    PlaceGlow(slot); // a slot that never glowed may not have its anchor placed yet
+                    slot.Glow.style.opacity = ActiveRingOpacity;
+                    slot.ActiveRing = true;
+                }
+            }
+        }
+
+        private static void ApplyActive(Slot slot, bool active)
+        {
+            if (slot.Active == active) return;
+            slot.Active = active;
+            slot.Root.EnableInClassList(ActiveClass, active);
+            slot.GlowAnchor.EnableInClassList(GlowActiveClass, active);
+            if (active || !slot.ActiveRing) return;
+            slot.ActiveRing = false;
+            if (slot.GlowAge < 0f) slot.Glow.style.opacity = 0f; // a playing level-up glow keeps its own opacity
         }
 
         private void StartGlows()
@@ -436,6 +491,7 @@ namespace SurvivorSouls.UI.Hud
         private static void EndGlow(Slot slot)
         {
             slot.GlowAge = -1f;
+            slot.ActiveRing = false; // the next poll puts the steady ring back while the effect is up
             slot.Glow.style.opacity = 0f;
             slot.Shine.style.opacity = 0f;
             slot.SparkHigh.style.opacity = 0f;
