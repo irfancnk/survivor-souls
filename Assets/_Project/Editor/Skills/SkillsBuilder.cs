@@ -232,8 +232,10 @@ namespace SurvivorSouls.Editor.Skills
             // KAN-91: Freeze Arrow. Every Nth bolt hit that leaves the foe alive freezes it (rooted, no bite, attacks paused,
             // ice tint); bosses 35 % of the time (rooted only), elites 60 %, 1 s before the same foe can freeze again.
             // Rare: 4 levels (Rare tier rule; the ticket's 1.5 s / every 3rd / every 2nd start). Duration first (the
-            // primary stat never drops), then hits per frost. No damage: crowd control, so it does not move the power curve.
-            new Spec { Id = "freeze_arrow", File = "FreezeArrow", Name = "Freeze Arrow", Rarity = SkillRarity.Rare,
+            // primary stat never drops), then hits per frost. No damage, so it joins late: level 10 tier, weight 0.5. Earlier
+            // it crowds the damage picks out of the random-pick power curve (2000 runs, level 10 single-target: 2.45x at tier
+            // 4 weight 1, 2.49x at tier 4 / 6 weight 0.5, 2.49x at tier 6 weight 0.3; floor 2.5x, KAN-191). Tier 10: 2.51x.
+            new Spec { Id = "freeze_arrow", File = "FreezeArrow", Name = "Freeze Arrow", Rarity = SkillRarity.Rare, Weight = 0.5f,
                 Glyph = SkillIconPainter.Frost, Effect = Fx.Frost, Levels = new[]
                 {
                     L("Every 3rd hit freezes foes 1.5 s", Add(StatId.FreezeDuration, 1.5f), Add(StatId.FreezeEvery, 3f)),
@@ -244,7 +246,7 @@ namespace SurvivorSouls.Editor.Skills
         };
 
         /// <summary>Skills added after the progression asset was first made: id -> tier fromLevel they join (once).</summary>
-        private static readonly (string id, int fromLevel)[] LateUnlocks = { ("reliquary_hunter", 4), ("double_shot", 2), ("temporary_shield", 6), ("freeze_arrow", 4) };
+        private static readonly (string id, int fromLevel)[] LateUnlocks = { ("reliquary_hunter", 4), ("double_shot", 2), ("temporary_shield", 6), ("freeze_arrow", 10) };
 
         /// <summary>Guarantees added after the progression asset was first made: id -> level (once, if that level is free).</summary>
         private static readonly (string id, int level)[] LateGuarantees = { ("double_shot", 3), ("sharpened_bolts", 2), ("quick_draw", 8) };

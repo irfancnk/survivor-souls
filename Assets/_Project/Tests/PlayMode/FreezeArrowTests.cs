@@ -24,7 +24,7 @@ namespace SurvivorSouls.Tests
     /// KAN-91 Freeze Arrow: every Nth bolt hit that leaves the foe alive freezes it (kills do not count), a frost hit on a
     /// foe on its refreeze delay keeps the charge for the next hit, the freeze timer runs out and the foe walks on, bosses
     /// freeze for a 35 % share and elites 60 %, a frozen foe does not bite, the freeze burst and rime emit into the shared
-    /// system, the shipped asset has the 4-level table and sits in the level 4 tier, the frost sound is voice capped, and a
+    /// system, the shipped asset has the 4-level table and sits in the level 10 tier at weight 0.5, the frost sound is voice capped, and a
     /// frost hit + a rime frame allocate nothing.
     /// </summary>
     public sealed class FreezeArrowTests
@@ -295,7 +295,7 @@ namespace SurvivorSouls.Tests
         // ------------------------------------------------------------ Shipped asset
 
         [Test]
-        public void ShippedFreezeArrow_RareFourLevels_EffectPrefab_InTheLevel4Tier()
+        public void ShippedFreezeArrow_RareFourLevels_EffectPrefab_InTheLevel10Tier()
         {
             var skill = UnityEditor.AssetDatabase.LoadAssetAtPath<SkillDefinition>(AssetPath);
             Assert.That(skill, Is.Not.Null);
@@ -316,7 +316,8 @@ namespace SurvivorSouls.Tests
 
             var table = UnityEditor.AssetDatabase.LoadAssetAtPath<SkillProgression>("Assets/_Project/Data/Skills/SkillProgression_Run.asset");
             var tier = table.Tiers.Single(t => t.unlocks.Contains(skill));
-            Assert.That(tier.fromLevel, Is.EqualTo(4));
+            Assert.That(tier.fromLevel, Is.EqualTo(10), "no damage: joins late, keeps the level 10 single-target floor (KAN-191)");
+            Assert.That(skill.Weight, Is.EqualTo(0.5f), "no damage: half weight");
         }
 
         // ------------------------------------------------------------ No GC
