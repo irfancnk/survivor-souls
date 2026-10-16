@@ -53,6 +53,11 @@ namespace SurvivorSouls.Gameplay.Combat
         [SerializeField, Range(0f, 1f)] private float pierceFalloff = BoltShot.DefaultPierceFalloff;
         [Tooltip("KAN-86: share of bolt damage lost on each ricochet bounce (0.3 = next enemy takes 70 %).")]
         [SerializeField, Range(0f, 1f)] private float bounceFalloff = BoltShot.DefaultBounceFalloff;
+        [Tooltip("KAN-200: burn damage per second of the coolest (Ember Bolts level 1) and hottest (level 4) blazing bolt look.")]
+        [SerializeField] private Vector2 blazeDps = new Vector2(25f, 75f);
+
+        /// <summary>Heat of the coolest blazing bolt (KAN-200): any burn at all already reads as fire.</summary>
+        public const float MinBlazeHeat = 0.25f;
 
         private const float MovingSpeed = 0.2f;
         private const float MaxCarry = 0.25f; // most reload overshoot one frame may carry into the next reload
@@ -105,6 +110,19 @@ namespace SurvivorSouls.Gameplay.Combat
         public float CurrentDamage => PlayerStats.Eval(_stats, StatId.Damage, damage);
         /// <summary>Seconds between shots after attack speed skills.</summary>
         public float CurrentInterval => 1f / Mathf.Max(0.05f, PlayerStats.Eval(_stats, StatId.AttackSpeed, 1f / fireInterval));
+        /// <summary>
+        /// Bolt look heat from the burn damage (KAN-200): 0 without Ember Bolts (<see cref="StatId.BurnDps"/> 0), else
+        /// <see cref="MinBlazeHeat"/> at level 1 rising to 1 at level 4 (<see cref="blazeDps"/>).
+        /// </summary>
+        public float BoltHeat
+        {
+            get
+            {
+                float dps = PlayerStats.Eval(_stats, StatId.BurnDps, 0f);
+                if (dps <= 0f) return 0f;
+                return Mathf.Lerp(MinBlazeHeat, 1f, Mathf.InverseLerp(blazeDps.x, blazeDps.y, dps));
+            }
+        }
         /// <summary>Reload fraction 0..1 since the last volley; 1 = the next volley can fire.</summary>
         public float ReloadProgress => Mathf.Min(_reload, 1f);
         /// <summary>
@@ -229,6 +247,7 @@ namespace SurvivorSouls.Gameplay.Combat
                 RicochetRange = ricochetRange,
                 PierceFalloff = pierceFalloff,
                 BounceFalloff = bounceFalloff,
+                Heat = BoltHeat,
             };
             int count = VolleyBuilder.Build(CurrentVolleySpec, _volley);
             for (int i = 0; i < count; i++)

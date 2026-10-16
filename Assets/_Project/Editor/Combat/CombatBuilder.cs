@@ -25,6 +25,7 @@ namespace SurvivorSouls.Editor.Combat
         private const string ArtDir = "Assets/_Project/Art/Combat";
         private const string PrefabDir = "Assets/_Project/Prefabs/Combat";
         private const string BoltMeshPath = ArtDir + "/Bolt_Mesh.asset";
+        private const string BoltBlazeMeshPath = ArtDir + "/Bolt_BlazeHead_Mesh.asset"; // KAN-200
         public const string BoltPrefabPath = PrefabDir + "/Bolt.prefab";
         public const string EnemyPrefabPath = PrefabDir + "/Enemy_Zombie.prefab";
         public const string RunnerPrefabPath = PrefabDir + "/Enemy_ZombieRunner.prefab";
@@ -202,15 +203,51 @@ namespace SurvivorSouls.Editor.Combat
                 trail.shadowCastingMode = ShadowCastingMode.Off;
                 trail.receiveShadows = false;
 
+                // KAN-200 Ember Bolts: hot head (off until a blazing shot) + the fire trail material (alpha blend reads on snow).
+                var blazeMat = EditorAssetUtil.ParticleMaterial(ArtDir + "/M_FX_BoltBlaze.mat", kit.SoftDot, additive: false);
+                var head = new GameObject("Blaze Head");
+                head.transform.SetParent(root.transform, false);
+                head.AddComponent<MeshFilter>().sharedMesh = BuildBlazeHead();
+                var hr = head.AddComponent<MeshRenderer>();
+                hr.sharedMaterial = blazeMat;
+                Quiet(hr);
+                head.SetActive(false);
+
                 var bolt = root.AddComponent<Bolt>();
                 SetRef(bolt, "trail", trail);
                 SetRef(bolt, "model", model.transform);
+                SetRef(bolt, "blazeHead", head.transform);
+                SetRef(bolt, "blazeTrailMaterial", blazeMat);
                 PrefabUtility.SaveAsPrefabAsset(root, BoltPrefabPath);
             }
             finally
             {
                 Object.DestroyImmediate(root);
             }
+        }
+
+        /// <summary>
+        /// Blazing bolt head (KAN-200): three flat soft-dot layers round the bolt head, seen from the top-down camera: a long
+        /// red-orange glow trailing back, an orange flame and a small white-hot core at the tip. Vertex colours tint the
+        /// shared soft-dot fire material, so the whole head is one mesh and one draw.
+        /// </summary>
+        private static Mesh BuildBlazeHead()
+        {
+            var mb = new MeshBuilder();
+            void Layer(float width, float back, float front, float y, Color tint)
+            {
+                mb.Tint = tint;
+                float hw = width * 0.5f;
+                MeshBuilder.UvMapper uv = (p, n) => new Vector2((p.x + hw) / width, (p.z - back) / (front - back));
+                DoubleQuad(mb, new Vector3(-hw, y, back), new Vector3(-hw, y, front), new Vector3(hw, y, front), new Vector3(hw, y, back), uv);
+            }
+            Layer(0.42f, -0.62f, 0.3f, -0.004f, new Color(0.95f, 0.28f, 0.06f, 0.75f));
+            Layer(0.26f, -0.3f, 0.26f, 0f, new Color(1f, 0.6f, 0.16f, 0.95f));
+            Layer(0.14f, -0.04f, 0.22f, 0.004f, new Color(1f, 0.95f, 0.72f, 1f));
+            var mesh = EditorAssetUtil.LoadOrCreateMesh(BoltBlazeMeshPath);
+            mb.WriteTo(mesh);
+            EditorUtility.SetDirty(mesh);
+            return mesh;
         }
 
         /// <summary>Flat quad visible from both sides (the palette material culls back faces).</summary>
