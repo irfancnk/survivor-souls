@@ -8,13 +8,14 @@ namespace SurvivorSouls.Tests
 {
     /// <summary>
     /// KAN-86 balance targets on the shipped skill table (KAN-75 power curve, random card of each offer): the
-    /// Knight's single-target DPS keeps up for the bosses (level 10 at least 2.4x, level 20 at least 4x the bare Knight)
+    /// Knight's single-target DPS keeps up for the bosses (level 10 at least 2.5x, level 20 at least 4x the bare Knight)
     /// while the crowd / single-target gap stays at most 6.5 (it was 9.8 before the pierce / bounce falloff). Crowd skills
     /// still pay off more than single-target ones. The seed is fixed, so the numbers repeat.
     /// KAN-93: 2000 runs (was 200). At 200 runs the level 10 value moved +-0.05 with any change to the skill pool (seed
     /// noise): main read 2.54x at seed 75 but 2.46x at seeds 11 / 23, and 2.44-2.46x at 2000 runs (the true mean). The
-    /// level 10 floor follows the true mean: 2.4x (Hallowed Shield in the pool: 2.43-2.44x). Raising it back to 2.5x is a
-    /// balance ticket.
+    /// level 10 floor followed the true mean: 2.4x (Hallowed Shield in the pool: 2.43-2.44x).
+    /// KAN-191: back to 2.5x. Sharpened Bolts 42-135 % and Quick Draw 33-94 % from level 2, Fleet Foot weight 0.6. 2000 runs:
+    /// level 10 2.53x at seed 75 (2.53 / 2.54 at seeds 11 / 23), level 20 4.48x, gap 6.0-6.1.
     /// </summary>
     public sealed class SingleTargetBalanceTests
     {
@@ -37,7 +38,7 @@ namespace SurvivorSouls.Tests
             float Crowd(int level) => curve.AtLevel(level).CrowdDps / bare.CrowdDps;
 
             Assert.That(Single(5), Is.GreaterThan(1.75f), "early boss (Chamber 5): direct stat skills show");
-            Assert.That(Single(10), Is.GreaterThanOrEqualTo(2.4f), "KAN-93: true mean 2.44x (was 2.5 on a lucky 200-run seed)");
+            Assert.That(Single(10), Is.GreaterThanOrEqualTo(2.5f), "KAN-86 / KAN-191: boss DPS at level 10 (2000-run mean)");
             Assert.That(Single(20), Is.GreaterThanOrEqualTo(4f), "KAN-86: was 2.1x when the ticket was written");
             Assert.That(Single(20), Is.LessThanOrEqualTo(6f), "bosses still take a fight");
             Assert.That(Crowd(20) / Single(20), Is.LessThanOrEqualTo(6.5f), "crowd / single-target gap");

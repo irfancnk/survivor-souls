@@ -68,17 +68,17 @@ namespace SurvivorSouls.Tests
         private static readonly object[] Sheet =
         {
             new object[] { "SharpenedBolts", 1, new[] { "Damage%=0.2" } },
-            new object[] { "SharpenedBolts", 2, new[] { "Damage%=0.38" } },
-            new object[] { "SharpenedBolts", 3, new[] { "Damage%=0.58" } },
-            new object[] { "SharpenedBolts", 4, new[] { "Damage%=0.8" } },
-            new object[] { "SharpenedBolts", 5, new[] { "Damage%=1.02" } },
-            new object[] { "SharpenedBolts", 6, new[] { "Damage%=1.25" } },
+            new object[] { "SharpenedBolts", 2, new[] { "Damage%=0.42" } },
+            new object[] { "SharpenedBolts", 3, new[] { "Damage%=0.66" } },
+            new object[] { "SharpenedBolts", 4, new[] { "Damage%=0.9" } },
+            new object[] { "SharpenedBolts", 5, new[] { "Damage%=1.12" } },
+            new object[] { "SharpenedBolts", 6, new[] { "Damage%=1.35" } },
             new object[] { "QuickDraw", 1, new[] { "AttackSpeed%=0.15" } },
-            new object[] { "QuickDraw", 2, new[] { "AttackSpeed%=0.3" } },
-            new object[] { "QuickDraw", 3, new[] { "AttackSpeed%=0.46" } },
-            new object[] { "QuickDraw", 4, new[] { "AttackSpeed%=0.62" } },
-            new object[] { "QuickDraw", 5, new[] { "AttackSpeed%=0.76" } },
-            new object[] { "QuickDraw", 6, new[] { "AttackSpeed%=0.9" } },
+            new object[] { "QuickDraw", 2, new[] { "AttackSpeed%=0.33" } },
+            new object[] { "QuickDraw", 3, new[] { "AttackSpeed%=0.5" } },
+            new object[] { "QuickDraw", 4, new[] { "AttackSpeed%=0.66" } },
+            new object[] { "QuickDraw", 5, new[] { "AttackSpeed%=0.8" } },
+            new object[] { "QuickDraw", 6, new[] { "AttackSpeed%=0.94" } },
             new object[] { "FleetFoot", 1, new[] { "MoveSpeed%=0.1" } },
             new object[] { "FleetFoot", 2, new[] { "MoveSpeed%=0.18" } },
             new object[] { "FleetFoot", 3, new[] { "MoveSpeed%=0.24" } },
@@ -227,7 +227,7 @@ namespace SurvivorSouls.Tests
         {
             var skill = Load("SharpenedBolts");
             _manager.Grant(skill);
-            Assert.That(skill.DescriptionAt(_manager.GetLevel(skill) + 1), Is.EqualTo("+38% bolt damage"), "card for 1 -> 2");
+            Assert.That(skill.DescriptionAt(_manager.GetLevel(skill) + 1), Is.EqualTo("+42% bolt damage"), "card for 1 -> 2");
             Assert.That(_manager.Upgrade(skill, 99), Is.True);
             Assert.That(_manager.GetLevel(skill), Is.EqualTo(6));
             Assert.That(_manager.CanUpgrade(skill), Is.False);

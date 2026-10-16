@@ -29,29 +29,29 @@ MonoBehaviour:
     - stat: 0
       kind: 1
       value: 0.2
-  - description: +38% bolt damage
+  - description: +42% bolt damage
     modifiers:
     - stat: 0
       kind: 1
-      value: 0.38
-  - description: +58% bolt damage
+      value: 0.42
+  - description: +66% bolt damage
     modifiers:
     - stat: 0
       kind: 1
-      value: 0.58
-  - description: +80% bolt damage
+      value: 0.66
+  - description: +90% bolt damage
     modifiers:
     - stat: 0
       kind: 1
-      value: 0.8
-  - description: +102% bolt damage
+      value: 0.9
+  - description: +112% bolt damage
     modifiers:
     - stat: 0
       kind: 1
-      value: 1.02
-  - description: +125% bolt damage
+      value: 1.12
+  - description: +135% bolt damage
     modifiers:
     - stat: 0
       kind: 1
-      value: 1.25
+      value: 1.35
   effectPrefab: {fileID: 0}

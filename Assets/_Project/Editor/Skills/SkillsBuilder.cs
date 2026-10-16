@@ -71,29 +71,32 @@ namespace SurvivorSouls.Editor.Skills
         // radius). Level 1 keeps the KAN-19 numbers, so the first pick feels the same as before.
         // KAN-86 single-target pass: Sharpened Bolts / Quick Draw / Keen Eye hit harder from level 2 (level 1 kept, later
         // levels grow most: boss DPS at level 20 up from 3.8x), pierce -33 % and bounce -30 % damage per enemy (BoltShot falloff), Spread Shot side bolts 50 / 55 / 60 %.
+        // KAN-191: level 10 single-target back to 2.5x (true mean at 2000 runs was 2.44x): Sharpened Bolts 42-135 % and Quick
+        // Draw 33-94 % from level 2 (level 1 kept), Fleet Foot weight 0.6 (the weakest damage card crowded the early offers).
+        // NOTE: shipped assets keep designer numbers; these rows only seed a fresh asset. Edit both.
         private static readonly Spec[] Specs =
         {
             new Spec { Id = "sharpened_bolts", File = "SharpenedBolts", Name = "Sharpened Bolts", Rarity = SkillRarity.Common,
                 Glyph = SkillIconPainter.Damage, Levels = new[]
                 {
                     L("+20% bolt damage", Pct(StatId.Damage, 0.2f)),
-                    L("+38% bolt damage", Pct(StatId.Damage, 0.38f)),
-                    L("+58% bolt damage", Pct(StatId.Damage, 0.58f)),
-                    L("+80% bolt damage", Pct(StatId.Damage, 0.8f)),
-                    L("+102% bolt damage", Pct(StatId.Damage, 1.02f)),
-                    L("+125% bolt damage", Pct(StatId.Damage, 1.25f)),
+                    L("+42% bolt damage", Pct(StatId.Damage, 0.42f)),
+                    L("+66% bolt damage", Pct(StatId.Damage, 0.66f)),
+                    L("+90% bolt damage", Pct(StatId.Damage, 0.9f)),
+                    L("+112% bolt damage", Pct(StatId.Damage, 1.12f)),
+                    L("+135% bolt damage", Pct(StatId.Damage, 1.35f)),
                 } },
             new Spec { Id = "quick_draw", File = "QuickDraw", Name = "Quick Draw", Rarity = SkillRarity.Common,
                 Glyph = SkillIconPainter.AttackSpeed, Levels = new[]
                 {
                     L("+15% attack speed", Pct(StatId.AttackSpeed, 0.15f)),
-                    L("+30% attack speed", Pct(StatId.AttackSpeed, 0.3f)),
-                    L("+46% attack speed", Pct(StatId.AttackSpeed, 0.46f)),
-                    L("+62% attack speed", Pct(StatId.AttackSpeed, 0.62f)),
-                    L("+76% attack speed", Pct(StatId.AttackSpeed, 0.76f)),
-                    L("+90% attack speed", Pct(StatId.AttackSpeed, 0.9f)),
+                    L("+33% attack speed", Pct(StatId.AttackSpeed, 0.33f)),
+                    L("+50% attack speed", Pct(StatId.AttackSpeed, 0.5f)),
+                    L("+66% attack speed", Pct(StatId.AttackSpeed, 0.66f)),
+                    L("+80% attack speed", Pct(StatId.AttackSpeed, 0.8f)),
+                    L("+94% attack speed", Pct(StatId.AttackSpeed, 0.94f)),
                 } },
-            new Spec { Id = "fleet_foot", File = "FleetFoot", Name = "Fleet Foot", Rarity = SkillRarity.Common,
+            new Spec { Id = "fleet_foot", File = "FleetFoot", Name = "Fleet Foot", Rarity = SkillRarity.Common, Weight = 0.6f,
                 Glyph = SkillIconPainter.MoveSpeed, Levels = new[]
                 {
                     L("+10% move speed", Pct(StatId.MoveSpeed, 0.1f)),
