@@ -9,8 +9,8 @@ namespace SurvivorSouls.Editor.SceneSteps
 {
     /// <summary>
     /// KAN-164.2 boss enrage, Game scene side: <see cref="BossEnrageFx"/> on the "Boss" object with an "Enrage Aura" child
-    /// (red-orange embers rising from a ring at the boss's feet, additive, world space, one draw call, stopped until the
-    /// enrage), the follow camera for the shake and the boss groan clips (<c>Deaths</c>) for the low roar.
+    /// (red-orange embers rising from a ring at the boss's feet, alpha blend with a dark rim so they read on the white snow,
+    /// world space, one draw call, stopped until the enrage), the follow camera for the shake and the boss groan clips (<c>Deaths</c>) for the low roar.
     /// </summary>
     public sealed class BossEnrageStep : IGameSceneStep
     {
@@ -41,7 +41,7 @@ namespace SurvivorSouls.Editor.SceneSteps
             string dir = RangedEnemyBuilder.FxDir;
             var tex = TextureFactory.Write($"{dir}/{EmberTexture}.png", RangedEnemyBuilder.FxSize, RangedEnemyBuilder.FxSize, EmberPixel,
                 TextureFactory.Kind.Color, wrap: TextureWrapMode.Clamp, maxSize: RangedEnemyBuilder.FxSize);
-            var mat = EditorAssetUtil.ParticleMaterial($"{dir}/M_FX_EnrageEmber.mat", tex, additive: true);
+            var mat = EditorAssetUtil.ParticleMaterial($"{dir}/M_FX_EnrageEmber.mat", tex, additive: false); // additive vanishes on snow
             var ps = PropKit.Particles("Enrage Aura", parent, mat);
             var main = ps.main;
             main.loop = true;
@@ -51,7 +51,7 @@ namespace SurvivorSouls.Editor.SceneSteps
             main.startLifetime = new ParticleSystem.MinMaxCurve(0.7f, 1.1f);
             main.startSpeed = new ParticleSystem.MinMaxCurve(1.5f, 2.6f);
             main.startSize = new ParticleSystem.MinMaxCurve(0.22f, 0.42f);
-            main.startColor = new ParticleSystem.MinMaxGradient(new Color(1f, 0.32f, 0.12f), new Color(1f, 0.62f, 0.2f));
+            main.startColor = new ParticleSystem.MinMaxGradient(new Color(1f, 0.45f, 0.22f), new Color(1f, 0.78f, 0.36f));
             main.gravityModifier = -0.1f;
             main.maxParticles = MaxEmbers;
             main.cullingMode = ParticleSystemCullingMode.AlwaysSimulate;
@@ -83,16 +83,17 @@ namespace SurvivorSouls.Editor.SceneSteps
             return ps;
         }
 
-        /// <summary>Ember: white-hot core fading to a soft orange glow (the particle colour tints it red).</summary>
+        /// <summary>Ember: white-hot core, orange-red glow, dark maroon rim (reads on snow and on the dark body).</summary>
         public static Color EmberPixel(int x, int y)
         {
             int n = RangedEnemyBuilder.FxSize;
             float u = (x + 0.5f) / n * 2f - 1f, v = (y + 0.5f) / n * 2f - 1f;
             float r = Mathf.Sqrt(u * u + v * v);
             var core = new Color(1f, 0.97f, 0.9f);
-            var glow = new Color(1f, 0.6f, 0.35f);
-            Color c = r < 0.2f ? core : Color.Lerp(core, glow, Mathf.Clamp01((r - 0.2f) / 0.35f));
-            c.a = 1f - TextureFactory.SmoothStep(0.3f, 0.95f, r);
+            var glow = new Color(1f, 0.42f, 0.16f);
+            var rim = new Color(0.24f, 0.03f, 0.02f);
+            Color c = r < 0.22f ? core : r < 0.58f ? Color.Lerp(core, glow, (r - 0.22f) / 0.36f) : Color.Lerp(glow, rim, Mathf.Clamp01((r - 0.58f) / 0.2f));
+            c.a = 1f - TextureFactory.SmoothStep(0.72f, 0.9f, r);
             return c;
         }
     }
