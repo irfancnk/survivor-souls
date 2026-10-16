@@ -89,13 +89,14 @@ namespace SurvivorSouls.Tests
         }
 
         [UnityTest]
-        public IEnumerator Hugging_Enemy_Is_Hit_By_A_Forward_Bolt([Values(0.2f, 0.45f)] float distance)
+        public IEnumerator Hugging_Enemy_Is_Hit_By_A_Forward_Bolt([Values(0.2f, 0.45f, 1.2f)] float distance)
         {
             var enemy = Track(new GameObject("Enemy")).AddComponent<Enemy>();
             enemy.Spawn(new Vector3(0f, 0f, distance), null, _ => { }, 100000f);
             Vector3 muzzle = _muzzle.position;
-            Assert.That(enemy.AimPoint.z, Is.LessThan(muzzle.z + PointBlankAim.MinAhead),
-                $"set-up: the enemy is point-blank (muzzle z {muzzle.z:F2})");
+            if (distance < 0.5f)
+                Assert.That(enemy.AimPoint.z, Is.LessThan(muzzle.z), $"set-up: the enemy is closer than the muzzle (z {muzzle.z:F2})");
+            Assert.That(PointBlankAim.IsPointBlank(_player.transform.position, enemy.AimPoint), "set-up: point-blank");
 
             float t = 0f;
             while ((_hits.Count < 3 || _dirs.Count < 3) && t < 5f)
@@ -109,7 +110,7 @@ namespace SurvivorSouls.Tests
             for (int i = 0; i < _dirs.Count; i++)
             {
                 Assert.That(_dirs[i].z, Is.GreaterThan(0f), "the bolt flies forward, not back through the Knight");
-                Assert.That(_lineErrors[i], Is.LessThan(90f), "bolt line vs crossbow line");
+                Assert.That(_lineErrors[i], Is.LessThan(10f), "bolt line vs crossbow line (ticket: under 90)");
                 Debug.Log($"[KAN-224] point-blank {distance:F2} m: crossbow line vs bolt line {_lineErrors[i]:F2} deg, dir {_dirs[i]}");
             }
             Vector3 line = _aim.MuzzleLine;
@@ -121,22 +122,27 @@ namespace SurvivorSouls.Tests
         public void Normal_Shot_Has_No_Shift()
         {
             Vector3 root = Vector3.zero, muzzle = new Vector3(0.1f, 1.3f, 0.5f), target = new Vector3(1f, 1f, 6f);
-            Assert.That(PointBlankAim.Shift(root, muzzle, target), Is.EqualTo(Vector3.zero));
-            Assert.That(PointBlankAim.AimPoint(root, muzzle, target), Is.EqualTo(target));
+            Assert.That(PointBlankAim.IsPointBlank(root, target), Is.False);
+            Assert.That(PointBlankAim.Start(root, muzzle, target), Is.EqualTo(muzzle));
+            Assert.That(PointBlankAim.IsPointBlank(root, new Vector3(0f, 1f, PointBlankAim.Range + 0.01f)), Is.False, "edge of the range");
+            Assert.That(PointBlankAim.AimPoint(root, target), Is.EqualTo(target));
         }
 
         [Test]
-        public void Point_Blank_Shift_Puts_The_Target_Ahead_On_The_Crossbow_Line([Values(-0.3f, 0f, 0.2f)] float ahead)
+        public void Point_Blank_Bolt_Starts_Behind_The_Target_And_Flies_At_It([Values(-0.3f, 0f, 0.2f)] float ahead)
         {
-            Vector3 root = Vector3.zero, muzzle = new Vector3(0.12f, 1.3f, 0.5f);
+            Vector3 root = Vector3.zero, muzzle = new Vector3(0.05f, 1.3f, 0.7f);
             var target = new Vector3(0f, 1.08f, muzzle.z + ahead);
-            Vector3 shift = PointBlankAim.Shift(root, muzzle, target);
-            Assert.That(shift.y, Is.EqualTo(0f), "flat shift");
-            Vector3 from = muzzle - shift;
-            Vector3 bolt = target - from;
-            Vector3 crossbow = PointBlankAim.AimPoint(root, muzzle, target) - muzzle;
-            Assert.That(Vector3.Distance(bolt, crossbow), Is.LessThan(1e-4f), "bolt line == crossbow line");
-            Assert.That(bolt.z, Is.EqualTo(PointBlankAim.MinAhead).Within(1e-4f), "target sits MinAhead in front of the start");
+            Vector3 from = PointBlankAim.Start(root, muzzle, target);
+            Assert.That(from.y, Is.EqualTo(target.y), "a level bolt at the target aim height");
+            Assert.That(from.x, Is.EqualTo(target.x).Within(1e-4f), "starts on the root-to-target line");
+            Vector3 bolt = (target - from).normalized;
+            Vector3 aim = PointBlankAim.AimPoint(root, target);
+            Assert.That(target.z - from.z, Is.EqualTo(PointBlankAim.MinAhead).Within(1e-4f), "target sits MinAhead in front of the start");
+            Assert.That(Vector3.Distance(aim, target), Is.EqualTo(PointBlankAim.AimReach).Within(1e-3f), "aim point far beyond the target");
+            Assert.That(aim.z, Is.GreaterThan(target.z + 5f), "far down the forward line");
+            Assert.That(Vector3.Angle(bolt, aim - muzzle), Is.LessThan(4f), "crossbow line ~ bolt line");
+            Assert.That(bolt.z, Is.GreaterThan(0.8f), "the bolt flies forward");
         }
     }
 }

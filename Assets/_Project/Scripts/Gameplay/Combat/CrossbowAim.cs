@@ -80,7 +80,7 @@ namespace SurvivorSouls.Gameplay.Combat
         {
             if (!_ready) return;
             var target = _shooter.isActiveAndEnabled && _shooter.Engaged ? _shooter.Target : null;
-            if (target != null) _point = PointBlankAim.AimPoint(transform.position, muzzle.position, target.AimPoint); // KAN-224
+            if (target != null) _point = PointBlankAim.AimPoint(transform.position, target.AimPoint); // KAN-224
             float goal = target != null ? 1f : 0f;
             float time = goal > _weight ? blendIn : blendOut;
             _weight = Mathf.MoveTowards(_weight, goal, Time.deltaTime / time);

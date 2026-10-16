@@ -253,12 +253,12 @@ namespace SurvivorSouls.Gameplay.Combat
         {
             if (boltPrefab == null || target == null) return;
             // KAN-215: the upper body takes the last degrees (and this frame's root turn) so the crossbow line is the bolt line.
-            // KAN-224: a target closer than the muzzle is aimed through PointBlankAim (bolt starts further back, same line).
+            // KAN-224: a point-blank target (PointBlankAim): the crossbow aims far down the forward line, the bolt starts further back.
             Vector3 point = target.AimPoint;
-            if (_aim != null && _aim.isActiveAndEnabled) _aim.AlignNow(PointBlankAim.AimPoint(transform.position, MuzzlePosition, point));
+            if (_aim != null && _aim.isActiveAndEnabled) _aim.AlignNow(PointBlankAim.AimPoint(transform.position, point));
             Vector3 muzzleAt = MuzzlePosition;
-            Vector3 back = PointBlankAim.Shift(transform.position, muzzleAt, point);
-            Vector3 from = muzzleAt - back;
+            Vector3 from = PointBlankAim.Start(transform.position, muzzleAt, point);
+            Vector3 back = muzzleAt - from;
             Vector3 dir = (point - from).normalized;
             var shot = new BoltShot
             {
