@@ -51,6 +51,8 @@ namespace SurvivorSouls.Editor.Audio
             public AudioClip[] EmberIgnites, EmberCrackles, EmberHotShots;
             /// <summary>Freeze Arrow (KAN-91): ice crack + glassy crystal ring on a freeze.</summary>
             public AudioClip[] FrostFreezes;
+            /// <summary>Holy Tomes (KAN-123): leather thump + faint chime on a tome hit, quiet page whoosh loop.</summary>
+            public AudioClip[] TomeThumps, TomeWhooshes;
         }
 
         [MenuItem("Survivor Souls/Rebuild Sounds")]
@@ -105,6 +107,8 @@ namespace SurvivorSouls.Editor.Audio
             set.EmberCrackles = Many("sfx_ember_crackle_loop", 2, EmberCrackle);
             set.EmberHotShots = Many("sfx_ember_hot_shot", 2, EmberHotShot);
             set.FrostFreezes = Many("sfx_frost_freeze", 2, FrostFreeze); // KAN-91
+            set.TomeThumps = Many("sfx_tome_thump", 2, TomeThump); // KAN-123
+            set.TomeWhooshes = Many("sfx_tome_whoosh_loop", 1, TomeWhoosh);
             return set;
         }
 
@@ -904,6 +908,58 @@ namespace SurvivorSouls.Editor.Audio
             Swell(b, 0.015f, 0.4f, f * 3.73f, 0.05f, 0.004f, 13f, 1);
             Sweep(b, 0f, 0.12f, 340f * v, 180f * v, 0.18f, 30f, 1);               // small body knock
             return Normalize(b, 0.78f);
+        }
+
+        /// <summary>
+        /// Holy Tomes hit (KAN-123, ~0.35 s): a heavy book slapping a body. A soft low thump (falling sine), a dull leather
+        /// slap (low band noise), and a faint, short holy chime on top (two soft high partials) so it reads as holy, not as a
+        /// punch. Quiet by design: many hits per second in a horde.
+        /// </summary>
+        private static float[] TomeThump(int seed)
+        {
+            var rng = new System.Random(seed * 7121);
+            var b = new float[(int)(Rate * 0.36f)];
+            float v = seed == 1 ? 1f : 0.93f;
+            Sweep(b, 0f, 0.16f, 150f * v, 70f * v, 0.7f, 22f, 2);                  // body thump
+            NoiseBurst(b, 0f, 0.07f, 0.45f, 180f, 1400f, 45f, rng);                // leather slap
+            Click(b, 0f, 0.003f, 0.25f, 3000f, rng);                                // cover edge
+            float f = 1318.5f * v;                                                  // E6 chime, soft
+            Swell(b, 0.01f, 0.32f, f, 0.07f, 0.008f, 9f, 1);
+            Swell(b, 0.01f, 0.28f, f * 1.5f, 0.035f, 0.008f, 12f, 1);
+            return Normalize(b, 0.72f);
+        }
+
+        /// <summary>
+        /// Holy Tomes page whoosh loop (KAN-123, 2 s seamless): airy band noise that swells twice per loop (books passing),
+        /// with a faint paper flutter. Whole cycles over the loop length + a cross-fade, so it loops without a seam.
+        /// </summary>
+        private static float[] TomeWhoosh(int seed)
+        {
+            var rng = new System.Random(seed * 2273);
+            float seconds = 2f;
+            int n = (int)(Rate * seconds), fade = Rate / 4;
+            var b = new float[n];
+            var air = new Biquad(); air.SetBandPass(900f, 0.7f, Rate);
+            var paper = new Biquad(); paper.SetBandPass(3200f, 1.4f, Rate);
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)Rate;
+                float swell = 0.55f + 0.45f * Mathf.Sin(t * Mathf.PI * 2f * (2f / (seconds - 0.25f)));
+                float flutter = 0.7f + 0.3f * Mathf.Sin(t * Mathf.PI * 2f * 23f);
+                b[i] = air.Process(Noise(rng)) * swell * 0.8f + paper.Process(Noise(rng)) * swell * flutter * 0.12f;
+            }
+            for (int i = 0; i < fade; i++)
+            {
+                float w = i / (float)fade;
+                b[i] = b[i] * w + b[n - fade + i] * (1f - w);
+            }
+            var loop = new float[n - fade];
+            Array.Copy(b, loop, loop.Length);
+            // Scale only: Normalize's end fade would dip to silence at the loop point.
+            float max = 1e-6f;
+            foreach (float x in loop) max = Mathf.Max(max, Mathf.Abs(x));
+            for (int i = 0; i < loop.Length; i++) loop[i] *= 0.6f / max;
+            return loop;
         }
 
         private static float[] PortalHum(int rate, float seconds, int seed)

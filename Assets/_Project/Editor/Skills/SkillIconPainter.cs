@@ -195,6 +195,20 @@ namespace SurvivorSouls.Editor.Skills
             return d;
         }
 
+        /// <summary>Holy tome (KAN-123 Holy Tomes): closed book with a spine line and a cross cut out, two orbit arcs round it.</summary>
+        public static float Tome(Vector2 p)
+        {
+            float book = RoundBox(p, new Vector2(0.02f, -0.02f), new Vector2(0.4f, 0.52f), 0.07f);
+            float spine = Mathf.Abs(p.x + 0.26f) - 0.025f;
+            float cross = Mathf.Min(RoundBox(p, new Vector2(0.07f, 0f), new Vector2(0.055f, 0.3f), 0.01f),
+                RoundBox(p, new Vector2(0.07f, 0.12f), new Vector2(0.2f, 0.055f), 0.01f));
+            float tome = Mathf.Max(book, Mathf.Max(-spine, -cross));
+            float a = Mathf.Atan2(p.y, p.x) * Mathf.Rad2Deg;
+            bool arcA = a > -35f && a < 40f, arcB = a > 145f || a < -140f;
+            float ring = (arcA || arcB) ? Mathf.Abs(p.magnitude - 0.84f) - 0.045f : 1f;
+            return Mathf.Min(tome, ring);
+        }
+
         // ------------------------------------------------------------ SDF primitives
 
         /// <summary>Reliquary chest: box body, domed lid split by a gap, keyhole cut out, two light rays above.</summary>

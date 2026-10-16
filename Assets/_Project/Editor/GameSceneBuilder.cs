@@ -143,6 +143,7 @@ namespace SurvivorSouls.Editor
             CreateSoulBurstSounds(audio.gameObject, sfx); // Soul Burst whump + dark chime, 3 voices (KAN-66)
             CreateEmberSounds(audio.gameObject, sfx, shooter, player.GetComponent<PlayerStats>()); // ignite whoomp, crackle, hot shot (KAN-201)
             CreateFrostSounds(audio.gameObject, sfx); // Freeze Arrow ice crack + crystal ring, 3 voices (KAN-91)
+            CreateTomeSounds(audio.gameObject, sfx); // Holy Tomes thump + page whoosh loop (KAN-123)
             // Knight hurt feel (KAN-187): hit direction arc, hit-stop, shake, haptic, grunt + low-health heartbeat
             HurtFeedbackBuilder.Create(health, camera.GetComponent<TopDownFollowCamera>(), camera, choice.gameObject, audio.gameObject, sfx);
             BossBuilder.CreateLaneSmoke(kit, boss.transform.parent); // smoke wisps along every warning lane (KAN-167)
@@ -352,6 +353,16 @@ namespace SurvivorSouls.Editor
             var sounds = host.AddComponent<FrostSounds>();
             var so = new SerializedObject(sounds);
             SetClips(so.FindProperty("freezes"), sfx.FrostFreezes);
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        /// <summary>Holy Tomes sound (KAN-123): hit thumps on an own voice pool + the quiet page whoosh loop.</summary>
+        private static void CreateTomeSounds(GameObject host, SfxBuilder.Set sfx)
+        {
+            var sounds = host.AddComponent<TomeSounds>();
+            var so = new SerializedObject(sounds);
+            SetClips(so.FindProperty("thumps"), sfx.TomeThumps);
+            so.FindProperty("whoosh").objectReferenceValue = sfx.TomeWhooshes[0];
             so.ApplyModifiedPropertiesWithoutUndo();
         }
 

@@ -18,11 +18,17 @@ namespace SurvivorSouls.Gameplay.Skills
         /// second = crowd DPS / (HitsToKill x bolt damage).
         /// </summary>
         public float SpreadFoes, BlastFoes, HitsToKill;
+        /// <summary>
+        /// Holy Tomes (KAN-123, <see cref="Effects.OrbitingTomesEffect"/>). TomeContact: share of book passes that meet a
+        /// single target (the Knight moves; a boss is not always on the ring). TomeFoes: foes one book pass hits in a horde.
+        /// </summary>
+        public float TomeContact, TomeFoes;
 
         /// <summary>
         /// AutoShooter / PlayerHealth / PlayerMover defaults: 100 dmg, 1 shot/s, no crit, x2 crit, 400 HP, 5 m/s, angled
         /// Spread Shot bolts at 50 % damage, -33 % damage per pierce and -30 % per bounce (KAN-86). Ember perks (KAN-188):
         /// a spreading fire keeps 1.5 foes alight, a death blast reaches 1.5 foes, a horde zombie takes 3 bolt hits.
+        /// Holy Tomes (KAN-123): half the passes meet a single target, a pass through a horde hits 2 foes.
         /// </summary>
         public static PowerBase Default => new PowerBase
         {
@@ -30,6 +36,7 @@ namespace SurvivorSouls.Gameplay.Skills
             SpreadDamage = 0.5f,
             PierceFalloff = Combat.BoltShot.DefaultPierceFalloff, BounceFalloff = Combat.BoltShot.DefaultBounceFalloff,
             SpreadFoes = 1.5f, BlastFoes = 1.5f, HitsToKill = 3f,
+            TomeContact = 0.5f, TomeFoes = 2f,
         };
     }
 
@@ -53,6 +60,12 @@ namespace SurvivorSouls.Gameplay.Skills
         /// no-burn run), and the <see cref="PowerBase"/> horde assumptions.
         /// </summary>
         public float BurnSpread, SpreadBurn, BurnDeathBlast, SpreadFoes, BlastFoes, HitsToKill;
+        /// <summary>
+        /// KAN-123 Holy Tomes: books, hit share of the bolt damage, seconds per turn, and TomeDps = bolt damage x share x
+        /// books / seconds per turn x <see cref="PowerBase.TomeContact"/> (one hit per book pass, no crit; kept per sheet
+        /// like SpreadBurn). Crowd: x <see cref="TomeFoes"/> (not scaled by the volley or the falloff: the books are not bolts).
+        /// </summary>
+        public float Tomes, TomeShare, TomeSpin, TomeDps, TomeFoes;
 
         public float CritFactor => 1f + CritChance * (CritMultiplier - 1f);
         /// <summary>Bolts per volley: fan x chain, capped like the shooter (<see cref="Combat.VolleyBuilder.DefaultCap"/>).</summary>
@@ -96,9 +109,9 @@ namespace SurvivorSouls.Gameplay.Skills
         public float BlastFactor => BurnDps > 0f && HitsToKill > 0f
             ? Mathf.Max(0f, BurnDeathBlast) * Mathf.Max(0f, BlastFoes) / HitsToKill
             : 0f;
-        public float SingleTargetDps => BoltDamage * ShotsPerSecond * CritFactor * ChainFactor + BurnDps;
+        public float SingleTargetDps => BoltDamage * ShotsPerSecond * CritFactor * ChainFactor + BurnDps + TomeDps;
         public float CrowdDps => (BoltDamage * ShotsPerSecond * CritFactor + BurnDps + SpreadBurnDps) * VolleyFactor * HitFactor *
-                                 (1f + BlastFactor);
+                                 (1f + BlastFactor) + TomeDps * Mathf.Max(0f, TomeFoes);
 
         /// <summary>c + c^2 + ... + c^n (n may be fractional); n when c = 1.</summary>
         private static float Geometric(float c, float n)
@@ -116,6 +129,9 @@ namespace SurvivorSouls.Gameplay.Skills
         {
             var s = Sheet(stats, b, skills, permanentOnly);
             s.SpreadBurn = s.BurnDps * Mathf.Max(0f, s.BurnSpread);
+            s.TomeDps = s.Tomes > 0f && s.TomeSpin > 0f
+                ? s.BoltDamage * s.TomeShare * s.Tomes / s.TomeSpin * Mathf.Max(0f, b.TomeContact)
+                : 0f;
             return s;
         }
 
@@ -137,6 +153,10 @@ namespace SurvivorSouls.Gameplay.Skills
             SpreadFoes = b.SpreadFoes,
             BlastFoes = b.BlastFoes,
             HitsToKill = b.HitsToKill,
+            Tomes = stats != null ? stats.ModifyInt(StatId.TomeCount, 0, permanentOnly) : 0,
+            TomeShare = PlayerStats.Eval(stats, StatId.TomeDamage, 0f, permanentOnly),
+            TomeSpin = Mathf.Max(0.2f, PlayerStats.Eval(stats, StatId.TomeSpin, 0f, permanentOnly)),
+            TomeFoes = b.TomeFoes,
             KillBurst = PlayerStats.Eval(stats, StatId.KillBurst, 0f, permanentOnly),
             LifeSteal = PlayerStats.Eval(stats, StatId.LifeSteal, 0f, permanentOnly),
             PierceFalloff = b.PierceFalloff,
@@ -155,6 +175,7 @@ namespace SurvivorSouls.Gameplay.Skills
             ChainDamage += o.ChainDamage * w; PierceFalloff += o.PierceFalloff * w; BounceFalloff += o.BounceFalloff * w;
             BurnSpread += o.BurnSpread * w; SpreadBurn += o.SpreadBurn * w; BurnDeathBlast += o.BurnDeathBlast * w; SpreadFoes += o.SpreadFoes * w;
             BlastFoes += o.BlastFoes * w; HitsToKill += o.HitsToKill * w;
+            Tomes += o.Tomes * w; TomeShare += o.TomeShare * w; TomeSpin += o.TomeSpin * w; TomeDps += o.TomeDps * w; TomeFoes += o.TomeFoes * w;
         }
     }
 

@@ -475,6 +475,19 @@ namespace SurvivorSouls.Gameplay.Combat
         }
 
         /// <summary>
+        /// Pushes a living enemy along <paramref name="direction"/> (flat) at <paramref name="speed"/> m/s, scaled like a
+        /// bolt knockback (KAN-123 Holy Tomes hit damage as <see cref="DamageKind.Burst"/>, so they knock back on their own).
+        /// Bosses are not pushed.
+        /// </summary>
+        public void Knock(Vector3 direction, float speed)
+        {
+            if (!IsAlive || isBoss || speed <= 0f) return;
+            direction.y = 0f;
+            if (direction.sqrMagnitude < 1e-6f) return;
+            _knock = direction.normalized * (speed * knockbackScale);
+        }
+
+        /// <summary>
         /// Sets the enemy on fire for <paramref name="duration"/> seconds: <paramref name="dps"/> fire damage in 0.5 s ticks.
         /// A new burn refreshes the time and keeps the stronger damage; it does not stack. <paramref name="spread"/> marks a
         /// fire caught from a neighbour (KAN-77); a bolt's fire on a spread-burning enemy makes it a bolt fire again.
