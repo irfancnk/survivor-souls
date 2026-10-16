@@ -47,6 +47,8 @@ namespace SurvivorSouls.Dev
     /// <c>-ss-reroll &lt;n&gt;</c> (KAN-67, with -ss-xp) taps the level-up re-roll n times once the cards are in (0.5 s apart,
     /// the capture follows the last flip); logs each new offer and the re-rolls left. n above the re-rolls left shows the
     /// disabled "x0" button.
+    /// <c>-ss-pick &lt;card&gt;[,&lt;seconds&gt;]</c> (KAN-54, with -ss-xp) picks card 0-2 once picks arm and captures that many
+    /// unscaled seconds later (default 0.12: pulse peak, pick burst out) with the pick animation frozen.
     /// <c>-ss-xp-lead &lt;seconds&gt;</c> (KAN-159) replaces the 1.5 s between the -ss-xp grant and the capture (e.g. 1.0 shows the
     /// skill cards mid slot-machine roll; the Knight's level-up burst opens the pick ~0.5 s after the grant).
     /// <c>-ss-horde &lt;n&gt;</c> places n enemies (wave table mix of the last phase) on a ring 4-11 m round the player after
@@ -129,6 +131,7 @@ namespace SurvivorSouls.Dev
         private string _openChest;
         private string _offer;
         private int _rerolls;
+        private string _pick; // -ss-pick (KAN-54)
         private float _xpLead = XpLead; // -ss-xp-lead (KAN-159): shorter = capture the skill reel mid-roll
         private int _horde;
         private float _hordePower;
@@ -196,6 +199,7 @@ namespace SurvivorSouls.Dev
             shot._chests = int.TryParse(GetArg("-ss-chests"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int ch) ? ch : 0;
             shot._offer = GetArg("-ss-offer");
             shot._rerolls = int.TryParse(GetArg("-ss-reroll"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int rr) ? rr : 0;
+            shot._pick = GetArg("-ss-pick");
             if (float.TryParse(GetArg("-ss-xp-lead"), NumberStyles.Float, CultureInfo.InvariantCulture, out float xl)) shot._xpLead = Mathf.Max(0f, xl);
             shot._openChest = GetArg("-ss-open-chest");
             shot._xp = int.TryParse(GetArg("-ss-xp"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int x) ? x : 0;
@@ -346,6 +350,7 @@ namespace SurvivorSouls.Dev
                 FindAnyObjectByType<SurvivorSouls.Gameplay.Progression.XpManager>()?.AddXp(_xp);
                 yield return new WaitForSecondsRealtime(xpLead);
                 if (_rerolls > 0) yield return Reroll(_rerolls);
+                if (!string.IsNullOrEmpty(_pick)) yield return PickCard(_pick);
             }
             if (release > 0f)
             {
@@ -962,6 +967,30 @@ namespace SurvivorSouls.Dev
                 Debug.Log($"[DevScreenshot] Re-roll {i + 1}: {(ok ? "done" : "refused")}, left={screen.RerollsLeft}, " +
                           $"offer={names}button='{screen.RerollLabel} {screen.RerollCountLabel}' enabled={screen.RerollEnabled}");
             }
+        }
+
+        /// <summary>-ss-pick (KAN-54): picks a card once picks arm, waits, then freezes the screen (no Update) for the capture.</summary>
+        private static IEnumerator PickCard(string spec)
+        {
+            var screen = FindAnyObjectByType<SurvivorSouls.UI.Hud.SkillChoiceScreen>();
+            if (screen == null || !screen.IsShowing)
+            {
+                Debug.LogWarning("[DevScreenshot] -ss-pick: no level-up screen open (use -ss-xp)");
+                yield break;
+            }
+            string[] parts = spec.Split(',');
+            int index = int.Parse(parts[0], CultureInfo.InvariantCulture);
+            float after = parts.Length > 1 ? float.Parse(parts[1], CultureInfo.InvariantCulture) : 0.12f;
+            for (float t = 0f; t < 4f && screen.IsShowing && !screen.IsArmed; t += Time.unscaledDeltaTime)
+            {
+                if (screen.IsRolling) screen.SkipRoll();
+                yield return null;
+            }
+            var skill = index >= 0 && index < screen.Options.Count ? screen.Options[index] : null;
+            bool ok = screen.Choose(index);
+            for (float t = 0f; t < after; t += Time.unscaledDeltaTime) yield return null;
+            screen.enabled = false; // freeze the pick pulse / burst for the capture
+            Debug.Log($"[DevScreenshot] Pick card {index} ({skill?.Id} {skill?.Rarity}): {(ok ? "done" : "refused")}, frozen at {after:0.00}s");
         }
 
         private static void ForceOffer(string ids)
