@@ -92,8 +92,8 @@ namespace SurvivorSouls.Editor.Enemies
 
         /// <summary>
         /// KAN-145: the hooded Meshy enemies (same silhouette since KAN-112) read apart by one accent each: Pyre Thrower ember
-        /// rim + glowing hands, Hexbound Shaman violet rim + hex glow on the staff hand, The Butcher of Ashgrave dark red rim
-        /// (his bigger scale stays). Rim = emissive, no light, no extra draw call.
+        /// rim + glowing hands, Hexbound Shaman violet rim + hex glow on the staff hand, The Butcher of Ashgrave dark
+        /// crimson rim (his bigger scale stays). Rim = emissive, no light, no extra draw call.
         /// </summary>
         private static Spec Accent(Spec spec, Color rim, float rimPower, Color handGlow = default, bool staffHandOnly = false)
         {
@@ -108,7 +108,7 @@ namespace SurvivorSouls.Editor.Enemies
         public static readonly Color PyreHands = new Color(1f, 0.5f, 0.12f, 1f);
         public static readonly Color ShamanRim = new Color(0.85f, 0.32f, 1.5f, 1f);
         public static readonly Color ShamanHand = new Color(0.72f, 0.3f, 1f, 1f);
-        public static readonly Color ButcherRim = new Color(0.8f, 0.05f, 0.04f, 1f);
+        public static readonly Color ButcherRim = new Color(0.8f, 0.02f, 0.09f, 1f);
 
         /// <summary>
         /// Melee tiers first: they join the waves (KAN-128 cut the Fallen Militiaman, the Gravebound Knight and the Bone

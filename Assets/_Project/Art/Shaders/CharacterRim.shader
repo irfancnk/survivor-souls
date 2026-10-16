@@ -19,6 +19,11 @@ Shader "SurvivorSouls/CharacterRim"
         [HDR] _RimColor("Rim Color", Color) = (0, 0, 0, 1)
         _RimPower("Rim Power", Range(0.5, 8)) = 2.5
         _Cull("Cull", Float) = 2.0
+        // Simple Lit inspector state, kept so the material reads the same as its Simple Lit source (tests, a later swap back).
+        [HideInInspector] _SpecularHighlights("Specular Highlights", Float) = 1.0
+        [HideInInspector] _SmoothnessSource("Smoothness Source", Float) = 0.0
+        [HideInInspector] _ReceiveShadows("Receive Shadows", Float) = 1.0
+        [HideInInspector] _Surface("__surface", Float) = 0.0
     }
 
     SubShader
