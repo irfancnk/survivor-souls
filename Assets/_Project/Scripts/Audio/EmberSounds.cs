@@ -82,6 +82,8 @@ namespace SurvivorSouls.Audio
                 return n;
             }
         }
+        /// <summary>Most crackle loops that played at once this session (dev log).</summary>
+        public int PeakCrackleLoops { get; private set; }
         /// <summary>Ignite voice sources (tests).</summary>
         public int IgniteVoices => _ignitePool?.Length ?? 0;
         /// <summary>Crackle loop sources (tests).</summary>
@@ -139,6 +141,13 @@ namespace SurvivorSouls.Audio
         {
             Unhook();
             for (int i = 0; i < CrackleVoices; i++) StopLoop(i);
+        }
+
+        // Dev builds: one summary line at quit, so a Mac / phone dev run shows the layers fired (KAN-201 check).
+        private void OnDestroy()
+        {
+            if (Debug.isDebugBuild && !Application.isEditor && (IgnitesPlayed > 0 || HotShotsPlayed > 0))
+                Debug.Log($"[EmberSounds] ignites played {IgnitesPlayed}, dropped {IgnitesDropped}, hot shots {HotShotsPlayed}, peak crackle loops {PeakCrackleLoops}");
         }
 
         private void Hook()
@@ -256,6 +265,7 @@ namespace SurvivorSouls.Audio
                         // Start each loop at its own place, so two loops of one clip never phase.
                         _crackle[i].time = _crackle[i].clip.length * ((i * 0.37f + Random.value * 0.2f) % 1f);
                         _crackle[i].Play();
+                        PeakCrackleLoops = Mathf.Max(PeakCrackleLoops, CrackleLoops);
                     }
                     _crackle[i].volume = _crackleLevel[i] * master;
                 }

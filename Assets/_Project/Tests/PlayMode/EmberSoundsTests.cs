@@ -128,15 +128,16 @@ namespace SurvivorSouls.Tests
         public void HotShot_OnlyWhileEmberIsOwned_AndOnTheCrossbowShot()
         {
             var e = SpawnEnemy(new Vector3(0f, 0f, 4f));
-            Assert.That(_sounds.PlayHotShot(5f), Is.False, "no Ember Bolts: plain crossbow shot");
             _shooter.Fire(e);
-            Assert.That(_sounds.HotShotsPlayed, Is.EqualTo(0));
+            Assert.That(_sounds.HotShotsPlayed, Is.EqualTo(0), "no Ember Bolts: plain crossbow shot");
 
             GrantEmber(30f);
-            Assert.That(_sounds.PlayHotShot(6f), Is.True);
-            Assert.That(_sounds.PlayHotShot(6.01f), Is.False, "rate limit");
-            _shooter.Fire(e);
-            Assert.That(_sounds.HotShotsPlayed, Is.EqualTo(2), "AutoShooter.Fired reaches the hot layer");
+            _shooter.Fire(e); // real clock (Time.unscaledTime)
+            Assert.That(_sounds.HotShotsPlayed, Is.EqualTo(1), "AutoShooter.Fired reaches the hot layer");
+            float later = Time.unscaledTime + 100f; // test clock after the real shot
+            Assert.That(_sounds.PlayHotShot(later), Is.True);
+            Assert.That(_sounds.PlayHotShot(later + 0.01f), Is.False, "rate limit");
+            Assert.That(_sounds.HotShotsPlayed, Is.EqualTo(2));
         }
 
         [Test]
@@ -168,10 +169,10 @@ namespace SurvivorSouls.Tests
         public void IgniteShotAndCrackleFrame_AllocateNothing()
         {
             GrantEmber(30f);
-            _sounds.PlayIgnite(0.5f, 1f); // warm up (JIT)
-            _sounds.PlayHotShot(1f);
+            _sounds.PlayIgnite(0.5f, Time.unscaledTime + 1f); // warm up (JIT)
+            _sounds.PlayHotShot(Time.unscaledTime + 1f);
             _sounds.Tick(2, false, 0.016f);
-            float now = 100f;
+            float now = Time.unscaledTime + 100f;
             Assert.That(() => { now += 2f; _sounds.PlayIgnite(0.5f, now); }, Is.Not.AllocatingGCMemory());
             Assert.That(() => { now += 2f; _sounds.PlayHotShot(now); }, Is.Not.AllocatingGCMemory());
             Assert.That(() => _sounds.Tick(3, false, 0.016f), Is.Not.AllocatingGCMemory());
