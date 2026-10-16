@@ -200,6 +200,26 @@ namespace SurvivorSouls.Tests
         }
 
         [UnityTest]
+        public IEnumerator Aiming_While_Standing_Plays_The_Low_Aim_Stance_On_The_Base_Layer()
+        {
+            // KAN-231: the legs and hips take part while aiming (knees bent, hips lower), not just the arms.
+            Transform hips = null;
+            foreach (var t in _player.GetComponentsInChildren<Transform>()) if (t.name == "mixamorig:Hips") hips = t;
+            yield return Wait(0.6f);
+            float idleHips = hips.position.y;
+            Assert.That(InState(0, MeshyAimStanceState), Is.False, "no target: Idle");
+            var enemy = SpawnEnemy(new Vector3(0f, 0f, 6f));
+            yield return Wait(0.8f);
+            Assert.That(InState(0, MeshyAimStanceState), Is.True, "aiming and standing: AimStance on the base layer");
+            Assert.That(hips.position.y, Is.LessThan(idleHips - 0.02f), $"hips lower (idle {idleHips:F3} m, aim {hips.position.y:F3} m)");
+            enemy.gameObject.SetActive(false);
+            yield return Wait(2f); // Lower ~1 s after the last target, then Aim off
+            Assert.That(InState(0, MeshyAimStanceState), Is.False, "crossbow lowered: back to Idle");
+        }
+
+        private const string MeshyAimStanceState = "AimStance"; // MeshyCharacterImporter.AimStanceState (editor assembly)
+
+        [UnityTest]
         public IEnumerator Lower_Plays_About_One_Second_After_The_Last_Target()
         {
             var enemy = SpawnEnemy(new Vector3(0f, 0f, 6f));

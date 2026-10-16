@@ -212,7 +212,8 @@ namespace SurvivorSouls.Tests
             var sceneBolt = Object.FindAnyObjectByType<AutoShooter>().BoltPrefab;
             Assert.That(sceneBolt.name, Is.EqualTo("Bolt"), "Knight fires the crossbow bolt");
             var knightTurn = Object.FindAnyObjectByType<AutoShooter>().AimTurnSpeed;
-            Assert.That(Object.FindAnyObjectByType<AutoShooter>().AimTurnSmoothing, Is.EqualTo(0f), "Knight: constant-rate turn");
+            Assert.That(knightTurn, Is.EqualTo(_roster.Find("knight").AimTurnSpeed), "Knight: his own spring turn (KAN-231)");
+            Assert.That(Object.FindAnyObjectByType<AutoShooter>().AimTurnSmoothing, Is.GreaterThan(0f));
             var sound = Object.FindAnyObjectByType<SurvivorSouls.Audio.GameAudio>();
             Assert.That(sound.PlayerShots[0].name, Does.StartWith("sfx_crossbow_shot"), "Knight plays the crossbow");
             var empty = SceneManager.CreateScene("HeroEmpty");
@@ -257,7 +258,7 @@ namespace SurvivorSouls.Tests
             Assert.That(shooter.CurrentDamage, Is.EqualTo(shooter.BaseDamage * 0.8f).Within(1e-3f), "-20 % damage");
             Assert.That(Object.FindAnyObjectByType<HordeScaler>().Power, Is.EqualTo(1f).Within(0.01f), "hero profile is the horde baseline");
             Assert.That(shooter.BoltPrefab, Is.SameAs(ranger.Projectile), "Ranger fires his arrow (KAN-227)");
-            Assert.That(shooter.AimTurnSpeed, Is.EqualTo(ranger.AimTurnSpeed).And.LessThan(knightTurn), "Ranger turns slower (KAN-229)");
+            Assert.That(shooter.AimTurnSpeed, Is.EqualTo(ranger.AimTurnSpeed).And.GreaterThan(knightTurn), "Ranger turns quicker (KAN-231)");
             Assert.That(shooter.AimTurnSmoothing, Is.EqualTo(ranger.AimTurnSmoothing).And.GreaterThan(0f), "eased turn");
             Assert.That(shooter.BoltPrefab.name, Is.EqualTo("Arrow_Ranger"));
             sound = Object.FindAnyObjectByType<SurvivorSouls.Audio.GameAudio>();

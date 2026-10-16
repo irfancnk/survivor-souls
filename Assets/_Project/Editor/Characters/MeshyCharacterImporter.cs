@@ -50,6 +50,8 @@ namespace SurvivorSouls.Editor.Characters
         private const float WalkSpeed = 1.6f, RunSpeed = 5f;
         // Shoulder aim clips (KAN-216, from build_knight_crossbow.py): upper-body layer (AimIdle loop, Lower one shot) + turn step.
         private const string AimClip = "AimIdle", LowerClip = "Lower", TurnStepClip = "TurnStep";
+        /// <summary>KAN-231: base-layer stance while aiming and standing (knees bent, hips lower, weight shift).</summary>
+        public const string AimStanceClip = "AimStance", AimStanceState = "AimStance";
         // Shoot cycle clips (KAN-217): Fire (kick) + Reload (string pulled, bolt seated) on the upper-body layer.
         private const string FireClip = "Fire", ReloadClip = "Reload";
         private const string UpperBodyRoot = "mixamorig:Spine1"; // this bone and everything under it is in the upper-body mask
@@ -547,7 +549,8 @@ namespace SurvivorSouls.Editor.Characters
             sm.defaultState = locoState;
             if (clips.TryGetValue(TurnStepClip, out var stepClip) && clips.TryGetValue(AimClip, out var aimClip) && clips.TryGetValue(LowerClip, out var lowerClip))
             {
-                AddAimLayers(ctrl, sm, locoState, stepClip, aimClip, lowerClip, upperBody);
+                var step = AddAimLayers(ctrl, sm, locoState, stepClip, aimClip, lowerClip, upperBody);
+                if (clips.TryGetValue(AimStanceClip, out var stanceClip)) AddAimStance(sm, locoState, step, stanceClip);
                 if (clips.TryGetValue(FireClip, out var fireClip) && clips.TryGetValue(ReloadClip, out var reloadClip))
                     AddShootCycle(ctrl, fireClip, reloadClip);
             }
@@ -556,7 +559,7 @@ namespace SurvivorSouls.Editor.Characters
         }
 
         /// <summary>KAN-216: turn step on the base layer + the upper-body aim layer (Aim / Lower on bool "Aim").</summary>
-        private static void AddAimLayers(UnityEditor.Animations.AnimatorController ctrl, UnityEditor.Animations.AnimatorStateMachine sm,
+        private static UnityEditor.Animations.AnimatorState AddAimLayers(UnityEditor.Animations.AnimatorController ctrl, UnityEditor.Animations.AnimatorStateMachine sm,
             UnityEditor.Animations.AnimatorState locoState, AnimationClip stepClip, AnimationClip aimClip, AnimationClip lowerClip, AvatarMask upperBody)
         {
             ctrl.AddParameter(SurvivorSouls.Gameplay.Combat.CrossbowStance.AimParam, AnimatorControllerParameterType.Bool);
@@ -600,6 +603,36 @@ namespace SurvivorSouls.Editor.Characters
             toAim.AddCondition(UnityEditor.Animations.AnimatorConditionMode.If, 0f, SurvivorSouls.Gameplay.Combat.CrossbowStance.AimParam);
             toAim.hasExitTime = false;
             toAim.duration = 0.12f;
+            return step;
+        }
+
+        /// <summary>
+        /// KAN-231: base-layer AimStance (legs, hips, lower spine) while "Aim" is on and the Knight stands; the upper-body
+        /// layer keeps the crossbow on top. Leaves at once when he moves or lowers the crossbow; a turn step still fires.
+        /// </summary>
+        private static void AddAimStance(UnityEditor.Animations.AnimatorStateMachine sm, UnityEditor.Animations.AnimatorState locoState,
+            UnityEditor.Animations.AnimatorState step, AnimationClip clip)
+        {
+            string aimParam = SurvivorSouls.Gameplay.Combat.CrossbowStance.AimParam;
+            var stance = sm.AddState(AimStanceState);
+            stance.motion = clip;
+            var into = locoState.AddTransition(stance);
+            into.AddCondition(UnityEditor.Animations.AnimatorConditionMode.If, 0f, aimParam);
+            into.AddCondition(UnityEditor.Animations.AnimatorConditionMode.Less, 0.3f, "Speed");
+            into.hasExitTime = false;
+            into.duration = 0.25f; // settles into the stance
+            var outAim = stance.AddTransition(locoState);
+            outAim.AddCondition(UnityEditor.Animations.AnimatorConditionMode.IfNot, 0f, aimParam);
+            outAim.hasExitTime = false;
+            outAim.duration = 0.25f;
+            var outMove = stance.AddTransition(locoState);
+            outMove.AddCondition(UnityEditor.Animations.AnimatorConditionMode.Greater, 0.3f, "Speed");
+            outMove.hasExitTime = false;
+            outMove.duration = 0.12f;
+            var toStep = stance.AddTransition(step);
+            toStep.AddCondition(UnityEditor.Animations.AnimatorConditionMode.If, 0f, SurvivorSouls.Gameplay.Combat.CrossbowStance.TurnStepParam);
+            toStep.hasExitTime = false;
+            toStep.duration = 0.06f;
         }
 
         /// <summary>

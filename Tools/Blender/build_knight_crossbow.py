@@ -102,15 +102,25 @@ FIRE_FRAMES = 3            # 0.125 s
 FIRE_KICK = (0.0, 1.0, 0.45, 0.0)   # kick share per frame
 FIRE_BACK = 0.045          # grip slides back toward the shoulder at the peak (crossbow units)
 FIRE_PITCH_DEG = 7.0       # muzzle lifts at the peak
-FIRE_SPINE_DEG = (-3.0, -2.0)       # Spine1 / Spine2 pitch at the peak (- = leans back)
+FIRE_SPINE_DEG = (-6.0, -4.0)       # Spine1 / Spine2 pitch at the peak (- = leans back; KAN-231: was -3 / -2)
+FIRE_HEAD_DEG = -4.0       # head jolts back with the kick (KAN-231)
 RELOAD_FRAMES = 14         # 0.58 s at speed 1
 RELOAD_PITCH_DEG = -18.0   # muzzle tips down while the string is pulled
 RELOAD_DROP = (0.05, -0.06)          # grip moves back (+X) and down (-Z) at full dip (crossbow units)
-RELOAD_LEAN_DEG = (2.0, 3.0, 9.0)    # Spine1 / Spine2 / Head pitch at full dip (+ = forward / down)
+RELOAD_LEAN_DEG = (4.0, 6.0, 11.0)   # Spine1 / Spine2 / Head pitch at full dip (+ = forward / down; KAN-231: was 2 / 3 / 9)
+RELOAD_TWIST_DEG = 5.0     # chest turns a little over the crossbow while the string is pulled (KAN-231)
 # Left hand offset from its fore-stock contact (crossbow units: -X toward the muzzle, +Z up), keyed at clip shares.
 RELOAD_HAND = ((0.0, (0.0, 0.0, 0.0)), (0.25, (-0.16, 0.0, 0.10)), (0.55, (0.17, 0.0, 0.10)),
                (0.70, (0.06, 0.0, 0.11)), (0.88, (0.0, 0.0, 0.0)), (1.0, (0.0, 0.0, 0.0)))
 RELOAD_SEAT = 0.70         # clip share where the bolt sits on the rail again (CrossbowCycle.seatAt)
+
+# Aim stance (KAN-231, base layer, while aiming and standing): knees bent, hips lower, feet wider, slow weight shift
+# between the feet. The upper-body layer (Aim / Fire / Reload) plays on top; this clip moves Hips + Spine + legs.
+AIM_STANCE_FRAMES = 60     # 2.5 s loop
+AIM_STANCE_DROP = 0.075    # hips drop (m): Idle drops 0.035
+AIM_STANCE_SHIFT = 0.018   # weight shift front <-> back foot (m, along the stance line)
+AIM_STANCE_YAW = -20.0     # hips yaw (deg): a little more bladed than Idle (-14)
+AIM_STANCE_FEET = {"Left": (0.03, -0.07), "Right": (-0.03, 0.06)}   # extra foot offset (x, y) on top of the Idle feet
 
 CLIPS = ["Walking", "Running", "Hit_Reaction"]
 B = "mixamorig:"
@@ -354,6 +364,26 @@ def make_idle(arm):
     return idle
 
 
+def make_aim_stance(arm):
+    """Aim stance (KAN-231, base layer): Idle's bladed stance, lower (knees bend in the leg IK capture), hips sway between
+    the front and back foot and breathe a little; one 2.5 s loop."""
+    act = bpy.data.actions.new("AimStance")
+    set_action(arm, act)
+    rest_pose(arm)
+    hips, spine = arm.pose.bones[B + "Hips"], arm.pose.bones[B + "Spine1"]
+    to_hips = arm.data.bones[B + "Hips"].matrix_local.to_3x3().inverted()
+    for f in range(AIM_STANCE_FRAMES + 1):
+        ph = 2 * math.pi * f / AIM_STANCE_FRAMES
+        world = Vector((0, AIM_STANCE_SHIFT * math.sin(ph), -AIM_STANCE_DROP * (1.0 + 0.08 * math.sin(2 * ph))))
+        hips.location = to_hips @ world
+        hips.rotation_quaternion = to_local(arm, B + "Hips", world_rot(AIM_STANCE_YAW + 1.5 * math.sin(ph), 0, 0))
+        spine.rotation_quaternion = to_local(arm, B + "Spine1", world_rot(-AIM_STANCE_YAW, 0.8 * math.sin(2 * ph), 0))
+        hips.keyframe_insert("location", frame=f)
+        hips.keyframe_insert("rotation_quaternion", frame=f)
+        spine.keyframe_insert("rotation_quaternion", frame=f)
+    return act
+
+
 def add_leg_ik(arm):
     """Feet pinned a bit wider than rest, right foot back (for the Idle stance)."""
     rest_pose(arm)
@@ -542,7 +572,7 @@ def make_fire(arm, offs):
     for f in range(FIRE_FRAMES + 1):
         k = FIRE_KICK[f]
         rots = dict(aim)
-        for n, deg in zip(("Spine1", "Spine2"), FIRE_SPINE_DEG):
+        for n, deg in zip(("Spine1", "Spine2", "Head"), FIRE_SPINE_DEG + (FIRE_HEAD_DEG,)):
             rots[B + n] = to_local(arm, B + n, world_rot(0, deg * k, 0)) @ aim[B + n]
         key_spine(arm, f, rots)
     return act
@@ -576,7 +606,8 @@ def make_reload(arm, offs):
         d = reload_dip(f)
         rots = dict(aim)
         for n, deg in zip(("Spine1", "Spine2", "Head"), RELOAD_LEAN_DEG):
-            rots[B + n] = to_local(arm, B + n, world_rot(0, deg * d, 0)) @ aim[B + n]
+            twist = RELOAD_TWIST_DEG * d * (0.5 if n == "Spine1" else 0.5 if n == "Spine2" else 0.0)
+            rots[B + n] = to_local(arm, B + n, world_rot(twist, deg * d, 0)) @ aim[B + n]
         key_spine(arm, f, rots)
     return act
 
@@ -654,9 +685,11 @@ def main():
 
     idle = make_idle(arm)
     actions.append(idle)
+    aim_stance = make_aim_stance(arm)   # KAN-231
+    actions.append(aim_stance)
     for act in actions:
         add_stance_keys(arm, act, offs)
-    carry_clips = list(actions)
+    carry_clips = [a for a in actions if a is not aim_stance]
     aim_idle, lower, step = make_aim_idle(arm, offs), make_lower(arm, offs), make_turn_step(idle)
     fire, reload = make_fire(arm, offs), make_reload(arm, offs)
     actions += [aim_idle, lower, step, fire, reload]
@@ -692,6 +725,15 @@ def main():
         place_rig(arm, rig, carry, aim, 0.0)
         lift(f)
     captured[step.name] = capture(arm, step, ARM_BONES + LEG_BONES, step_frame)
+    feet_base = {k: o.matrix_world.copy() for k, o in feet.items()}
+
+    def stance_frame(f):
+        place_rig(arm, rig, carry, aim, 0.0)
+        for side, (dx, dy) in AIM_STANCE_FEET.items():
+            feet[side].matrix_world = Matrix.Translation((dx, dy, 0)) @ feet_base[side]
+    captured[aim_stance.name] = capture(arm, aim_stance, ARM_BONES + LEG_BONES, stance_frame)
+    for side in feet:
+        feet[side].matrix_world = feet_base[side]
 
     for pb in arm.pose.bones:
         for c in list(pb.constraints):

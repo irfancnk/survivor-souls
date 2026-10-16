@@ -58,7 +58,7 @@ namespace SurvivorSouls.Editor.Audio
             /// <summary>Special melee zombies (KAN-132): Bloater swell gurgle + burst pop, Ghoul screech / whoosh / thud, Brute grunt / slam boom, toxic cloud hiss loop.</summary>
             public AudioClip[] MeleeBloaterSwells, MeleeBloaterBursts, MeleeGhoulScreeches, MeleeGhoulWhooshes, MeleeGhoulThuds, MeleeBruteGrunts, MeleeBruteSlams;
             public AudioClip MeleeCloudHiss;
-            /// <summary>Shadow Ranger bow shot (KAN-227): finger release tick, bright string twang with beating, light arrow whoosh.</summary>
+            /// <summary>Shadow Ranger bow shot (KAN-227, KAN-231): finger release tick, short twang, whistling arrow.</summary>
             public AudioClip[] BowTwangs;
         }
 
@@ -137,34 +137,59 @@ namespace SurvivorSouls.Editor.Audio
 
         // ------------------------------------------------------------ Sounds
 
-        /// <summary>Crossbow release: trigger click, deep string thrum with pitch drop, wooden stock thump, air whoosh.</summary>
+        /// <summary>
+        /// Crossbow release (KAN-231: woody, no metal ring): trigger latch tick, a dry wooden "thock" (struck-wood modes at
+        /// 1 : 2.57 : 4.3 : 6.1, the higher ones dying fast), a short stock clack, a low string thrum and a bolt whoosh.
+        /// </summary>
         private static float[] CrossbowShot(int seed)
         {
             var rng = new System.Random(seed * 101);
-            var b = new float[(int)(Rate * 0.55f)];
+            var b = new float[(int)(Rate * 0.5f)];
             float v = 1f + (float)(rng.NextDouble() - 0.5) * 0.1f;
-            Click(b, 0f, 0.004f, 0.5f, 5200f, rng);                       // trigger / latch
-            Sweep(b, 0.004f, 0.35f, 165f * v, 96f * v, 0.55f, 9f, 2);      // string thrum (sine + 2 harmonics)
-            NoiseBurst(b, 0.004f, 0.09f, 0.75f, 70f, 260f, 22f, rng);       // stock thump
-            NoiseBurst(b, 0.01f, 0.22f, 0.32f, 900f, 3800f, 11f, rng);       // bolt whoosh
-            Sweep(b, 0.005f, 0.12f, 820f * v, 610f * v, 0.08f, 30f, 1);      // limb snap ring
+            float f0 = 205f * v;                                          // stock / prod body
+            Click(b, 0f, 0.003f, 0.32f, 4200f, rng);                      // trigger latch
+            Sweep(b, 0.003f, 0.30f, f0 * 1.04f, f0, 0.62f, 26f, 1);        // wood modes: fundamental (slight pitch settle)
+            Sweep(b, 0.003f, 0.18f, f0 * 2.57f, f0 * 2.57f, 0.34f, 42f, 1);
+            Sweep(b, 0.003f, 0.12f, f0 * 4.30f, f0 * 4.30f, 0.20f, 62f, 1);
+            Sweep(b, 0.003f, 0.08f, f0 * 6.10f, f0 * 6.10f, 0.10f, 85f, 1);
+            NoiseBurst(b, 0.002f, 0.035f, 0.42f, 300f, 1500f, 70f, rng);   // knock: the hit itself
+            NoiseBurst(b, 0.006f, 0.025f, 0.22f, 1600f, 4200f, 110f, rng);  // stock clack
+            Sweep(b, 0.004f, 0.30f, 118f * v, 84f * v, 0.34f, 11f, 2);      // low string thrum
+            NoiseBurst(b, 0.012f, 0.20f, 0.17f, 700f, 2600f, 12f, rng);     // bolt whoosh
             return Normalize(b, 0.9f);
         }
 
         /// <summary>
-        /// Bow release (KAN-227): soft finger tick, string twang higher and lighter than the crossbow thrum (two slightly
-        /// detuned partials beat like a real string), short limb thrum, light arrow whoosh. No stock thump: softer overall.
+        /// Bow release (KAN-231): soft finger tick, a short light string twang, then the arrow whistle: a tonal sine and
+        /// narrow band-passed noise that fall together from ~2.8 to ~1.9 kHz (the arrow flies off, Doppler) with a slight
+        /// flutter from the fletching, plus a little air. Softer than the crossbow.
         /// </summary>
         private static float[] BowTwang(int seed)
         {
             var rng = new System.Random(seed * 131);
-            var b = new float[(int)(Rate * 0.5f)];
-            float v = 1f + (float)(rng.NextDouble() - 0.5) * 0.12f;
-            Click(b, 0f, 0.003f, 0.3f, 6500f, rng);                         // string leaves the fingers
-            Sweep(b, 0.002f, 0.42f, 232f * v, 186f * v, 0.5f, 7f, 3);        // twang (sine + 3 harmonics)
-            Sweep(b, 0.002f, 0.3f, 238f * v, 190f * v, 0.24f, 9f, 1);        // detuned partial: beating
-            Sweep(b, 0f, 0.18f, 98f * v, 72f * v, 0.28f, 14f, 1);           // limb thrum
-            NoiseBurst(b, 0.012f, 0.18f, 0.2f, 1300f, 4600f, 13f, rng);     // arrow whoosh
+            float len = 0.6f;
+            var b = new float[(int)(Rate * len)];
+            float v = 1f + (float)(rng.NextDouble() - 0.5) * 0.1f;
+            Click(b, 0f, 0.003f, 0.22f, 6500f, rng);                        // string leaves the fingers
+            Sweep(b, 0.002f, 0.22f, 236f * v, 192f * v, 0.26f, 14f, 3);       // short string twang
+            Sweep(b, 0f, 0.12f, 96f * v, 74f * v, 0.18f, 22f, 1);            // limb thrum
+            // whistle: starts 15 ms after the release, swells in 40 ms, fades by 0.55 s
+            int s0 = (int)(0.015f * Rate), e0 = Mathf.Min(b.Length, s0 + (int)(0.54f * Rate));
+            var bp = new Biquad();
+            double phase = 0;
+            float hiF = 2800f * v, loF = 1900f * v, rate = 4.5f + (float)rng.NextDouble();
+            for (int i = s0; i < e0; i++)
+            {
+                float t = (i - s0) / (float)Rate, k = t / 0.54f;
+                float f = loF + (hiF - loF) * Mathf.Exp(-k * 2.6f);           // Doppler fall, fast at first
+                f *= 1f + 0.012f * Mathf.Sin(t * rate * Mathf.PI * 2f);        // fletching flutter
+                phase += f / Rate;
+                float env = Mathf.Min(1f, t / 0.04f) * (1f - k) * (1f - k) * (1f - 0.35f * k);
+                if ((i & 31) == 0) bp.SetBandPass(f, 14f, Rate);
+                float tone = Mathf.Sin((float)(phase * Math.PI * 2));
+                b[i] += (tone * 0.32f + bp.Process(Noise(rng)) * 1.6f) * env;
+            }
+            NoiseBurst(b, 0.01f, 0.25f, 0.12f, 900f, 3500f, 9f, rng);         // air
             return Normalize(b, 0.8f);
         }
 

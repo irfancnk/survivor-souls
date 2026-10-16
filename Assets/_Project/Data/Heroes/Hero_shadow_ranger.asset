@@ -44,5 +44,5 @@ MonoBehaviour:
   - {fileID: 8300000, guid: 03100462ada2b4cc98a83871fc0f39b8, type: 3}
   - {fileID: 8300000, guid: 517476fc902154416ac404230c268670, type: 3}
   - {fileID: 8300000, guid: 40a54b976462b4a8993334984833eb32, type: 3}
-  aimTurnSpeed: 360
-  aimTurnSmoothing: 0.16
+  aimTurnSpeed: 1200
+  aimTurnSmoothing: 0.09

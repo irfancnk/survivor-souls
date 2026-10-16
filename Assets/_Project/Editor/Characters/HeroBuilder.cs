@@ -41,8 +41,14 @@ namespace SurvivorSouls.Editor.Characters
         public const string KnightId = "knight";
         public const string RangerId = "shadow_ranger";
         public const int RangerPrice = 1000;
-        /// <summary>Ranger aim turn (KAN-229): max deg/s and smooth-damp time (s).</summary>
-        public const float RangerTurnSpeed = 360f, RangerTurnSmoothing = 0.16f;
+        /// <summary>
+        /// Aim turn per hero (KAN-231): a critically damped spring on the yaw (max deg/s, smooth-damp time s). Its peak
+        /// speed grows with the angle: a 180 deg retarget starts fast, a small correction is short and soft. To the 15 deg
+        /// fire window: Ranger 180 deg ~0.23 s / 30 deg ~0.09 s; Knight (heavier) 180 deg ~0.31 s / 30 deg ~0.11 s.
+        /// Builder-owned (written on every build). KAN-229 had the Ranger at 360 / 0.16 (~0.6 s): far too slow.
+        /// </summary>
+        public const float RangerTurnSpeed = 1200f, RangerTurnSmoothing = 0.09f;
+        public const float KnightTurnSpeed = 840f, KnightTurnSmoothing = 0.12f;
         public const string RangerModelPath = "Assets/_Project/Prefabs/Hero_ShadowRanger_Model.prefab";
         private const string RangerArt = HeroPetArtImporter.HeroesArt + "/ShadowRanger";
         private const string GeneratedDir = "Assets/_Project/Art/Characters/HeroBuilds/ShadowRanger";
@@ -77,12 +83,8 @@ namespace SurvivorSouls.Editor.Characters
                 ranger.SetModel(model);
                 EditorUtility.SetDirty(ranger);
             }
-            // KAN-229: eased turn to a new target (a 180 deg retarget takes ~0.6 s instead of the Knight's 0.25 s snap).
-            if (ranger.AimTurnSpeed <= 0f)
-            {
-                ranger.SetAimTurn(RangerTurnSpeed, RangerTurnSmoothing);
-                EditorUtility.SetDirty(ranger);
-            }
+            SetTurn(ranger, RangerTurnSpeed, RangerTurnSmoothing); // KAN-231 angle-aware spring turn
+            SetTurn(knight, KnightTurnSpeed, KnightTurnSmoothing);
             var arrowAsset = AssetDatabase.LoadAssetAtPath<GameObject>(CombatBuilder.ArrowPrefabPath);
             var arrow = arrowAsset != null ? arrowAsset.GetComponent<Bolt>() : null;
             var twangs = LoadTwangs();
@@ -108,6 +110,13 @@ namespace SurvivorSouls.Editor.Characters
             }
             AssetDatabase.SaveAssets();
             return roster;
+        }
+
+        private static void SetTurn(HeroDefinition hero, float speed, float smoothing)
+        {
+            if (Mathf.Approximately(hero.AimTurnSpeed, speed) && Mathf.Approximately(hero.AimTurnSmoothing, smoothing)) return;
+            hero.SetAimTurn(speed, smoothing);
+            EditorUtility.SetDirty(hero);
         }
 
         /// <summary>The Ranger's bow twang clips (SfxBuilder writes them; missing files are skipped).</summary>

@@ -27,3 +27,7 @@ MonoBehaviour:
   - Slow reload
   - Heavy step
   modelPrefab: {fileID: 0}
+  projectile: {fileID: 0}
+  shotClips: []
+  aimTurnSpeed: 840
+  aimTurnSmoothing: 0.12
