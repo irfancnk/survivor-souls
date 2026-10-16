@@ -150,8 +150,11 @@ namespace SurvivorSouls.Editor.Skills
                 {
                     L("Hits burn: 25 fire damage/s for 3 s", Add(StatId.BurnDps, 25f)),
                     L("Hits burn: 40 fire damage/s for 3 s", Add(StatId.BurnDps, 40f)),
-                    L("Hits burn: 55 fire damage/s for 4 s", Add(StatId.BurnDps, 55f), Add(StatId.BurnDuration, 1f)),
-                    L("Hits burn: 75 fire damage/s for 5 s", Add(StatId.BurnDps, 75f), Add(StatId.BurnDuration, 2f)),
+                    // KAN-77 perks: L3 fire spreads to the nearest foe (one step), L4 burning deaths blast 60 % bolt damage.
+                    L("Burn 55/s for 4 s, spreads to a foe", Add(StatId.BurnDps, 55f), Add(StatId.BurnDuration, 1f),
+                        Add(StatId.BurnSpread, 1f)),
+                    L("Burn 75/s for 5 s + 60% death blast", Add(StatId.BurnDps, 75f), Add(StatId.BurnDuration, 2f),
+                        Add(StatId.BurnSpread, 1f), Add(StatId.BurnDeathBlast, 0.6f)),
                 } },
             new Spec { Id = "blood_covenant", File = "BloodCovenant", Name = "Blood Covenant", Rarity = SkillRarity.Epic,
                 Glyph = SkillIconPainter.LifeSteal, Effect = Fx.LifeSteal, Levels = new[]
@@ -438,7 +441,8 @@ namespace SurvivorSouls.Editor.Skills
             {
                 [Fx.Burn] = SavePrefab<BurnOnHitEffect>("FX_Skill_EmberBolts", (root, fx) =>
                 {
-                    var embers = Particles(root, "Embers", glowMat, 260, new Vector2(0.45f, 0.85f), new Vector2(0.06f, 0.13f),
+                    // KAN-77: 360 (was 260) for the spread streams and death blasts on the same system.
+                    var embers = Particles(root, "Embers", glowMat, 360, new Vector2(0.45f, 0.85f), new Vector2(0.06f, 0.13f),
                         new Color(1f, 0.62f, 0.2f), new Color(1f, 0.32f, 0.08f));
                     Drag(embers, 1.5f);
                     Set(fx, "embers", embers);

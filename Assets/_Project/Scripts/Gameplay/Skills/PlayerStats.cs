@@ -14,8 +14,9 @@ namespace SurvivorSouls.Gameplay.Skills
     /// ChestEliteChance (0..1 Reliquary chest drop per normal / elite kill, KAN-72), ChestChoices (extra cards on a chest's
     /// upgrade screen; base from the drop config), RareChestEvery (every Nth skill chest is Rare; 0 = never), DoubleShot
     /// (extra bolts fired one after another down the same line, KAN-83), SpreadDamage (damage share of each angled Spread
-    /// Shot bolt; base from the shooter), ChainDamage (damage share of each follow-up Double Shot bolt; base 1). Append new
-    /// ids at the end: assets store them as numbers.
+    /// Shot bolt; base from the shooter), ChainDamage (damage share of each follow-up Double Shot bolt; base 1), BurnSpread
+    /// (foes a bolt-lit burning enemy sets on fire per burn tick, KAN-77), BurnDeathBlast (blast damage on a burning enemy's
+    /// death, as a share of bolt damage, KAN-77). Append new ids at the end: assets store them as numbers.
     /// </summary>
     public enum StatId
     {
@@ -41,6 +42,8 @@ namespace SurvivorSouls.Gameplay.Skills
         DoubleShot,
         SpreadDamage,
         ChainDamage,
+        BurnSpread,
+        BurnDeathBlast,
     }
 
     /// <summary>Flat adds to the base value; Percent scales it (0.2 = +20 %). Percents from all sources add up.</summary>

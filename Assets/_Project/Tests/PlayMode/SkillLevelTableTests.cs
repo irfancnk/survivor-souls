@@ -110,8 +110,8 @@ namespace SurvivorSouls.Tests
             new object[] { "Ricochet", 4, new[] { "Ricochet+=3", "Damage%=0.15" } },
             new object[] { "EmberBolts", 1, new[] { "BurnDps+=25" } },
             new object[] { "EmberBolts", 2, new[] { "BurnDps+=40" } },
-            new object[] { "EmberBolts", 3, new[] { "BurnDps+=55", "BurnDuration+=1" } },
-            new object[] { "EmberBolts", 4, new[] { "BurnDps+=75", "BurnDuration+=2" } },
+            new object[] { "EmberBolts", 3, new[] { "BurnDps+=55", "BurnDuration+=1", "BurnSpread+=1" } }, // KAN-77 perks
+            new object[] { "EmberBolts", 4, new[] { "BurnDps+=75", "BurnDuration+=2", "BurnSpread+=1", "BurnDeathBlast+=0.6" } },
             new object[] { "BloodCovenant", 1, new[] { "LifeSteal+=0.05" } },
             new object[] { "BloodCovenant", 2, new[] { "LifeSteal+=0.07" } },
             new object[] { "BloodCovenant", 3, new[] { "LifeSteal+=0.09" } },
