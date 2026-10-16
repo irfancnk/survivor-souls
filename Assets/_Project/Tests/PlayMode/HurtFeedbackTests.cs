@@ -144,7 +144,7 @@ namespace SurvivorSouls.Tests
             Assert.That(_arcs.Visible, Is.EqualTo(2));
 
             _arcs.Tick(1f);
-            Assert.That(_arcs.Visible, Is.EqualTo(0), "faded out on real time");
+            Assert.That(_arcs.Visible, Is.EqualTo(0), "faded out");
         }
 
         [Test]

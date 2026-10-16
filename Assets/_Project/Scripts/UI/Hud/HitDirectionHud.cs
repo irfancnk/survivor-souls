@@ -8,7 +8,7 @@ namespace SurvivorSouls.UI.Hud
     /// Hit direction hint (KAN-187): a short crimson arc at the screen edge on the side a discrete hit came from
     /// (<see cref="PlayerHealth.OnHit"/>: ranged shots, boss attacks, telegraphed specials; never horde contact). The arc sits
     /// on an ellipse just inside the screen edge, turned so its bright outer rim faces the edge, pops in and fades out on
-    /// real time (it does not hang under the level-up cards). Pooled: <see cref="PoolSize"/> arcs built once next to the
+    /// scaled time, like the damage vignette (it holds through a hit-stop or a pause and finishes after). Pooled: <see cref="PoolSize"/> arcs built once next to the
     /// damage vignette; a new hit reuses a running arc on the same side, else the oldest. The arc texture is procedural
     /// (built once). Shown also with "Reduce screen effects": it is information, not shake.
     /// </summary>
@@ -26,16 +26,16 @@ namespace SurvivorSouls.UI.Hud
         [SerializeField] private PlayerHealth health;
         [SerializeField] private Camera worldCamera;
         [Tooltip("Arc size (panel px).")]
-        [SerializeField] private Vector2 arcSize = new Vector2(300f, 84f);
+        [SerializeField] private Vector2 arcSize = new Vector2(360f, 104f);
         [Tooltip("Gap between the arc's outer rim and the screen edge (panel px).")]
-        [SerializeField, Min(0f)] private float edgeMargin = 8f;
-        [Tooltip("Seconds the arc shows (real time).")]
+        [SerializeField, Min(0f)] private float edgeMargin = 22f;
+        [Tooltip("Seconds the arc shows (scaled time).")]
         [SerializeField, Min(0.1f)] private float showTime = 0.75f;
         [Tooltip("Seconds of full opacity before the fade.")]
         [SerializeField, Min(0f)] private float holdTime = 0.18f;
         [Tooltip("Same-side hits closer than this (degrees) reuse the running arc.")]
         [SerializeField, Range(0f, 90f)] private float mergeAngle = 35f;
-        [SerializeField] private Color arcColor = new Color(0.86f, 0.06f, 0.04f, 1f);
+        [SerializeField] private Color arcColor = new Color(0.78f, 0.03f, 0.02f, 1f);
 
         private const int TexWidth = 128, TexHeight = 40;
 
@@ -188,17 +188,17 @@ namespace SurvivorSouls.UI.Hud
             Place(slot);
         }
 
-        private void LateUpdate() => Tick(Time.unscaledDeltaTime);
+        private void LateUpdate() => Tick(Time.deltaTime);
 
-        /// <summary>Ages and fades the arcs by <paramref name="realDt"/> real seconds. Public for tests (LateUpdate calls it).</summary>
-        public void Tick(float realDt)
+        /// <summary>Ages and fades the arcs by <paramref name="dt"/> seconds. Public for tests (LateUpdate calls it).</summary>
+        public void Tick(float dt)
         {
             for (int i = 0; i < PoolSize; i++)
             {
                 if (_arcs[i] == null || float.IsPositiveInfinity(_age[i])) continue;
-                _age[i] += realDt;
+                _age[i] += dt;
                 float t = _age[i];
-                float opacity = t >= showTime ? 0f : t <= holdTime ? 1f : 1f - Mathf.SmoothStep(0f, 1f, (t - holdTime) / (showTime - holdTime));
+                float opacity = t >= showTime ? 0f : t <= holdTime ? 1f : 1f - Smooth(0f, 1f, (t - holdTime) / (showTime - holdTime));
                 if (t >= showTime) _age[i] = float.PositiveInfinity;
                 // Pop: 1.25 -> 1 over the first 0.12 s.
                 float scale = 1f + 0.25f * Mathf.Clamp01(1f - t / 0.12f);
@@ -243,16 +243,24 @@ namespace SurvivorSouls.UI.Hud
                 float outer = radius, inner = radius - TexHeight * 0.75f;
                 float band = Mathf.Clamp01((d - inner) / (outer - inner)); // 0 inner .. 1 outer rim
                 float edge = Mathf.Clamp01((outer + 1.5f - d) / 3f);        // anti-aliased outer rim
-                float a = band * band * edge;
+                float a = Smooth(0f, 0.55f, band) * edge;         // solid band, soft inner glow
                 float ends = Mathf.Abs(dx) / (TexWidth * 0.5f);             // fade at the tips
-                a *= 1f - Mathf.SmoothStep(0.45f, 1f, ends);
-                float hot = Mathf.SmoothStep(0.75f, 1f, band) * edge;      // bright core near the rim
-                var c = Color.Lerp(color, new Color(1f, 0.55f, 0.4f), hot * 0.6f);
-                pixels[y * TexWidth + x] = new Color(c.r, c.g, c.b, Mathf.Clamp01(a * 1.15f));
+                a *= 1f - Smooth(0.5f, 1f, ends);
+                float hot = Smooth(0.6f, 0.95f, band) * edge;    // bright core near the rim
+                var c = Color.Lerp(color, new Color(1f, 0.42f, 0.28f), hot * 0.75f);
+                pixels[y * TexWidth + x] = new Color(c.r, c.g, c.b, Mathf.Clamp01(a * 0.95f));
             }
             tex.SetPixels32(pixels);
             tex.Apply(false, true);
             return tex;
+        }
+
+        /// <summary>GLSL smoothstep: 0 at <paramref name="e0"/>, 1 at <paramref name="e1"/>, eased between (Mathf.SmoothStep
+        /// eases between two values instead).</summary>
+        private static float Smooth(float e0, float e1, float x)
+        {
+            float t = Mathf.Clamp01((x - e0) / (e1 - e0));
+            return t * t * (3f - 2f * t);
         }
     }
 }
