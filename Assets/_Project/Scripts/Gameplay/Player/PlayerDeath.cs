@@ -24,6 +24,12 @@ namespace SurvivorSouls.Gameplay.Player
         [SerializeField, Range(0f, 90f)] private float fallAngle = 78f;
         [Tooltip("Seconds after the body lands before Finished is raised.")]
         [SerializeField, Min(0f)] private float settleTime = 0.35f;
+        [Tooltip("KAN-153: the model has a death clip (trigger \"Die\"): play it instead of the procedural tip-over.")]
+        [SerializeField] private bool deathClip;
+        [Tooltip("KAN-153: seconds of the death clip (used instead of fallTime when deathClip is on).")]
+        [SerializeField, Min(0.05f)] private float deathClipTime = 1.6f;
+
+        public static readonly int DieId = Animator.StringToHash("Die");
 
         /// <summary>Raised once, after the fall settles.</summary>
         public event Action Finished;
@@ -35,6 +41,20 @@ namespace SurvivorSouls.Gameplay.Player
         private bool _finished;
 
         public bool IsDying => _time >= 0f;
+        public Transform Model => model;
+        public bool UsesDeathClip => deathClip;
+
+        /// <summary>
+        /// KAN-153: another hero model took the Knight's place (<c>HeroLoadout</c>). <paramref name="clipSeconds"/> &gt; 0 =
+        /// the model plays its own death clip (trigger "Die") for that long instead of the tip-over.
+        /// </summary>
+        public void SetModel(Transform body, Animator anim, float clipSeconds)
+        {
+            model = body;
+            animator = anim;
+            deathClip = clipSeconds > 0f;
+            if (deathClip) deathClipTime = clipSeconds;
+        }
 
         private void Awake() => _health = GetComponent<PlayerHealth>();
         private void OnEnable() => _health.OnDeath += OnDeath;
@@ -56,7 +76,7 @@ namespace SurvivorSouls.Gameplay.Player
             if (animator != null)
             {
                 animator.SetFloat(LocomotionAnimatorDriver.SpeedId, 0f); // driver is off: no stale run pose after the hit clip
-                animator.SetTrigger(LocomotionAnimatorDriver.HitId);
+                animator.SetTrigger(deathClip ? DieId : LocomotionAnimatorDriver.HitId);
             }
         }
 
@@ -64,6 +84,14 @@ namespace SurvivorSouls.Gameplay.Player
         {
             if (_time < 0f || _finished) return;
             _time += Time.deltaTime;
+            if (deathClip)
+            {
+                // The clip lies the body down and holds its last frame (plays once); no procedural tip.
+                if (_time < deathClipTime + settleTime) return;
+                _finished = true;
+                Finished?.Invoke();
+                return;
+            }
             float t = Mathf.Clamp01(_time / fallTime);
             float ease = t * t; // accelerates like a toppling body
             if (model != null)

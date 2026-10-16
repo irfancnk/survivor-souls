@@ -85,6 +85,7 @@ namespace SurvivorSouls.Editor
             var treeBonuses = player.AddComponent<SurvivorSouls.Gameplay.Meta.SoulTreeBonuses>();
             SetRef(treeBonuses, "tree", Economy.EconomyBuilder.LoadOrCreateSoulTree());
             SetRef(treeBonuses, "stats", stats);
+            HeroBuilder.AddTo(player, stats); // picked hero: stat profile + own model, before the soul tree (KAN-153)
             SetRef(player.GetComponent<PlayerMover>(), "joystick", joystick);
             var world = WorldBuilder.Build(kit, realm, player.transform, player.GetComponent<PlayerMover>(), sfx.PortalHum);
             var combat = CombatBuilder.Load();

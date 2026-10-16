@@ -1,0 +1,17 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 733b3cb9fee27462b8e479f0d8b35cb7, type: 3}
+  m_Name: HeroRoster
+  m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Heroes.HeroRoster
+  heroes:
+  - {fileID: 11400000, guid: ad9dfd8693cc7488d8fc21bac457951c, type: 2}
+  - {fileID: 11400000, guid: b748d3db314ac4c8e82231a8d9493822, type: 2}

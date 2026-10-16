@@ -20,6 +20,11 @@ namespace SurvivorSouls.Gameplay.Characters
 
         public void PlayHit() => animator.SetTrigger(HitId);
 
+        public Animator Animator => animator;
+
+        /// <summary>KAN-153: another hero model took the Knight's place (<c>HeroLoadout</c>).</summary>
+        public void SetAnimator(Animator target) => animator = target;
+
         private void Awake()
         {
             if (animator == null) animator = GetComponentInChildren<Animator>();

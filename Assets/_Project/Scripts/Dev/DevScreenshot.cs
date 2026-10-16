@@ -154,6 +154,9 @@ namespace SurvivorSouls.Dev
         private string _soulNode;
         private bool _store;
         private string _storeTab;
+        private bool _heroes; // KAN-153 hero page
+        private bool _heroReset;
+        private string _heroPress;
         private string _storeItem;
         private bool _storeBuy;
         private string _treeLevels;
@@ -240,6 +243,9 @@ namespace SurvivorSouls.Dev
             shot._hearts = int.TryParse(GetArg("-ss-hearts"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int hs) ? hs : 0;
             shot._cleared = int.TryParse(GetArg("-ss-cleared"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int cl) ? cl : 0;
             shot._settings = Array.IndexOf(DevArgs.All, "-ss-settings") >= 0;
+            shot._heroPress = GetArg("-ss-hero-press"); // KAN-153: comma list of card presses, e.g. shadow_ranger,shadow_ranger = buy
+            shot._heroes = shot._heroPress != null || Array.IndexOf(DevArgs.All, "-ss-heroes") >= 0;
+            shot._heroReset = Array.IndexOf(DevArgs.All, "-ss-hero-reset") >= 0;
             shot._startChamber = int.TryParse(GetArg("-ss-start-chamber"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int sc) ? sc : 0;
             // KAN-151: simulate a store build before Test Mode is read anywhere.
             if (Array.IndexOf(DevArgs.All, "-ss-store-sim") >= 0)
@@ -347,6 +353,7 @@ namespace SurvivorSouls.Dev
             if (_treeLevels != null) SetTreeLevels(_treeLevels);
             if (_soulTree) OpenSoulTree();
             if (_store) OpenStore();
+            if (_heroes) OpenHeroes();
 
             float release = Mathf.Clamp(_release, 0f, _delay);
             float xpLead = _xp > 0 ? Mathf.Min(_xpLead, _delay - release) : 0f;
@@ -461,6 +468,24 @@ namespace SurvivorSouls.Dev
             if (!string.IsNullOrEmpty(_soulNode) && !menu.SoulTreePage.OpenDetail(_soulNode))
                 Debug.LogWarning($"[DevScreenshot] -ss-soul-node: no node '{_soulNode}'");
             Debug.Log($"[DevScreenshot] Soul tree open, detail={menu.SoulTreePage.Selected?.DisplayName ?? "none"} canBuy={menu.SoulTreePage.CanBuy}");
+        }
+
+        /// <summary>Main menu: opens the hero page (KAN-153), after a reset of the hero saves and the card presses of the args.</summary>
+        private void OpenHeroes()
+        {
+            var menu = FindAnyObjectByType<SurvivorSouls.UI.MainMenu.MainMenuController>();
+            if (menu == null || menu.HeroPage == null)
+            {
+                Debug.LogWarning("[DevScreenshot] -ss-heroes: no main menu with a hero page in the scene");
+                return;
+            }
+            var page = menu.HeroPage;
+            if (_heroReset) SurvivorSouls.Gameplay.Heroes.HeroProgress.ResetAll(page.Roster);
+            menu.OpenHeroes();
+            foreach (var id in (_heroPress ?? "").Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries))
+                Debug.Log($"[DevScreenshot] Hero press '{id}': {page.Press(id)} -> {page.StateOf(id)} toast='{page.ToastText}'");
+            Debug.Log($"[DevScreenshot] Heroes open, current={page.Current?.Id ?? "none"} shards={SurvivorSouls.Core.GemWallet.Balance} " +
+                      $"testMode={SurvivorSouls.Core.TestMode.IsOn}");
         }
 
         /// <summary>Main menu: opens the store page (tab, item sheet, buy press from the -ss-store-* args).</summary>

@@ -453,7 +453,8 @@ namespace SurvivorSouls.Editor
             go.AddComponent<MainMenuController>().Setup(realmCatalog,
                 Economy.EconomyBuilder.LoadOrCreateGemRewards(), // welcome shards (KAN-97)
                 Economy.EconomyBuilder.LoadOrCreateSoulTree(), // soul tree page (KAN-98)
-                Economy.EconomyBuilder.LoadOrCreateStoreCatalog()); // store page (KAN-99)
+                Economy.EconomyBuilder.LoadOrCreateStoreCatalog(), // store page (KAN-99)
+                Characters.HeroBuilder.LoadOrCreateRoster()); // hero page (KAN-153)
         }
 
         // ---------------------------------------------------------------- Realms (KAN-20)

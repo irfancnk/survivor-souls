@@ -22,11 +22,14 @@ namespace SurvivorSouls.Tests
     /// when nodes were bought in the editor.
     /// Test Mode (KAN-144) is saved and turned off for the suite: lock, START and progress tests see the real rules.
     /// Pending souls (KAN-101) are saved and deleted for the suite: a menu test must not bank the editor's pending amount.
+    /// Heroes (KAN-153): ownership flags and the picked hero are saved and deleted for the suite: every Game scene test
+    /// plays the Knight, even when the Shadow Ranger is bought or picked in the editor.
     /// </summary>
     [SetUpFixture]
     public sealed class WalletPrefsGuard
     {
         private readonly Dictionary<string, int> _saved = new Dictionary<string, int>();
+        private string _savedHero;
 
         private static IEnumerable<string> Keys()
         {
@@ -36,6 +39,7 @@ namespace SurvivorSouls.Tests
             yield return SoulWallet.KeyPendingCheck;
             foreach (var k in GemWallet.Keys) yield return k;
             foreach (var k in TreeKeys()) yield return k;
+            foreach (var k in HeroKeys()) yield return k;
             yield return GameSettings.KeyTestMode;
             yield return TestMode.KeyGranted;
         }
@@ -53,12 +57,29 @@ namespace SurvivorSouls.Tests
             }
         }
 
+        private static IEnumerable<string> HeroKeys()
+        {
+            var roster = UnityEditor.AssetDatabase.LoadAssetAtPath<SurvivorSouls.Gameplay.Heroes.HeroRoster>("Assets/_Project/Data/Heroes/HeroRoster.asset");
+            if (roster == null) yield break;
+            foreach (var hero in roster.Heroes)
+            {
+                if (hero == null) continue;
+                string key = SurvivorSouls.Gameplay.Heroes.HeroProgress.KeyOf(hero);
+                yield return key;
+                yield return key + ".check";
+            }
+        }
+
         [OneTimeSetUp]
         public void Save()
         {
             _saved.Clear();
             foreach (var k in Keys())
                 if (PlayerPrefs.HasKey(k)) _saved[k] = PlayerPrefs.GetInt(k);
+            _savedHero = PlayerPrefs.HasKey(SurvivorSouls.Gameplay.Heroes.HeroProgress.KeySelected)
+                ? PlayerPrefs.GetString(SurvivorSouls.Gameplay.Heroes.HeroProgress.KeySelected) : null;
+            foreach (var k in HeroKeys()) PlayerPrefs.DeleteKey(k); // no bought heroes during the suite: the Knight plays
+            PlayerPrefs.DeleteKey(SurvivorSouls.Gameplay.Heroes.HeroProgress.KeySelected);
             foreach (var k in TreeKeys()) PlayerPrefs.DeleteKey(k); // no bought levels during the suite
             PlayerPrefs.DeleteKey(GameSettings.KeyTestMode); // real lock rules during the suite
             SoulWallet.ClearPending(); // no pending souls (KAN-101) banked by a menu test
@@ -72,6 +93,8 @@ namespace SurvivorSouls.Tests
                 if (_saved.TryGetValue(k, out int v)) PlayerPrefs.SetInt(k, v);
                 else PlayerPrefs.DeleteKey(k);
             }
+            if (_savedHero != null) PlayerPrefs.SetString(SurvivorSouls.Gameplay.Heroes.HeroProgress.KeySelected, _savedHero);
+            else PlayerPrefs.DeleteKey(SurvivorSouls.Gameplay.Heroes.HeroProgress.KeySelected);
             PlayerPrefs.Save();
         }
     }

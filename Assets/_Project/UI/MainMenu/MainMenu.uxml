@@ -2,6 +2,7 @@
     <ui:Template name="RealmSelect" src="project://database/Assets/_Project/UI/RealmSelect/RealmSelect.uxml" />
     <ui:Template name="SoulTree" src="project://database/Assets/_Project/UI/SoulTree/SoulTree.uxml" />
     <ui:Template name="Store" src="project://database/Assets/_Project/UI/Store/Store.uxml" />
+    <ui:Template name="HeroSelect" src="project://database/Assets/_Project/UI/HeroSelect/HeroSelect.uxml" />
     <Style src="MainMenu.uss" />
     <!-- Portrait layout: title top, bonfire (3D) in the middle, actions at the bottom (thumb zone). -->
     <ui:VisualElement name="shade-top" class="ss-shade ss-shade--top" picking-mode="Ignore" />
@@ -33,6 +34,7 @@
         <ui:VisualElement class="ss-actions">
             <ui:Label name="lbl-toast" text="" class="ss-toast ss-hidden" picking-mode="Ignore" />
             <ui:Button name="btn-play" text="PLAY" class="ss-button ss-button--primary" />
+            <ui:Button name="btn-heroes" text="HEROES" class="ss-button" />
             <ui:Button name="btn-soul-tree" text="SOUL TREE" class="ss-button" />
             <ui:Button name="btn-store" text="STORE" class="ss-button" />
             <ui:Button name="btn-settings" text="SETTINGS" class="ss-button" />
@@ -49,6 +51,9 @@
 
     <!-- Store page (KAN-99): full screen above the menu, hidden until STORE. -->
     <ui:Instance template="Store" name="store" picking-mode="Ignore" style="position: absolute; left: 0; top: 0; right: 0; bottom: 0;" />
+
+    <!-- Hero page (KAN-153): full screen above the menu, hidden until HEROES. -->
+    <ui:Instance template="HeroSelect" name="hero-select" picking-mode="Ignore" style="position: absolute; left: 0; top: 0; right: 0; bottom: 0;" />
 
     <ui:VisualElement name="settings-overlay" class="ss-overlay ss-hidden">
         <ui:VisualElement class="ss-modal">

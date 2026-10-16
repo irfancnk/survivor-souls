@@ -1,0 +1,33 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <Style src="HeroSelect.uss" />
+    <!-- Hero page (KAN-153, first slice of the KAN-100 roster). Instanced by MainMenu.uxml, driven by HeroSelectScreen.
+         Hero cards are built in code from the HeroRoster asset (classes hs-card*). -->
+    <ui:VisualElement name="hs-screen" class="hs-screen hs-screen--closed ss-hidden">
+        <ui:VisualElement name="hs-safe" class="hs-safe" picking-mode="Ignore">
+            <ui:VisualElement class="hs-header">
+                <ui:VisualElement class="hs-header__bar">
+                    <ui:Button name="hs-back" text="BACK" class="hs-back" />
+                    <ui:VisualElement class="hs-pills" picking-mode="Ignore">
+                        <ui:VisualElement name="hs-souls-pill" class="ss-wallet hs-pill" picking-mode="Ignore">
+                            <ui:VisualElement class="ss-wallet__gem" picking-mode="Ignore" />
+                            <ui:Label name="hs-souls" text="0" class="ss-wallet__value" picking-mode="Ignore" />
+                        </ui:VisualElement>
+                        <ui:VisualElement name="hs-shards-pill" class="ss-wallet ss-wallet--gems hs-pill" picking-mode="Ignore">
+                            <ui:VisualElement class="ss-wallet__gem ss-wallet__gem--ember" picking-mode="Ignore" />
+                            <ui:Label name="hs-shards" text="0" class="ss-wallet__value ss-wallet__value--gems" picking-mode="Ignore" />
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+                <ui:Label text="HEROES" class="hs-title" />
+                <ui:Label text="Choose who walks into the dark." class="hs-subtitle" />
+                <ui:Label name="hs-test-note" text="TEST MODE: every hero is free." class="hs-test-note ss-hidden" />
+            </ui:VisualElement>
+
+            <ui:ScrollView name="hs-list" mode="Vertical" horizontal-scroller-visibility="Hidden" vertical-scroller-visibility="Hidden" class="hs-list">
+                <ui:VisualElement name="hs-cards" class="hs-cards" />
+            </ui:ScrollView>
+
+            <ui:Label name="hs-toast" text="" class="hs-toast ss-hidden" picking-mode="Ignore" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

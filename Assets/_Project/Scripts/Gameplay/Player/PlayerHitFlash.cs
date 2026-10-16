@@ -38,6 +38,16 @@ namespace SurvivorSouls.Gameplay.Player
         public bool Flashing => _flash > 0f;
         /// <summary>The running flash is a discrete hit flash (white-hot start), not a contact tint (tests).</summary>
         public bool HotFlash => _flash > 0f && _hot;
+        /// <summary>Body renderers being tinted (tests).</summary>
+        public Renderer[] Renderers => renderers;
+
+        /// <summary>KAN-153: another hero model took the Knight's place (<c>HeroLoadout</c>, before the first hit).</summary>
+        public void SetRenderers(Renderer[] body)
+        {
+            if (_flash > 0f) Clear();
+            _flash = 0f;
+            renderers = body;
+        }
 
         private void Awake()
         {

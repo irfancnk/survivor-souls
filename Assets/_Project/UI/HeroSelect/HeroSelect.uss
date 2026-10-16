@@ -1,0 +1,336 @@
+/* Hero page (KAN-153). Same palette as MainMenu.uss (its :root variables, .ss-button, .ss-wallet and .ss-hidden apply
+   here too: this tree is instanced inside MainMenu.uxml). Reference 1080x1920 portrait, match width.
+   Open / close: HeroSelectScreen toggles hs-screen--closed; the transition fades and slides (like Store.uss). */
+
+.hs-screen {
+    position: absolute;
+    left: 0; right: 0; top: 0; bottom: 0;
+    background-color: rgb(9, 11, 17); /* opaque: the menu title must not show through */
+    opacity: 1;
+    translate: 0 0;
+    transition-property: opacity, translate;
+    transition-duration: 0.22s;
+    transition-timing-function: ease-out-cubic;
+}
+
+.hs-screen--closed {
+    opacity: 0;
+    translate: 0 60px;
+}
+
+.hs-safe {
+    flex-grow: 1;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* ---------- Header ---------- */
+
+.hs-header {
+    width: 940px;
+    margin-top: 56px;
+    margin-bottom: 10px;
+    flex-direction: column;
+    align-items: center;
+}
+
+.hs-header__bar {
+    width: 100%;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+}
+
+.unity-button.hs-back {
+    height: 96px;
+    min-width: 220px;
+    margin: 0;
+    padding: 0 30px;
+    font-size: 34px;
+    letter-spacing: 8px;
+    -unity-font-style: bold;
+    color: var(--ss-ash);
+    background-color: rgba(20, 22, 30, 0.7);
+    background-image: none;
+    border-width: 2px;
+    border-color: rgba(232, 196, 120, 0.22);
+    border-radius: 4px;
+}
+
+.unity-button.hs-back:active {
+    scale: 0.96 0.96;
+}
+
+.hs-pills {
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+.hs-pill {
+    scale: 1 1;
+    transition-property: scale;
+    transition-duration: 0.14s;
+}
+
+.hs-pill--pop {
+    scale: 1.12 1.12;
+}
+
+.hs-title {
+    font-size: 62px;
+    letter-spacing: 14px;
+    padding-left: 14px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    color: var(--ss-gold);
+    margin: 0;
+    text-shadow: 0 4px 12px rgba(0, 0, 0, 0.85);
+}
+
+.hs-subtitle {
+    margin-top: 12px;
+    font-size: 30px;
+    -unity-text-align: middle-center;
+    -unity-font-style: italic;
+    color: var(--ss-ash-dim);
+}
+
+.hs-test-note {
+    margin-top: 14px;
+    padding: 6px 18px;
+    font-size: 26px;
+    letter-spacing: 4px;
+    -unity-font-style: bold;
+    color: rgb(255, 214, 120);
+    background-color: rgba(120, 70, 10, 0.45);
+    border-radius: 4px;
+}
+
+/* ---------- Cards ---------- */
+
+.hs-list {
+    flex-grow: 1;
+    width: 100%;
+}
+
+.hs-list .unity-scroll-view__content-container {
+    align-items: center;
+    padding-top: 16px;
+    padding-bottom: 80px;
+}
+
+.hs-cards {
+    width: 960px;
+    flex-direction: column;
+    align-items: center;
+}
+
+.hs-card {
+    width: 940px;
+    margin-bottom: 30px;
+    padding: 20px;
+    flex-direction: row;
+    background-color: rgba(20, 22, 30, 0.92);
+    border-width: 3px;
+    border-color: rgba(232, 196, 120, 0.22);
+    border-radius: 8px;
+    transition-property: border-color, background-color;
+    transition-duration: 0.14s;
+}
+
+.hs-card--selected {
+    border-color: var(--ss-gold-bright);
+    background-color: rgba(40, 32, 20, 0.95);
+}
+
+.hs-portrait {
+    width: 300px;
+    height: 375px;
+    flex-shrink: 0;
+    border-radius: 6px;
+    border-width: 2px;
+    border-color: rgba(0, 0, 0, 0.6);
+    background-color: rgb(30, 32, 38);
+    -unity-background-scale-mode: scale-and-crop;
+}
+
+.hs-card--locked .hs-portrait {
+    -unity-background-image-tint-color: rgb(170, 170, 180);
+}
+
+.hs-info {
+    flex-grow: 1;
+    flex-shrink: 1;
+    margin-left: 28px;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.hs-name {
+    font-size: 44px;
+    -unity-font-style: bold;
+    color: var(--ss-gold);
+    margin: 0;
+    white-space: normal;
+}
+
+.hs-tagline {
+    margin-top: 4px;
+    font-size: 26px;
+    -unity-font-style: italic;
+    color: var(--ss-ash-dim);
+    white-space: normal;
+}
+
+.hs-traits {
+    margin-top: 14px;
+    flex-direction: column;
+}
+
+.hs-trait {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.hs-trait__mark {
+    width: 16px;
+    height: 16px;
+    margin-right: 14px;
+    rotate: 45deg;
+    border-radius: 3px;
+}
+
+.hs-trait__text {
+    font-size: 30px;
+    -unity-font-style: bold;
+    margin: 0;
+}
+
+.hs-trait--pro .hs-trait__mark {
+    background-color: rgb(120, 210, 130);
+}
+
+.hs-trait--pro .hs-trait__text {
+    color: rgb(150, 226, 156);
+}
+
+.hs-trait--con .hs-trait__mark {
+    background-color: rgb(226, 96, 84);
+}
+
+.hs-trait--con .hs-trait__text {
+    color: rgb(240, 140, 128);
+}
+
+.hs-badge {
+    position: absolute;
+    top: -16px;
+    right: 22px;
+    padding: 4px 16px;
+    font-size: 24px;
+    letter-spacing: 4px;
+    -unity-font-style: bold;
+    color: rgb(30, 22, 10);
+    background-color: var(--ss-gold-bright);
+    border-radius: 4px;
+}
+
+/* Action row: price chip + button. */
+.hs-action-row {
+    margin-top: 16px;
+    flex-direction: row;
+    align-items: center;
+}
+
+.hs-price {
+    flex-direction: row;
+    align-items: center;
+    margin-right: 18px;
+}
+
+.hs-price__gem {
+    width: 24px;
+    height: 24px;
+    rotate: 45deg;
+    margin-right: 14px;
+    border-radius: 4px;
+    border-width: 2px;
+    border-color: rgb(255, 214, 170);
+    background-color: rgb(232, 84, 52);
+}
+
+.hs-price__gem--souls {
+    border-color: rgb(200, 230, 255);
+    background-color: rgb(110, 170, 230);
+    border-radius: 12px;
+}
+
+.hs-price__value {
+    font-size: 34px;
+    -unity-font-style: bold;
+    color: rgb(255, 222, 196);
+    margin: 0;
+}
+
+.hs-price--free .hs-price__value {
+    color: rgb(255, 214, 120);
+}
+
+.unity-button.hs-action {
+    flex-grow: 1;
+    height: 92px;
+    margin: 0;
+    font-size: 30px;
+    letter-spacing: 4px;
+    -unity-font-style: bold;
+    color: rgb(30, 22, 10);
+    background-color: var(--ss-gold);
+    background-image: none;
+    border-width: 0;
+    border-radius: 6px;
+    transition-property: scale, background-color;
+    transition-duration: 0.12s;
+}
+
+.unity-button.hs-action:active {
+    scale: 0.96 0.96;
+}
+
+.unity-button.hs-action--buy {
+    background-color: var(--ss-ember);
+    color: rgb(255, 240, 224);
+}
+
+.unity-button.hs-action--confirm {
+    background-color: rgb(240, 140, 60);
+    color: rgb(30, 14, 4);
+}
+
+.unity-button.hs-action--poor {
+    background-color: rgba(70, 60, 56, 0.9);
+    color: var(--ss-ash-dim);
+}
+
+.unity-button.hs-action--current {
+    background-color: rgba(40, 46, 40, 0.9);
+    color: rgb(150, 226, 156);
+}
+
+.hs-toast {
+    position: absolute;
+    bottom: 90px;
+    left: 70px;
+    right: 70px;
+    -unity-text-align: middle-center;
+    white-space: normal;
+    font-size: 36px;
+    -unity-font-style: bold;
+    color: var(--ss-gold-bright);
+    background-color: var(--ss-panel-solid);
+    border-width: 2px;
+    border-color: var(--ss-line);
+    border-radius: 6px;
+    padding: 22px 26px;
+}

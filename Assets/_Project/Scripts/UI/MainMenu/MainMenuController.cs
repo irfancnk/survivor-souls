@@ -1,5 +1,6 @@
 using SurvivorSouls.Core;
 using SurvivorSouls.Gameplay.Chamber;
+using SurvivorSouls.Gameplay.Heroes;
 using SurvivorSouls.Gameplay.Meta;
 using SurvivorSouls.Gameplay.Realms;
 using SurvivorSouls.UI.Hud;
@@ -16,7 +17,8 @@ namespace SurvivorSouls.UI.MainMenu
     /// Realm. Without a catalog PLAY starts Realm 1 at once. SOUL TREE opens the soul tree page (KAN-98,
     /// <see cref="SoulTreeScreen"/>); without a tree asset the button is hidden. STORE opens the store page (KAN-99,
     /// <see cref="StoreScreen"/>, Ember Shard packs through <see cref="StoreProvider"/> + shard offers); without a catalog
-    /// the button is hidden. Back / Esc closes the top layer (sheet, page, settings).
+    /// the button is hidden. HEROES opens the hero page (KAN-153, <see cref="HeroSelectScreen"/>: pick, buy, pros / cons);
+    /// without a roster the button is hidden. Back / Esc closes the top layer (sheet, page, settings).
     /// Test Mode (KAN-144): a settings row (dev builds, or after 7 taps on the settings title: <see cref="TestModeReveal"/>)
     /// switches <see cref="TestMode"/>; a "TEST MODE" tag shows top left while it is on.
     /// </summary>
@@ -48,6 +50,7 @@ namespace SurvivorSouls.UI.MainMenu
         private const string GemsName = "lbl-wallet-gems";
         private const string SoulTreeButtonName = "btn-soul-tree";
         private const string StoreButtonName = "btn-store";
+        public const string HeroesButtonName = "btn-heroes";
 
         [SerializeField, Min(0.5f)] private float toastSeconds = 2f;
         [Tooltip("Realms on the selection page (Data/Realms/RealmCatalog.asset). Null = PLAY starts Realm 1.")]
@@ -58,12 +61,15 @@ namespace SurvivorSouls.UI.MainMenu
         [SerializeField] private SoulTree soulTree;
         [Tooltip("Store page content (Data/Economy/StoreCatalog.asset, KAN-99). Null = no STORE button.")]
         [SerializeField] private StoreCatalog storeCatalog;
+        [Tooltip("Hero page (Data/Heroes/HeroRoster.asset, KAN-153). Null = no HEROES button.")]
+        [SerializeField] private HeroRoster heroRoster;
 
         private UIDocument _document;
         private SafeAreaPadding _safeArea;
         private SafeAreaPadding _realmSafeArea;
         private SafeAreaPadding _treeSafeArea;
         private SafeAreaPadding _storeSafeArea;
+        private SafeAreaPadding _heroSafeArea;
         private VisualElement _overlay;
         private Label _toast;
         private Label _wallet;
@@ -76,6 +82,7 @@ namespace SurvivorSouls.UI.MainMenu
         private RealmSelectScreen _realmSelect;
         private SoulTreeScreen _soulTreeScreen;
         private StoreScreen _storeScreen;
+        private HeroSelectScreen _heroScreen;
         private bool _loading;
 
         /// <summary>The Realm selection page (null until enabled or without a catalog).</summary>
@@ -84,6 +91,8 @@ namespace SurvivorSouls.UI.MainMenu
         public SoulTreeScreen SoulTreePage => _soulTreeScreen;
         /// <summary>The store page (null until enabled or without a catalog).</summary>
         public StoreScreen StorePage => _storeScreen;
+        /// <summary>The hero page (null until enabled or without a roster).</summary>
+        public HeroSelectScreen HeroPage => _heroScreen;
         /// <summary>
         /// Real-money provider of the store (KAN-99). Sandbox <see cref="MockPurchaseProvider"/> until StoreKit / Play
         /// Billing are wired. Tests set their own before the object is enabled.
@@ -110,8 +119,10 @@ namespace SurvivorSouls.UI.MainMenu
         private bool? _devBuildForTestMode; // null = the build flag (read on enable, not in a field initializer)
 
         /// <summary>Wiring for tests and code-built menus (call before the object is enabled).</summary>
-        public void Setup(RealmCatalog catalog, GemRewardConfig gemRewards = null, SoulTree tree = null, StoreCatalog store = null)
+        public void Setup(RealmCatalog catalog, GemRewardConfig gemRewards = null, SoulTree tree = null, StoreCatalog store = null,
+            HeroRoster heroes = null)
         {
+            heroRoster = heroes;
             realms = catalog;
             gems = gemRewards;
             soulTree = tree;
@@ -188,6 +199,19 @@ namespace SurvivorSouls.UI.MainMenu
                 }
                 else storeButton.AddToClassList(HiddenClass);
             }
+            _heroScreen = heroRoster != null && root.Q(HeroSelectScreen.ScreenName) != null
+                ? new HeroSelectScreen(root, heroRoster)
+                : null;
+            var heroesButton = root.Q<Button>(HeroesButtonName);
+            if (heroesButton != null)
+            {
+                if (_heroScreen != null)
+                {
+                    heroesButton.clicked += OpenHeroes;
+                    _heroScreen.Picked += _ => Haptics.Light();
+                }
+                else heroesButton.AddToClassList(HiddenClass);
+            }
             _play.Focus();
             if (recovered > 0) ShowToast(RecoveredText(recovered), 4f); // as long as the welcome toast: news, not a hint
         }
@@ -228,6 +252,7 @@ namespace SurvivorSouls.UI.MainMenu
             _realmSafeArea?.Refresh();
             _treeSafeArea?.Refresh();
             _storeSafeArea?.Refresh();
+            _heroSafeArea?.Refresh();
             // Esc on desktop; Android's back button arrives as Escape too.
             if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame) Back();
         }
@@ -238,6 +263,7 @@ namespace SurvivorSouls.UI.MainMenu
             if (_realmSelect != null && _realmSelect.Back()) return true;
             if (_soulTreeScreen != null && _soulTreeScreen.Back()) return true;
             if (_storeScreen != null && _storeScreen.Back()) return true;
+            if (_heroScreen != null && _heroScreen.Back()) return true;
             if (_overlay != null && !_overlay.ClassListContains(HiddenClass))
             {
                 CloseSettings();
@@ -271,6 +297,15 @@ namespace SurvivorSouls.UI.MainMenu
             _storeSafeArea ??= new SafeAreaPadding(_storeScreen.Page);
             _storeScreen.Open();
             _storeSafeArea.Refresh(force: true);
+        }
+
+        /// <summary>Opens the hero page (HEROES). Dev screenshots call it too.</summary>
+        public void OpenHeroes()
+        {
+            if (_heroScreen == null) return;
+            _heroSafeArea ??= new SafeAreaPadding(_heroScreen.Page);
+            _heroScreen.Open();
+            _heroSafeArea.Refresh(force: true);
         }
 
         private void OnApplicationPause(bool paused)
@@ -342,6 +377,7 @@ namespace SurvivorSouls.UI.MainMenu
             _testToggle?.SetValueWithoutNotify(on);
             ShowTestMode();
             _realmSelect?.Refresh();
+            _heroScreen?.Refresh(); // every hero free while Test Mode is on
             if (on) ShowToast(added > 0 ? $"Test Mode on. +{PlayerHealthHud.FormatCount(added)} Souls." : "Test Mode on. All Realms open.", 3f);
             else ShowToast("Test Mode off. Real progress restored.", 3f);
         }
