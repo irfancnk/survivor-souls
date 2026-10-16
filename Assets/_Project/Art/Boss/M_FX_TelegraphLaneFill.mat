@@ -61,11 +61,15 @@ Material:
     - _FlipbookBlending: 0
     - _FlipbookMode: 0
     - _FlowSpeed: 2.6
+    - _Hot: 0.6
     - _LaneWidth: 2
     - _Mode: 0
     - _Part: 0
     - _Progress: 0
     - _QueueOffset: 0
+    - _RuneReach: 0.62
+    - _RuneSlope: 0.9
+    - _RuneStroke: 0.075
     - _Snap: 0
     - _SoftParticlesEnabled: 0
     - _SoftParticlesFarFadeDistance: 1
@@ -76,6 +80,7 @@ Material:
     - _Surface: 1
     - _Tint: 0.25
     - _Torn: 0.12
+    - _WarmHue: 0.07
     - _ZWrite: 0
     m_Colors:
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
@@ -84,6 +89,7 @@ Material:
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _Ember: {r: 1, g: 0.41999996, b: 0.07999996, a: 1}
     - _EmberHot: {r: 1, g: 0.8, b: 0.45, a: 1}
+    - _EmberShift: {r: 0, g: 0.29999998, b: 0.03, a: 0}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
     - _Outline: {r: 0.059999965, g: 0.01, b: 0.01, a: 0.9}
     - _ScorchDark: {r: 0.12999997, g: 0.02, b: 0.015, a: 1}
