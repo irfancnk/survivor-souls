@@ -35,7 +35,7 @@ namespace SurvivorSouls.Editor.SceneSteps
             so.ApplyModifiedPropertiesWithoutUndo();
         }
 
-        /// <summary>Embers born on a 1.1 m ring round the feet, rising 1.5-2.6 m/s with a little noise; shrink and fade.</summary>
+        /// <summary>Embers born on a 1.3 m ring round the feet, rising 1.5-2.6 m/s with a little noise; shrink and fade.</summary>
         public static ParticleSystem CreateAura(Transform parent)
         {
             string dir = RangedEnemyBuilder.FxDir;
@@ -50,18 +50,18 @@ namespace SurvivorSouls.Editor.SceneSteps
             main.simulationSpace = ParticleSystemSimulationSpace.World;
             main.startLifetime = new ParticleSystem.MinMaxCurve(0.7f, 1.1f);
             main.startSpeed = new ParticleSystem.MinMaxCurve(1.5f, 2.6f);
-            main.startSize = new ParticleSystem.MinMaxCurve(0.22f, 0.42f);
+            main.startSize = new ParticleSystem.MinMaxCurve(0.32f, 0.56f);
             main.startColor = new ParticleSystem.MinMaxGradient(new Color(1f, 0.45f, 0.22f), new Color(1f, 0.78f, 0.36f));
             main.gravityModifier = -0.1f;
             main.maxParticles = MaxEmbers;
             main.cullingMode = ParticleSystemCullingMode.AlwaysSimulate;
             var emission = ps.emission;
             emission.enabled = true;
-            emission.rateOverTime = 70f;
+            emission.rateOverTime = 95f;
             var shape = ps.shape;
             shape.enabled = true;
             shape.shapeType = ParticleSystemShapeType.Circle; // the system points up (PropKit): the ring lies on the ground
-            shape.radius = 1.1f;
+            shape.radius = 1.3f;
             shape.radiusThickness = 0.35f;
             var size = ps.sizeOverLifetime;
             size.enabled = true;
