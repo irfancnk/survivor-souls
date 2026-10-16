@@ -48,6 +48,10 @@ MonoBehaviour:
   duration: 3
   embers: {fileID: 1840474959220006629}
   emberRate: 14
+  spreadRadius: 2.5
+  blastRadius: 2.2
+  spreadEmbers: 8
+  blastEmbers: 22
 --- !u!1 &7410551252210372000
 GameObject:
   m_ObjectHideFlags: 0
@@ -328,7 +332,7 @@ ParticleSystem:
         m_RotationOrder: 4
     randomizeRotationDirection: 0
     gravitySource: 0
-    maxNumParticles: 260
+    maxNumParticles: 360
     customEmitterVelocity: {x: 0, y: 0, z: 0}
     size3D: 0
     rotation3D: 0

@@ -144,6 +144,7 @@ namespace SurvivorSouls.Gameplay.Combat
         private float _burnLeft;
         private float _burnTick;
         private float _burnPhase; // per enemy, so a burning crowd does not pulse in sync
+        private bool _burnSpread; // KAN-77: this fire was caught from a burning neighbour, not lit by a bolt
         private float _hexLeft;
         private float _hexBoost = 1f;
         private Color _tint = Color.clear;
@@ -257,6 +258,10 @@ namespace SurvivorSouls.Gameplay.Combat
         public bool Halted { get; set; }
         public bool IsBurning => _burnLeft > 0f && IsAlive;
         public float BurnDps => IsBurning ? _burnDps : 0f;
+        /// <summary>Burning from a fire caught from a neighbour (KAN-77 Ember Bolts spread), not from a bolt hit. Spread fires do not spread on.</summary>
+        public bool BurnFromSpread => IsBurning && _burnSpread;
+        /// <summary>Burn seconds left, also during the <see cref="Damaged"/> call of the killing blow (KAN-77: a burning death blasts).</summary>
+        public float BurnTimeLeft => _burnLeft;
         public DamageKind LastDamageKind { get; private set; }
         public bool LastHitCrit { get; private set; }
         /// <summary>Chest height: where bolts aim.</summary>
@@ -279,6 +284,7 @@ namespace SurvivorSouls.Gameplay.Combat
             _flash = 0f;
             _burnDps = 0f;
             _burnLeft = 0f;
+            _burnSpread = false;
             _burnPhase = UnityEngine.Random.value * Mathf.PI * 2f;
             _detourSide = UnityEngine.Random.value < 0.5f ? -1f : 1f;
             _detouring = false;
@@ -429,12 +435,14 @@ namespace SurvivorSouls.Gameplay.Combat
 
         /// <summary>
         /// Sets the enemy on fire for <paramref name="duration"/> seconds: <paramref name="dps"/> fire damage in 0.5 s ticks.
-        /// A new burn refreshes the time and keeps the stronger damage; it does not stack.
+        /// A new burn refreshes the time and keeps the stronger damage; it does not stack. <paramref name="spread"/> marks a
+        /// fire caught from a neighbour (KAN-77); a bolt's fire on a spread-burning enemy makes it a bolt fire again.
         /// </summary>
-        public void ApplyBurn(float dps, float duration)
+        public void ApplyBurn(float dps, float duration, bool spread = false)
         {
             if (!IsAlive || dps <= 0f || duration <= 0f) return;
-            if (_burnLeft <= 0f) _burnTick = BurnTickInterval; // first tick after one interval
+            if (_burnLeft <= 0f) { _burnTick = BurnTickInterval; _burnSpread = spread; } // first tick after one interval
+            else if (!spread) _burnSpread = false;
             _burnDps = _burnLeft > 0f ? Mathf.Max(_burnDps, dps) : dps;
             _burnLeft = Mathf.Max(_burnLeft, duration);
         }

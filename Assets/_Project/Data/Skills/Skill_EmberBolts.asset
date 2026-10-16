@@ -34,7 +34,7 @@ MonoBehaviour:
     - stat: 9
       kind: 0
       value: 40
-  - description: 'Hits burn: 55 fire damage/s for 4 s'
+  - description: Burn 55/s for 4 s, spreads to a foe
     modifiers:
     - stat: 9
       kind: 0
@@ -42,7 +42,10 @@ MonoBehaviour:
     - stat: 13
       kind: 0
       value: 1
-  - description: 'Hits burn: 75 fire damage/s for 5 s'
+    - stat: 22
+      kind: 0
+      value: 1
+  - description: Burn 75/s for 5 s + 60% death blast
     modifiers:
     - stat: 9
       kind: 0
@@ -50,4 +53,10 @@ MonoBehaviour:
     - stat: 13
       kind: 0
       value: 2
+    - stat: 22
+      kind: 0
+      value: 1
+    - stat: 23
+      kind: 0
+      value: 0.6
   effectPrefab: {fileID: 8373298847089911843, guid: 43a86f129c1e64b03be3a8acbaf44c79, type: 3}
