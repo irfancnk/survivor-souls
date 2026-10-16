@@ -845,6 +845,15 @@
   - Verified: compile 0 errors; Game scene rebuild exit 0, no diff; EditMode 197 pass; PlayMode 763: 761 pass, 2 skipped (soak), 0 fail; mac dev build + shots. iPhone not deployed: phone locked (passcodeRequired), night run.
   - Limits: during a level-up glow the ring of a slot draws over the left neighbour's level shield for ~1 s (sibling order). Nothing calls `SetCooldown` yet (KAN-192). Badge font is the default bold (serif decision = KAN-185). No iPhone size check.
 
+- 2026-10-16 (KAN-191): Level 10 single-target power back to the KAN-86 target 2.5x (KAN-93 follow-up). Branch `feat/kan-191-l10-power`. Scheduled-task run r202610160309-42fa47.
+  - Problem: the 2000-run power curve read 2.42-2.45x at level 10 (the 2.54x of KAN-86 was 200-run seed luck); KAN-93 had lowered the test floor to 2.4x.
+  - Data only (designer numbers in the shipped assets + the `SkillsBuilder` specs for fresh assets): `Skill_SharpenedBolts` +20 / 42 / 66 / 90 / 112 / 135 % (was 20 / 38 / 58 / 80 / 102 / 125); `Skill_QuickDraw` +15 / 30 / 50 / 66 / 80 / 94 % (levels 1-2 kept, was 46 / 62 / 76 / 90 from level 3); `Skill_FleetFoot` offer weight 0.5 (was 1, levels unchanged).
+  - Result (2000 runs): level 10 single-target 2.52x at seed 75 (2.53 / 2.55 at seeds 11 / 23), level 20 4.49x, crowd 27.2x, gap 6.1. Options measured + power curve table: `Docs/BALANCE.md` (KAN-191 section). Level steps alone gave only +0.03; the offer mix (Fleet Foot crowded the early Common offers) moved it most. An earlier Quick Draw guarantee did not help.
+  - Quick Draw level 2 stays at +30 %: +33 % dropped the 10-pick Bone Matriarch fight to 59.2 s (band 60-90 s, `BossIntroTests`). Now: Warden 62 s, Butcher / Pyre Lord 69 s, Colossus 71 s, Matriarch 61 s.
+  - Tests: `SingleTargetBalanceTests` level 10 floor 2.5x (2000 runs); `SkillLevelTableTests` sheet rows + level 6 = +135 %. Run: `-runTests -testPlatform PlayMode`.
+  - Verified: compile 0 errors; Game scene rebuild exit 0, no diff; EditMode 197 pass; PlayMode 778: 776 pass, 2 skipped (soak), 0 fail; mac dev build, `-ss-scene Game -ss-skills sharpened_bolts,quick_draw -ss-offer sharpened_bolts,quick_draw,fleet_foot -ss-xp 99999 -ss-delay 5 -ss-power-curve` -> `Docs/screenshots/kan191-offer-sharpened-l2.png` (card "+42% bolt damage"), no exceptions. Not on iPhone (data only).
+  - Limits: the Matriarch fight is 1 s over the 60 s floor; a new damage card in the early tiers or a Sharpened Bolts / Quick Draw level 2 raise breaks that test (raise her 7000 HP then, doc 3.15). Confluence balance sheet sync = KAN-186.
+
 ## DECISIONS
 - Design language: Archero / Archero 2 (menus, loop, chests, daily/weekly quests, gear merge, talents, energy). Look: Dark Souls, realistic, not dismal. User decision 2026-10-11.
 - Naming map: energy=Estus, gold=Souls, gems=Ember Shards, chests=Reliquaries, daily=Oaths, weekly=Pilgrimage, chapter=Realm, room=Chamber. See GAME_PLAN sec 2.
