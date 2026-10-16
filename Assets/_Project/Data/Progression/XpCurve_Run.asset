@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bf7e6922941884703b590c20a697a81c, type: 3}
   m_Name: XpCurve_Run
   m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Progression.XpCurve
-  baseXp: 50
-  growth: 1.22
+  baseXp: 110
+  growth: 1.05
   roundTo: 5
-  table: 1e0000003200000046000000i
+  table: 1e00000032000000460000005a0000006e000000i

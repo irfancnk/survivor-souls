@@ -16,6 +16,11 @@ MonoBehaviour:
   powerExponent: 0.6
   timeGrowth: 0.3
   maxMultiplier: 6
+  capExponent: 0.3
+  maxCapFactor: 1.6
+  intervalExponent: 0.2
+  minIntervalFactor: 0.7
+  maxAliveBudget: 50
   tierThresholds:
   - 1
   - 1.6

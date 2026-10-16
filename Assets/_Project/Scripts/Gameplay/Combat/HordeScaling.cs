@@ -15,6 +15,11 @@ namespace SurvivorSouls.Gameplay.Combat
     /// P ^ (1 - exponent).</item>
     /// <item>Health x (1 + <see cref="timeGrowth"/> x Chamber progress): zombies get tougher through the 2 minute Chamber.</item>
     /// </list>
+    /// Spawn pressure (KAN-113): the same power index also raises the field's refill, so a strong crowd build does not
+    /// clear the field faster than the table refills it. Max alive and burst sizes x P ^ <see cref="capExponent"/>
+    /// (at most <see cref="maxCapFactor"/>), group and burst intervals x P ^ -<see cref="intervalExponent"/> (at least
+    /// <see cref="minIntervalFactor"/>). Pressure never lifts max alive past <see cref="maxAliveBudget"/> (phone budget,
+    /// KAN-44); the table's own cap (Chamber scaling included) is never cut.
     /// Danger tiers: the total health multiplier (Chamber x dynamic) maps to a tier value between the
     /// <see cref="tierThresholds"/>; the body colour blends between the <see cref="tierColors"/>, quantised to
     /// <see cref="stepsPerTier"/> steps per tier (one shared material per step and zombie type, so the SRP Batcher stays on).
@@ -32,6 +37,18 @@ namespace SurvivorSouls.Gameplay.Combat
         [SerializeField, Min(0f)] private float timeGrowth = 0.3f;
         [Tooltip("Cap of the dynamic multiplier (power x time). The Chamber multiplier comes on top.")]
         [SerializeField, Min(1f)] private float maxMultiplier = 6f;
+
+        [Header("Spawn pressure (KAN-113)")]
+        [Tooltip("Max alive and burst sizes x power index ^ this. 0 = the table's caps whatever the power.")]
+        [SerializeField, Range(0f, 1f)] private float capExponent = 0.3f;
+        [Tooltip("Most the power index raises max alive and burst sizes (1.6 = +60 %).")]
+        [SerializeField, Min(1f)] private float maxCapFactor = 1.6f;
+        [Tooltip("Group and burst intervals x power index ^ -this. 0 = the table's intervals whatever the power.")]
+        [SerializeField, Range(0f, 1f)] private float intervalExponent = 0.2f;
+        [Tooltip("Shortest interval factor from the power index (0.7 = refills at most 1 / 0.7 = 1.43x as often).")]
+        [SerializeField, Range(0.1f, 1f)] private float minIntervalFactor = 0.7f;
+        [Tooltip("Spawn pressure never lifts max alive above this (phone budget, KAN-44). The table's own cap is never cut.")]
+        [SerializeField, Min(1)] private int maxAliveBudget = 50;
 
         [Header("Danger tiers")]
         [Tooltip("Total health multiplier (Chamber x dynamic) where each tier starts, ascending. Index 0 = calm (1).")]
@@ -52,6 +69,11 @@ namespace SurvivorSouls.Gameplay.Combat
         public float PowerExponent => powerExponent;
         public float TimeGrowth => timeGrowth;
         public float MaxMultiplier => maxMultiplier;
+        public float CapExponent => capExponent;
+        public float MaxCapFactor => maxCapFactor;
+        public float IntervalExponent => intervalExponent;
+        public float MinIntervalFactor => minIntervalFactor;
+        public int MaxAliveBudget => maxAliveBudget;
         public int TierCount => Mathf.Min(tierThresholds?.Length ?? 0, tierColors?.Length ?? 0);
         public int StepsPerTier => stepsPerTier;
         /// <summary>Colour steps from calm to the last tier (step 0 = calm, no tint).</summary>
@@ -82,6 +104,25 @@ namespace SurvivorSouls.Gameplay.Combat
         /// <summary>Power x time, clamped to [1, <see cref="MaxMultiplier"/>].</summary>
         public float DynamicMultiplier(float power, float progress) =>
             Mathf.Clamp(PowerMultiplier(power) * TimeMultiplier(progress), 1f, maxMultiplier);
+
+        /// <summary>Spawn pressure (KAN-113): max alive and burst size factor of power index <paramref name="power"/>.</summary>
+        public float CapFactor(float power) =>
+            Mathf.Clamp(Mathf.Pow(Mathf.Max(1f, power), capExponent), 1f, Mathf.Max(1f, maxCapFactor));
+
+        /// <summary>Spawn pressure (KAN-113): group and burst interval factor of power index <paramref name="power"/> (1 or less).</summary>
+        public float IntervalFactor(float power) =>
+            Mathf.Clamp(Mathf.Pow(Mathf.Max(1f, power), -intervalExponent), Mathf.Clamp(minIntervalFactor, 0.1f, 1f), 1f);
+
+        /// <summary>
+        /// Max alive after spawn pressure: <paramref name="tableCap"/> (the phase cap after Chamber scaling) x
+        /// <paramref name="capFactor"/>, but pressure never lifts it past <see cref="MaxAliveBudget"/> and never cuts it
+        /// below <paramref name="tableCap"/>.
+        /// </summary>
+        public int PressuredMaxAlive(int tableCap, float capFactor)
+        {
+            int pressured = Mathf.RoundToInt(tableCap * Mathf.Max(1f, capFactor));
+            return Mathf.Max(tableCap, Mathf.Min(pressured, maxAliveBudget));
+        }
 
         /// <summary>
         /// Continuous tier of a zombie with total health multiplier <paramref name="total"/>: 0 at or below the first
@@ -123,8 +164,9 @@ namespace SurvivorSouls.Gameplay.Combat
         {
             var sb = new System.Text.StringBuilder();
             sb.AppendLine($"Horde scaling: P = 1-target^{1f - crowdWeight:0.##} x crowd^{crowdWeight:0.##}, health x P^{powerExponent:0.##} x (1 + {timeGrowth:0.##} x clock), cap x{maxMultiplier:0.#}; " +
+                          $"pressure: caps x P^{capExponent:0.##} (<= x{maxCapFactor:0.##}, <= {maxAliveBudget} alive), intervals x P^-{intervalExponent:0.##} (>= x{minIntervalFactor:0.##}); " +
                           $"zombie {zombieHealth:0} HP, Chamber x{chamberHealth:0.##}.");
-            sb.AppendLine("Lv  1-target  crowd   power  hp start  hp end  edge 1-target  edge crowd  TTK start s  TTK end s  tier start  tier end");
+            sb.AppendLine("Lv  1-target  crowd   power  hp start  hp end  edge 1-target  edge crowd  TTK start s  TTK end s  tier start  tier end  cap   interval");
             var bare = curve.AtLevel(1);
             for (int level = 1; level <= curve.MaxLevel; level++)
             {
@@ -137,7 +179,8 @@ namespace SurvivorSouls.Gameplay.Combat
                 float ttkEnd = zombieHealth * chamberHealth * end / Mathf.Max(0.0001f, s.SingleTargetDps);
                 sb.AppendLine($"{level,2}  {single,7:0.00}x  {crowd,5:0.0}x  {p,5:0.00}  {start,7:0.00}x  {end,5:0.00}x  " +
                               $"{single / start,12:0.00}x  {crowd / start,9:0.00}x  {ttkStart,11:0.00}  {ttkEnd,9:0.00}  " +
-                              $"{TierValue(chamberHealth * start),10:0.00}  {TierValue(chamberHealth * end),8:0.00}");
+                              $"{TierValue(chamberHealth * start),10:0.00}  {TierValue(chamberHealth * end),8:0.00}  " +
+                              $"{CapFactor(p),4:0.00}x  {IntervalFactor(p),5:0.00}x");
             }
             return sb.ToString();
         }
@@ -147,6 +190,8 @@ namespace SurvivorSouls.Gameplay.Combat
             Color[] colors = null, int steps = 3, float crowd = 0.35f)
         {
             var s = CreateInstance<HordeScaling>();
+            s.capExponent = 0f; // tests opt in with SetPressure; old tests keep the table's caps
+            s.intervalExponent = 0f;
             s.crowdWeight = crowd;
             s.powerExponent = exponent;
             s.timeGrowth = time;
@@ -155,6 +200,17 @@ namespace SurvivorSouls.Gameplay.Combat
             if (colors != null) s.tierColors = colors;
             s.stepsPerTier = steps;
             return s;
+        }
+
+        /// <summary>Tests and tools: spawn pressure rules (KAN-113).</summary>
+        public HordeScaling SetPressure(float cap, float maxCap, float interval, float minInterval, int budget)
+        {
+            capExponent = Mathf.Clamp01(cap);
+            maxCapFactor = Mathf.Max(1f, maxCap);
+            intervalExponent = Mathf.Clamp01(interval);
+            minIntervalFactor = Mathf.Clamp(minInterval, 0.1f, 1f);
+            maxAliveBudget = Mathf.Max(1, budget);
+            return this;
         }
     }
 }

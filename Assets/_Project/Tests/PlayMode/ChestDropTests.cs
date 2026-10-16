@@ -386,7 +386,7 @@ namespace SurvivorSouls.Tests
         {
             var config = UnityEditor.AssetDatabase.LoadAssetAtPath<ChestDropConfig>(ConfigPath);
             Assert.That(config, Is.Not.Null, ConfigPath);
-            Assert.That(config.PitySeconds, Is.EqualTo(90f));
+            Assert.That(config.PitySeconds, Is.EqualTo(60f), "KAN-113: retuned for 2 minute Chambers");
             Assert.That(config.MaxOnGround, Is.EqualTo(2));
             Assert.That(config.Lifetime, Is.EqualTo(40f));
             Assert.That(config.WarningTime, Is.EqualTo(5f));
