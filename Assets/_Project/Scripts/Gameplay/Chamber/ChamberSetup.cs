@@ -9,8 +9,8 @@ namespace SurvivorSouls.Gameplay.Chamber
     /// Sets up this scene's Chamber (KAN-46) before anything else wakes: reads <see cref="RunState"/> (Realm, Chamber,
     /// run seed), asks the <see cref="ChamberDifficulty"/> asset for the <see cref="ChamberPlan"/>, gives the world its
     /// layout seed and the spawner its multipliers. <see cref="Current"/> holds the plan for the rest of the scene:
-    /// KAN-22 / KAN-23 read <see cref="ChamberPlan.Type"/>, KAN-47 reads <see cref="ChamberPlan.IsLast"/>. Until boss
-    /// content exists a MiniBoss Chamber plays as a normal one. A Boss Chamber enters the round <see cref="BossArena"/>
+    /// KAN-22 / KAN-23 read <see cref="ChamberPlan.Type"/>, KAN-47 reads <see cref="ChamberPlan.IsLast"/>. A MiniBoss
+    /// Chamber adds one mini boss to the horde (MiniBossDirector, KAN-23). A Boss Chamber enters the round <see cref="BossArena"/>
     /// (KAN-59) instead of the streamed shore; every other Chamber keeps the arena hidden. On the "Chamber" object (ChamberBuilder).
     /// </summary>
     [DefaultExecutionOrder(-300)]
