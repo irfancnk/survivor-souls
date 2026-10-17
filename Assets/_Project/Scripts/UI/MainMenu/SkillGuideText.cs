@@ -15,7 +15,7 @@ namespace SurvivorSouls.UI.MainMenu
         /// <summary>Total value at the level before (0 at level 1).</summary>
         public float Previous;
         public string Label;
-        /// <summary>Signed number with its unit, e.g. "+20%", "+3", "-3 s", "every 3rd".</summary>
+        /// <summary>Number with its unit, e.g. "+20%", "+3", "-3 s", "60%", "every 3rd" (no "+" for stats with base 0).</summary>
         public string ValueText;
 
         /// <summary>The number changed from the level before (the guide highlights it).</summary>
@@ -36,15 +36,19 @@ namespace SurvivorSouls.UI.MainMenu
         {
             public readonly string Label;
             public readonly Unit Unit;
+            /// <summary>Read from a base of 0, so the total IS the value: shown without a sign ("Tome damage 60%").</summary>
+            public readonly bool Absolute;
 
-            public StatText(string label, Unit unit)
+            public StatText(string label, Unit unit, bool absolute = false)
             {
                 Label = label;
                 Unit = unit;
+                Absolute = absolute;
             }
         }
 
         // Indexed by StatId (append new stats at the end, like the enum). A missing entry falls back to the enum name.
+        // "true" = the game reads the stat from a base of 0 (burn, tomes, ward, freeze, chest odds): no sign.
         private static readonly StatText[] Stats =
         {
             new StatText("Bolt damage", Unit.Plain), // Damage
@@ -56,33 +60,33 @@ namespace SurvivorSouls.UI.MainMenu
             new StatText("Side bolts", Unit.Count), // Multishot
             new StatText("Pierce", Unit.Count), // Pierce
             new StatText("Bounces", Unit.Count), // Ricochet
-            new StatText("Burn damage", Unit.PerSecond), // BurnDps
-            new StatText("Life steal", Unit.Share), // LifeSteal
-            new StatText("Burst damage", Unit.Share), // KillBurst
+            new StatText("Burn damage", Unit.PerSecond, true), // BurnDps
+            new StatText("Life steal", Unit.Share, true), // LifeSteal
+            new StatText("Burst damage", Unit.Share, true), // KillBurst
             new StatText("Pickup range", Unit.Metres), // PickupRadius
             new StatText("Burn time", Unit.Seconds), // BurnDuration
             new StatText("Burst radius", Unit.Metres), // BurstRadius
-            new StatText("Chest drop", Unit.Share), // ChestChance
-            new StatText("Elite chest drop", Unit.Share), // ChestEliteChance
+            new StatText("Chest drop", Unit.Share, true), // ChestChance
+            new StatText("Elite chest drop", Unit.Share, true), // ChestEliteChance
             new StatText("Chest choices", Unit.Count), // ChestChoices
             new StatText("Rare chest", Unit.Nth), // RareChestEvery
             new StatText("Extra bolts", Unit.Count), // DoubleShot
             new StatText("Side bolt damage", Unit.Share), // SpreadDamage
             new StatText("Extra bolt damage", Unit.Plain), // ChainDamage
             new StatText("Fire spreads", Unit.Count), // BurnSpread
-            new StatText("Death blast", Unit.Share), // BurnDeathBlast
-            new StatText("Ward time", Unit.Seconds), // WardDuration
+            new StatText("Death blast", Unit.Share, true), // BurnDeathBlast
+            new StatText("Ward time", Unit.Seconds, true), // WardDuration
             new StatText("Ward recharge", Unit.Seconds), // WardCooldown
-            new StatText("Burn slow", Unit.Share), // BurnSlow
-            new StatText("Ignite stun", Unit.Seconds), // IgniteStun
+            new StatText("Burn slow", Unit.Share, true), // BurnSlow
+            new StatText("Ignite stun", Unit.Seconds, true), // IgniteStun
             new StatText("Frost hit", Unit.Nth), // FreezeEvery
-            new StatText("Freeze time", Unit.Seconds), // FreezeDuration
-            new StatText("Tomes", Unit.Count), // TomeCount
-            new StatText("Orbit radius", Unit.Metres), // TomeRadius
-            new StatText("Orbit time", Unit.Seconds), // TomeSpin
-            new StatText("Tome damage", Unit.Share), // TomeDamage
-            new StatText("Knockback", Unit.MetresPerSecond), // TomeKnockback
-            new StatText("Holy flash", Unit.Metres), // TomeFlash
+            new StatText("Freeze time", Unit.Seconds, true), // FreezeDuration
+            new StatText("Tomes", Unit.Count, true), // TomeCount
+            new StatText("Orbit radius", Unit.Metres, true), // TomeRadius
+            new StatText("Orbit time", Unit.Seconds, true), // TomeSpin
+            new StatText("Tome damage", Unit.Share, true), // TomeDamage
+            new StatText("Knockback", Unit.MetresPerSecond, true), // TomeKnockback
+            new StatText("Holy flash", Unit.Metres, true), // TomeFlash
             new StatText("Pierce loss", Unit.Share), // PierceFalloff
             new StatText("Bounce loss", Unit.Share), // BounceFalloff
         };
@@ -197,22 +201,23 @@ namespace SurvivorSouls.UI.MainMenu
         }
 
         /// <summary>
-        /// Signed number with its unit: a Percent modifier and a share stat as "+20%", counts as "+3", times as "-3 s",
-        /// ranges as "+0.6 m", burn as "+40/s", "every Nth" stats as "every 3rd".
+        /// Number with its unit: a Percent modifier and a share stat as "+20%", counts as "+3", times as "-3 s", ranges as
+        /// "+0.6 m", burn as "40/s", "every Nth" stats as "every 3rd". Stats read from a base of 0 have no "+".
         /// </summary>
         public static string FormatValue(StatId stat, ModifierKind kind, float value)
         {
             int i = (int)stat;
             var unit = i >= 0 && i < Stats.Length ? Stats[i].Unit : Unit.Plain;
-            if (kind == ModifierKind.Percent || unit == Unit.Share) return Signed(value * 100f) + "%";
+            bool sign = kind == ModifierKind.Percent || i < 0 || i >= Stats.Length || !Stats[i].Absolute;
+            if (kind == ModifierKind.Percent || unit == Unit.Share) return Number(value * 100f, sign) + "%";
             switch (unit)
             {
-                case Unit.Seconds: return Signed(value) + " s";
-                case Unit.Metres: return Signed(value) + " m";
-                case Unit.PerSecond: return Signed(value) + "/s";
-                case Unit.MetresPerSecond: return Signed(value) + " m/s";
+                case Unit.Seconds: return Number(value, sign) + " s";
+                case Unit.Metres: return Number(value, sign) + " m";
+                case Unit.PerSecond: return Number(value, sign) + "/s";
+                case Unit.MetresPerSecond: return Number(value, sign) + " m/s";
                 case Unit.Nth: return "every " + Ordinal(Mathf.RoundToInt(value));
-                default: return Signed(value);
+                default: return Number(value, sign);
             }
         }
 
@@ -224,10 +229,10 @@ namespace SurvivorSouls.UI.MainMenu
             return kind == ModifierKind.Percent || unit == Unit.Share ? value * 100f : value;
         }
 
-        private static string Signed(float v)
+        private static string Number(float v, bool sign)
         {
             string text = Mathf.Abs(v).ToString("0.##", CultureInfo.InvariantCulture);
-            return (v < 0f ? "-" : "+") + text;
+            return (v < 0f ? "-" : sign ? "+" : "") + text;
         }
 
         private static string Ordinal(int n)

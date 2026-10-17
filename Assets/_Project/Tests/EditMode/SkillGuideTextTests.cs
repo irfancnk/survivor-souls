@@ -139,13 +139,15 @@ namespace SurvivorSouls.Tests
         public void FormatValue_Units()
         {
             Assert.That(SkillGuideText.FormatValue(StatId.Damage, ModifierKind.Percent, 0.2f), Is.EqualTo("+20%"));
-            Assert.That(SkillGuideText.FormatValue(StatId.CritChance, ModifierKind.Flat, 0.1f), Is.EqualTo("+10%"));
-            Assert.That(SkillGuideText.FormatValue(StatId.ChestChance, ModifierKind.Flat, 0.015f), Is.EqualTo("+1.5%"));
+            Assert.That(SkillGuideText.FormatValue(StatId.CritChance, ModifierKind.Flat, 0.1f), Is.EqualTo("+10%"), "crit adds to a base");
+            Assert.That(SkillGuideText.FormatValue(StatId.ChestChance, ModifierKind.Flat, 0.015f), Is.EqualTo("1.5%"), "base 0: no sign");
+            Assert.That(SkillGuideText.FormatValue(StatId.TomeSpin, ModifierKind.Flat, 1.3f), Is.EqualTo("1.3 s"));
+            Assert.That(SkillGuideText.FormatValue(StatId.TomeCount, ModifierKind.Flat, 5f), Is.EqualTo("5"));
             Assert.That(SkillGuideText.FormatValue(StatId.MaxHealth, ModifierKind.Flat, 80f), Is.EqualTo("+80"));
             Assert.That(SkillGuideText.FormatValue(StatId.Pierce, ModifierKind.Flat, 2f), Is.EqualTo("+2"));
             Assert.That(SkillGuideText.FormatValue(StatId.WardCooldown, ModifierKind.Flat, -3f), Is.EqualTo("-3 s"));
             Assert.That(SkillGuideText.FormatValue(StatId.BurstRadius, ModifierKind.Flat, 0.6f), Is.EqualTo("+0.6 m"));
-            Assert.That(SkillGuideText.FormatValue(StatId.BurnDps, ModifierKind.Flat, 40f), Is.EqualTo("+40/s"));
+            Assert.That(SkillGuideText.FormatValue(StatId.BurnDps, ModifierKind.Flat, 40f), Is.EqualTo("40/s"));
             Assert.That(SkillGuideText.FormatValue(StatId.FreezeEvery, ModifierKind.Flat, 3f), Is.EqualTo("every 3rd"));
             Assert.That(SkillGuideText.FormatValue(StatId.FreezeEvery, ModifierKind.Flat, 2f), Is.EqualTo("every 2nd"));
             Assert.That(SkillGuideText.FormatValue(StatId.RareChestEvery, ModifierKind.Flat, 5f), Is.EqualTo("every 5th"));
