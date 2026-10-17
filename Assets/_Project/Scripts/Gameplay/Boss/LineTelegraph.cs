@@ -47,6 +47,7 @@ namespace SurvivorSouls.Gameplay.Boss
 
         private readonly Vector3[] _dirs = new Vector3[MaxLanes];
         private readonly float[] _lengths = new float[MaxLanes];
+        private readonly float[] _offsets = new float[MaxLanes]; // KAN-239: sideways shift of each lane (m, + = right)
         private MaterialPropertyBlock _mpb;
         private Color _edge, _fill, _flashC; // KAN-136: colours in use: the serialized ones unless Tint set others (reset on Hide)
         private Vector3 _origin;
@@ -76,6 +77,17 @@ namespace SurvivorSouls.Gameplay.Boss
         /// <summary>Ground direction of lane <paramref name="i"/> (unit, y 0).</summary>
         public Vector3 LaneDirection(int i) => _dirs[Mathf.Clamp(i, 0, MaxLanes - 1)];
 
+        /// <summary>KAN-239: sideways shift of lane <paramref name="i"/> from the origin (m, + = right of its direction).</summary>
+        public float LaneOffset(int i) => _offsets[Mathf.Clamp(i, 0, MaxLanes - 1)];
+
+        /// <summary>KAN-239: start point of lane <paramref name="i"/> on the ground (origin + its sideways shift).</summary>
+        public Vector3 LaneStart(int i)
+        {
+            int k = Mathf.Clamp(i, 0, MaxLanes - 1);
+            Vector3 d = _dirs[k];
+            return _origin + new Vector3(d.z, 0f, -d.x) * _offsets[k];
+        }
+
         /// <summary>Length of lane <paramref name="i"/> (m).</summary>
         public float LaneLength(int i) => _lengths[Mathf.Clamp(i, 0, MaxLanes - 1)];
 
@@ -84,8 +96,8 @@ namespace SurvivorSouls.Gameplay.Boss
         {
             if (i < 0 || i >= LaneCount) return;
             _lengths[i] = Mathf.Clamp(length, 0.05f, _length);
-            Place(edges[i], _dirs[i], _lengths[i]);
-            if (_flash < 0f) Place(fills[i], _dirs[i], Mathf.Max(0.05f, Eased() * _lengths[i]));
+            Place(edges[i], _dirs[i], _lengths[i], _offsets[i]);
+            if (_flash < 0f) Place(fills[i], _dirs[i], Mathf.Max(0.05f, Eased() * _lengths[i]), _offsets[i]);
         }
 
         /// <summary>Tests and tools: wiring without the builder.</summary>
@@ -124,14 +136,31 @@ namespace SurvivorSouls.Gameplay.Boss
                 float angle = count > 1 ? -spreadDegrees * 0.5f + spreadDegrees * i / (count - 1) : 0f;
                 _dirs[i] = Quaternion.Euler(0f, angle, 0f) * direction;
                 _lengths[i] = _length;
+                _offsets[i] = 0f;
             }
+            PlaceAll();
+        }
+
+        /// <summary>
+        /// KAN-239: <paramref name="count"/> parallel lanes along <paramref name="direction"/>, lane i shifted
+        /// <paramref name="offsets"/>[i] m sideways (+ = right) from <paramref name="origin"/> (the wall with a gap). Progress 0.
+        /// </summary>
+        public void ShowRow(Vector3 origin, Vector3 direction, float[] offsets, int count, float length, float width)
+        {
+            ShowFan(origin, direction, count, 0f, length, width);
+            for (int i = 0; i < LaneCount; i++) _offsets[i] = offsets[i];
+            PlaceAll();
+        }
+
+        private void PlaceAll()
+        {
             int capacity = Capacity;
             for (int i = 0; i < capacity; i++)
             {
                 bool on = i < LaneCount;
                 SetEnabled(edges[i], on);
                 SetEnabled(fills[i], on);
-                if (on) Place(edges[i], _dirs[i], _length);
+                if (on) Place(edges[i], _dirs[i], _length, _offsets[i]);
             }
             SetProgress(0f);
         }
@@ -159,7 +188,7 @@ namespace SurvivorSouls.Gameplay.Boss
             f.a *= Mathf.Lerp(0.55f, 1f, Progress);
             for (int i = 0; i < LaneCount; i++)
             {
-                Place(fills[i], _dirs[i], Mathf.Max(0.05f, eased * _lengths[i]));
+                Place(fills[i], _dirs[i], Mathf.Max(0.05f, eased * _lengths[i]), _offsets[i]);
                 Paint(edges[i], e);
                 Paint(fills[i], f);
             }
@@ -180,7 +209,7 @@ namespace SurvivorSouls.Gameplay.Boss
                 int i = Random.Range(0, LaneCount);
                 Vector3 dir = _dirs[i];
                 Vector3 side = new Vector3(dir.z, 0f, -dir.x) * (_width * 0.45f * (Random.value < 0.5f ? -1f : 1f));
-                Vector3 at = _origin + dir * (Random.Range(0.1f, 1f) * Mathf.Max(0.05f, eased * _lengths[i])) + side;
+                Vector3 at = LaneStart(i) + dir * (Random.Range(0.1f, 1f) * Mathf.Max(0.05f, eased * _lengths[i])) + side;
                 smoke.Emit(at, Progress);
             }
         }
@@ -194,7 +223,7 @@ namespace SurvivorSouls.Gameplay.Boss
             _held = true;
             for (int i = 0; i < LaneCount; i++)
             {
-                Place(fills[i], _dirs[i], _lengths[i]);
+                Place(fills[i], _dirs[i], _lengths[i], _offsets[i]);
                 Paint(fills[i], _flashC);
                 Paint(edges[i], _edge);
             }
@@ -209,8 +238,8 @@ namespace SurvivorSouls.Gameplay.Boss
             for (int i = 0; i < LaneCount; i++)
             {
                 _dirs[i] = q * _dirs[i];
-                Place(edges[i], _dirs[i], _lengths[i]);
-                Place(fills[i], _dirs[i], Mathf.Max(0.05f, length * _lengths[i]));
+                Place(edges[i], _dirs[i], _lengths[i], _offsets[i]);
+                Place(fills[i], _dirs[i], Mathf.Max(0.05f, length * _lengths[i]), _offsets[i]);
             }
         }
 
@@ -221,7 +250,7 @@ namespace SurvivorSouls.Gameplay.Boss
             Progress = 1f;
             _flash = 0f;
             _held = false;
-            for (int i = 0; i < LaneCount; i++) Place(fills[i], _dirs[i], _lengths[i]);
+            for (int i = 0; i < LaneCount; i++) Place(fills[i], _dirs[i], _lengths[i], _offsets[i]);
         }
 
         /// <summary>
@@ -273,12 +302,16 @@ namespace SurvivorSouls.Gameplay.Boss
 
         private float Eased() => 1f - (1f - Progress) * (1f - Progress);
 
-        /// <summary>Lays a lane quad from the origin along <paramref name="dir"/> for <paramref name="length"/> m.</summary>
-        private void Place(Renderer r, Vector3 dir, float length)
+        /// <summary>
+        /// Lays a lane quad from the origin along <paramref name="dir"/> for <paramref name="length"/> m (KAN-239: shifted
+        /// <paramref name="offset"/> m sideways, + = right of <paramref name="dir"/>).
+        /// </summary>
+        private void Place(Renderer r, Vector3 dir, float length, float offset)
         {
             if (r == null) return;
             var t = r.transform;
-            t.SetPositionAndRotation(new Vector3(_origin.x, _origin.y + lift, _origin.z) + dir * (length * 0.5f),
+            Vector3 side = new Vector3(dir.z, 0f, -dir.x) * offset;
+            t.SetPositionAndRotation(new Vector3(_origin.x, _origin.y + lift, _origin.z) + side + dir * (length * 0.5f),
                 Quaternion.LookRotation(dir, Vector3.up) * Quaternion.Euler(90f, 0f, 0f));
             t.localScale = new Vector3(_width, length, 1f);
         }

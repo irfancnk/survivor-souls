@@ -58,6 +58,10 @@ MonoBehaviour:
     burnDps: 0
     clip: Chop
     every: 0
+    wave: 0
+    wavelength: 0
+    bounces: 0
+    gap: 0
   - label: Cleaver Spin
     type: 4
     phases: 3
@@ -89,6 +93,10 @@ MonoBehaviour:
     burnDps: 0
     clip: Spin
     every: 0
+    wave: 0
+    wavelength: 0
+    bounces: 0
+    gap: 0
   - label: Charge
     type: 2
     phases: 1
@@ -120,6 +128,10 @@ MonoBehaviour:
     burnDps: 0
     clip: Charge
     every: 0
+    wave: 0
+    wavelength: 0
+    bounces: 0
+    gap: 0
   - label: Chain Hook
     type: 3
     phases: 2
@@ -151,6 +163,10 @@ MonoBehaviour:
     burnDps: 0
     clip: Chop
     every: 0
+    wave: 0
+    wavelength: 0
+    bounces: 0
+    gap: 0
   - label: Triple Charge
     type: 2
     phases: 2
@@ -182,6 +198,10 @@ MonoBehaviour:
     burnDps: 0
     clip: Charge
     every: 0
+    wave: 0
+    wavelength: 0
+    bounces: 0
+    gap: 0
   - label: Black Fireballs
     type: 14
     phases: 3
@@ -213,6 +233,10 @@ MonoBehaviour:
     burnDps: 0
     clip: 
     every: 0
+    wave: 0
+    wavelength: 0
+    bounces: 0
+    gap: 0
   roarClip: Roar
   phaseRoar: 1.2
   slamRange: 4
@@ -268,3 +292,4 @@ MonoBehaviour:
   enrageWalk: 1.1
   enrageComboChance: 0.6
   enrageRoar: 1
+  boltLook: 1

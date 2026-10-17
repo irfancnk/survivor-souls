@@ -58,6 +58,10 @@ MonoBehaviour:
     burnDps: 0
     clip: CastOrbs
     every: 0
+    wave: 0
+    wavelength: 0
+    bounces: 0
+    gap: 0
   - label: Soul Ring
     type: 5
     phases: 3
@@ -89,6 +93,10 @@ MonoBehaviour:
     burnDps: 0
     clip: CastRing
     every: 0
+    wave: 0
+    wavelength: 0
+    bounces: 0
+    gap: 0
   - label: Raise the Dead
     type: 9
     phases: 3
@@ -120,6 +128,10 @@ MonoBehaviour:
     burnDps: 0
     clip: Summon
     every: 0
+    wave: 0
+    wavelength: 0
+    bounces: 0
+    gap: 0
   - label: Cross Beams
     type: 13
     phases: 2
@@ -151,6 +163,10 @@ MonoBehaviour:
     burnDps: 0
     clip: CastRing
     every: 0
+    wave: 0
+    wavelength: 0
+    bounces: 0
+    gap: 0
   - label: Teleport
     type: 10
     phases: 2
@@ -182,6 +198,10 @@ MonoBehaviour:
     burnDps: 0
     clip: CastOrbs
     every: 8
+    wave: 0
+    wavelength: 0
+    bounces: 0
+    gap: 0
   roarClip: Roar
   phaseRoar: 1.4
   slamRange: 4
@@ -237,3 +257,4 @@ MonoBehaviour:
   enrageWalk: 1.1
   enrageComboChance: 0.6
   enrageRoar: 1
+  boltLook: 4
