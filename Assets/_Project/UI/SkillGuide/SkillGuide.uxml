@@ -1,0 +1,59 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <Style src="SkillGuide.uss" />
+    <!-- Skill Guide Book (KAN-64). Instanced by MainMenu.uxml, driven by SkillGuideScreen. Filter chips, skill cards and
+         the level rows are built in code from the SkillProgression run table (classes sg-chip*, sg-card*, sg-row*). -->
+    <ui:VisualElement name="sg-screen" class="sg-screen sg-screen--closed ss-hidden">
+        <ui:VisualElement name="sg-safe" class="sg-safe" picking-mode="Ignore">
+            <ui:VisualElement class="sg-header">
+                <ui:VisualElement class="sg-header__bar">
+                    <ui:Button name="sg-back" text="BACK" class="sg-back" />
+                    <ui:Label name="sg-count" text="0 SKILLS" class="sg-count" picking-mode="Ignore" />
+                </ui:VisualElement>
+                <ui:Label text="GRIMOIRE" class="sg-title" />
+                <ui:Label text="Every boon the flame can grant." class="sg-subtitle" />
+            </ui:VisualElement>
+
+            <!-- List page: type and tier chips, then a 2-column card grid. -->
+            <ui:VisualElement name="sg-list-page" class="sg-list-page" picking-mode="Ignore">
+                <ui:VisualElement name="sg-kind-chips" class="sg-chips" />
+                <ui:VisualElement name="sg-tier-chips" class="sg-chips" />
+                <ui:ScrollView name="sg-list" mode="Vertical" horizontal-scroller-visibility="Hidden" vertical-scroller-visibility="Hidden" class="sg-list">
+                    <ui:VisualElement name="sg-grid" class="sg-grid" />
+                </ui:ScrollView>
+                <ui:Label name="sg-empty" text="No skill matches these filters." class="sg-empty ss-hidden" picking-mode="Ignore" />
+            </ui:VisualElement>
+
+            <!-- Detail page: one skill, its level table and rules. Arrows or a swipe move to the next / previous card. -->
+            <ui:VisualElement name="sg-detail" class="sg-detail ss-hidden">
+                <ui:VisualElement class="sg-detail__head">
+                    <ui:Button name="sg-prev" text="&lt;" class="sg-arrow" />
+                    <ui:VisualElement name="sg-detail-icon" class="sg-detail__icon" picking-mode="Ignore" />
+                    <ui:Button name="sg-next" text="&gt;" class="sg-arrow" />
+                </ui:VisualElement>
+                <ui:Label name="sg-detail-name" text="" class="sg-detail__name" picking-mode="Ignore" />
+                <ui:VisualElement class="sg-detail__tags" picking-mode="Ignore">
+                    <ui:Label name="sg-detail-tier" text="" class="sg-tag sg-tag--tier" picking-mode="Ignore" />
+                    <ui:Label name="sg-detail-kind" text="" class="sg-tag" picking-mode="Ignore" />
+                    <ui:Label name="sg-detail-max" text="" class="sg-tag" picking-mode="Ignore" />
+                </ui:VisualElement>
+                <ui:Label name="sg-detail-desc" text="" class="sg-detail__desc" picking-mode="Ignore" />
+                <ui:ScrollView name="sg-detail-scroll" mode="Vertical" horizontal-scroller-visibility="Hidden" vertical-scroller-visibility="Hidden" class="sg-detail__scroll">
+                    <ui:Label text="LEVELS" class="sg-section" picking-mode="Ignore" />
+                    <ui:VisualElement name="sg-rows" class="sg-rows" picking-mode="Ignore" />
+                    <ui:VisualElement name="sg-how-block" picking-mode="Ignore">
+                        <ui:Label text="HOW IT WORKS" class="sg-section" picking-mode="Ignore" />
+                        <ui:Label name="sg-how" text="" class="sg-para" picking-mode="Ignore" />
+                    </ui:VisualElement>
+                    <ui:Label text="HOW TO FIND IT" class="sg-section" picking-mode="Ignore" />
+                    <ui:Label name="sg-get" text="" class="sg-para" picking-mode="Ignore" />
+                    <!-- "Works well with": hidden until the skill combination design (KAN-65) has data. -->
+                    <ui:VisualElement name="sg-combo-block" class="ss-hidden" picking-mode="Ignore">
+                        <ui:Label text="WORKS WELL WITH" class="sg-section" picking-mode="Ignore" />
+                        <ui:Label name="sg-combo" text="" class="sg-para" picking-mode="Ignore" />
+                    </ui:VisualElement>
+                </ui:ScrollView>
+                <ui:Label name="sg-pos" text="" class="sg-pos" picking-mode="Ignore" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

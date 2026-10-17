@@ -72,3 +72,8 @@ MonoBehaviour:
       kind: 0
       value: 160
   effectPrefab: {fileID: 813853601127927504, guid: 740fefba7389c40b183395a032c14cbf, type: 3}
+  requiresUpgradableSkill: 0
+  repeatOfferWeights: []
+  upgradeOfferWeight: 1
+  kind: 2
+  guideText: Heals you by a share of the bolt damage you deal. From level 4 it also raises max health.

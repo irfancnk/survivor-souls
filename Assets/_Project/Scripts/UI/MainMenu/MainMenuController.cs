@@ -3,6 +3,7 @@ using SurvivorSouls.Gameplay.Chamber;
 using SurvivorSouls.Gameplay.Heroes;
 using SurvivorSouls.Gameplay.Meta;
 using SurvivorSouls.Gameplay.Realms;
+using SurvivorSouls.Gameplay.Skills;
 using SurvivorSouls.UI.Hud;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -18,7 +19,9 @@ namespace SurvivorSouls.UI.MainMenu
     /// <see cref="SoulTreeScreen"/>); without a tree asset the button is hidden. STORE opens the store page (KAN-99,
     /// <see cref="StoreScreen"/>, Ember Shard packs through <see cref="StoreProvider"/> + shard offers); without a catalog
     /// the button is hidden. HEROES opens the hero page (KAN-153, <see cref="HeroSelectScreen"/>: pick, buy, pros / cons);
-    /// without a roster the button is hidden. Back / Esc closes the top layer (sheet, page, settings).
+    /// without a roster the button is hidden. GRIMOIRE opens the Skill Guide Book (KAN-64, <see cref="SkillGuideScreen"/>:
+    /// every skill of the run table, per-level details); without a skill table the button is hidden.
+    /// Back / Esc closes the top layer (sheet, page, settings).
     /// Test Mode (KAN-144): a settings row (dev builds, or after 7 taps on the settings title: <see cref="TestModeReveal"/>)
     /// switches <see cref="TestMode"/>; a "TEST MODE" tag shows top left while it is on.
     /// </summary>
@@ -51,6 +54,7 @@ namespace SurvivorSouls.UI.MainMenu
         private const string SoulTreeButtonName = "btn-soul-tree";
         private const string StoreButtonName = "btn-store";
         public const string HeroesButtonName = "btn-heroes";
+        public const string GuideButtonName = "btn-grimoire";
 
         [SerializeField, Min(0.5f)] private float toastSeconds = 2f;
         [Tooltip("Realms on the selection page (Data/Realms/RealmCatalog.asset). Null = PLAY starts Realm 1.")]
@@ -63,6 +67,10 @@ namespace SurvivorSouls.UI.MainMenu
         [SerializeField] private StoreCatalog storeCatalog;
         [Tooltip("Hero page (Data/Heroes/HeroRoster.asset, KAN-153). Null = no HEROES button.")]
         [SerializeField] private HeroRoster heroRoster;
+        [Tooltip("Skill Guide Book list (Data/Skills/SkillProgression_Run.asset, KAN-64). Null = no GRIMOIRE button.")]
+        [SerializeField] private SkillProgression skillTable;
+        [Tooltip("Tier names of the Skill Guide Book (Data/Skills/SkillRarityStyles.asset). Null = built-in names.")]
+        [SerializeField] private SkillRarityStyles skillStyles;
 
         private UIDocument _document;
         private SafeAreaPadding _safeArea;
@@ -70,6 +78,7 @@ namespace SurvivorSouls.UI.MainMenu
         private SafeAreaPadding _treeSafeArea;
         private SafeAreaPadding _storeSafeArea;
         private SafeAreaPadding _heroSafeArea;
+        private SafeAreaPadding _guideSafeArea;
         private VisualElement _overlay;
         private Label _toast;
         private Label _wallet;
@@ -83,6 +92,7 @@ namespace SurvivorSouls.UI.MainMenu
         private SoulTreeScreen _soulTreeScreen;
         private StoreScreen _storeScreen;
         private HeroSelectScreen _heroScreen;
+        private SkillGuideScreen _guideScreen;
         private bool _loading;
 
         /// <summary>The Realm selection page (null until enabled or without a catalog).</summary>
@@ -93,6 +103,8 @@ namespace SurvivorSouls.UI.MainMenu
         public StoreScreen StorePage => _storeScreen;
         /// <summary>The hero page (null until enabled or without a roster).</summary>
         public HeroSelectScreen HeroPage => _heroScreen;
+        /// <summary>The Skill Guide Book (null until enabled or without a skill table).</summary>
+        public SkillGuideScreen GuidePage => _guideScreen;
         /// <summary>
         /// Real-money provider of the store (KAN-99). Sandbox <see cref="MockPurchaseProvider"/> until StoreKit / Play
         /// Billing are wired. Tests set their own before the object is enabled.
@@ -127,6 +139,13 @@ namespace SurvivorSouls.UI.MainMenu
             gems = gemRewards;
             soulTree = tree;
             storeCatalog = store;
+        }
+
+        /// <summary>Skill Guide Book wiring (KAN-64) for tests and code-built menus (call before the object is enabled).</summary>
+        public void SetupGuide(SkillProgression table, SkillRarityStyles styles = null)
+        {
+            skillTable = table;
+            skillStyles = styles;
         }
 
         private void Awake()
@@ -212,6 +231,19 @@ namespace SurvivorSouls.UI.MainMenu
                 }
                 else heroesButton.AddToClassList(HiddenClass);
             }
+            _guideScreen = skillTable != null && root.Q(SkillGuideScreen.ScreenName) != null
+                ? new SkillGuideScreen(root, skillTable, skillStyles)
+                : null;
+            var guideButton = root.Q<Button>(GuideButtonName);
+            if (guideButton != null)
+            {
+                if (_guideScreen != null)
+                {
+                    guideButton.clicked += OpenGuide;
+                    _guideScreen.Opened += _ => Haptics.Light();
+                }
+                else guideButton.AddToClassList(HiddenClass);
+            }
             _play.Focus();
             if (recovered > 0) ShowToast(RecoveredText(recovered), 4f); // as long as the welcome toast: news, not a hint
         }
@@ -253,6 +285,7 @@ namespace SurvivorSouls.UI.MainMenu
             _treeSafeArea?.Refresh();
             _storeSafeArea?.Refresh();
             _heroSafeArea?.Refresh();
+            _guideSafeArea?.Refresh();
             // Esc on desktop; Android's back button arrives as Escape too.
             if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame) Back();
         }
@@ -264,6 +297,7 @@ namespace SurvivorSouls.UI.MainMenu
             if (_soulTreeScreen != null && _soulTreeScreen.Back()) return true;
             if (_storeScreen != null && _storeScreen.Back()) return true;
             if (_heroScreen != null && _heroScreen.Back()) return true;
+            if (_guideScreen != null && _guideScreen.Back()) return true;
             if (_overlay != null && !_overlay.ClassListContains(HiddenClass))
             {
                 CloseSettings();
@@ -306,6 +340,15 @@ namespace SurvivorSouls.UI.MainMenu
             _heroSafeArea ??= new SafeAreaPadding(_heroScreen.Page);
             _heroScreen.Open();
             _heroSafeArea.Refresh(force: true);
+        }
+
+        /// <summary>Opens the Skill Guide Book (GRIMOIRE). Dev screenshots call it too.</summary>
+        public void OpenGuide()
+        {
+            if (_guideScreen == null) return;
+            _guideSafeArea ??= new SafeAreaPadding(_guideScreen.Page);
+            _guideScreen.Open();
+            _guideSafeArea.Refresh(force: true);
         }
 
         private void OnApplicationPause(bool paused)

@@ -150,3 +150,8 @@ MonoBehaviour:
       kind: 0
       value: 0.2
   effectPrefab: {fileID: 8373298847089911843, guid: 43a86f129c1e64b03be3a8acbaf44c79, type: 3}
+  requiresUpgradableSkill: 0
+  repeatOfferWeights: []
+  upgradeOfferWeight: 1
+  kind: 1
+  guideText: 'Hits set foes on fire: damage over time and a slow. Higher levels spread the fire and make burning foes blast when they die.'

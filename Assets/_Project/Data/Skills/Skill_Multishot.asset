@@ -65,3 +65,5 @@ MonoBehaviour:
   requiresUpgradableSkill: 0
   repeatOfferWeights: []
   upgradeOfferWeight: 1
+  kind: 1
+  guideText: Side bolts fan out next to the main bolt and deal a share of its damage. Strong against crowds.

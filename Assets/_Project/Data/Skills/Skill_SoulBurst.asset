@@ -75,3 +75,8 @@ MonoBehaviour:
       kind: 0
       value: 1.8
   effectPrefab: {fileID: 4695268960383152797, guid: 4b0fc9585433544fa82b3d9e5861c229, type: 3}
+  requiresUpgradableSkill: 0
+  repeatOfferWeights: []
+  upgradeOfferWeight: 1
+  kind: 1
+  guideText: A kill bursts into soul fire that hits the foes around the body. Kills from a burst can trigger another burst.

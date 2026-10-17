@@ -63,3 +63,5 @@ MonoBehaviour:
   requiresUpgradableSkill: 0
   repeatOfferWeights: []
   upgradeOfferWeight: 1
+  kind: 3
+  guideText: Every few bolt hits freeze the foe in place. Bosses and elites thaw sooner.

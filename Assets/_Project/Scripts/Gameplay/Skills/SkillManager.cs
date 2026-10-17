@@ -173,6 +173,7 @@ namespace SurvivorSouls.Gameplay.Skills
         {
             if (!CanTake(skill)) return false;
             var o = Raise(skill, 1, SkillChangeSource.Pick);
+            if (o.Level == 1) SkillDiscovery.Mark(skill.Id); // Skill Guide Book found flag (KAN-64)
             Granted?.Invoke(skill, o.Level);
             Changed?.Invoke();
             return true;

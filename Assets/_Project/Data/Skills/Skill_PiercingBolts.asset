@@ -78,3 +78,8 @@ MonoBehaviour:
       kind: 0
       value: -0.18
   effectPrefab: {fileID: 0}
+  requiresUpgradableSkill: 0
+  repeatOfferWeights: []
+  upgradeOfferWeight: 1
+  kind: 1
+  guideText: A bolt flies on through the foes in its line. Each foe it passes takes a share off its damage; level 7 halves the loss.

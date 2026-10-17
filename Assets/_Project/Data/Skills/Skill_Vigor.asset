@@ -65,3 +65,8 @@ MonoBehaviour:
       kind: 0
       value: 480
   effectPrefab: {fileID: 0}
+  requiresUpgradableSkill: 0
+  repeatOfferWeights: []
+  upgradeOfferWeight: 1
+  kind: 2
+  guideText: Raises max health. The added health is healed at once when you take a level.

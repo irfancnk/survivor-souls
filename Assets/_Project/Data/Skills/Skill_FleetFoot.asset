@@ -65,3 +65,8 @@ MonoBehaviour:
       kind: 1
       value: 0.43
   effectPrefab: {fileID: 0}
+  requiresUpgradableSkill: 0
+  repeatOfferWeights: []
+  upgradeOfferWeight: 1
+  kind: 3
+  guideText: 'You run faster: easier to dodge boss attacks and to reach souls.'

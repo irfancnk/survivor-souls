@@ -81,3 +81,7 @@ MonoBehaviour:
       value: 5
   effectPrefab: {fileID: 0}
   requiresUpgradableSkill: 1
+  repeatOfferWeights: []
+  upgradeOfferWeight: 1
+  kind: 3
+  guideText: Kills can drop Reliquary chests (elites more often), and chests level up your skills. Offered only while another skill can still level up.

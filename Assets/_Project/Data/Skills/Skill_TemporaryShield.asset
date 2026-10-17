@@ -51,3 +51,5 @@ MonoBehaviour:
   - 0.6
   - 0.6
   upgradeOfferWeight: 1
+  kind: 2
+  guideText: A ward makes you immune to all damage for a few seconds, then recharges. Higher levels hold longer and recharge faster.

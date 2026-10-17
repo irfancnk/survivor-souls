@@ -65,3 +65,8 @@ MonoBehaviour:
       kind: 1
       value: 1.8
   effectPrefab: {fileID: 0}
+  requiresUpgradableSkill: 0
+  repeatOfferWeights: []
+  upgradeOfferWeight: 1
+  kind: 1
+  guideText: Raises the damage of every bolt. Skills that deal a share of bolt damage (side bolts, bursts, tomes) grow with it.

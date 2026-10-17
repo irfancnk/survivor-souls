@@ -412,12 +412,14 @@ namespace SurvivorSouls.Editor.Skills
                 skill.SetRequiresUpgradableSkill(spec.NeedsUpgradable);
                 skill.SetOfferWeights(spec.RepeatWeights, spec.UpgradeWeight);
                 skill.SetPresentation(icon, effect, spec.Weight);
+                SkillGuideSeed.Fill(skill); // Skill Guide Book type + rules text (KAN-64)
                 AssetDatabase.CreateAsset(skill, path);
                 return skill;
             }
             // Existing asset: keep designer numbers, only repair missing links and give a table-less skill its table.
             if (spec.ReworkFrom != null && skill.DisplayName == spec.ReworkFrom) Rework(skill, spec);
             else if (!skill.HasLevelTable) FillLevels(skill, spec);
+            SkillGuideSeed.Fill(skill); // KAN-64: only empty guide fields
             var so = new SerializedObject(skill);
             var iconProp = so.FindProperty("icon");
             if (iconProp.objectReferenceValue == null) iconProp.objectReferenceValue = icon;

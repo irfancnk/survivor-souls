@@ -65,3 +65,8 @@ MonoBehaviour:
       kind: 1
       value: 1.2
   effectPrefab: {fileID: 0}
+  requiresUpgradableSkill: 0
+  repeatOfferWeights: []
+  upgradeOfferWeight: 1
+  kind: 1
+  guideText: Shortens the reload between shots, so every bolt skill fires more often.

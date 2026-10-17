@@ -61,3 +61,5 @@ MonoBehaviour:
   - 0.25
   - 0.06
   upgradeOfferWeight: 0.35
+  kind: 1
+  guideText: Extra bolts follow the main bolt down the same line. Strong against one tough foe or a boss.

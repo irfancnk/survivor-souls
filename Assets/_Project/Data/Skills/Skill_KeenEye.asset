@@ -92,3 +92,8 @@ MonoBehaviour:
       kind: 0
       value: 1.4
   effectPrefab: {fileID: 0}
+  requiresUpgradableSkill: 0
+  repeatOfferWeights: []
+  upgradeOfferWeight: 1
+  kind: 1
+  guideText: Each bolt can crit. A crit hit deals extra damage on top of the normal hit.

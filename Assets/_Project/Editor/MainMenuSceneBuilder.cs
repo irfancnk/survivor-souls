@@ -450,11 +450,15 @@ namespace SurvivorSouls.Editor
             doc.panelSettings = panelSettings;
             doc.visualTreeAsset = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(UxmlPath);
             if (doc.visualTreeAsset == null) throw new System.InvalidOperationException($"UXML missing: {UxmlPath}");
-            go.AddComponent<MainMenuController>().Setup(realmCatalog,
+            var menu = go.AddComponent<MainMenuController>();
+            menu.Setup(realmCatalog,
                 Economy.EconomyBuilder.LoadOrCreateGemRewards(), // welcome shards (KAN-97)
                 Economy.EconomyBuilder.LoadOrCreateSoulTree(), // soul tree page (KAN-98)
                 Economy.EconomyBuilder.LoadOrCreateStoreCatalog(), // store page (KAN-99)
                 Characters.HeroBuilder.LoadOrCreateRoster()); // hero page (KAN-153)
+            menu.SetupGuide( // Skill Guide Book (KAN-64): the run table the Game scene rolls from
+                AssetDatabase.LoadAssetAtPath<SurvivorSouls.Gameplay.Skills.SkillProgression>(Skills.SkillsBuilder.ProgressionPath),
+                AssetDatabase.LoadAssetAtPath<SurvivorSouls.Gameplay.Skills.SkillRarityStyles>(Skills.SkillsBuilder.StylesPath));
         }
 
         // ---------------------------------------------------------------- Realms (KAN-20)

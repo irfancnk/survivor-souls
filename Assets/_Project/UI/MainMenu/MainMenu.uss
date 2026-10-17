@@ -209,6 +209,28 @@
     background-color: rgba(20, 22, 30, 0.5);
 }
 
+/* Two half-width buttons in one row (KAN-64: GRIMOIRE | SETTINGS). */
+.ss-button-row {
+    flex-direction: row;
+    justify-content: space-between;
+}
+
+.unity-button.ss-button--half {
+    flex-grow: 1;
+    flex-basis: 0;
+    padding: 0 12px;
+    font-size: 40px;
+    letter-spacing: 6px;
+}
+
+.unity-button.ss-button--left {
+    margin-right: 13px;
+}
+
+.unity-button.ss-button--right {
+    margin-left: 13px;
+}
+
 /* ---------- Footer + toast ---------- */
 
 .ss-version {

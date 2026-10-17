@@ -75,3 +75,8 @@ MonoBehaviour:
       kind: 0
       value: -0.15
   effectPrefab: {fileID: 0}
+  requiresUpgradableSkill: 0
+  repeatOfferWeights: []
+  upgradeOfferWeight: 1
+  kind: 1
+  guideText: After a hit the bolt jumps to the next foe close by. Each bounce deals less damage; level 7 halves the loss.

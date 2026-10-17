@@ -158,3 +158,5 @@ MonoBehaviour:
   requiresUpgradableSkill: 0
   repeatOfferWeights: []
   upgradeOfferWeight: 1
+  kind: 1
+  guideText: Holy books circle you and hit every foe they touch for a share of bolt damage. Later levels add books, knockback and a holy flash.

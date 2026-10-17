@@ -11,6 +11,12 @@ namespace SurvivorSouls.Gameplay.Skills
     public enum SkillRarity { Common, Rare, Epic, Legendary }
 
     /// <summary>
+    /// What a skill is for (KAN-64): the type filter of the Skill Guide Book. Stored as numbers: new kinds go at the END.
+    /// <see cref="Unset"/> = not sorted yet (SkillsBuilder fills it from its guide seed on the next rebuild).
+    /// </summary>
+    public enum SkillKind { Unset, Attack, Defence, Utility }
+
+    /// <summary>
     /// One row of a skill's level table (KAN-50): the TOTAL effect at that level (not the step from the level before),
     /// so a level can change any number, add a new stat or drop one. Card text for that level.
     /// </summary>
@@ -65,6 +71,10 @@ namespace SurvivorSouls.Gameplay.Skills
         [SerializeField] private float[] repeatOfferWeights = new float[0];
         [Tooltip("Chest upgrade screens (KAN-83): weight multiplier of this skill's card (1 = normal, 0.35 = rarely offered).")]
         [SerializeField, Range(0.01f, 1f)] private float upgradeOfferWeight = 1f;
+        [Tooltip("Skill Guide Book type filter (KAN-64).")]
+        [SerializeField] private SkillKind kind = SkillKind.Unset;
+        [Tooltip("Skill Guide Book 'How it works' (KAN-64): one or two lines of rules and edge cases. Empty = section hidden.")]
+        [SerializeField, TextArea(2, 4)] private string guideText = "";
 
         public string Id => id;
         public string DisplayName => displayName;
@@ -79,6 +89,10 @@ namespace SurvivorSouls.Gameplay.Skills
         public SkillLevelData[] Levels => levels;
         /// <summary>Chest upgrade card weight multiplier (KAN-83).</summary>
         public float UpgradeOfferWeight => upgradeOfferWeight;
+        /// <summary>Skill Guide Book type (KAN-64).</summary>
+        public SkillKind Kind => kind;
+        /// <summary>Skill Guide Book rules text (KAN-64); empty when none.</summary>
+        public string GuideText => guideText;
 
         /// <summary>
         /// Level-up weight multiplier at owned level <paramref name="ownedLevel"/> (KAN-83): 1 when not owned or without a
@@ -149,6 +163,14 @@ namespace SurvivorSouls.Gameplay.Skills
         {
             repeatOfferWeights = repeat ?? new float[0];
             upgradeOfferWeight = Mathf.Clamp(upgrade, 0.01f, 1f);
+            return this;
+        }
+
+        /// <summary>Code-side guide data (asset builder, tests): see <see cref="Kind"/> and <see cref="GuideText"/>.</summary>
+        public SkillDefinition SetGuide(SkillKind skillKind, string rules)
+        {
+            kind = skillKind;
+            guideText = rules ?? "";
             return this;
         }
 
