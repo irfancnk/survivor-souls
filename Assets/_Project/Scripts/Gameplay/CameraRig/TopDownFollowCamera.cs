@@ -36,6 +36,8 @@ namespace SurvivorSouls.Gameplay.CameraRig
         private bool _bounded;
         private Vector3 _boundsCentre;
         private float _boundsRadius, _boundsSoftBand;
+        private bool _rectBounded;
+        private Vector2 _rectMin, _rectMax;
         private float _shakeAmplitude, _shakeTime, _shakeLength;
         private bool _focused;
         private Vector3 _focusPoint;
@@ -85,7 +87,30 @@ namespace SurvivorSouls.Gameplay.CameraRig
             }
         }
 
-        public void ClearBounds() => _bounded = false;
+        public void ClearBounds()
+        {
+            _bounded = false;
+            _rectBounded = false;
+        }
+
+        /// <summary>Whether the look point is held inside a rectangle (<see cref="SetRectBounds"/>).</summary>
+        public bool RectBounded => _rectBounded;
+
+        /// <summary>
+        /// KAN-245 island Chambers: holds the look point inside the XZ rectangle <paramref name="min"/>..<paramref name="max"/>
+        /// (hard clamp; the follow smoothing keeps it soft). Jumps the camera to the new look point.
+        /// </summary>
+        public void SetRectBounds(Vector2 min, Vector2 max)
+        {
+            _rectBounded = true;
+            _rectMin = Vector2.Min(min, max);
+            _rectMax = Vector2.Max(min, max);
+            if (target != null && _camera != null)
+            {
+                _look = DesiredLook();
+                Place();
+            }
+        }
 
         /// <summary>A <see cref="Focus"/> is on (it may still be blending in).</summary>
         public bool Focused => _focused;
@@ -163,6 +188,11 @@ namespace SurvivorSouls.Gameplay.CameraRig
                 var o = SoftClamp(new Vector2(x - _boundsCentre.x, z - _boundsCentre.z), _boundsRadius, _boundsSoftBand);
                 x = _boundsCentre.x + o.x;
                 z = _boundsCentre.z + o.y;
+            }
+            if (_rectBounded)
+            {
+                x = Mathf.Clamp(x, _rectMin.x, _rectMax.x);
+                z = Mathf.Clamp(z, _rectMin.y, _rectMax.y);
             }
             var follow = new Vector3(x, 0f, z);
             return _focusWeight > 0f ? Vector3.Lerp(follow, _focusPoint, _focusWeight) : follow;

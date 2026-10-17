@@ -11,7 +11,9 @@ namespace SurvivorSouls.Gameplay.Chamber
     /// layout seed and the spawner its multipliers. <see cref="Current"/> holds the plan for the rest of the scene:
     /// KAN-22 / KAN-23 read <see cref="ChamberPlan.Type"/>, KAN-47 reads <see cref="ChamberPlan.IsLast"/>. A MiniBoss
     /// Chamber adds one mini boss to the horde (MiniBossDirector, KAN-23). A Boss Chamber enters the round <see cref="BossArena"/>
-    /// (KAN-59) instead of the streamed shore; every other Chamber keeps the arena hidden. On the "Chamber" object (ChamberBuilder).
+    /// (KAN-59) instead of the streamed shore; every other Chamber keeps the arena hidden. A non-boss Chamber whose theme
+    /// (<see cref="ChamberThemeSchedule"/>, or <see cref="ForcedTheme"/>) names an island plays on that <see cref="IslandChamber"/>
+    /// (KAN-245). On the "Chamber" object (ChamberBuilder).
     /// </summary>
     [DefaultExecutionOrder(-300)]
     public sealed class ChamberSetup : MonoBehaviour
@@ -21,6 +23,16 @@ namespace SurvivorSouls.Gameplay.Chamber
         [SerializeField] private EnemySpawner spawner;
         [Tooltip("Boss Chambers play here (KAN-59). Optional.")]
         [SerializeField] private BossArena arena;
+        [Tooltip("Island Chambers, one per theme (KAN-245). The schedule picks one per Chamber; the others stay hidden.")]
+        [SerializeField] private IslandChamber[] islands = Array.Empty<IslandChamber>();
+        [Tooltip("Theme per Chamber of a Realm (KAN-245). Empty = every non-boss Chamber streams the shore.")]
+        [SerializeField] private ChamberThemeSchedule themes;
+
+        /// <summary>Dev / screenshots (-ss-theme): play every non-boss Chamber in this theme. Null = the schedule decides.</summary>
+        public static string ForcedTheme;
+
+        /// <summary>Theme id of the Chamber being played (null = streamed shore or boss arena).</summary>
+        public static string CurrentTheme { get; private set; }
 
         /// <summary>Plan of the Chamber being played. Chamber 1, no scaling, before any Chamber was set up.</summary>
         public static ChamberPlan Current { get; private set; } = ChamberPlan.Plain(1, RunState.FirstChamber, 1);
@@ -40,6 +52,15 @@ namespace SurvivorSouls.Gameplay.Chamber
         }
 
         public BossArena Arena => arena;
+        public ChamberThemeSchedule Themes => themes;
+        public System.Collections.Generic.IReadOnlyList<IslandChamber> Islands => islands;
+
+        /// <summary>Tests: island Chambers and their schedule without the scene builder.</summary>
+        public void SetupIslands(ChamberThemeSchedule schedule, params IslandChamber[] islandChambers)
+        {
+            themes = schedule;
+            islands = islandChambers ?? Array.Empty<IslandChamber>();
+        }
 
         private void Awake() => Apply(RunState.Realm, RunState.Chamber, RunState.RunSeed);
 
@@ -60,10 +81,31 @@ namespace SurvivorSouls.Gameplay.Chamber
                 if (plan.Type == ChamberType.Boss) arena.Enter();
                 else arena.Leave();
             }
+            ApplyTheme(plan, realm);
             Current = plan;
             if (Debug.isDebugBuild) Debug.Log($"[ChamberSetup] {plan}");
             Planned?.Invoke(plan);
             return plan;
+        }
+
+        /// <summary>KAN-245: a non-boss Chamber with a theme plays on its island; every other island stays hidden.</summary>
+        private void ApplyTheme(ChamberPlan plan, int realm)
+        {
+            string theme = null;
+            if (plan.Type != ChamberType.Boss)
+                theme = !string.IsNullOrEmpty(ForcedTheme) ? ForcedTheme : themes != null ? themes.ThemeFor(realm, plan.Chamber) : null;
+            IslandChamber chosen = null;
+            if (theme != null)
+                foreach (var island in islands)
+                    if (island != null && island.ThemeId == theme)
+                    {
+                        chosen = island;
+                        break;
+                    }
+            foreach (var island in islands)
+                if (island != null && island != chosen) island.Leave();
+            if (chosen != null) chosen.Enter();
+            CurrentTheme = chosen != null ? chosen.ThemeId : null;
         }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -71,6 +113,8 @@ namespace SurvivorSouls.Gameplay.Chamber
         {
             Current = ChamberPlan.Plain(1, RunState.FirstChamber, 1);
             Planned = null;
+            CurrentTheme = null;
+            // ForcedTheme is set by the dev args before the scene loads; keep it.
         }
     }
 }

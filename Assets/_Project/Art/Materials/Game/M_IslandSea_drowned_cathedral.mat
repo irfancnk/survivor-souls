@@ -1,0 +1,55 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!21 &2100000
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: M_IslandSea_drowned_cathedral
+  m_Shader: {fileID: 4800000, guid: 54e3e17a2f9f6ba40958ef0c0159bdc6, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties: 
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs:
+    - _FoamMap:
+        m_Texture: {fileID: 2800000, guid: 970f00db800f84fbca291232e4576bd7, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _NormalMap:
+        m_Texture: {fileID: 2800000, guid: fb69c7fbfd7eb4d62995873089b11c7c, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    m_Ints: []
+    m_Floats:
+    - _CrestWidth: 0.12
+    - _DepthRange: 22
+    - _FlowSpeed: 0.04
+    - _FoamWidth: 5
+    - _Glint: 0.8
+    - _RippleScale: 6
+    - _RippleStrength: 0.8
+    - _WaveHeight: 0.35
+    - _WaveLength: 16
+    - _WaveSpeed: 0.9
+    m_Colors:
+    - _CrestColor: {r: 0.22, g: 0.34, b: 0.38, a: 1}
+    - _DeepColor: {r: 0.02, g: 0.05, b: 0.09, a: 1}
+    - _FoamColor: {r: 0.86, g: 0.9, b: 0.93, a: 1}
+    - _IslandCentre: {r: 0, g: -400, b: 0, a: 0}
+    - _IslandHalf: {r: 21.2, g: 33.2, b: 0, a: 0}
+    - _ShallowColor: {r: 0.1, g: 0.19, b: 0.23, a: 1}
+    - _SkyColor: {r: 0.55, g: 0.42, b: 0.4, a: 1}
+  m_BuildTextureStacks: []
+  m_AllowLocking: 1

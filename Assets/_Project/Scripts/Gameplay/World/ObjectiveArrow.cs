@@ -19,6 +19,7 @@ namespace SurvivorSouls.Gameplay.World
 
         private PortalGate _gate;
         private bool _gated;
+        private bool _follow; // KAN-245 island gate: shown while locked too (dim), like the shore exit
 
         /// <summary>Gate point on the ground (arch centre).</summary>
         public Vector3 Target =>
@@ -47,13 +48,25 @@ namespace SurvivorSouls.Gameplay.World
         }
 
         /// <summary>Whether the HUD should point at <see cref="Target"/> this frame.</summary>
-        public bool HasTarget => isActiveAndEnabled && (!_gated || Open) && (_gated || world != null) && Distance > hideDistance;
+        public bool HasTarget => isActiveAndEnabled && (!_gated || _follow || Open) && (_gated || world != null) && Distance > hideDistance;
 
         /// <summary>Points at <paramref name="gate"/> (boss arena) and shows only while it is open. Null = back to the world exit.</summary>
         public void PointAt(PortalGate gate)
         {
             _gate = gate;
             _gated = gate != null;
+            _follow = false;
+        }
+
+        /// <summary>
+        /// KAN-245 island Chambers: points at <paramref name="gate"/> all the time, dim while it is locked and bright once open
+        /// (the shore exit's behaviour). Null = back to the world exit.
+        /// </summary>
+        public void Follow(PortalGate gate)
+        {
+            _gate = gate;
+            _gated = gate != null;
+            _follow = gate != null;
         }
 
         /// <summary>Tests: wiring without the builder.</summary>
