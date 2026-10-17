@@ -406,6 +406,7 @@ namespace SurvivorSouls.Tests
             SurvivorSouls.Gameplay.Chamber.SurvivalTimer.Active?.Stop();
 
             var rules = spawner.SpawnRules;
+            var walk = spawner.Walkability; // KAN-245: the Chamber's own shape (streamed shore, boss arena or island)
             var failures = new List<string>();
             int placements = 0;
             spawner.Placed += (enemy, pos, recycled) =>
@@ -413,7 +414,7 @@ namespace SurvivorSouls.Tests
                 placements++;
                 if (BodyVisible(cam, pos, rules.bodyHeight)) failures.Add($"visible {pos}");
                 if (Planar(pos, mover.transform.position) < rules.minDistance - 0.01f) failures.Add($"too close {pos}");
-                if (world.IsBlocked(pos, rules.bodyRadius - 0.01f)) failures.Add($"blocked {pos}");
+                if (walk.IsBlocked(pos, rules.bodyRadius - 0.01f)) failures.Add($"blocked {pos}");
             };
 
             float startCreated = spawner.Created;
