@@ -1,0 +1,1004 @@
+{
+  "schema_version": "1.0",
+  "title": "Survivor Souls — Ember Boons",
+  "status": "Proposed skill design; numeric values need playtesting.",
+  "skill_count": 33,
+  "image_count": 33,
+  "image_aspect_ratio": "3:4",
+  "skills": [
+    {
+      "number": 1,
+      "id": "sharpened-bolts",
+      "name": "Sharpened Bolts",
+      "rarity": "Common",
+      "category": "Foundation",
+      "tagline": "Every shot matters",
+      "description": "Increase the damage of your main weapon bolts.",
+      "why_it_works": "A dependable damage choice that supports every projectile build.",
+      "upgrade_direction": [
+        "Increase bolt damage.",
+        "Increase the damage bonus.",
+        "Finish with a larger damage bonus."
+      ],
+      "synergies": [
+        "multishot",
+        "piercing-bolts"
+      ],
+      "balance_notes": "Use additive weapon-damage bonuses. Do not give every secondary effect its own copy of this bonus.",
+      "current_game_comparison": "Sharpened Bolts · Common",
+      "reference": "Archero: Attack Boost",
+      "image": {
+        "file": "images/sharpened-bolts.png",
+        "width": 1086,
+        "height": 1448,
+        "format": "PNG",
+        "bytes": 2819551,
+        "sha256": "e3b4ba8c12132137e453a6198b46a4a3d09518f6f9429bd779ff9cb88439afd3"
+      }
+    },
+    {
+      "number": 2,
+      "id": "quick-draw",
+      "name": "Quick Draw",
+      "rarity": "Common",
+      "category": "Foundation",
+      "tagline": "Loose. Reload. Repeat.",
+      "description": "Increase main weapon attack speed.",
+      "why_it_works": "The change is immediate: shorter waits and a smoother firing rhythm.",
+      "upgrade_direction": [
+        "Increase attack speed.",
+        "Further shorten the firing interval.",
+        "Reach the final attack-speed bonus."
+      ],
+      "synergies": [
+        "multishot",
+        "sovereigns-fall"
+      ],
+      "balance_notes": "Clamp the minimum firing interval and preserve readable attack animations.",
+      "current_game_comparison": "Quick Draw · Common",
+      "reference": "Archero: Attack Speed Boost",
+      "image": {
+        "file": "images/quick-draw.png",
+        "width": 1086,
+        "height": 1448,
+        "format": "PNG",
+        "bytes": 2833648,
+        "sha256": "0b1ea75bf8e3f3d7ac67c14c9171fa3f5e9ddfc89c058c51d5d567eb23bea61b"
+      }
+    },
+    {
+      "number": 3,
+      "id": "vigor",
+      "name": "Vigor",
+      "rarity": "Common",
+      "category": "Foundation",
+      "tagline": "One more chance to endure",
+      "description": "Increase maximum health and restore health equal to the amount gained.",
+      "why_it_works": "A simple survival choice that feels useful as soon as it is selected.",
+      "upgrade_direction": [
+        "Gain maximum health and an equal heal.",
+        "Raise the total maximum-health bonus.",
+        "Reach the final maximum-health bonus."
+      ],
+      "synergies": [
+        "last-oath",
+        "second-dawn"
+      ],
+      "balance_notes": "Heal only the increase from the previous rank, not the full cumulative bonus.",
+      "current_game_comparison": "Vigor · Common",
+      "reference": "Archero: HP Boost",
+      "image": {
+        "file": "images/vigor.png",
+        "width": 1086,
+        "height": 1448,
+        "format": "PNG",
+        "bytes": 3024448,
+        "sha256": "28e5a93c5c20cb12e35379e4c0d8f84c6688f237b25d4f79047de3eb3bb78c2d"
+      }
+    },
+    {
+      "number": 4,
+      "id": "fleet-foot",
+      "name": "Fleet Foot",
+      "rarity": "Common",
+      "category": "Foundation",
+      "tagline": "Stay beyond their reach",
+      "description": "Increase movement speed for repositioning and kiting.",
+      "why_it_works": "Survival can come from better movement as well as more damage.",
+      "upgrade_direction": [
+        "Increase movement speed.",
+        "Improve movement speed further.",
+        "Reach the final movement bonus."
+      ],
+      "synergies": [
+        "rime-blades",
+        "hallowed-shield"
+      ],
+      "balance_notes": "Set a movement-speed ceiling that preserves touch-control precision.",
+      "current_game_comparison": "Fleet Foot · Common",
+      "reference": "Archero: Hermes Shoes, movement component",
+      "image": {
+        "file": "images/fleet-foot.png",
+        "width": 1086,
+        "height": 1448,
+        "format": "PNG",
+        "bytes": 3281190,
+        "sha256": "82db2c8851f43f7f6c50fd908ef59f058bec676499c05c1dbd7a2f05bfff2943"
+      }
+    },
+    {
+      "number": 5,
+      "id": "keen-eye",
+      "name": "Keen Eye",
+      "rarity": "Rare",
+      "category": "Projectiles",
+      "tagline": "Find the fatal opening",
+      "description": "Increase critical-hit chance and critical damage.",
+      "why_it_works": "Bright critical impacts make a focused damage build satisfying.",
+      "upgrade_direction": [
+        "Increase critical chance and damage.",
+        "Improve both bonuses.",
+        "Reach the final critical bonuses."
+      ],
+      "synergies": [
+        "sovereigns-fall",
+        "multishot"
+      ],
+      "balance_notes": "Cap critical chance. Critical bonuses should not create recursive proc rolls.",
+      "current_game_comparison": "Keen Eye · Rare",
+      "reference": "Archero: Crit Master",
+      "image": {
+        "file": "images/keen-eye.png",
+        "width": 1086,
+        "height": 1448,
+        "format": "PNG",
+        "bytes": 2961066,
+        "sha256": "a772e2a5c7ff6c4a73e5571e9c0084d2c9388a194d7e74d9039c37b084dc40c2"
+      }
+    },
+    {
+      "number": 6,
+      "id": "piercing-bolts",
+      "name": "Piercing Bolts",
+      "rarity": "Rare",
+      "category": "Projectiles",
+      "tagline": "One bolt. A broken line.",
+      "description": "Bolts pass through additional enemies, losing damage after each penetration.",
+      "why_it_works": "Lining up a horde becomes a deliberate and rewarding choice.",
+      "upgrade_direction": [
+        "Pierce one additional enemy.",
+        "Increase the penetration count.",
+        "Reduce falloff and reach the final pierce count."
+      ],
+      "synergies": [
+        "spread-shot",
+        "ember-bolts"
+      ],
+      "balance_notes": "Pierce and Ricochet share a finite hit budget. Ricochet takes priority when a valid new target is nearby.",
+      "current_game_comparison": "Piercing Bolts · Rare",
+      "reference": "Archero: Piercing Shot",
+      "image": {
+        "file": "images/piercing-bolts.png",
+        "width": 1086,
+        "height": 1448,
+        "format": "PNG",
+        "bytes": 2986807,
+        "sha256": "82f7daea5472303965c7154ec9784271c9ef9444c0db16d791496a52c1ea1db8"
+      }
+    },
+    {
+      "number": 7,
+      "id": "ember-bolts",
+      "name": "Ember Bolts",
+      "rarity": "Rare",
+      "category": "Elements",
+      "tagline": "Leave a little fire behind",
+      "description": "Weapon hits ignite enemies for damage over time.",
+      "why_it_works": "Give fire one clear identity. Soul Burst owns death explosions; frost owns freezing.",
+      "upgrade_direction": [
+        "Apply a short burn.",
+        "Increase burn damage.",
+        "Extend burn duration."
+      ],
+      "synergies": [
+        "ricochet",
+        "soul-burst"
+      ],
+      "balance_notes": "Remove the existing slow, stun, spread, and death blast. Repeated hits refresh one burn instead of stacking without limit.",
+      "current_game_comparison": "Ember Bolts · Legendary → Rare",
+      "reference": "Archero: Blaze",
+      "image": {
+        "file": "images/ember-bolts.png",
+        "width": 1086,
+        "height": 1448,
+        "format": "PNG",
+        "bytes": 2830220,
+        "sha256": "c204e6eb8524b08f8700c76420301fed80cd92543d965e85b880e7942920c456"
+      }
+    },
+    {
+      "number": 8,
+      "id": "frost-bolts",
+      "name": "Frost Bolts",
+      "rarity": "Rare",
+      "category": "Elements",
+      "tagline": "Make the horde hesitate",
+      "description": "Every few direct weapon hits freeze the struck enemy briefly.",
+      "why_it_works": "A crisp freeze and shatter visual gives crowd control a readable identity.",
+      "upgrade_direction": [
+        "Periodically freeze the target.",
+        "Trigger freezes more often.",
+        "Improve freeze duration against normal enemies."
+      ],
+      "synergies": [
+        "holy-tomes",
+        "spread-shot"
+      ],
+      "balance_notes": "Bosses receive a short slow rather than a full freeze. Add a per-target freeze cooldown.",
+      "current_game_comparison": "Freeze Arrow · Rare → renamed",
+      "reference": "Archero: Freeze",
+      "image": {
+        "file": "images/frost-bolts.png",
+        "width": 1086,
+        "height": 1448,
+        "format": "PNG",
+        "bytes": 3275968,
+        "sha256": "82961a4524ddf00211d95355347662c6d9646fa975ba3542502d4aac13d6d033"
+      }
+    },
+    {
+      "number": 9,
+      "id": "venom-bolts",
+      "name": "Venom Bolts",
+      "rarity": "Rare",
+      "category": "Elements",
+      "tagline": "A wound that remembers",
+      "description": "Poison enemies with a longer damage-over-time effect than Ember Bolts.",
+      "why_it_works": "A slower attrition option for tagging several threats while kiting.",
+      "upgrade_direction": [
+        "Apply a lingering poison.",
+        "Improve poison damage.",
+        "Raise the poison stack cap to a small fixed number."
+      ],
+      "synergies": [
+        "ricochet",
+        "piercing-bolts"
+      ],
+      "balance_notes": "Use capped stacks and refresh rules. Poison does not spread automatically or trigger another poison hit.",
+      "current_game_comparison": "Not in the current 17-skill reference",
+      "reference": "Archero: Poison Touch",
+      "image": {
+        "file": "images/venom-bolts.png",
+        "width": 1086,
+        "height": 1448,
+        "format": "PNG",
+        "bytes": 2672342,
+        "sha256": "aefb0d9808dab14bc428c793c3f4fc35c3c2b11fa1f384b537cef77d98790cd5"
+      }
+    },
+    {
+      "number": 10,
+      "id": "storm-touch",
+      "name": "Storm Touch",
+      "rarity": "Rare",
+      "category": "Elements",
+      "tagline": "A spark between strangers",
+      "description": "Weapon hits release a short electrical arc to one nearby enemy.",
+      "why_it_works": "Small, frequent arcs make lightning distinct from a physical ricochet chain.",
+      "upgrade_direction": [
+        "Arc to one nearby enemy.",
+        "Increase arc damage.",
+        "Allow one additional arc target."
+      ],
+      "synergies": [
+        "spread-shot",
+        "storm-satellites"
+      ],
+      "balance_notes": "Arcs cannot create more arcs or count as weapon hits for Legendary triggers.",
+      "current_game_comparison": "Not in the current 17-skill reference",
+      "reference": "Archero: Bolt",
+      "image": {
+        "file": "images/storm-touch.png",
+        "width": 1086,
+        "height": 1448,
+        "format": "PNG",
+        "bytes": 2773145,
+        "sha256": "d60fdef31d3b2d1200b58dd03e2cd67474f6e43e1731df5dfc2eeb8f7cd6f9aa"
+      }
+    },
+    {
+      "number": 11,
+      "id": "ashen-heart",
+      "name": "Ashen Heart",
+      "rarity": "Rare",
+      "category": "Survival",
+      "tagline": "Find warmth in the ruin",
+      "description": "Improve healing from health pickups and slightly increase their drop chance.",
+      "why_it_works": "A measured sustain option that preserves the need to dodge.",
+      "upgrade_direction": [
+        "Improve healing from health pickups.",
+        "Add a modest health-pickup drop bonus.",
+        "Improve the healing bonus further."
+      ],
+      "synergies": [
+        "vigor",
+        "last-oath"
+      ],
+      "balance_notes": "Only health pickups benefit. Do not multiply revive healing or Last Oath lifesteal.",
+      "current_game_comparison": "Not in the current 17-skill reference",
+      "reference": "Archero: Strong Heart, adapted",
+      "image": {
+        "file": "images/ashen-heart.png",
+        "width": 1086,
+        "height": 1448,
+        "format": "PNG",
+        "bytes": 2915505,
+        "sha256": "015b0cc8c7e9177726feb8097264818e2617921e2dbb3f1198fd5c9b871194b2"
+      }
+    },
+    {
+      "number": 12,
+      "id": "repelling-bolts",
+      "name": "Repelling Bolts",
+      "rarity": "Rare",
+      "category": "Projectiles",
+      "tagline": "Buy yourself breathing room",
+      "description": "Every few main weapon hits knock a normal enemy back.",
+      "why_it_works": "A tangible defensive reward for firing into an approaching horde.",
+      "upgrade_direction": [
+        "Add periodic knockback.",
+        "Trigger knockback more often.",
+        "Increase knockback distance slightly."
+      ],
+      "synergies": [
+        "piercing-bolts",
+        "rime-blades"
+      ],
+      "balance_notes": "Bosses and immovable enemies ignore displacement. Apply a per-target knockback cooldown.",
+      "current_game_comparison": "New Survivor Souls concept",
+      "reference": "Original proposal",
+      "image": {
+        "file": "images/repelling-bolts.png",
+        "width": 1086,
+        "height": 1448,
+        "format": "PNG",
+        "bytes": 2943167,
+        "sha256": "ffc2f2c6ab6a9e5fc4de69d4938262a34f8705030852d5c4ed21f318ac975893"
+      }
+    },
+    {
+      "number": 13,
+      "id": "stormshock",
+      "name": "Stormshock",
+      "rarity": "Epic",
+      "category": "Elements",
+      "tagline": "A little thunder. A moment to breathe.",
+      "description": "Every fourth direct weapon hit releases yellow chain lightning into the struck zombie and up to two nearby zombies: three targets total. Each takes 60% weapon damage and a 0.25-second mini-stun. Lightning jumps only to another zombie within 3 metres of the previous target.",
+      "why_it_works": "A bright, crackling chain catches a small cluster, interrupts their approach, and buys a brief escape window. It feels more forceful than Storm Touch’s small damage-only arcs without shocking the entire horde.",
+      "upgrade_direction": [
+        "Strike up to 3 zombies for 60% weapon damage each; mini-stun each for 0.25 seconds.",
+        "Strike up to 4 zombies for 70% weapon damage each; keep the same short stun.",
+        "Strike up to 5 zombies for 80% weapon damage each; keep the same jump range and stun."
+      ],
+      "synergies": [
+        "quick-draw",
+        "piercing-bolts",
+        "storm-satellites"
+      ],
+      "balance_notes": "Proposed starting values for playtesting. Minimum 2-second cooldown between chains. Never revisit a zombie in one chain; stop if no unhit target is within 3 metres. Mini-stuns do not stack, and a target cannot be stunned again for 1 second. Bosses take damage and a brief reduced slow instead of a stun. Chain hits cannot trigger Storm Touch, Ricochet, another Stormshock, or weapon-hit counters. VFX: thin jagged yellow arcs connect targets, each zombie gains a brief yellow electrical outline with small sparks and a quick twitch, then returns to normal. No full-screen flash.",
+      "current_game_comparison": "New Survivor Souls concept requested for this catalog",
+      "reference": "Original: bounded yellow chain lightning with a mini-stun",
+      "image": {
+        "file": "images/stormshock.png",
+        "width": 1086,
+        "height": 1448,
+        "format": "PNG",
+        "bytes": 2889742,
+        "sha256": "397255b8af0e06afc0230f8380675023844c28a795313da22d4c62c41ea2d9dc"
+      }
+    },
+    {
+      "number": 14,
+      "id": "front-arrow",
+      "name": "Front Arrow +1",
+      "rarity": "Epic",
+      "category": "Projectiles",
+      "tagline": "Two points. One target.",
+      "description": "Add a parallel forward bolt to each volley, with a per-bolt damage trade-off.",
+      "why_it_works": "Both bolts can connect with a large target, creating a satisfying boss-focused pickup.",
+      "upgrade_direction": [
+        "Add one parallel forward bolt.",
+        "Reduce its damage penalty.",
+        "Improve forward-bolt damage without adding more lanes."
+      ],
+      "synergies": [
+        "multishot",
+        "keen-eye"
+      ],
+      "balance_notes": "Use one extra forward lane. Keep the two projectiles spatially distinct and tune combined damage with Multishot.",
+      "current_game_comparison": "New addition from the 14-skill proposal",
+      "reference": "Archero: Front Arrow +1",
+      "image": {
+        "file": "images/front-arrow.png",
+        "width": 1086,
+        "height": 1448,
+        "format": "PNG",
+        "bytes": 2853399,
+        "sha256": "3289eb2452937a209d16327007277bcdaa03f54163e6c59cdce94c45cfa68199"
+      }
+    },
+    {
+      "number": 15,
+      "id": "spread-shot",
+      "name": "Spread Shot",
+      "rarity": "Epic",
+      "category": "Projectiles",
+      "tagline": "Turn a lane into a fan",
+      "description": "Fire two extra angled bolts alongside the central shot.",
+      "why_it_works": "Wider coverage produces an obvious visual transformation and catches flanking enemies.",
+      "upgrade_direction": [
+        "Add two angled bolts.",
+        "Improve side-bolt damage.",
+        "Widen coverage or add a capped second pair."
+      ],
+      "synergies": [
+        "piercing-bolts",
+        "bouncy-wall"
+      ],
+      "balance_notes": "Keep this separate from Multishot. The existing internal multishot stat currently means spread bolts.",
+      "current_game_comparison": "Spread Shot · Rare → Epic",
+      "reference": "Archero: Diagonal Arrows",
+      "image": {
+        "file": "images/spread-shot.png",
+        "width": 1086,
+        "height": 1448,
+        "format": "PNG",
+        "bytes": 2977364,
+        "sha256": "2697356540dc545379b7c4ee742019311a425a1c855ea3cd33567bcb3055ecb5"
+      }
+    },
+    {
+      "number": 16,
+      "id": "bouncy-wall",
+      "name": "Bouncy Wall",
+      "rarity": "Epic",
+      "category": "Projectiles",
+      "tagline": "Let the room fight for you",
+      "description": "Bolts rebound off solid arena walls with reduced damage.",
+      "why_it_works": "Angled shots return to the fight and make arena geometry part of the build.",
+      "upgrade_direction": [
+        "Allow one wall rebound.",
+        "Reduce damage lost on rebound.",
+        "Allow one additional rebound."
+      ],
+      "synergies": [
+        "spread-shot",
+        "rear-arrow"
+      ],
+      "balance_notes": "Only offer in arenas with usable walls. Use a maximum lifetime and bounce count for every projectile.",
+      "current_game_comparison": "Not in the current 17-skill reference",
+      "reference": "Archero: Bouncy Wall",
+      "image": {
+        "file": "images/bouncy-wall.png",
+        "width": 1086,
+        "height": 1448,
+        "format": "PNG",
+        "bytes": 3008364,
+        "sha256": "a243ccfb78d2ac8f6c925a2355d1573e980bbc45eb5a4415a6f221c38aa1c61e"
+      }
+    },
+    {
+      "number": 17,
+      "id": "rear-arrow",
+      "name": "Rear Arrow +1",
+      "rarity": "Epic",
+      "category": "Projectiles",
+      "tagline": "Nothing at your back is safe",
+      "description": "Fire one additional bolt behind the hero with each volley.",
+      "why_it_works": "Enemies following the hero become targets while the forward attack stays focused.",
+      "upgrade_direction": [
+        "Add one rear bolt.",
+        "Improve rear-bolt damage.",
+        "Improve its damage after a wall rebound."
+      ],
+      "synergies": [
+        "bouncy-wall",
+        "multishot"
+      ],
+      "balance_notes": "Keep rear damage below an additional full forward volley. Aim relative to the weapon firing direction.",
+      "current_game_comparison": "Not in the current 17-skill reference",
+      "reference": "Archero: Rear Arrow +1",
+      "image": {
+        "file": "images/rear-arrow.png",
+        "width": 1086,
+        "height": 1448,
+        "format": "PNG",
+        "bytes": 2920412,
+        "sha256": "0f837ef63acef5f0bad409c231c32feeeb965eceea7c2bcad0f95dcbb3a43b1e"
+      }
+    },
+    {
+      "number": 18,
+      "id": "soul-burst",
+      "name": "Soul Burst",
+      "rarity": "Epic",
+      "category": "Elements",
+      "tagline": "One death opens the way",
+      "description": "Defeated enemies release an explosion that damages nearby enemies.",
+      "why_it_works": "Explosive pack clearing has a strong payoff without occupying a Legendary slot.",
+      "upgrade_direction": [
+        "Add a small on-kill explosion.",
+        "Increase explosion radius.",
+        "Improve explosion damage."
+      ],
+      "synergies": [
+        "ember-bolts",
+        "ricochet"
+      ],
+      "balance_notes": "Burst kills can damage other enemies but cannot generate another Soul Burst. This prevents uncontrolled recursion.",
+      "current_game_comparison": "Soul Burst · Legendary → Epic",
+      "reference": "Archero: Death Bomb",
+      "image": {
+        "file": "images/soul-burst.png",
+        "width": 1086,
+        "height": 1448,
+        "format": "PNG",
+        "bytes": 3236278,
+        "sha256": "4f68ef29022cb7b4defad6d831d5afdc9a671a48b8e4201f2e4865c6b31aa183"
+      }
+    },
+    {
+      "number": 19,
+      "id": "hallowed-shield",
+      "name": "Hallowed Shield",
+      "rarity": "Epic",
+      "category": "Survival",
+      "tagline": "A breath behind the ward",
+      "description": "Periodically gain a short window of damage immunity.",
+      "why_it_works": "A visible ward creates occasional breathing room for a survival build.",
+      "upgrade_direction": [
+        "Gain a brief periodic ward.",
+        "Reduce ward cooldown.",
+        "Extend the ward slightly."
+      ],
+      "synergies": [
+        "fleet-foot",
+        "holy-tomes"
+      ],
+      "balance_notes": "Use a visible countdown and activation effect. Overlapping immunity windows do not stack their durations.",
+      "current_game_comparison": "Hallowed Shield · Epic; returned from deferred list",
+      "reference": "Archero: Invincibility Star",
+      "image": {
+        "file": "images/hallowed-shield.png",
+        "width": 1086,
+        "height": 1448,
+        "format": "PNG",
+        "bytes": 3194389,
+        "sha256": "67eb26e101564e180028d3427120e7050ba9b01dc009e5d80a86d766bbca0389"
+      }
+    },
+    {
+      "number": 20,
+      "id": "holy-tomes",
+      "name": "Holy Tomes",
+      "rarity": "Epic",
+      "category": "Orbitals",
+      "tagline": "Scripture with a sharp edge",
+      "description": "Holy tomes orbit the hero and damage enemies they touch.",
+      "why_it_works": "A readable, constant close-range damage layer already present in Survivor Souls.",
+      "upgrade_direction": [
+        "Summon a pair of orbiting tomes.",
+        "Increase orbit coverage and tome count.",
+        "Add a small impact flash on contact."
+      ],
+      "synergies": [
+        "frost-bolts",
+        "eclipse-crown"
+      ],
+      "balance_notes": "Tomes deal contact damage only; they do not block incoming projectiles. Use a per-enemy contact interval.",
+      "current_game_comparison": "Holy Tomes · Rare → Epic",
+      "reference": "Archero: circles and circling swords",
+      "image": {
+        "file": "images/holy-tomes.png",
+        "width": 1086,
+        "height": 1448,
+        "format": "PNG",
+        "bytes": 3091647,
+        "sha256": "2edabb6dbad221f181aa0ea2336a0c83c372f990c272f2aecab6da7b27aba309"
+      }
+    },
+    {
+      "number": 21,
+      "id": "ember-wheel",
+      "name": "Ember Wheel",
+      "rarity": "Epic",
+      "category": "Orbitals",
+      "tagline": "A ring of hungry embers",
+      "description": "Two firebrands orbit the hero, burning enemies on contact.",
+      "why_it_works": "An aggressive inner orbit that rewards weaving near a horde.",
+      "upgrade_direction": [
+        "Summon two orbiting firebrands.",
+        "Increase orbit speed.",
+        "Improve contact burn damage."
+      ],
+      "synergies": [
+        "soul-burst",
+        "eclipse-crown"
+      ],
+      "balance_notes": "Shares one burn per target with Ember Bolts; use the stronger burn and refresh its duration.",
+      "current_game_comparison": "Not in the current 17-skill reference",
+      "reference": "Archero: Fire Circle, adapted",
+      "image": {
+        "file": "images/ember-wheel.png",
+        "width": 1086,
+        "height": 1448,
+        "format": "PNG",
+        "bytes": 2928630,
+        "sha256": "a070b29d1813f879ca708dfeb16a9742e3e18f9025a5f1f8c03ec827b8a4debf"
+      }
+    },
+    {
+      "number": 22,
+      "id": "rime-blades",
+      "name": "Rime Blades",
+      "rarity": "Epic",
+      "category": "Orbitals",
+      "tagline": "Winter at arm’s length",
+      "description": "Ice blades orbit the hero and briefly slow enemies on contact.",
+      "why_it_works": "A defensive orbit helps the hero escape enemies that enter close range.",
+      "upgrade_direction": [
+        "Summon two circling ice blades.",
+        "Improve slow duration.",
+        "Add a third blade."
+      ],
+      "synergies": [
+        "fleet-foot",
+        "repelling-bolts"
+      ],
+      "balance_notes": "Contact slows do not stack. Bosses receive a reduced slow and cannot be permanently controlled.",
+      "current_game_comparison": "Not in the current 17-skill reference",
+      "reference": "Archero: Ice Sword, adapted",
+      "image": {
+        "file": "images/rime-blades.png",
+        "width": 1086,
+        "height": 1448,
+        "format": "PNG",
+        "bytes": 3224072,
+        "sha256": "213a7077e89d1d20d1fc9f1fd7b33280c45e8b02c864a60a1832ab1c49fa63bf"
+      }
+    },
+    {
+      "number": 23,
+      "id": "storm-satellites",
+      "name": "Storm Satellites",
+      "rarity": "Epic",
+      "category": "Orbitals",
+      "tagline": "Your own little thunderstorm",
+      "description": "Charged orbs circle at medium range and periodically zap the nearest enemy.",
+      "why_it_works": "Orbiters that deal ranged damage feel different from contact-only rings.",
+      "upgrade_direction": [
+        "Summon two charged satellites.",
+        "Reduce their discharge interval.",
+        "Allow each discharge one short secondary arc."
+      ],
+      "synergies": [
+        "storm-touch",
+        "eclipse-crown"
+      ],
+      "balance_notes": "Satellite arcs are secondary damage and cannot trigger Storm Touch or Legendary weapon-hit counters.",
+      "current_game_comparison": "New Survivor Souls concept",
+      "reference": "Original; inspired by Archero’s Bolt Circle",
+      "image": {
+        "file": "images/storm-satellites.png",
+        "width": 1086,
+        "height": 1448,
+        "format": "PNG",
+        "bytes": 3085735,
+        "sha256": "2a78434053e953c65e1c8c2a661400cb73369ce04e15f7dcb59b4d6d74eb54bb"
+      }
+    },
+    {
+      "number": 24,
+      "id": "reaper-scythes",
+      "name": "Reaper Scythes",
+      "rarity": "Epic",
+      "category": "Orbitals",
+      "tagline": "Harvest the outer circle",
+      "description": "A slow pair of spectral scythes sweeps a wide outer orbit, dealing heavy contact damage.",
+      "why_it_works": "A slower, heavier orbit creates strong visual contrast with books and sparks.",
+      "upgrade_direction": [
+        "Summon two wide-orbit scythes.",
+        "Improve damage per sweep.",
+        "Increase scythe size slightly."
+      ],
+      "synergies": [
+        "frost-bolts",
+        "eclipse-crown"
+      ],
+      "balance_notes": "Scythes are heavy sweeping attacks, not execute effects. Tune contact intervals to prevent repeated hits in one pass.",
+      "current_game_comparison": "New Survivor Souls concept",
+      "reference": "Original proposal",
+      "image": {
+        "file": "images/reaper-scythes.png",
+        "width": 1086,
+        "height": 1448,
+        "format": "PNG",
+        "bytes": 3422205,
+        "sha256": "e211f4752753db931eb7c4ccefe55518a295ed88cde4b130b3d8d4b4c3c9db34"
+      }
+    },
+    {
+      "number": 25,
+      "id": "sentinel-halo",
+      "name": "Sentinel Halo",
+      "rarity": "Epic",
+      "category": "Orbitals",
+      "tagline": "Keep a little sky between you",
+      "description": "Two shield fragments orbit the hero and intercept enemy projectiles.",
+      "why_it_works": "A defensive orbit gives the family a role beyond stacking damage.",
+      "upgrade_direction": [
+        "Summon two blocking shield fragments.",
+        "Improve their angular coverage.",
+        "Add a third fragment."
+      ],
+      "synergies": [
+        "holy-tomes",
+        "hallowed-shield"
+      ],
+      "balance_notes": "Fragments block projectiles only, not contact damage, ground hazards, or boss beams. They do not deal contact damage.",
+      "current_game_comparison": "Not in the current 17-skill reference",
+      "reference": "Archero: Shield Guard, adapted",
+      "image": {
+        "file": "images/sentinel-halo.png",
+        "width": 1086,
+        "height": 1448,
+        "format": "PNG",
+        "bytes": 3036974,
+        "sha256": "4172c697c7ee900eba35b71f307cd25e97e8a7afbd1e929fa028ecaf970b15e8"
+      }
+    },
+    {
+      "number": 26,
+      "id": "multishot",
+      "name": "Multishot",
+      "rarity": "Legendary",
+      "category": "Projectiles",
+      "tagline": "Let the second volley answer",
+      "description": "Repeat the weapon’s firing pattern in a second volley shortly after the first.",
+      "why_it_works": "A run-defining pickup that makes forward, spread, and rear shots all feel more powerful.",
+      "upgrade_direction": [
+        "Repeat the complete firing pattern once.",
+        "Reduce the repeated volley’s damage penalty.",
+        "Improve repeated-volley damage; keep volley count capped."
+      ],
+      "synergies": [
+        "front-arrow",
+        "ricochet",
+        "spread-shot"
+      ],
+      "balance_notes": "Confirm the current Double Shot timing. Use damage and interval penalties to avoid multiplying every lane at full damage.",
+      "current_game_comparison": "Double Shot · Epic → Legendary; rename",
+      "reference": "Archero: Multishot",
+      "image": {
+        "file": "images/multishot.png",
+        "width": 1086,
+        "height": 1448,
+        "format": "PNG",
+        "bytes": 3099578,
+        "sha256": "672a5f17ac1e64116a4c0bef3e94b8b4716b6525ffe5193aafe003efeb258c34"
+      }
+    },
+    {
+      "number": 27,
+      "id": "ricochet",
+      "name": "Ricochet",
+      "rarity": "Legendary",
+      "category": "Projectiles",
+      "tagline": "One arrow finds a crowd",
+      "description": "Bolts jump between nearby enemies, losing some damage with each hop.",
+      "why_it_works": "The first pickup should visibly stitch a chain through the horde.",
+      "upgrade_direction": [
+        "Allow several visible target hops.",
+        "Reduce damage falloff.",
+        "Increase the finite hop cap."
+      ],
+      "synergies": [
+        "multishot",
+        "venom-bolts",
+        "ember-bolts"
+      ],
+      "balance_notes": "Never revisit a target in the same projectile chain. Share a finite hit budget with Pierce and stop when no valid target is nearby.",
+      "current_game_comparison": "Ricochet · Rare → Legendary",
+      "reference": "Archero: Ricochet",
+      "image": {
+        "file": "images/ricochet.png",
+        "width": 1086,
+        "height": 1448,
+        "format": "PNG",
+        "bytes": 2866690,
+        "sha256": "b3a6152f93ecbf61803bfe8cbeabaa6384f475a59b82a26a833e7e1ac2a4f5f4"
+      }
+    },
+    {
+      "number": 28,
+      "id": "second-dawn",
+      "name": "Second Dawn",
+      "rarity": "Legendary",
+      "category": "Survival",
+      "tagline": "Death will have to wait",
+      "description": "Once per run, a fatal hit instead revives the hero with partial health, clears nearby threats with a shockwave, and grants brief immunity.",
+      "why_it_works": "The requested revive becomes an unmistakable comeback moment.",
+      "upgrade_direction": [
+        "Revive once with partial health.",
+        "Improve restored health.",
+        "Widen the revival shockwave."
+      ],
+      "synergies": [
+        "vigor",
+        "hallowed-shield"
+      ],
+      "balance_notes": "One revive per run across all ranks. Upgrading cannot reset a consumed charge. The shockwave cannot trigger on-kill skill chains.",
+      "current_game_comparison": "Not in the current 17-skill reference",
+      "reference": "Archero: Extra Life, expanded",
+      "image": {
+        "file": "images/second-dawn.png",
+        "width": 1086,
+        "height": 1448,
+        "format": "PNG",
+        "bytes": 3349122,
+        "sha256": "32f3ae66b463d9c44cd3dfbdee88d5ad1c5c7b2791a23adb813ad01edeeaae0d"
+      }
+    },
+    {
+      "number": 29,
+      "id": "eclipse-crown",
+      "name": "Eclipse Crown",
+      "rarity": "Legendary",
+      "category": "Orbitals",
+      "tagline": "Wear the end of the sun",
+      "description": "Periodically align all owned orbiters into a sweeping eclipse formation, then release a dark pulse and restore their normal orbits.",
+      "why_it_works": "A spectacular payoff for collecting different circling skills.",
+      "upgrade_direction": [
+        "Unlock the eclipse formation and pulse.",
+        "Improve pulse radius.",
+        "Shorten the formation cooldown."
+      ],
+      "synergies": [
+        "holy-tomes",
+        "reaper-scythes",
+        "storm-satellites"
+      ],
+      "balance_notes": "Requires at least one orbital skill. Preserve each orbiter’s role; shield fragments still block rather than deal damage. Cap pulse scaling per owned orbital skill.",
+      "current_game_comparison": "New Survivor Souls concept",
+      "reference": "Original Legendary proposal",
+      "image": {
+        "file": "images/eclipse-crown.png",
+        "width": 1086,
+        "height": 1448,
+        "format": "PNG",
+        "bytes": 2985706,
+        "sha256": "be21423663062f4c43ca0ed3abf346ab73c5c5c16414ec706533336445bcfc34"
+      }
+    },
+    {
+      "number": 30,
+      "id": "grave-choir",
+      "name": "Grave Choir",
+      "rarity": "Legendary",
+      "category": "Summons",
+      "tagline": "The fallen join your song",
+      "description": "Weapon kills have a chance to raise a temporary spectral archer that fires at enemies.",
+      "why_it_works": "The battlefield visibly changes as an army of echoes joins the hero.",
+      "upgrade_direction": [
+        "Raise temporary archers, with a small summon cap.",
+        "Increase summon duration.",
+        "Improve archer damage."
+      ],
+      "synergies": [
+        "piercing-bolts",
+        "keen-eye"
+      ],
+      "balance_notes": "Summon kills cannot summon more archers or trigger weapon-hit counters. Cap active archers and use simple target selection.",
+      "current_game_comparison": "New Survivor Souls concept",
+      "reference": "Original; inspired by Shadow Clone",
+      "image": {
+        "file": "images/grave-choir.png",
+        "width": 1086,
+        "height": 1448,
+        "format": "PNG",
+        "bytes": 3310283,
+        "sha256": "064208fa2db8975a530159017b185c87d96688e677161f4145c21fcd5280bc40"
+      }
+    },
+    {
+      "number": 31,
+      "id": "last-oath",
+      "name": "Last Oath",
+      "rarity": "Legendary",
+      "category": "Survival",
+      "tagline": "The closer the grave, the brighter the vow",
+      "description": "Dropping below a low-health threshold triggers a short surge of weapon damage and limited lifesteal.",
+      "why_it_works": "A dramatic risk-and-reward comeback option for players who keep fighting under pressure.",
+      "upgrade_direction": [
+        "Unlock a short low-health surge.",
+        "Improve surge weapon damage.",
+        "Reduce surge cooldown."
+      ],
+      "synergies": [
+        "vigor",
+        "ashen-heart"
+      ],
+      "balance_notes": "Use a long cooldown, cap healing per activation, and require health to recover above the threshold before rearming. No invulnerability.",
+      "current_game_comparison": "New Survivor Souls concept",
+      "reference": "Original; combines a low-health trigger with a bounded covenant",
+      "image": {
+        "file": "images/last-oath.png",
+        "width": 1086,
+        "height": 1448,
+        "format": "PNG",
+        "bytes": 2760656,
+        "sha256": "e4359a77d08364216916bd3aa64e767c0966e4b60466c5b1828c034d2a2429e4"
+      }
+    },
+    {
+      "number": 32,
+      "id": "stolen-moment",
+      "name": "Stolen Moment",
+      "rarity": "Legendary",
+      "category": "Projectiles",
+      "tagline": "Steal a heartbeat from time",
+      "description": "After enough main-weapon volleys, a stationary time echo repeats the last firing pattern several times while the hero can reposition.",
+      "why_it_works": "A burst of spectral volleys creates a mobile escape window in a stand-to-shoot game.",
+      "upgrade_direction": [
+        "Create a brief time echo after a volley threshold.",
+        "Improve echo damage.",
+        "Reduce the required volley count."
+      ],
+      "synergies": [
+        "spread-shot",
+        "front-arrow"
+      ],
+      "balance_notes": "Count original volleys only. Echoes cannot create echoes, inherit Multishot repetition, or trigger other weapon-hit counters.",
+      "current_game_comparison": "New Survivor Souls concept",
+      "reference": "Original Legendary proposal",
+      "image": {
+        "file": "images/stolen-moment.png",
+        "width": 1086,
+        "height": 1448,
+        "format": "PNG",
+        "bytes": 3295016,
+        "sha256": "695f4005163cdfa87b5614fcc8b8de3bb5f72c50be89a5bab66250a62fd3a4dc"
+      }
+    },
+    {
+      "number": 33,
+      "id": "sovereigns-fall",
+      "name": "Sovereign’s Fall",
+      "rarity": "Legendary",
+      "category": "Elements",
+      "tagline": "Pass sentence on the battlefield",
+      "description": "After enough direct weapon critical hits, a colossal spectral sword strikes the current target and damages enemies around it.",
+      "why_it_works": "An enormous, readable impact turns a critical build into an event.",
+      "upgrade_direction": [
+        "Unlock the falling sword.",
+        "Improve impact damage.",
+        "Increase impact radius."
+      ],
+      "synergies": [
+        "keen-eye",
+        "quick-draw"
+      ],
+      "balance_notes": "Count direct weapon critical hits only and enforce a minimum trigger interval. This is damage, not an instant kill; bosses remain valid targets.",
+      "current_game_comparison": "New Survivor Souls concept",
+      "reference": "Original Legendary proposal",
+      "image": {
+        "file": "images/sovereigns-fall.png",
+        "width": 1086,
+        "height": 1448,
+        "format": "PNG",
+        "bytes": 3195838,
+        "sha256": "2f8b7342498b1988d17a5e6382643c4c0c49e79344d5bcabc7377975dbd0e7b7"
+      }
+    }
+  ]
+}
