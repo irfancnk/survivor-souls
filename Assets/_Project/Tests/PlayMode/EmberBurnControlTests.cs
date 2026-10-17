@@ -283,23 +283,25 @@ namespace SurvivorSouls.Tests
         }
 
         [Test]
-        public void ShippedEmberBolts_SlowAndStunPerLevel()
+        public void ShippedEmberBolts_BurnOnly_NoSlowNoStun()
         {
 #if UNITY_EDITOR
+            // KAN-246 Ember Boons: Ember Bolts burns only (Frost Bolts owns crowd control). The slow / ignite stun mechanism
+            // (KAN-134) stays and is tested above with its own skill data.
             var skill = UnityEditor.AssetDatabase.LoadAssetAtPath<SkillDefinition>("Assets/_Project/Data/Skills/Skill_EmberBolts.asset");
             Assert.That(skill, Is.Not.Null);
             _manager.Grant(skill);
             var ember = (BurnOnHitEffect)_manager.OwnedSkills.Single().Effect;
-            float[] slow = { 0.15f, 0.18f, 0.21f, 0.25f, 0.26f, 0.28f, 0.3f }; // KAN-220: 7 levels
             for (int level = 1; level <= 7; level++)
             {
                 if (level > 1) _manager.Upgrade(skill);
-                Assert.That(ember.SlowShare, Is.EqualTo(slow[level - 1]).Within(1e-4f), $"L{level} slow");
-                Assert.That(ember.IgniteStun, Is.EqualTo(0.2f).Within(1e-4f), $"L{level} stun");
+                Assert.That(ember.SlowShare, Is.EqualTo(0f), $"L{level} slow");
+                Assert.That(ember.IgniteStun, Is.EqualTo(0f), $"L{level} stun");
                 var e = SpawnEnemy(new Vector3(level, 0f, 4f));
                 HitHandler(ember)(new BoltHit { Enemy = e });
-                Assert.That(e.Slow, Is.EqualTo(slow[level - 1]).Within(1e-4f), $"L{level} foe slow");
-                Assert.That(e.IsStunned, Is.True, $"L{level} ignite flinch");
+                Assert.That(e.IsBurning, Is.True, $"L{level} burns");
+                Assert.That(e.Slow, Is.EqualTo(0f), $"L{level} foe slow");
+                Assert.That(e.IsStunned, Is.False, $"L{level} no ignite flinch");
             }
             Assert.That(skill.DescriptionAt(1), Does.Contain("ablaze"), "the card says what it does");
 #else

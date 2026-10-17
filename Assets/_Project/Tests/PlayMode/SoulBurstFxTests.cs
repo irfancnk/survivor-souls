@@ -136,8 +136,9 @@ namespace SurvivorSouls.Tests
         }
 
         [Test]
-        public void Chain_CountsDepth_AndOnlyADeepChainShakes()
+        public void BurstKills_StartNoChain_NoShake()
         {
+            // KAN-246 Ember Boons: a kill by a burst damages the crowd but starts no new burst (no chain reaction).
             var burst = Grant(5f); // one burst kills the next foe
             var line = new Enemy[7];
             for (int i = 0; i < line.Length; i++) line[i] = SpawnEnemy(new Vector3(i * 2.2f, 0f, 3f));
@@ -145,16 +146,10 @@ namespace SurvivorSouls.Tests
             burst.Tick();
             Assert.That(burst.LastDepth, Is.EqualTo(0), "a kill by the Knight");
             Assert.That(line[1].IsAlive, Is.False);
-            for (int k = 1; k <= 3; k++)
-            {
-                burst.Tick();
-                Assert.That(burst.LastDepth, Is.EqualTo(k));
-                Assert.That(burst.Shakes, Is.Zero, "no shake for a short chain");
-            }
-            burst.Tick();
-            Assert.That(burst.LastDepth, Is.EqualTo(4));
-            Assert.That(burst.Shakes, Is.EqualTo(1), "a deep chain gives one small shake");
-            Assert.That(burst.LastBurstParticles, Is.LessThan(burst.MaxBurstParticles), "deep links emit fewer particles");
+            for (int k = 1; k <= 4; k++) burst.Tick();
+            Assert.That(burst.BurstCount, Is.EqualTo(1), "line[1] died to the burst: no burst of its own");
+            Assert.That(line[2].IsAlive, Is.True, "the chain stops at the first link");
+            Assert.That(burst.Shakes, Is.Zero, "no deep chain, no shake");
         }
 
         [Test]

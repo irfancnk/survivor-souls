@@ -64,6 +64,30 @@ namespace SurvivorSouls.Gameplay.Player
         /// </summary>
         public bool Warded { get; set; }
 
+        /// <summary>
+        /// Last stand (KAN-246 Second Dawn): asked when a hit would bring health to 0. Return the health to come back with
+        /// (&gt; 0) to cancel the death, or 0 to die. The hit is still taken: health goes to 0 first, then to the returned
+        /// value; <see cref="OnDeath"/> is not raised. One listener (the skill effect).
+        /// </summary>
+        public Func<float> LastStand { get; set; }
+        /// <summary>Times a <see cref="LastStand"/> brought the Knight back this run.</summary>
+        public int Revives { get; private set; }
+        /// <summary>Raised after a <see cref="LastStand"/> revive: health restored.</summary>
+        public event Action<float> OnRevived;
+
+        private float _immuneLeft;
+
+        /// <summary>Seconds of revive immunity left (KAN-246 Second Dawn): no damage at all while above 0.</summary>
+        public float ImmunityLeft => _immuneLeft;
+
+        /// <summary>No damage for <paramref name="seconds"/> (KAN-246 Second Dawn). Separate from wards and the boss intro flag; the longer time wins.</summary>
+        public void GrantImmunity(float seconds) => _immuneLeft = Mathf.Max(_immuneLeft, seconds);
+
+        private void Update()
+        {
+            if (_immuneLeft > 0f) _immuneLeft -= Time.deltaTime;
+        }
+
         private void Awake()
         {
             _stats = GetComponent<PlayerStats>();
@@ -94,7 +118,7 @@ namespace SurvivorSouls.Gameplay.Player
         /// <summary>Deducts up to <paramref name="amount"/>. Returns the health actually deducted.</summary>
         public float TakeDamage(float amount)
         {
-            if (_dead || Invulnerable || amount <= 0f) return 0f;
+            if (_dead || Invulnerable || _immuneLeft > 0f || amount <= 0f) return 0f;
             if (Warded)
             {
                 OnWardBlocked?.Invoke(amount);
@@ -110,6 +134,20 @@ namespace SurvivorSouls.Gameplay.Player
             float deducted = Mathf.Min(amount, _current);
             _current -= deducted; // exactly 0 when amount >= current (no float drift past zero)
             _dead = _current <= 0f;
+            if (_dead && LastStand != null) // KAN-246 Second Dawn
+            {
+                float back = Mathf.Min(LastStand(), _max);
+                if (back > 0f)
+                {
+                    _dead = false;
+                    _current = back;
+                    Revives++;
+                    OnHealthChanged?.Invoke(_current, _max);
+                    OnDamaged?.Invoke(deducted);
+                    OnRevived?.Invoke(back);
+                    return deducted;
+                }
+            }
 
             OnHealthChanged?.Invoke(_current, _max);
             OnDamaged?.Invoke(deducted);
@@ -130,7 +168,7 @@ namespace SurvivorSouls.Gameplay.Player
         /// </summary>
         public float TakeDamage(float amount, Vector3 source)
         {
-            if (_dead || Invulnerable || amount <= 0f) return 0f;
+            if (_dead || Invulnerable || _immuneLeft > 0f || amount <= 0f) return 0f;
             if (Warded) return TakeDamage(amount); // KAN-93: blocked, ward feedback only (no OnHit)
             float dealt = TakeDamage(amount);
             OnHit?.Invoke(new PlayerHit(dealt, _max > 0f ? dealt / _max : 0f, source, _dead));

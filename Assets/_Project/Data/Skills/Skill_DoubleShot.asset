@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: Skill_DoubleShot
   m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Skills.SkillDefinition
   id: double_shot
-  displayName: Double Shot
-  description: 1 extra bolt down the same line
-  icon: {fileID: 2800000, guid: 66178374aca0344f3809a41cf972516f, type: 3}
-  rarity: 2
+  displayName: Multishot
+  description: Every volley fires once more
+  icon: {fileID: 2800000, guid: 20822393fbb149a48dceb6540a725c36, type: 3}
+  rarity: 3
   maxStack: 5
   weight: 1
   modifiers:
@@ -24,17 +24,17 @@ MonoBehaviour:
     kind: 0
     value: 1
   levels:
-  - description: 1 extra bolt down the same line
+  - description: Every volley fires once more
     modifiers:
     - stat: 19
       kind: 0
       value: 1
-  - description: 2 extra bolts down the same line
+  - description: Every volley fires twice more
     modifiers:
     - stat: 19
       kind: 0
       value: 2
-  - description: 3 extra bolts, 90% damage each
+  - description: Volley 3 times more, 90% damage
     modifiers:
     - stat: 19
       kind: 0
@@ -42,12 +42,12 @@ MonoBehaviour:
     - stat: 21
       kind: 1
       value: -0.1
-  - description: 3 extra bolts, full damage each
+  - description: Volley 3 times more, full damage
     modifiers:
     - stat: 19
       kind: 0
       value: 3
-  - description: 3 extra bolts, 115% damage each
+  - description: Volley 3 times more, 115% damage
     modifiers:
     - stat: 19
       kind: 0
@@ -61,3 +61,4 @@ MonoBehaviour:
   - 0.25
   - 0.06
   upgradeOfferWeight: 0.35
+  requiresAnyOf: []

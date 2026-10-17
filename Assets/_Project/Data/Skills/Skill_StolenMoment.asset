@@ -1,0 +1,49 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1fe610960d6a34b01a28534f0f33effb, type: 3}
+  m_Name: Skill_StolenMoment
+  m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Skills.SkillDefinition
+  id: stolen_moment
+  displayName: Stolen Moment
+  description: '8th volley: an echo fires 3 times'
+  icon: {fileID: 2800000, guid: 572b56561bac4c3481a0f62c2d7ede70, type: 3}
+  rarity: 3
+  maxStack: 3
+  weight: 1
+  modifiers:
+  - stat: 76
+    kind: 0
+    value: 0.6
+  levels:
+  - description: '8th volley: an echo fires 3 times'
+    modifiers:
+    - stat: 76
+      kind: 0
+      value: 0.6
+  - description: Echo volleys deal 80% damage
+    modifiers:
+    - stat: 76
+      kind: 0
+      value: 0.8
+  - description: '6th volley: an echo fires 3 times'
+    modifiers:
+    - stat: 76
+      kind: 0
+      value: 0.8
+    - stat: 77
+      kind: 0
+      value: -2
+  effectPrefab: {fileID: 8617655396703549892, guid: b38d6d7864b84bb4da607640f1e34355, type: 3}
+  requiresUpgradableSkill: 0
+  repeatOfferWeights: []
+  upgradeOfferWeight: 1
+  requiresAnyOf: []

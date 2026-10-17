@@ -251,6 +251,29 @@ namespace SurvivorSouls.Gameplay.Combat
             Draw();
         }
 
+        /// <summary>
+        /// KAN-246 Sentinel Halo: removes the straight shots (and low, blockable lobs) within <paramref name="radius"/> m of
+        /// <paramref name="point"/> on the ground plane, as if a wall stopped them (<see cref="Blocked"/>). Hazard lobs high
+        /// in the air fly on. Returns the shots stopped.
+        /// </summary>
+        public int Intercept(Vector3 point, float radius)
+        {
+            int stopped = 0;
+            float r2 = radius * radius;
+            for (int i = _count - 1; i >= 0; i--)
+            {
+                ref var s = ref _shots[i];
+                float dx = s.Position.x - point.x, dz = s.Position.z - point.z;
+                if (dx * dx + dz * dz > r2) continue;
+                if (s.Lobbed && (!s.Blockable || s.Position.y - point.y > LowArcHeight)) continue;
+                Blocked?.Invoke(s.Position);
+                EndCircle(ref s, hide: true);
+                Remove(i);
+                stopped++;
+            }
+            return stopped;
+        }
+
         /// <summary>Removes every shot and hides their warnings (scene end, tests).</summary>
         public void Clear()
         {

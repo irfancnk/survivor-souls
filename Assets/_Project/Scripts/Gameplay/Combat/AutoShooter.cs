@@ -60,9 +60,20 @@ namespace SurvivorSouls.Gameplay.Combat
         [SerializeField, Range(0f, 1f)] private float bounceFalloff = BoltShot.DefaultBounceFalloff;
         [Tooltip("KAN-200: burn damage per second of the coolest (Ember Bolts level 1) and hottest (level 4) blazing bolt look.")]
         [SerializeField] private Vector2 blazeDps = new Vector2(25f, 75f);
+        [Header("Ember Boons (KAN-246)")]
+        [Tooltip("Front Arrow +1: metres between two parallel forward lanes.")]
+        [SerializeField, Range(0.1f, 1f)] private float frontLaneStep = 0.42f;
+        [Tooltip("Rear Arrow +1: degrees between two rear bolts.")]
+        [SerializeField, Range(0f, 45f)] private float rearSpread = 20f;
+        [Tooltip("Bouncy Wall: damage share a bolt keeps after a wall rebound, before skills (levels add to it).")]
+        [SerializeField, Range(0.1f, 1f)] private float wallKeep = 0.6f;
 
         /// <summary>Heat of the coolest blazing bolt (KAN-200): any burn at all already reads as fire.</summary>
         public const float MinBlazeHeat = 0.25f;
+        /// <summary>KAN-246 cap: crit chance never goes above this, whatever the sources.</summary>
+        public const float MaxCritChance = 0.75f;
+        /// <summary>KAN-246 cap: the shortest time between two volleys (s), so attack speed keeps readable attack animations.</summary>
+        public const float MinFireInterval = 0.22f;
 
         private const float MovingSpeed = 0.2f;
         private const float MaxCarry = 0.25f; // most reload overshoot one frame may carry into the next reload
@@ -122,8 +133,15 @@ namespace SurvivorSouls.Gameplay.Combat
         public float CurrentBounceFalloff => Mathf.Clamp01(PlayerStats.Eval(_stats, StatId.BounceFalloff, bounceFalloff));
         /// <summary>Bolt damage after skills (burst and similar skills scale from it).</summary>
         public float CurrentDamage => PlayerStats.Eval(_stats, StatId.Damage, damage);
-        /// <summary>Seconds between shots after attack speed skills.</summary>
-        public float CurrentInterval => 1f / Mathf.Max(0.05f, PlayerStats.Eval(_stats, StatId.AttackSpeed, 1f / fireInterval));
+        /// <summary>Seconds between shots after attack speed skills (never below <see cref="MinFireInterval"/>, KAN-246).</summary>
+        public float CurrentInterval =>
+            Mathf.Max(MinFireInterval, 1f / Mathf.Max(0.05f, PlayerStats.Eval(_stats, StatId.AttackSpeed, 1f / fireInterval)));
+        /// <summary>Crit chance after skills, capped at <see cref="MaxCritChance"/> (KAN-246).</summary>
+        public float CurrentCritChance => Mathf.Min(MaxCritChance, Mathf.Clamp01(PlayerStats.Eval(_stats, StatId.CritChance, critChance)));
+        /// <summary>Volleys fired this life of the shooter (Stolen Moment counts them, KAN-246).</summary>
+        public int VolleysFired { get; private set; }
+        /// <summary>Aim direction of the last volley (unit, flat-ish). Forward before the first shot.</summary>
+        public Vector3 LastAimDirection { get; private set; } = Vector3.forward;
         /// <summary>
         /// Bolt look heat from the burn damage (KAN-200): 0 without Ember Bolts (<see cref="StatId.BurnDps"/> 0), else
         /// <see cref="MinBlazeHeat"/> at level 1 rising to 1 at level 4 (<see cref="blazeDps"/>).
@@ -163,6 +181,12 @@ namespace SurvivorSouls.Gameplay.Combat
             ChainLateral = doubleShotOffset,
             ChainDamage = Mathf.Max(0f, PlayerStats.Eval(_stats, StatId.ChainDamage, 1f)),
             Cap = Mathf.Min(maxBoltsPerVolley, _volley.Length),
+            Front = _stats != null ? _stats.ModifyInt(StatId.FrontLanes, 0) : 0,
+            FrontStep = frontLaneStep,
+            FrontDamage = Mathf.Clamp(PlayerStats.Eval(_stats, StatId.FrontDamage, 1f), 0f, 1.5f),
+            Rear = _stats != null ? _stats.ModifyInt(StatId.RearArrows, 0) : 0,
+            RearStep = rearSpread,
+            RearDamage = Mathf.Max(0f, PlayerStats.Eval(_stats, StatId.RearDamage, 0f)),
         };
 
         /// <summary>Debug text of the current volley (Survivor Souls/Debug/Skills: Print Volley).</summary>
@@ -289,21 +313,8 @@ namespace SurvivorSouls.Gameplay.Combat
             Vector3 from = PointBlankAim.Start(transform.position, muzzleAt, point);
             Vector3 back = muzzleAt - from;
             Vector3 dir = (point - from).normalized;
-            var shot = new BoltShot
-            {
-                Damage = CurrentDamage,
-                Speed = boltSpeed,
-                Lifetime = range * 1.5f / boltSpeed,
-                CritChance = Mathf.Clamp01(PlayerStats.Eval(_stats, StatId.CritChance, critChance)),
-                CritMultiplier = Mathf.Max(1f, PlayerStats.Eval(_stats, StatId.CritDamage, critMultiplier)),
-                Pierce = _stats != null ? _stats.ModifyInt(StatId.Pierce, 0) : 0,
-                Ricochet = _stats != null ? _stats.ModifyInt(StatId.Ricochet, 0) : 0,
-                RicochetRange = ricochetRange,
-                PierceFalloff = CurrentPierceFalloff,
-                BounceFalloff = CurrentBounceFalloff,
-                Heat = BoltHeat,
-                Guard = PointBlankAim.Guard(transform.position, from, point), // KAN-226: no hit on an enemy behind the Knight
-            };
+            var shot = MakeShot();
+            shot.Guard = PointBlankAim.Guard(transform.position, from, point); // KAN-226: no hit on an enemy behind the Knight
             int count = VolleyBuilder.Build(CurrentVolleySpec, _volley);
             for (int i = 0; i < count; i++)
             {
@@ -311,6 +322,7 @@ namespace SurvivorSouls.Gameplay.Combat
                 Vector3 d = a.Yaw == 0f ? dir : Quaternion.AngleAxis(a.Yaw, Vector3.up) * dir;
                 var scaled = shot;
                 scaled.Damage *= a.DamageScale;
+                if (Mathf.Abs(a.Yaw) > 90f) scaled.Guard = 0f; // KAN-246 rear bolt: the point-blank guard is for the forward line
                 if (a.Delay <= 0f)
                 {
                     Launch(from, d, a.Lateral, scaled);
@@ -323,7 +335,80 @@ namespace SurvivorSouls.Gameplay.Combat
                     };
                 }
             }
+            VolleysFired++;
+            LastAimDirection = dir;
             Fired?.Invoke(muzzleAt, dir);
+        }
+
+        /// <summary>
+        /// The bolt the current stats fire (KAN-246: one place for main volleys, echoes and summons): damage, crit (capped),
+        /// pierce + ricochet inside the shared hit budget, wall rebounds, falloffs, heat. No point-blank guard.
+        /// </summary>
+        public BoltShot MakeShot()
+        {
+            int pierce = _stats != null ? _stats.ModifyInt(StatId.Pierce, 0) : 0;
+            int ricochet = _stats != null ? _stats.ModifyInt(StatId.Ricochet, 0) : 0;
+            ricochet = Mathf.Min(ricochet, BoltShot.MaxExtraHits);
+            pierce = Mathf.Min(pierce, BoltShot.MaxExtraHits - ricochet);
+            return new BoltShot
+            {
+                Damage = CurrentDamage,
+                Speed = boltSpeed,
+                Lifetime = range * 1.5f / boltSpeed,
+                CritChance = CurrentCritChance,
+                CritMultiplier = Mathf.Max(1f, PlayerStats.Eval(_stats, StatId.CritDamage, critMultiplier)),
+                Pierce = pierce,
+                Ricochet = ricochet,
+                RicochetRange = ricochetRange,
+                PierceFalloff = CurrentPierceFalloff,
+                BounceFalloff = CurrentBounceFalloff,
+                Heat = BoltHeat,
+                WallBounces = _stats != null ? _stats.ModifyInt(StatId.WallBounces, 0) : 0,
+                WallKeep = Mathf.Clamp01(PlayerStats.Eval(_stats, StatId.WallDamage, wallKeep)),
+            };
+        }
+
+        /// <summary>
+        /// Secondary bolt (KAN-246, <see cref="ProcGuard"/>): a pooled bolt from <paramref name="from"/> along
+        /// <paramref name="direction"/> that hits like a normal one but is never reported by <see cref="EnemyHit"/>, so it
+        /// sets off no weapon-hit skill (echoes, spectral archers). Counts against the active bolt budget. False when over it.
+        /// </summary>
+        public bool LaunchSecondary(Vector3 from, Vector3 direction, in BoltShot shot)
+        {
+            if (boltPrefab == null || _active >= maxActiveBolts || direction.sqrMagnitude < 1e-6f) return false;
+            var bolt = _pool.Count > 0 ? _pool.Pop() : Instantiate(boltPrefab);
+            _active++;
+            bolt.Launch(from, direction.normalized, shot, _release);
+            return true;
+        }
+
+        /// <summary>
+        /// Stolen Moment echo (KAN-246): the current firing pattern once (spread, forward lanes, rear bolts; no Multishot
+        /// repeat) from <paramref name="origin"/> along <paramref name="direction"/> at <paramref name="damageShare"/> of the
+        /// damage, as secondary bolts. Returns the bolts launched.
+        /// </summary>
+        public int FireEcho(Vector3 origin, Vector3 direction, float damageShare)
+        {
+            direction.y = 0f;
+            if (direction.sqrMagnitude < 1e-6f) return 0;
+            direction.Normalize();
+            var spec = CurrentVolleySpec;
+            spec.Chain = 0;
+            var shot = MakeShot();
+            shot.Damage *= Mathf.Max(0f, damageShare);
+            int count = VolleyBuilder.Build(spec, _volley);
+            int launched = 0;
+            for (int i = 0; i < count; i++)
+            {
+                var a = _volley[i];
+                Vector3 d = a.Yaw == 0f ? direction : Quaternion.AngleAxis(a.Yaw, Vector3.up) * direction;
+                var scaled = shot;
+                scaled.Damage *= a.DamageScale;
+                Vector3 from = origin;
+                if (a.Lateral != 0f) from += Vector3.Cross(Vector3.up, d).normalized * a.Lateral;
+                if (LaunchSecondary(from, d, scaled)) launched++;
+            }
+            return launched;
         }
 
         private Vector3 MuzzlePosition => muzzle != null ? muzzle.position : transform.position + Vector3.up * 1.1f;

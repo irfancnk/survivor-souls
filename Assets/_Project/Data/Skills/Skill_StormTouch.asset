@@ -1,0 +1,58 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1fe610960d6a34b01a28534f0f33effb, type: 3}
+  m_Name: Skill_StormTouch
+  m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Skills.SkillDefinition
+  id: storm_touch
+  displayName: Storm Touch
+  description: Hits arc to 1 foe, 35% damage
+  icon: {fileID: 2800000, guid: 7886db0230a240008dfc9de5bbb45e43, type: 3}
+  rarity: 1
+  maxStack: 3
+  weight: 1
+  modifiers:
+  - stat: 41
+    kind: 0
+    value: 1
+  - stat: 42
+    kind: 0
+    value: 0.35
+  levels:
+  - description: Hits arc to 1 foe, 35% damage
+    modifiers:
+    - stat: 41
+      kind: 0
+      value: 1
+    - stat: 42
+      kind: 0
+      value: 0.35
+  - description: Hits arc to 1 foe, 55% damage
+    modifiers:
+    - stat: 41
+      kind: 0
+      value: 1
+    - stat: 42
+      kind: 0
+      value: 0.55
+  - description: Hits arc to 2 foes, 55% damage
+    modifiers:
+    - stat: 41
+      kind: 0
+      value: 2
+    - stat: 42
+      kind: 0
+      value: 0.55
+  effectPrefab: {fileID: 825403482485906113, guid: 84cd33ef4fc22a1458bea55a24375930, type: 3}
+  requiresUpgradableSkill: 0
+  repeatOfferWeights: []
+  upgradeOfferWeight: 1
+  requiresAnyOf: []

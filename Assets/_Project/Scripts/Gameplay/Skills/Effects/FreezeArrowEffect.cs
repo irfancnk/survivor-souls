@@ -8,7 +8,8 @@ namespace SurvivorSouls.Gameplay.Skills.Effects
     /// for <see cref="StatId.FreezeDuration"/> s (<see cref="Enemy.Freeze"/>: rooted, no bite, attacks paused, ice tint).
     /// Only hits that leave the foe alive count, so a frost hit is never spent on a kill. A frost hit on a foe that cannot
     /// freeze now (its <see cref="refreezeDelay"/> after the last freeze still runs) keeps the charge: the next hit tries
-    /// again. Bosses freeze for <see cref="bossShare"/> of the time (rooted only, their patterns keep going), elites
+    /// again. KAN-246 (Frost Bolts): bosses are never frozen: a frost hit slows a boss (<see cref="bossSlow"/>) for
+    /// <see cref="bossShare"/> of the time. Elites
     /// (<see cref="Enemy.XpValue"/> &gt;= <see cref="eliteMinXp"/>, the chest elite rule) for <see cref="eliteShare"/>.
     /// Look: ONE shared world-space system (<see cref="frost"/>, Emit only, alpha blend so it reads on the Realm 1 snow) for
     /// the freeze burst (a pale flash, ice shards thrown out, frost mist) and the rime crystals that drift off frozen foes,
@@ -25,6 +26,8 @@ namespace SurvivorSouls.Gameplay.Skills.Effects
         [Tooltip("Seconds after a thaw before the same foe can freeze again (bosses: x bossRefreezeScale).")]
         [SerializeField, Min(0f)] private float refreezeDelay = 1f;
         [SerializeField, Min(1f)] private float bossRefreezeScale = 4f;
+        [Tooltip("KAN-246 Frost Bolts: a frost hit on a boss slows it by this share (Enemy.ApplySlow halves it for bosses) for the boss freeze time.")]
+        [SerializeField, Range(0f, 0.8f)] private float bossSlow = 0.4f;
 
         [Header("Look")]
         [Tooltip("Shared frost system: freeze burst + rime crystals (world space, Emit only).")]
@@ -56,6 +59,8 @@ namespace SurvivorSouls.Gameplay.Skills.Effects
         public int FreezeCount { get; private set; }
         /// <summary>Frost hits that met a foe on its refreeze delay (the charge waited) (tests).</summary>
         public int RefusedCount { get; private set; }
+        /// <summary>Frost hits on a boss: slowed, not frozen (KAN-246) (tests).</summary>
+        public int BossSlowCount { get; private set; }
         public float BossShare => bossShare;
         public float EliteShare => eliteShare;
         public float RefreezeDelay => refreezeDelay;
@@ -88,6 +93,14 @@ namespace SurvivorSouls.Gameplay.Skills.Effects
             if (_charge < every) return;
             var enemy = hit.Enemy;
             float seconds = DurationFor(enemy);
+            if (enemy.IsBoss) // KAN-246 Frost Bolts: bosses get a short slow, never a freeze
+            {
+                enemy.ApplySlow(bossSlow, seconds);
+                _charge = 0;
+                BossSlowCount++;
+                EmitBurst(enemy, hit.Point);
+                return;
+            }
             float delay = refreezeDelay * (enemy.IsBoss ? bossRefreezeScale : 1f);
             if (!enemy.Freeze(seconds, seconds + delay))
             {

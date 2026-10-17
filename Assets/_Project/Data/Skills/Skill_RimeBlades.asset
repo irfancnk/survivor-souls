@@ -1,0 +1,58 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1fe610960d6a34b01a28534f0f33effb, type: 3}
+  m_Name: Skill_RimeBlades
+  m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Skills.SkillDefinition
+  id: rime_blades
+  displayName: Rime Blades
+  description: 2 ice blades orbit, slow 1.2 s
+  icon: {fileID: 2800000, guid: a863d8e1426d4b1484b34c9209e07e95, type: 3}
+  rarity: 2
+  maxStack: 3
+  weight: 1
+  modifiers:
+  - stat: 56
+    kind: 0
+    value: 2
+  - stat: 57
+    kind: 0
+    value: 1.2
+  levels:
+  - description: 2 ice blades orbit, slow 1.2 s
+    modifiers:
+    - stat: 56
+      kind: 0
+      value: 2
+    - stat: 57
+      kind: 0
+      value: 1.2
+  - description: 2 ice blades orbit, slow 2 s
+    modifiers:
+    - stat: 56
+      kind: 0
+      value: 2
+    - stat: 57
+      kind: 0
+      value: 2
+  - description: 3 ice blades orbit, slow 2 s
+    modifiers:
+    - stat: 56
+      kind: 0
+      value: 3
+    - stat: 57
+      kind: 0
+      value: 2
+  effectPrefab: {fileID: 5988962473968272581, guid: 26f13313fc502614ba43f58db9750951, type: 3}
+  requiresUpgradableSkill: 0
+  repeatOfferWeights: []
+  upgradeOfferWeight: 1
+  requiresAnyOf: []

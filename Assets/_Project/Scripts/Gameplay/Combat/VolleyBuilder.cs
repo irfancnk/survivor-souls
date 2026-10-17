@@ -39,6 +39,18 @@ namespace SurvivorSouls.Gameplay.Combat
         public float ChainDamage;
         /// <summary>Most bolts in one volley (performance and balance cap).</summary>
         public int Cap;
+        /// <summary>Front Arrow +1 (KAN-246): extra parallel forward bolts. The straight lanes spread evenly round the aim line.</summary>
+        public int Front;
+        /// <summary>Metres between two neighbouring forward lanes.</summary>
+        public float FrontStep;
+        /// <summary>Damage share of every forward-lane bolt (main included) while <see cref="Front"/> &gt; 0.</summary>
+        public float FrontDamage;
+        /// <summary>Rear Arrow +1 (KAN-246): bolts fired behind the hero (180 deg from the aim line).</summary>
+        public int Rear;
+        /// <summary>Degrees between two rear bolts.</summary>
+        public float RearStep;
+        /// <summary>Damage share of a rear bolt.</summary>
+        public float RearDamage;
     }
 
     /// <summary>
@@ -48,6 +60,9 @@ namespace SurvivorSouls.Gameplay.Combat
     /// with a small sideways offset. Both together: every fan bolt is repeated by the chain. Over the cap, the last chain
     /// steps lose their outer bolts first (the straight bolts survive longest), so the volley never exceeds
     /// <see cref="VolleySpec.Cap"/>. Fills a caller-owned array: no allocation.
+    /// KAN-246: each chain step is main bolt, fan, then the extra forward lanes (Front Arrow +1: the straight lanes sit side by
+    /// side round the aim line, all at <see cref="VolleySpec.FrontDamage"/>), then the rear bolts (Rear Arrow +1). Multishot
+    /// (the chain) repeats the whole pattern.
     /// </summary>
     public static class VolleyBuilder
     {
@@ -69,14 +84,22 @@ namespace SurvivorSouls.Gameplay.Combat
         public static int Count(in VolleySpec spec)
         {
             int cap = spec.Cap > 0 ? spec.Cap : DefaultCap;
-            return Mathf.Min(cap, (1 + Mathf.Max(0, spec.Spread)) * (1 + Mathf.Max(0, spec.Chain)));
+            int perStep = 1 + Mathf.Max(0, spec.Spread) + Mathf.Max(0, spec.Front) + Mathf.Max(0, spec.Rear);
+            return Mathf.Min(cap, perStep * (1 + Mathf.Max(0, spec.Chain)));
         }
+
+        /// <summary>Lateral offset (m) of straight lane <paramref name="lane"/> of <paramref name="lanes"/>, centred on the aim line.</summary>
+        public static float LaneOffset(int lane, int lanes, float step) => (lane - (lanes - 1) * 0.5f) * step;
 
         /// <summary>Writes the volley into <paramref name="into"/> (first bolts first) and returns the bolt count.</summary>
         public static int Build(in VolleySpec spec, VolleyArrow[] into)
         {
             if (into == null || into.Length == 0) return 0;
             int fan = 1 + Mathf.Max(0, spec.Spread);
+            int front = Mathf.Max(0, spec.Front);
+            int rear = Mathf.Max(0, spec.Rear);
+            int lanes = 1 + front;
+            float laneDamage = front > 0 ? Mathf.Max(0f, spec.FrontDamage) : 1f;
             int chain = 1 + Mathf.Max(0, spec.Chain);
             int cap = Mathf.Min(spec.Cap > 0 ? spec.Cap : DefaultCap, into.Length);
             int n = 0;
@@ -84,16 +107,33 @@ namespace SurvivorSouls.Gameplay.Combat
             {
                 float chainScale = c == 0 ? 1f : Mathf.Max(0f, spec.ChainDamage);
                 float lateral = ChainOffset(c, spec.ChainLateral);
+                float delay = c * Mathf.Max(0f, spec.ChainDelay);
                 for (int f = 0; f < fan && n < cap; f++)
                 {
                     into[n++] = new VolleyArrow
                     {
                         Yaw = FanYaw(f, spec.SpreadStep),
-                        Delay = c * Mathf.Max(0f, spec.ChainDelay),
-                        Lateral = lateral,
-                        DamageScale = (f == 0 ? 1f : Mathf.Max(0f, spec.SpreadDamage)) * chainScale,
+                        Delay = delay,
+                        Lateral = f == 0 && front > 0 ? lateral + LaneOffset(0, lanes, spec.FrontStep) : lateral,
+                        DamageScale = (f == 0 ? laneDamage : Mathf.Max(0f, spec.SpreadDamage)) * chainScale,
                         Chain = c,
                         Lead = f == 0,
+                    };
+                }
+                for (int l = 1; l < lanes && n < cap; l++)
+                {
+                    into[n++] = new VolleyArrow
+                    {
+                        Yaw = 0f, Delay = delay, Lateral = lateral + LaneOffset(l, lanes, spec.FrontStep),
+                        DamageScale = laneDamage * chainScale, Chain = c,
+                    };
+                }
+                for (int r = 0; r < rear && n < cap; r++)
+                {
+                    into[n++] = new VolleyArrow
+                    {
+                        Yaw = 180f + FanYaw(r, spec.RearStep), Delay = delay, Lateral = lateral,
+                        DamageScale = Mathf.Max(0f, spec.RearDamage) * chainScale, Chain = c,
                     };
                 }
             }

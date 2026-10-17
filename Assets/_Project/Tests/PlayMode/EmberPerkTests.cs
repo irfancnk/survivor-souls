@@ -228,20 +228,24 @@ namespace SurvivorSouls.Tests
         // ------------------------------------------------------------ Data + GC
 
         [Test]
-        public void ShippedEmberBolts_LevelThreeSpreads_LevelFourBlasts()
+        public void ShippedEmberBolts_NoSpreadNoBlast_BurnGrowsPerLevel()
         {
 #if UNITY_EDITOR
+            // KAN-246 Ember Boons: the shipped Ember Bolts burns only (Soul Burst owns death explosions). The spread / blast
+            // mechanism (KAN-77) stays in BurnOnHitEffect and is tested above with its own skill data.
             var skill = UnityEditor.AssetDatabase.LoadAssetAtPath<SkillDefinition>("Assets/_Project/Data/Skills/Skill_EmberBolts.asset");
             Assert.That(skill, Is.Not.Null);
             Assert.That(skill.MaxLevel, Is.EqualTo(7), "KAN-220: 7 levels");
             _manager.Grant(skill);
-            float[] spread = { 0f, 0f, 1f, 1f, 1f, 1f, 2f };
-            float[] blast = { 0f, 0f, 0f, 0.6f, 0.7f, 0.8f, 1f };
+            float last = 0f;
             for (int level = 1; level <= 7; level++)
             {
                 if (level > 1) _manager.Upgrade(skill);
-                Assert.That(_stats.Modify(StatId.BurnSpread, 0f), Is.EqualTo(spread[level - 1]).Within(1e-4f), $"L{level} spread");
-                Assert.That(_stats.Modify(StatId.BurnDeathBlast, 0f), Is.EqualTo(blast[level - 1]).Within(1e-4f), $"L{level} blast");
+                Assert.That(_stats.Modify(StatId.BurnSpread, 0f), Is.EqualTo(0f), $"L{level} spread");
+                Assert.That(_stats.Modify(StatId.BurnDeathBlast, 0f), Is.EqualTo(0f), $"L{level} blast");
+                float dps = _stats.Modify(StatId.BurnDps, 0f);
+                Assert.That(dps, Is.GreaterThan(last), $"L{level} burn grows");
+                last = dps;
             }
 #else
             Assert.Ignore("Editor only: loads the shipped asset.");

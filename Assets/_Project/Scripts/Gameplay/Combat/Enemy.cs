@@ -6,7 +6,7 @@ using UnityEngine;
 namespace SurvivorSouls.Gameplay.Combat
 {
     /// <summary>Where a hit came from. Feedback filters on it (burn ticks get no hit marker, crits a bigger number).</summary>
-    public enum DamageKind { Direct, Burn, Burst }
+    public enum DamageKind { Direct, Burn, Burst, Poison } // Poison: KAN-246 Venom Bolts ticks (append new kinds at the end)
 
     /// <summary>
     /// Melee chaser: walks to the player and stops at arm's length. Has health; <see cref="TakeDamage"/>
@@ -190,6 +190,17 @@ namespace SurvivorSouls.Gameplay.Combat
         private float _freezeCooldown; // seconds until the next freeze may start
         private float _freezeTotal;    // length of the running freeze (tint fade)
         private static readonly Color IceTint = new Color(1.45f, 1.9f, 2.7f); // KAN-91 frozen body: pale frosted blue (HDR lifts the dark albedo)
+        // KAN-246 Ember Boons: Venom Bolts poison (own stacks, separate from burn), Repelling Bolts knockback cooldown,
+        // Stormshock / Storm Touch electric tint.
+        private const float PoisonTickInterval = 0.5f;
+        private static readonly Color PoisonTint = new Color(0.8f, 1.8f, 0.55f);
+        private static readonly Color ShockTint = new Color(2.4f, 2.1f, 0.6f);
+        private float _poisonDps;      // per stack
+        private int _poisonStacks;
+        private float _poisonLeft;
+        private float _poisonTick;
+        private float _knockCooldown;
+        private float _shockLeft;
 
         /// <summary>Northmost Z an enemy may walk to (the sea edge). Set by the spawner from the world; +inf = no limit.</summary>
         public static float LandMaxZ = float.PositiveInfinity;
@@ -296,6 +307,18 @@ namespace SurvivorSouls.Gameplay.Combat
         /// <summary>Share of a slow a boss takes (KAN-134: bosses half).</summary>
         public const float BossSlowShare = 0.5f;
         public float BurnDps => IsBurning ? _burnDps : 0f;
+        /// <summary>Poisoned by Venom Bolts (KAN-246).</summary>
+        public bool IsPoisoned => _poisonLeft > 0f && IsAlive;
+        /// <summary>Poison stacks on this foe now (0 = none).</summary>
+        public int PoisonStacks => IsPoisoned ? _poisonStacks : 0;
+        /// <summary>Total poison damage per second now (per-stack damage x stacks).</summary>
+        public float PoisonDps => IsPoisoned ? _poisonDps * _poisonStacks : 0f;
+        /// <summary>Poison seconds left (0 = none).</summary>
+        public float PoisonLeft => IsPoisoned ? _poisonLeft : 0f;
+        /// <summary>Seconds until a <see cref="TryKnock"/> may push this foe again (0 = ready).</summary>
+        public float KnockCooldown => Mathf.Max(0f, _knockCooldown);
+        /// <summary>Shows the short electric tint (Stormshock, Storm Touch; KAN-246).</summary>
+        public bool IsShocked => _shockLeft > 0f && IsAlive;
         /// <summary>Burning from a fire caught from a neighbour (KAN-77 Ember Bolts spread), not from a bolt hit. Spread fires do not spread on.</summary>
         public bool BurnFromSpread => IsBurning && _burnSpread;
         /// <summary>Burn seconds left, also during the <see cref="Damaged"/> call of the killing blow (KAN-77: a burning death blasts).</summary>
@@ -329,6 +352,11 @@ namespace SurvivorSouls.Gameplay.Combat
             _stunCooldown = 0f;
             _freezeLeft = 0f;
             _freezeCooldown = 0f;
+            _poisonDps = 0f; // KAN-246
+            _poisonStacks = 0;
+            _poisonLeft = 0f;
+            _knockCooldown = 0f;
+            _shockLeft = 0f;
             _burnPhase = UnityEngine.Random.value * Mathf.PI * 2f;
             _detourSide = UnityEngine.Random.value < 0.5f ? -1f : 1f;
             _detouring = false;
@@ -573,6 +601,48 @@ namespace SurvivorSouls.Gameplay.Combat
             _freezeCooldown = Mathf.Max(seconds, cooldown);
             _hitLeft = 0f; // a running flinch ends: the body holds the pose it has now
             return true;
+        }
+
+        /// <summary>
+        /// Venom Bolts poison (KAN-246): adds one stack (up to <paramref name="maxStacks"/>), refreshes the time to at least
+        /// <paramref name="duration"/> s and keeps the stronger per-stack damage. Damage = per-stack dps x stacks, in 0.5 s
+        /// <see cref="DamageKind.Poison"/> ticks. Separate from burn: a foe can burn and be poisoned at once. Poison never
+        /// spreads. Returns the stacks now.
+        /// </summary>
+        public int ApplyPoison(float dpsPerStack, float duration, int maxStacks)
+        {
+            if (!IsAlive || dpsPerStack <= 0f || duration <= 0f) return PoisonStacks;
+            if (_poisonLeft <= 0f)
+            {
+                _poisonStacks = 0;
+                _poisonTick = PoisonTickInterval; // first tick after one interval
+                _poisonDps = dpsPerStack;
+            }
+            else _poisonDps = Mathf.Max(_poisonDps, dpsPerStack);
+            _poisonStacks = Mathf.Min(Mathf.Max(1, maxStacks), _poisonStacks + 1);
+            _poisonLeft = Mathf.Max(_poisonLeft, duration);
+            return _poisonStacks;
+        }
+
+        /// <summary>
+        /// Repelling Bolts knockback (KAN-246): <see cref="Knock"/> with a per-foe <paramref name="cooldown"/> (s). Refused for
+        /// bosses, dead foes and while the cooldown runs. Returns true when the push took.
+        /// </summary>
+        public bool TryKnock(Vector3 direction, float speed, float cooldown)
+        {
+            if (!IsAlive || isBoss || speed <= 0f || _knockCooldown > 0f) return false;
+            direction.y = 0f;
+            if (direction.sqrMagnitude < 1e-6f) return false;
+            Knock(direction, speed);
+            _knockCooldown = Mathf.Max(0f, cooldown);
+            return true;
+        }
+
+        /// <summary>Short yellow electric tint (KAN-246 Stormshock / Storm Touch). Look only.</summary>
+        public void Shock(float seconds)
+        {
+            if (!IsAlive || seconds <= 0f) return;
+            _shockLeft = Mathf.Max(_shockLeft, seconds);
         }
 
         /// <summary>
@@ -866,6 +936,7 @@ namespace SurvivorSouls.Gameplay.Combat
         public void TickStatus(float dt)
         {
             UpdateBurn(dt);
+            UpdatePoison(dt);
             UpdateHex(dt);
             UpdateControl(dt);
             UpdateTint(dt);
@@ -879,6 +950,20 @@ namespace SurvivorSouls.Gameplay.Combat
             if (_stunCooldown > 0f) _stunCooldown -= dt;
             if (_freezeLeft > 0f && (_freezeLeft -= dt) <= 0f) _freezeLeft = 0f;
             if (_freezeCooldown > 0f) _freezeCooldown -= dt;
+            if (_knockCooldown > 0f) _knockCooldown -= dt; // KAN-246
+            if (_shockLeft > 0f) _shockLeft -= dt;
+        }
+
+        /// <summary>Venom Bolts poison ticks (KAN-246).</summary>
+        private void UpdatePoison(float dt)
+        {
+            if (_poisonLeft <= 0f) return;
+            if (!IsAlive) { _poisonLeft = 0f; return; }
+            _poisonLeft -= dt;
+            _poisonTick -= dt;
+            if (_poisonTick > 0f) return;
+            _poisonTick += PoisonTickInterval;
+            TakeDamage(_poisonDps * _poisonStacks * PoisonTickInterval, Vector3.zero, DamageKind.Poison);
         }
 
         private void UpdateBurn(float dt)
@@ -915,6 +1000,16 @@ namespace SurvivorSouls.Gameplay.Combat
             {
                 float pulse = 0.55f + 0.25f * Mathf.Sin(Time.time * 11f + _burnPhase);
                 c = Color.Lerp(c, BurnTint, pulse * Mathf.Clamp01(_burnLeft / 0.3f));
+            }
+            if (_poisonLeft > 0f) // KAN-246 Venom Bolts: sickly green pulse, under ice and shock
+            {
+                float pulse = 0.4f + 0.2f * Mathf.Sin(Time.time * 5f + _burnPhase);
+                c = Color.Lerp(c, PoisonTint, pulse * Mathf.Clamp01(_poisonLeft / 0.3f));
+            }
+            if (_shockLeft > 0f) // KAN-246: bright electric yellow, flickering
+            {
+                float flicker = 0.65f + 0.35f * Mathf.Sin(Time.time * 60f + _burnPhase);
+                c = Color.Lerp(c, ShockTint, flicker * Mathf.Clamp01(_shockLeft / 0.1f));
             }
             if (_freezeLeft > 0f) // KAN-91: ice over fire and hex; fades in fast, thaws over the last 0.3 s
             {

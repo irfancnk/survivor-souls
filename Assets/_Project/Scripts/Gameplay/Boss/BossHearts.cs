@@ -156,7 +156,7 @@ namespace SurvivorSouls.Gameplay.Boss
             bool alive = player != null && !player.IsDead;
             if (Running && alive)
             {
-                _clock += dt * rules.ClockSpeed(player.Normalized);
+                _clock += dt * rules.ClockSpeed(player.Normalized) * DropRate; // KAN-246 Ashen Heart: drops come a bit sooner
                 // Past the cap the drop is skipped; with no free ground it retries next frame (clock kept).
                 if (_clock >= _nextDelay && (IsFull || TryDrop(DropReason.Timed) != null))
                 {
@@ -197,10 +197,35 @@ namespace SurvivorSouls.Gameplay.Boss
                 if (d.x * d.x + d.z * d.z > r2 || !heart.BeginCollect()) continue;
                 _ground.RemoveAt(i);
                 _bursting.Add(heart);
-                float healed = player.Heal(rules.HealFor(player.Max));
+                float healed = player.Heal(HealAmount(rules.HealFor(player.Max)));
                 PickedUpCount++;
                 PickedUp?.Invoke(heart, healed);
                 if (player.Current >= player.Max) break; // full: the next heart waits
+            }
+        }
+
+        /// <summary>
+        /// KAN-246 Ashen Heart: heart heal after <see cref="Skills.StatId.PickupHeal"/> (percent). Only health pickups use it:
+        /// revives and life steal never do.
+        /// </summary>
+        public float HealAmount(float baseHeal) => Mathf.Max(0f, Skills.PlayerStats.Eval(KnightStats, Skills.StatId.PickupHeal, baseHeal));
+
+        /// <summary>KAN-246 Ashen Heart: timed drop clock speed factor (<see cref="Skills.StatId.PickupDrop"/>, percent).</summary>
+        public float DropRate => Mathf.Max(0.1f, Skills.PlayerStats.Eval(KnightStats, Skills.StatId.PickupDrop, 1f));
+
+        private Skills.PlayerStats _knightStats;
+        private bool _knightStatsLooked;
+
+        private Skills.PlayerStats KnightStats
+        {
+            get
+            {
+                if (!_knightStatsLooked && player != null)
+                {
+                    _knightStatsLooked = true;
+                    _knightStats = player.GetComponent<Skills.PlayerStats>();
+                }
+                return _knightStats;
             }
         }
 

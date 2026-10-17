@@ -195,7 +195,7 @@ namespace SurvivorSouls.Tests
         }
 
         [Test]
-        public void Bosses_FreezeAShare_Elites_FreezeLess_DeathThaws()
+        public void Bosses_SlowedNeverFrozen_Elites_FreezeLess_DeathThaws()
         {
             var frost = GrantFrost(every: 1, seconds: 2f);
             var hit = HitHandler(frost);
@@ -205,12 +205,14 @@ namespace SurvivorSouls.Tests
             hit(new BoltHit { Enemy = boss });
             hit(new BoltHit { Enemy = elite });
             hit(new BoltHit { Enemy = normal });
-            Assert.That(boss.FreezeLeft, Is.EqualTo(2f * frost.BossShare).Within(1e-4f), "boss: 35 %");
+            // KAN-246 Frost Bolts: a boss gets a short slow (half share, Enemy.ApplySlow) for the boss time, never a freeze.
+            Assert.That(boss.IsFrozen, Is.False, "bosses are never frozen");
+            Assert.That(boss.Slow, Is.GreaterThan(0f), "a frost hit slows the boss");
+            Assert.That(boss.SlowLeft, Is.EqualTo(2f * frost.BossShare).Within(1e-4f), "boss: 35 % of the time");
+            Assert.That(frost.BossSlowCount, Is.EqualTo(1));
             Assert.That(elite.FreezeLeft, Is.EqualTo(2f * frost.EliteShare).Within(1e-4f), "elite: 60 %");
             Assert.That(normal.FreezeLeft, Is.EqualTo(2f).Within(1e-4f));
-            Assert.That(boss.IsFrozenSolid, Is.False, "a boss is only rooted (its patterns keep their timing)");
             Assert.That(normal.IsFrozenSolid, Is.True);
-            Assert.That(boss.FreezeCooldown, Is.GreaterThan(normal.FreezeCooldown), "bosses wait longer to refreeze");
 
             normal.TakeDamage(1e6f, Vector3.forward);
             Assert.That(normal.IsFrozen, Is.False, "a dying foe thaws");

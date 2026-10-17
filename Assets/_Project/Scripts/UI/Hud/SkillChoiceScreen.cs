@@ -293,11 +293,13 @@ namespace SurvivorSouls.UI.Hud
             if (plate == null) return;
             for (int k = 0; k < Sparks; k++)
             {
+                if (card.SparkDots[k] != null) continue; // re-enable: made before
                 var spark = new VisualElement { pickingMode = PickingMode.Ignore };
                 spark.AddToClassList(SparkClass);
                 plate.Insert(plate.IndexOf(card.Burst) + 1, spark); // behind the icon
                 card.SparkDots[k] = spark;
             }
+            SkillArtStyle.PortraitPlate(plate, card.Icon, card.Reel, card.SparkDots); // KAN-246: 3:4 Ember Boons portraits
         }
 
         public override void Present(int level, Action onDone)
@@ -511,8 +513,8 @@ namespace SurvivorSouls.UI.Hud
                     card.ShownItem = item;
                     var now = ReelSkill(card, i, item);
                     var next = ReelSkill(card, i, item + 1);
-                    if (card.Icon != null) card.Icon.style.backgroundImage = now.Icon != null ? new StyleBackground(now.Icon) : StyleKeyword.None;
-                    if (card.Reel != null) card.Reel.style.backgroundImage = next.Icon != null ? new StyleBackground(next.Icon) : StyleKeyword.None;
+                    SkillArtStyle.SetCardIcon(card.Icon, now); // KAN-246
+                    SkillArtStyle.SetCardIcon(card.Reel, next);
                 }
                 float stretch = 1f + reelStretch * SkillReel.Speed01(rt, ReelStopTime(i), reelDecel);
                 // Top to bottom: the current skill slides down and out, the next one comes in from above.
@@ -561,7 +563,7 @@ namespace SurvivorSouls.UI.Hud
             for (int r = 0; r < RarityClasses.Length; r++) card.Root.EnableInClassList(RarityClasses[r], r == card.RarityIndex);
             if (card.Icon != null)
             {
-                card.Icon.style.backgroundImage = skill.Icon != null ? new StyleBackground(skill.Icon) : StyleKeyword.None;
+                SkillArtStyle.SetCardIcon(card.Icon, skill); // KAN-246
                 card.Icon.style.scale = StyleKeyword.Null;
             }
             AnimateLanding(card, rt);
@@ -680,7 +682,7 @@ namespace SurvivorSouls.UI.Hud
             int owned = skills.GetLevel(skill);
             int gain = _upgradeMode ? Mathf.Max(1, Mathf.Min(_levels, skill.MaxLevel - owned)) : 1;
             if (card.Desc != null) card.Desc.text = skill.DescriptionAt(owned + gain);
-            if (card.Icon != null) card.Icon.style.backgroundImage = skill.Icon != null ? new StyleBackground(skill.Icon) : StyleKeyword.None;
+            SkillArtStyle.SetCardIcon(card.Icon, skill); // KAN-246
             if (card.Badge != null)
             {
                 card.Badge.text = BadgeText(owned, gain);

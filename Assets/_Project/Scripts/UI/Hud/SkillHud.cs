@@ -230,7 +230,7 @@ namespace SurvivorSouls.UI.Hud
                     slot.GlowAnchor.EnableInClassList(GlowRarityClasses[k], k == r);
                 }
                 slot.Root.EnableInClassList(MaxClass, o.Level >= o.Skill.MaxLevel);
-                slot.Icon.style.backgroundImage = o.Skill.Icon != null ? new StyleBackground(o.Skill.Icon) : StyleKeyword.None;
+                SkillArtStyle.SetSlotIcon(slot.Icon, o.Skill); // KAN-246: centre crop of the Ember Boons portrait
                 SetPips(slot, o.Skill.MaxLevel, o.Level);
                 if (slot.ShownLevel != o.Level)
                 {

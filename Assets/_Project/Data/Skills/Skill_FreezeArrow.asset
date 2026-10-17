@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: Skill_FreezeArrow
   m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Skills.SkillDefinition
   id: freeze_arrow
-  displayName: Freeze Arrow
+  displayName: Frost Bolts
   description: Every 3rd hit freezes foes 1.5 s
-  icon: {fileID: 2800000, guid: bd0173a5ca87242acb60029d51eae11b, type: 3}
+  icon: {fileID: 2800000, guid: 9f093917ea8c4af397344097f964fac4, type: 3}
   rarity: 1
   maxStack: 4
   weight: 0.5
@@ -63,3 +63,4 @@ MonoBehaviour:
   requiresUpgradableSkill: 0
   repeatOfferWeights: []
   upgradeOfferWeight: 1
+  requiresAnyOf: []

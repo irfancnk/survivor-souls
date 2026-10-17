@@ -65,6 +65,8 @@ namespace SurvivorSouls.Gameplay.Skills
         [SerializeField] private float[] repeatOfferWeights = new float[0];
         [Tooltip("Chest upgrade screens (KAN-83): weight multiplier of this skill's card (1 = normal, 0.35 = rarely offered).")]
         [SerializeField, Range(0.01f, 1f)] private float upgradeOfferWeight = 1f;
+        [Tooltip("KAN-246 offer gate: offered as new only while the player owns at least one of these (Eclipse Crown needs an orbital). Empty = no gate.")]
+        [SerializeField] private SkillDefinition[] requiresAnyOf = new SkillDefinition[0];
 
         public string Id => id;
         public string DisplayName => displayName;
@@ -79,6 +81,13 @@ namespace SurvivorSouls.Gameplay.Skills
         public SkillLevelData[] Levels => levels;
         /// <summary>Chest upgrade card weight multiplier (KAN-83).</summary>
         public float UpgradeOfferWeight => upgradeOfferWeight;
+        /// <summary>KAN-246 offer gate: owning one of these unlocks the offer (empty = always). See <see cref="SkillManager.CanOffer"/>.</summary>
+        public SkillDefinition[] RequiresAnyOf => requiresAnyOf;
+        /// <summary>
+        /// KAN-246 Ember Boons art: the icon is a full-colour 3:4 portrait (T_Boon_*), not a white glyph. The card shows it
+        /// whole and untinted; small slots show a centre crop.
+        /// </summary>
+        public bool HasPortraitArt => icon != null && icon.height > icon.width;
 
         /// <summary>
         /// Level-up weight multiplier at owned level <paramref name="ownedLevel"/> (KAN-83): 1 when not owned or without a
@@ -149,6 +158,13 @@ namespace SurvivorSouls.Gameplay.Skills
         {
             repeatOfferWeights = repeat ?? new float[0];
             upgradeOfferWeight = Mathf.Clamp(upgrade, 0.01f, 1f);
+            return this;
+        }
+
+        /// <summary>Code-side offer gate (asset builder, tests): see <see cref="RequiresAnyOf"/>.</summary>
+        public SkillDefinition SetRequiresAnyOf(params SkillDefinition[] skills)
+        {
+            requiresAnyOf = skills ?? new SkillDefinition[0];
             return this;
         }
 

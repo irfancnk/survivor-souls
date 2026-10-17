@@ -119,7 +119,8 @@ namespace SurvivorSouls.Gameplay.Chests
             if (player != null && player.IsDead) return;
             var config = dropper != null ? dropper.Config : null;
             if (config == null) return;
-            if (player != null && config.FallbackHeal > 0f) player.Heal(player.Max * config.FallbackHeal);
+            if (player != null && config.FallbackHeal > 0f) // KAN-246 Ashen Heart: a chest heal is a health pickup too
+                player.Heal(PlayerStats.Eval(player.GetComponent<PlayerStats>(), StatId.PickupHeal, player.Max * config.FallbackHeal));
             if (souls != null && config.FallbackXp > 0)
             {
                 int count = Mathf.Min(config.FallbackWisps, config.FallbackXp);

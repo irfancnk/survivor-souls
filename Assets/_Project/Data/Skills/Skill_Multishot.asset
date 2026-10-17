@@ -15,8 +15,8 @@ MonoBehaviour:
   id: multishot
   displayName: Spread Shot
   description: "2 side bolts at 15\xB0, 50% damage"
-  icon: {fileID: 2800000, guid: ee18565c2fe0d47c9a30ff889f122634, type: 3}
-  rarity: 1
+  icon: {fileID: 2800000, guid: 7592a4c1819d40c2a725988a3d004701, type: 3}
+  rarity: 2
   maxStack: 5
   weight: 1
   modifiers:
@@ -65,3 +65,4 @@ MonoBehaviour:
   requiresUpgradableSkill: 0
   repeatOfferWeights: []
   upgradeOfferWeight: 1
+  requiresAnyOf: []

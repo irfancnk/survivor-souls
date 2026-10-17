@@ -1,0 +1,49 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1fe610960d6a34b01a28534f0f33effb, type: 3}
+  m_Name: Skill_SovereignsFall
+  m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Skills.SkillDefinition
+  id: sovereigns_fall
+  displayName: Sovereign's Fall
+  description: '6 crits drop a sword: 400% dmg'
+  icon: {fileID: 2800000, guid: 9fdc4765ea2740aeb61adfcea61fbbcf, type: 3}
+  rarity: 3
+  maxStack: 3
+  weight: 1
+  modifiers:
+  - stat: 78
+    kind: 0
+    value: 4
+  levels:
+  - description: '6 crits drop a sword: 400% dmg'
+    modifiers:
+    - stat: 78
+      kind: 0
+      value: 4
+  - description: Falling sword deals 600% damage
+    modifiers:
+    - stat: 78
+      kind: 0
+      value: 6
+  - description: Falling sword hits a wider area
+    modifiers:
+    - stat: 78
+      kind: 0
+      value: 6
+    - stat: 79
+      kind: 0
+      value: 1
+  effectPrefab: {fileID: 2258332313877369488, guid: 83b0b4814afda3944b018ec92c2d5133, type: 3}
+  requiresUpgradableSkill: 0
+  repeatOfferWeights: []
+  upgradeOfferWeight: 1
+  requiresAnyOf: []

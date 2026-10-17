@@ -1,0 +1,61 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1fe610960d6a34b01a28534f0f33effb, type: 3}
+  m_Name: Skill_ReaperScythes
+  m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Skills.SkillDefinition
+  id: reaper_scythes
+  displayName: Reaper Scythes
+  description: 2 scythes sweep wide, 120% dmg
+  icon: {fileID: 2800000, guid: c2ca8746c54d4426aaaf86610d16a260, type: 3}
+  rarity: 2
+  maxStack: 3
+  weight: 1
+  modifiers:
+  - stat: 61
+    kind: 0
+    value: 2
+  - stat: 62
+    kind: 0
+    value: 1.2
+  levels:
+  - description: 2 scythes sweep wide, 120% dmg
+    modifiers:
+    - stat: 61
+      kind: 0
+      value: 2
+    - stat: 62
+      kind: 0
+      value: 1.2
+  - description: 2 scythes sweep wide, 160% dmg
+    modifiers:
+    - stat: 61
+      kind: 0
+      value: 2
+    - stat: 62
+      kind: 0
+      value: 1.6
+  - description: Bigger scythes, 160% damage
+    modifiers:
+    - stat: 61
+      kind: 0
+      value: 2
+    - stat: 62
+      kind: 0
+      value: 1.6
+    - stat: 63
+      kind: 0
+      value: 0.25
+  effectPrefab: {fileID: 1500209623592996227, guid: 213105c344217e84783dbdd31d474677, type: 3}
+  requiresUpgradableSkill: 0
+  repeatOfferWeights: []
+  upgradeOfferWeight: 1
+  requiresAnyOf: []

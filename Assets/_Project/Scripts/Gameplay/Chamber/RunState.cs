@@ -88,6 +88,20 @@ namespace SurvivorSouls.Gameplay.Chamber
             return true;
         }
 
+        /// <summary>
+        /// KAN-246 Second Dawn: the once-per-run revive was spent. Survives Chamber reloads (a new Chamber rebuilds the skill
+        /// effects, which must not hand out a new charge); reset by <see cref="NewRun"/>. Upgrading never resets it.
+        /// </summary>
+        public static bool ReviveSpent { get; private set; }
+
+        /// <summary>KAN-246: spends the run's revive. False (nothing spent) when it was already used.</summary>
+        public static bool TrySpendRevive()
+        {
+            if (ReviveSpent) return false;
+            ReviveSpent = true;
+            return true;
+        }
+
         /// <summary>Start of a run: Chamber 1 of <paramref name="realm"/>, nothing carried. <paramref name="seed"/> 0 = random.</summary>
         public static void NewRun(int realm = 1, int seed = 0)
         {
@@ -98,6 +112,7 @@ namespace SurvivorSouls.Gameplay.Chamber
             SoulsBanked = false;
             RerollsUsed = 0;
             BonusRerolls = 0;
+            ReviveSpent = false; // KAN-246
         }
 
         /// <summary>True once per run: the caller banks the souls now. False when this run was already banked.</summary>

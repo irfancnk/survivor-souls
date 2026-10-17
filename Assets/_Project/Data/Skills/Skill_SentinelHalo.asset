@@ -1,0 +1,52 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1fe610960d6a34b01a28534f0f33effb, type: 3}
+  m_Name: Skill_SentinelHalo
+  m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Skills.SkillDefinition
+  id: sentinel_halo
+  displayName: Sentinel Halo
+  description: 2 shields orbit, block shots
+  icon: {fileID: 2800000, guid: 0ff6cd2be0594a8494469a0e7108db24, type: 3}
+  rarity: 2
+  maxStack: 3
+  weight: 1
+  modifiers:
+  - stat: 64
+    kind: 0
+    value: 2
+  levels:
+  - description: 2 shields orbit, block shots
+    modifiers:
+    - stat: 64
+      kind: 0
+      value: 2
+  - description: 2 shields, wider block
+    modifiers:
+    - stat: 64
+      kind: 0
+      value: 2
+    - stat: 65
+      kind: 0
+      value: 0.3
+  - description: 3 shields, wider block
+    modifiers:
+    - stat: 64
+      kind: 0
+      value: 3
+    - stat: 65
+      kind: 0
+      value: 0.3
+  effectPrefab: {fileID: 1519960211836329858, guid: 1a29990981bda5b4397566cd4ed8e0eb, type: 3}
+  requiresUpgradableSkill: 0
+  repeatOfferWeights: []
+  upgradeOfferWeight: 1
+  requiresAnyOf: []

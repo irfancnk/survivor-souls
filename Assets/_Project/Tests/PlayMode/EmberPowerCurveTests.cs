@@ -118,14 +118,12 @@ namespace SurvivorSouls.Tests
                 var s = PowerSnapshot.Measure(stats, PowerBase.Default);
                 crowd[level] = s.CrowdDps;
                 Assert.That(s.SingleTargetDps, Is.EqualTo(100f + s.BurnDps).Within(1e-2f), $"level {level}: no perk on a boss");
-                if (level == 3) Assert.That(s.SpreadBurnDps, Is.GreaterThan(0f), "level 3 spreads");
-                if (level == 4) Assert.That(s.BlastFactor, Is.GreaterThan(0f), "level 4 blasts");
+                // KAN-246 Ember Boons: burn only, no spread or death blast on the shipped skill.
+                Assert.That(s.SpreadBurnDps, Is.EqualTo(0f), $"level {level}: no spread");
+                Assert.That(s.BlastFactor, Is.EqualTo(0f), $"level {level}: no blast");
             }
-            Assert.That(crowd[2], Is.GreaterThan(crowd[1]));
-            Assert.That(crowd[3], Is.GreaterThan(crowd[2] * 1.4f), "spread is a big crowd step");
-            Assert.That(crowd[4], Is.GreaterThan(crowd[3] * 1.4f), "blast is a big crowd step");
-            for (int level = 5; level <= 7; level++) Assert.That(crowd[level], Is.GreaterThan(crowd[level - 1]), $"level {level} grows the crowd");
-            Assert.That(crowd[7] / crowd[6], Is.GreaterThan(crowd[6] / crowd[5]), "level 7 (spread x2, 100 % blast) is the milestone step");
+            for (int level = 2; level <= 7; level++) Assert.That(crowd[level], Is.GreaterThan(crowd[level - 1]), $"level {level} grows the crowd");
+            Assert.That(crowd[7] - crowd[6], Is.GreaterThan(crowd[6] - crowd[5]), "level 7 (130/s) is the biggest burn step");
         }
 
         [Test]

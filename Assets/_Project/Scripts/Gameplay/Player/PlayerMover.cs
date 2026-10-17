@@ -25,7 +25,9 @@ namespace SurvivorSouls.Gameplay.Player
         private float _verticalSpeed;
         private float _slow;
 
-        public float MaxSpeed => PlayerStats.Eval(_stats, StatId.MoveSpeed, maxSpeed) * (1f - Slow);
+        public float MaxSpeed => Mathf.Min(PlayerStats.Eval(_stats, StatId.MoveSpeed, maxSpeed), maxSpeed * MaxSpeedShare) * (1f - Slow);
+        /// <summary>KAN-246 ceiling: skills and meta bonuses never push the run speed past this share of the base (touch precision).</summary>
+        public const float MaxSpeedShare = 1.6f;
         /// <summary>
         /// Share of the speed taken away (0 = none, at most 0.9): acid puddles (KAN-105). Set every frame by
         /// <see cref="Combat.GroundHazards"/>; 0 when the Knight stands in no slowing hazard.

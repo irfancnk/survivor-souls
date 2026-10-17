@@ -9,8 +9,10 @@ namespace SurvivorSouls.Gameplay.Skills.Effects
     /// <summary>
     /// "Soul Burst": every enemy death bursts a ring of soul fire that deals <see cref="StatId.KillBurst"/> times the
     /// current bolt damage to every enemy within <see cref="Radius"/> (<see cref="radius"/> + <see cref="StatId.BurstRadius"/>).
-    /// Kills from a burst burst again (chain reaction), one frame later: deaths are queued (fixed ring buffer) and resolved
-    /// in Update, never inside the damage event, so <see cref="Enemy.Active"/> is not edited while someone walks it.
+    /// Deaths are queued (fixed ring buffer) and resolved in Update, never inside the damage event, so
+    /// <see cref="Enemy.Active"/> is not edited while someone walks it. KAN-246 (Ember Boons, Epic): kills by a burst damage
+    /// the crowd but never burst again (no chain reaction), and neither do kills inside a
+    /// <see cref="ProcGuard.NoKillChains"/> scope. The chain-depth look (fade, shake) stays for depth 0 only.
     /// <para>
     /// Look (KAN-66): a small dark-magic explosion from six pooled, Emit-only systems: white-violet core flash with a scale
     /// punch, a violet ground shockwave that ends exactly on the damage radius (<see cref="RingSize"/>), a faint dome shell,
@@ -149,7 +151,9 @@ namespace SurvivorSouls.Gameplay.Skills.Effects
 
         private void OnDamaged(Enemy enemy, float amount, bool killed)
         {
-            if (!killed) return;
+            // KAN-246: a burst kill damages the crowd but starts no new burst (no chain reaction), nor does a kill inside a
+            // ProcGuard.NoKillChains scope (Second Dawn's shockwave).
+            if (!killed || _resolving || !ProcGuard.KillsChain) return;
             if (_count == QueueSize) { _head = (_head + 1) % QueueSize; _count--; } // drop the oldest under a flood
             int slot = (_head + _count) % QueueSize;
             _queue[slot] = enemy.transform.position;

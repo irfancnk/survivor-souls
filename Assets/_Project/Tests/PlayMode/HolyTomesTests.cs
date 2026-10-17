@@ -370,7 +370,7 @@ namespace SurvivorSouls.Tests
             var skill = UnityEditor.AssetDatabase.LoadAssetAtPath<SkillDefinition>(AssetPath);
             Assert.That(skill, Is.Not.Null);
             Assert.That(skill.Id, Is.EqualTo("holy_tomes"));
-            Assert.That(skill.Rarity, Is.EqualTo(SkillRarity.Rare));
+            Assert.That(skill.Rarity, Is.EqualTo(SkillRarity.Epic), "KAN-246 Ember Boons: Epic");
             Assert.That(skill.MaxLevel, Is.EqualTo(8));
             Assert.That(skill.Icon, Is.Not.Null);
             float Stat(int level, StatId id) => skill.Levels[level - 1].modifiers.Where(m => m.stat == id).Sum(m => m.value);

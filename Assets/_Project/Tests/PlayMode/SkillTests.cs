@@ -353,18 +353,20 @@ namespace SurvivorSouls.Tests
         public void PierceAndBounce_LoseDamagePerEnemy_ArcheroFalloff()
         {
             // KAN-86: -33 % per pierce, -30 % per bounce (AutoShooter defaults). 100 dmg bolt, 150 HP enemies: no kills.
+            // KAN-246 shared hit budget: Ricochet first when a new target is near, then the bolt pierces on along the new line.
             var front = SpawnEnemy(new Vector3(0f, 0f, 4f));
-            var middle = SpawnEnemy(new Vector3(0f, 0f, 6f));
-            var side = SpawnEnemy(new Vector3(3f, 0f, 7f));
+            var side = SpawnEnemy(new Vector3(3f, 0f, 5f));
+            // On the bounce line (front's hit point z 3.55 -> side), past side: z = 3.55 + 1.45 / 3 x 6.
+            var beyond = SpawnEnemy(new Vector3(6f, 0f, 6.45f));
             _manager.Grant(Skill("pierce", SkillRarity.Rare, 3, Add(StatId.Pierce, 1f)));
             _manager.Grant(Skill("rico", SkillRarity.Rare, 3, Add(StatId.Ricochet, 1f)));
             _shooter.Fire(front);
             Fly(1.2f);
-            Assert.That(_hits.Select(h => h.Enemy), Is.EqualTo(new[] { front, middle, side }), "pierce first, then the bounce");
+            Assert.That(_hits.Select(h => h.Enemy), Is.EqualTo(new[] { front, side, beyond }), "the bounce first, then the pierce");
             Assert.That(_hits[0].Damage, Is.EqualTo(100f).Within(1e-3f));
-            Assert.That(_hits[1].Damage, Is.EqualTo(100f * (1f - BoltShot.DefaultPierceFalloff)).Within(1e-3f));
+            Assert.That(_hits[1].Damage, Is.EqualTo(100f * (1f - BoltShot.DefaultBounceFalloff)).Within(1e-3f));
             Assert.That(_hits[2].Damage,
-                Is.EqualTo(100f * (1f - BoltShot.DefaultPierceFalloff) * (1f - BoltShot.DefaultBounceFalloff)).Within(1e-3f));
+                Is.EqualTo(100f * (1f - BoltShot.DefaultBounceFalloff) * (1f - BoltShot.DefaultPierceFalloff)).Within(1e-3f));
             Assert.That(_shooter.BasePierceFalloff, Is.EqualTo(BoltShot.DefaultPierceFalloff));
             Assert.That(_shooter.BaseBounceFalloff, Is.EqualTo(BoltShot.DefaultBounceFalloff));
         }
@@ -372,12 +374,16 @@ namespace SurvivorSouls.Tests
         [Test]
         public void Crit_DealsTheCritMultiplier_AndMarksTheHit()
         {
-            var enemy = SpawnEnemy(new Vector3(0f, 0f, 4f));
             _manager.Grant(Skill("eye", SkillRarity.Rare, 4, Add(StatId.CritChance, 1f)));
-            _shooter.Fire(enemy);
-            Fly(0.4f);
-            Assert.That(_hits.Count, Is.EqualTo(1));
-            Assert.That(_hits[0].Crit, Is.True);
+            Assert.That(_shooter.CurrentCritChance, Is.EqualTo(AutoShooter.MaxCritChance), "KAN-246: crit chance is capped");
+            Enemy enemy = null;
+            for (int i = 0; i < 12 && (_hits.Count == 0 || !_hits[_hits.Count - 1].Crit); i++) // 75 %: a crit comes within a few shots
+            {
+                enemy = SpawnEnemy(new Vector3(i * 3f, 0f, 4f));
+                _shooter.Fire(enemy);
+                Fly(0.4f);
+            }
+            Assert.That(_hits[_hits.Count - 1].Crit, Is.True);
             Assert.That(enemy.LastHitCrit, Is.True);
             Assert.That(enemy.IsAlive, Is.False, "200 crit damage kills a 150 HP enemy");
         }
@@ -415,17 +421,15 @@ namespace SurvivorSouls.Tests
         }
 
         [Test]
-        public void SoulBurst_DamagesNeighbours_AndChainsOnBurstKills()
+        public void SoulBurst_DamagesNeighbours_BurstKillsDoNotChain()
         {
             var a = SpawnEnemy(new Vector3(0f, 0f, 4f));
             var b = SpawnEnemy(new Vector3(2f, 0f, 4f));
             var c = SpawnEnemy(new Vector3(4.2f, 0f, 4f));
-            _manager.Grant(Skill("eye", SkillRarity.Rare, 4, Add(StatId.CritChance, 1f))); // one-shot the first enemy
             _manager.Grant(Behaviour<KillBurstEffect>("burst", Add(StatId.KillBurst, 1.6f)));
             var burst = (KillBurstEffect)_manager.OwnedSkills.First(o => o.Effect != null).Effect;
 
-            _shooter.Fire(a);
-            Fly(0.4f);
+            a.TakeDamage(1e6f, Vector3.forward); // a kill by the Knight
             Assert.That(a.IsAlive, Is.False);
             Assert.That(b.Health, Is.EqualTo(b.MaxHealth), "bursts resolve in the effect's Update, not inside the hit");
             burst.Tick();
@@ -433,8 +437,8 @@ namespace SurvivorSouls.Tests
             Assert.That(b.LastDamageKind, Is.EqualTo(DamageKind.Burst));
             Assert.That(c.Health, Is.EqualTo(c.MaxHealth), "4.2 m: outside the first burst");
             burst.Tick();
-            Assert.That(c.IsAlive, Is.False, "b's death bursts again");
-            Assert.That(burst.BurstCount, Is.EqualTo(2), "c's own burst waits for the next frame");
+            Assert.That(c.Health, Is.EqualTo(c.MaxHealth), "KAN-246: b died to a burst, so it does not burst again (no chain)");
+            Assert.That(burst.BurstCount, Is.EqualTo(1));
         }
 
         // ------------------------------------------------------------ Run reset

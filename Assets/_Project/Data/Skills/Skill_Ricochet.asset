@@ -15,8 +15,8 @@ MonoBehaviour:
   id: ricochet
   displayName: Ricochet
   description: Bounce +1 enemy, -30% per bounce
-  icon: {fileID: 2800000, guid: 00233de07be0c4bdd81ce05c923264f4, type: 3}
-  rarity: 1
+  icon: {fileID: 2800000, guid: e6d999f17d374e20a077f4482de8bc30, type: 3}
+  rarity: 3
   maxStack: 7
   weight: 1
   modifiers:
@@ -75,3 +75,7 @@ MonoBehaviour:
       kind: 0
       value: -0.15
   effectPrefab: {fileID: 0}
+  requiresUpgradableSkill: 0
+  repeatOfferWeights: []
+  upgradeOfferWeight: 1
+  requiresAnyOf: []

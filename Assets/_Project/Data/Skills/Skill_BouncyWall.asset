@@ -1,0 +1,52 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1fe610960d6a34b01a28534f0f33effb, type: 3}
+  m_Name: Skill_BouncyWall
+  m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Skills.SkillDefinition
+  id: bouncy_wall
+  displayName: Bouncy Wall
+  description: Bolts rebound off walls, 60% dmg
+  icon: {fileID: 2800000, guid: 36555403de1344759f36ee6f9b7caaa0, type: 3}
+  rarity: 2
+  maxStack: 3
+  weight: 1
+  modifiers:
+  - stat: 49
+    kind: 0
+    value: 1
+  levels:
+  - description: Bolts rebound off walls, 60% dmg
+    modifiers:
+    - stat: 49
+      kind: 0
+      value: 1
+  - description: Bolts rebound off walls, 80% dmg
+    modifiers:
+    - stat: 49
+      kind: 0
+      value: 1
+    - stat: 50
+      kind: 0
+      value: 0.2
+  - description: 2 wall rebounds, 80% damage
+    modifiers:
+    - stat: 49
+      kind: 0
+      value: 2
+    - stat: 50
+      kind: 0
+      value: 0.2
+  effectPrefab: {fileID: 888880879797471226, guid: cc95a11ca01d2e4408e8635072d8f57b, type: 3}
+  requiresUpgradableSkill: 0
+  repeatOfferWeights: []
+  upgradeOfferWeight: 1
+  requiresAnyOf: []

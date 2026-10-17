@@ -1,0 +1,49 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1fe610960d6a34b01a28534f0f33effb, type: 3}
+  m_Name: Skill_SecondDawn
+  m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Skills.SkillDefinition
+  id: second_dawn
+  displayName: Second Dawn
+  description: 'Once a run: revive with 40% HP'
+  icon: {fileID: 2800000, guid: 30bb9a27ba044c1a92af42f13e2fb11a, type: 3}
+  rarity: 3
+  maxStack: 3
+  weight: 1
+  modifiers:
+  - stat: 66
+    kind: 0
+    value: 0.4
+  levels:
+  - description: 'Once a run: revive with 40% HP'
+    modifiers:
+    - stat: 66
+      kind: 0
+      value: 0.4
+  - description: 'Once a run: revive with 60% HP'
+    modifiers:
+    - stat: 66
+      kind: 0
+      value: 0.6
+  - description: Revive 60% HP, wider shockwave
+    modifiers:
+    - stat: 66
+      kind: 0
+      value: 0.6
+    - stat: 67
+      kind: 0
+      value: 1.5
+  effectPrefab: {fileID: 7547076778944424819, guid: 3283d1ff74d24cd49913dae5e23f5360, type: 3}
+  requiresUpgradableSkill: 0
+  repeatOfferWeights: []
+  upgradeOfferWeight: 1
+  requiresAnyOf: []

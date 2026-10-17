@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using SurvivorSouls.Gameplay.Combat;
 using SurvivorSouls.Gameplay.Player;
 using SurvivorSouls.Gameplay.World;
@@ -312,6 +313,37 @@ namespace SurvivorSouls.Gameplay.Boss
         {
             _count = 0;
             Draw();
+        }
+
+        /// <summary>Live boss bolt pools (KAN-246 Sentinel Halo finds them here). Usually one, in the boss arena.</summary>
+        public static readonly List<BossProjectiles> Live = new List<BossProjectiles>(2);
+
+        private void OnEnable()
+        {
+            if (!Live.Contains(this)) Live.Add(this);
+        }
+
+        private void OnDisable() => Live.Remove(this);
+
+        /// <summary>
+        /// KAN-246 Sentinel Halo: removes the bolts within <paramref name="radius"/> m of <paramref name="point"/> on the ground
+        /// plane, as if a pillar stopped them (<see cref="Blocked"/>). Returns the bolts stopped.
+        /// </summary>
+        public int Intercept(Vector3 point, float radius)
+        {
+            int stopped = 0;
+            float r2 = radius * radius;
+            for (int i = _count - 1; i >= 0; i--)
+            {
+                Vector3 p = _bolts[i].Position;
+                float dx = p.x - point.x, dz = p.z - point.z;
+                if (dx * dx + dz * dz > r2) continue;
+                Blocked?.Invoke(p);
+                Remove(i);
+                stopped++;
+            }
+            if (stopped > 0) Draw();
+            return stopped;
         }
 
         private void Update() => Tick(Time.deltaTime);

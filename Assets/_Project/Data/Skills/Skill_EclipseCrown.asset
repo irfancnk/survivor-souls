@@ -1,0 +1,61 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1fe610960d6a34b01a28534f0f33effb, type: 3}
+  m_Name: Skill_EclipseCrown
+  m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Skills.SkillDefinition
+  id: eclipse_crown
+  displayName: Eclipse Crown
+  description: Orbiters align, pulse 150% dmg
+  icon: {fileID: 2800000, guid: d69b125b0043444eabfd72d33967ef73, type: 3}
+  rarity: 3
+  maxStack: 3
+  weight: 1
+  modifiers:
+  - stat: 68
+    kind: 0
+    value: 1.5
+  levels:
+  - description: Orbiters align, pulse 150% dmg
+    modifiers:
+    - stat: 68
+      kind: 0
+      value: 1.5
+  - description: Eclipse pulse reaches further
+    modifiers:
+    - stat: 68
+      kind: 0
+      value: 1.5
+    - stat: 69
+      kind: 0
+      value: 1.5
+  - description: Eclipse every 10 s
+    modifiers:
+    - stat: 68
+      kind: 0
+      value: 1.5
+    - stat: 69
+      kind: 0
+      value: 1.5
+    - stat: 70
+      kind: 0
+      value: -4
+  effectPrefab: {fileID: 1688972138602339335, guid: 43c5744b7317bc8479a915ff0832abba, type: 3}
+  requiresUpgradableSkill: 0
+  repeatOfferWeights: []
+  upgradeOfferWeight: 1
+  requiresAnyOf:
+  - {fileID: 11400000, guid: fce2297e3cef345ff8af363d54f4a936, type: 2}
+  - {fileID: 11400000, guid: 27b9bdfbf1357dd4a9bb81cfddd8fe0a, type: 2}
+  - {fileID: 11400000, guid: 069f15cf37017cc4da84e1820f385ce3, type: 2}
+  - {fileID: 11400000, guid: 74f7be254c3406743a30fef31d57a70c, type: 2}
+  - {fileID: 11400000, guid: 229cb82862f291f469c324efc026591e, type: 2}
+  - {fileID: 11400000, guid: 4f9137fd8d569514d890def57778f0e4, type: 2}

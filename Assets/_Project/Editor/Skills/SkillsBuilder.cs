@@ -23,7 +23,7 @@ namespace SurvivorSouls.Editor.Skills
     /// Holy Tomes (KAN-123, Rare, 8 levels): glowing books orbit the Knight and hit the foes they pass.
     /// <see cref="BuildStyles"/> makes the per-tier style asset (labels, gems, sounds).
     /// </summary>
-    public static class SkillsBuilder
+    public static partial class SkillsBuilder
     {
         public const string DataDir = "Assets/_Project/Data/Skills";
         public const string ProgressionPath = DataDir + "/SkillProgression_Run.asset";
@@ -33,7 +33,13 @@ namespace SurvivorSouls.Editor.Skills
         private const string PrefabDir = "Assets/_Project/Prefabs/Skills";
         private const string RingTexturePath = "Assets/_Project/Art/Textures/Game/T_Ring.png"; // made by GameArtKit
 
-        private enum Fx { None, Burn, LifeSteal, KillBurst, Ward, Frost, Tomes }
+        private enum Fx
+        {
+            None, Burn, LifeSteal, KillBurst, Ward, Frost, Tomes,
+            // KAN-246 Ember Boons (SkillsBuilder.EmberBoons.cs)
+            Venom, StormTouch, Repel, Stormshock, BouncyWall, EmberWheel, RimeBlades, Satellites, Scythes, Halo, Eclipse,
+            SecondDawn, LastOath, GraveChoir, StolenMoment, SovereignsFall,
+        }
 
         private sealed class Spec
         {
@@ -178,7 +184,8 @@ namespace SurvivorSouls.Editor.Skills
                     L("Pierce +4, -15% per enemy, +35% dmg", Add(StatId.Pierce, 4f), Pct(StatId.Damage, 0.35f),
                         Add(StatId.PierceFalloff, -0.18f)),
                 } },
-            new Spec { Id = "ricochet", File = "Ricochet", Name = "Ricochet", Rarity = SkillRarity.Rare,
+            // KAN-246 Ember Boons: Ricochet is Legendary (the first pickup visibly stitches a chain through the horde).
+            new Spec { Id = "ricochet", File = "Ricochet", Name = "Ricochet", Rarity = SkillRarity.Legendary,
                 Glyph = SkillIconPainter.Ricochet, Levels = new[]
                 {
                     L("Bounce +1 enemy, -30% per bounce", Add(StatId.Ricochet, 1f)),
@@ -191,31 +198,11 @@ namespace SurvivorSouls.Editor.Skills
                     L("Bounce +4, -15% per hop, +35% dmg", Add(StatId.Ricochet, 4f), Pct(StatId.Damage, 0.35f),
                         Add(StatId.BounceFalloff, -0.15f)),
                 } },
-            new Spec { Id = "ember_bolts", File = "EmberBolts", Name = "Ember Bolts", Rarity = SkillRarity.Legendary,
-                Glyph = SkillIconPainter.Burn, Effect = Fx.Burn, Levels = new[]
-                {
-                    // KAN-134: burning foes move 15-25 % slower (bosses half), an ignite stops a foe 0.2 s (not bosses).
-                    L("Bolts set foes ablaze, slow 15%", Add(StatId.BurnDps, 25f), Add(StatId.BurnSlow, 0.15f),
-                        Add(StatId.IgniteStun, 0.2f)),
-                    L("Fire 40/s for 3 s, slows 18%", Add(StatId.BurnDps, 40f), Add(StatId.BurnSlow, 0.18f),
-                        Add(StatId.IgniteStun, 0.2f)),
-                    // KAN-77 perks: L3 fire spreads to the nearest foe (one step), L4 burning deaths blast 60 % bolt damage.
-                    L("Fire 55/s 4 s, spreads, slow 21%", Add(StatId.BurnDps, 55f), Add(StatId.BurnDuration, 1f),
-                        Add(StatId.BurnSpread, 1f), Add(StatId.BurnSlow, 0.21f), Add(StatId.IgniteStun, 0.2f)),
-                    L("Fire 75/s 5 s, 60% blast, slow 25%", Add(StatId.BurnDps, 75f), Add(StatId.BurnDuration, 2f),
-                        Add(StatId.BurnSpread, 1f), Add(StatId.BurnDeathBlast, 0.6f), Add(StatId.BurnSlow, 0.25f),
-                        Add(StatId.IgniteStun, 0.2f)),
-                    // KAN-220 (KAN-124.2): 7 levels. L7 milestone: each fire tick spreads to 2 foes, deaths blast 100 %.
-                    L("Fire 90/s 5 s, 70% blast, slow 26%", Add(StatId.BurnDps, 90f), Add(StatId.BurnDuration, 2f),
-                        Add(StatId.BurnSpread, 1f), Add(StatId.BurnDeathBlast, 0.7f), Add(StatId.BurnSlow, 0.26f),
-                        Add(StatId.IgniteStun, 0.2f)),
-                    L("Fire 105/s 6 s, 80% blast, slow 28%", Add(StatId.BurnDps, 105f), Add(StatId.BurnDuration, 3f),
-                        Add(StatId.BurnSpread, 1f), Add(StatId.BurnDeathBlast, 0.8f), Add(StatId.BurnSlow, 0.28f),
-                        Add(StatId.IgniteStun, 0.2f)),
-                    L("Fire 130/s, spreads x2, 100% blast", Add(StatId.BurnDps, 130f), Add(StatId.BurnDuration, 3f),
-                        Add(StatId.BurnSpread, 2f), Add(StatId.BurnDeathBlast, 1f), Add(StatId.BurnSlow, 0.3f),
-                        Add(StatId.IgniteStun, 0.2f)),
-                } },
+            // KAN-246 Ember Boons: Ember Bolts is Rare and burns only. The KAN-77 / KAN-134 / KAN-220 extras (slow, ignite
+            // stun, spread, death blast) are gone: Soul Burst owns death explosions, Frost Bolts owns crowd control. The
+            // effect code still reads those stats (0 now). 7 levels kept (KAN-220), the burn grows instead.
+            new Spec { Id = "ember_bolts", File = "EmberBolts", Name = "Ember Bolts", Rarity = SkillRarity.Rare,
+                Glyph = SkillIconPainter.Burn, Effect = Fx.Burn, Levels = EmberBoltsLevels },
             new Spec { Id = "blood_covenant", File = "BloodCovenant", Name = "Blood Covenant", Rarity = SkillRarity.Epic,
                 Glyph = SkillIconPainter.LifeSteal, Effect = Fx.LifeSteal, Levels = new[]
                 {
@@ -231,7 +218,9 @@ namespace SurvivorSouls.Editor.Skills
             // KAN-83: the old Multishot is now Spread Shot (same asset and id "multishot", so saves and debug configs load).
             // The main bolt always flies straight; angled bolts at 15 deg steps on both sides deal a damage share (AutoShooter
             // base 50 %, levels add to it). Rare: a fan is a crowd tool, not a boss killer.
-            new Spec { Id = "multishot", File = "Multishot", Name = "Spread Shot", Rarity = SkillRarity.Rare, ReworkFrom = "Multishot",
+            // KAN-246: Spread Shot is Epic (wider coverage is a visible transformation). Its id stays "multishot" (saves); the
+            // catalog's Multishot is the double_shot asset below.
+            new Spec { Id = "multishot", File = "Multishot", Name = "Spread Shot", Rarity = SkillRarity.Epic, ReworkFrom = "Multishot",
                 Glyph = SkillIconPainter.Multishot, Levels = new[]
                 {
                     L("2 side bolts at 15°, 50% damage", Add(StatId.Multishot, 2f)),
@@ -244,17 +233,20 @@ namespace SurvivorSouls.Editor.Skills
             // KAN-83 (KAN-36): Double Shot. The volley fires again down the same line 0.09 s later. Repeats are rare on
             // purpose: owned, its level-up weight drops to 25 % (2nd stack) and 6 % (3rd), pity and guarantees never push
             // it again, and chest screens offer it at 35 % weight.
-            new Spec { Id = "double_shot", File = "DoubleShot", Name = "Double Shot", Rarity = SkillRarity.Epic,
+            // KAN-246 Ember Boons: Double Shot is renamed Multishot and is Legendary (the volley, with its spread, forward and
+            // rear bolts, fires again). Same id "double_shot", same numbers; the one-time Rework renames the shipped asset.
+            new Spec { Id = "double_shot", File = "DoubleShot", Name = "Multishot", Rarity = SkillRarity.Legendary, ReworkFrom = "Double Shot",
                 Glyph = SkillIconPainter.DoubleShot, RepeatWeights = new[] { 0.25f, 0.06f }, UpgradeWeight = 0.35f, Levels = new[]
                 {
-                    L("1 extra bolt down the same line", Add(StatId.DoubleShot, 1f)),
-                    L("2 extra bolts down the same line", Add(StatId.DoubleShot, 2f)),
-                    L("3 extra bolts, 90% damage each", Add(StatId.DoubleShot, 3f), Pct(StatId.ChainDamage, -0.1f)),
+                    L("Every volley fires once more", Add(StatId.DoubleShot, 1f)),
+                    L("Every volley fires twice more", Add(StatId.DoubleShot, 2f)),
+                    L("Volley 3 times more, 90% damage", Add(StatId.DoubleShot, 3f), Pct(StatId.ChainDamage, -0.1f)),
                     // KAN-221 (KAN-124.3): levels 4-5 add follow-up bolt damage, not bolts (frame time: KAN-83 / KAN-88).
-                    L("3 extra bolts, full damage each", Add(StatId.DoubleShot, 3f)),
-                    L("3 extra bolts, 115% damage each", Add(StatId.DoubleShot, 3f), Pct(StatId.ChainDamage, 0.15f)),
+                    L("Volley 3 times more, full damage", Add(StatId.DoubleShot, 3f)),
+                    L("Volley 3 times more, 115% damage", Add(StatId.DoubleShot, 3f), Pct(StatId.ChainDamage, 0.15f)),
                 } },
-            new Spec { Id = "soul_burst", File = "SoulBurst", Name = "Soul Burst", Rarity = SkillRarity.Legendary,
+            // KAN-246: Soul Burst is Epic; burst kills no longer burst again (KillBurstEffect).
+            new Spec { Id = "soul_burst", File = "SoulBurst", Name = "Soul Burst", Rarity = SkillRarity.Epic,
                 Glyph = SkillIconPainter.KillBurst, Effect = Fx.KillBurst, Levels = new[]
                 {
                     L("Kills burst: 50% damage in 2.6 m", Add(StatId.KillBurst, 0.5f)),
@@ -299,7 +291,9 @@ namespace SurvivorSouls.Editor.Skills
             // primary stat never drops), then hits per frost. No damage, so it joins late: level 10 tier, weight 0.5. Earlier
             // it crowds the damage picks out of the random-pick power curve (2000 runs, level 10 single-target: 2.45x at tier
             // 4 weight 1, 2.49x at tier 4 / 6 weight 0.5, 2.49x at tier 6 weight 0.3; floor 2.5x, KAN-191). Tier 10: 2.51x.
-            new Spec { Id = "freeze_arrow", File = "FreezeArrow", Name = "Freeze Arrow", Rarity = SkillRarity.Rare, Weight = 0.5f,
+            // KAN-246 Ember Boons: renamed Frost Bolts (same id "freeze_arrow", same numbers); bosses are slowed, never frozen.
+            new Spec { Id = "freeze_arrow", File = "FreezeArrow", Name = "Frost Bolts", Rarity = SkillRarity.Rare, Weight = 0.5f,
+                ReworkFrom = "Freeze Arrow",
                 Glyph = SkillIconPainter.Frost, Effect = Fx.Frost, Levels = new[]
                 {
                     L("Every 3rd hit freezes foes 1.5 s", Add(StatId.FreezeDuration, 1.5f), Add(StatId.FreezeEvery, 3f)),
@@ -310,7 +304,8 @@ namespace SurvivorSouls.Editor.Skills
             // KAN-123: Holy Tomes. Books orbit the Knight (count, radius m, s per turn) and hit the foes they pass for a share
             // of the bolt damage (each book hits a foe once per 0.5 s), knockback from level 7, holy flash splash at level 8.
             // Rare with 8 levels: the ticket's table (the deeper path KAN-124 asks for), not the 4-5 level Rare rule.
-            new Spec { Id = "holy_tomes", File = "HolyTomes", Name = "Holy Tomes", Rarity = SkillRarity.Rare,
+            // KAN-246: Holy Tomes is Epic.
+            new Spec { Id = "holy_tomes", File = "HolyTomes", Name = "Holy Tomes", Rarity = SkillRarity.Epic,
                 Glyph = SkillIconPainter.Tome, Effect = Fx.Tomes, Levels = new[]
                 {
                     L("A holy tome circles you, 60% dmg", Tome(1, 2f, 2f, 0.6f)),
@@ -389,12 +384,16 @@ namespace SurvivorSouls.Editor.Skills
             EditorAssetUtil.EnsureFolder(PrefabDir);
             var effects = BuildEffects(kit);
             var byId = new Dictionary<string, SkillDefinition>();
-            foreach (var spec in Specs)
+            foreach (var spec in AllSpecs())
             {
-                var icon = SkillIconPainter.Write($"{IconDir}/T_Skill_{spec.File}.png", spec.Glyph);
+                // KAN-246: Ember Boons portrait art first; the painted glyph only for skills without one (and as the old
+                // icon of the 17 KAN-19 skills, still written so nothing that links it breaks).
+                var glyph = spec.Glyph != null ? SkillIconPainter.Write($"{IconDir}/T_Skill_{spec.File}.png", spec.Glyph) : null;
+                var icon = BoonArt(spec.Id) ?? glyph;
                 effects.TryGetValue(spec.Effect, out var effect);
                 byId[spec.Id] = LoadOrCreate(spec, icon, effect);
             }
+            ApplyCatalog(byId); // KAN-246 one-time moves of the shipped assets (art, tiers, Ember Bolts table, gates)
             var table = BuildProgression(byId);
             AssetDatabase.SaveAssets();
             return table;
@@ -465,7 +464,8 @@ namespace SurvivorSouls.Editor.Skills
             var table = AssetDatabase.LoadAssetAtPath<SkillProgression>(ProgressionPath);
             if (table != null)
             {
-                AddLateUnlocks(table, s);
+                AddLateUnlocks(table, s, LateUnlocks);
+                AddLateUnlocks(table, s, BoonUnlocks); // KAN-246
                 AddLateGuarantees(table, s);
                 return table;
             }
@@ -503,6 +503,8 @@ namespace SurvivorSouls.Editor.Skills
                     new SkillProgression.Guarantee { level = 8, skill = s["quick_draw"] },
                 });
             AssetDatabase.CreateAsset(table, ProgressionPath);
+            AddLateUnlocks(table, s, LateUnlocks); // a fresh table gets the later skills too (only the missing ones)
+            AddLateUnlocks(table, s, BoonUnlocks); // KAN-246
             return table;
         }
 
@@ -511,9 +513,10 @@ namespace SurvivorSouls.Editor.Skills
         /// when the table does not list it anywhere yet. To take it out of runs, set its weight to 0 (removing it from
         /// the table brings it back on the next build).
         /// </summary>
-        private static void AddLateUnlocks(SkillProgression table, Dictionary<string, SkillDefinition> s)
+        private static void AddLateUnlocks(SkillProgression table, Dictionary<string, SkillDefinition> s,
+            (string id, int fromLevel)[] unlocks)
         {
-            foreach (var (id, fromLevel) in LateUnlocks)
+            foreach (var (id, fromLevel) in unlocks)
             {
                 if (!s.TryGetValue(id, out var skill) || table.FindSkill(id) != null) continue;
                 SkillProgression.Tier tier = null;
@@ -560,7 +563,7 @@ namespace SurvivorSouls.Editor.Skills
             var tomeGlowMat = EditorAssetUtil.ParticleMaterial(FxDir + "/M_FX_TomeGlow.mat", kit.SoftDot, additive: false);
             var tomeArt = HolyTomeArt.Build(FxDir);
 
-            return new Dictionary<Fx, SkillEffect>
+            var built = new Dictionary<Fx, SkillEffect>
             {
                 [Fx.Burn] = SavePrefab<BurnOnHitEffect>("FX_Skill_EmberBolts", (root, fx) =>
                 {
@@ -704,6 +707,8 @@ namespace SurvivorSouls.Editor.Skills
                     Set(fx, "glow", glow);
                 }),
             };
+            AddBoonEffects(built, kit); // KAN-246
+            return built;
         }
 
         private static SkillEffect SavePrefab<T>(string name, Action<GameObject, T> build) where T : SkillEffect

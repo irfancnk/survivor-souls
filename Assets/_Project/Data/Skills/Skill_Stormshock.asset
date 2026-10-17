@@ -1,0 +1,58 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1fe610960d6a34b01a28534f0f33effb, type: 3}
+  m_Name: Skill_Stormshock
+  m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Skills.SkillDefinition
+  id: stormshock
+  displayName: Stormshock
+  description: '4th hit: lightning to 3, 60% dmg'
+  icon: {fileID: 2800000, guid: 0b9b1bcca4aa4b3dacd93bb50d30a218, type: 3}
+  rarity: 2
+  maxStack: 3
+  weight: 1
+  modifiers:
+  - stat: 45
+    kind: 0
+    value: 3
+  - stat: 46
+    kind: 0
+    value: 0.6
+  levels:
+  - description: '4th hit: lightning to 3, 60% dmg'
+    modifiers:
+    - stat: 45
+      kind: 0
+      value: 3
+    - stat: 46
+      kind: 0
+      value: 0.6
+  - description: Lightning to 4 foes, 70% damage
+    modifiers:
+    - stat: 45
+      kind: 0
+      value: 4
+    - stat: 46
+      kind: 0
+      value: 0.7
+  - description: Lightning to 5 foes, 80% damage
+    modifiers:
+    - stat: 45
+      kind: 0
+      value: 5
+    - stat: 46
+      kind: 0
+      value: 0.8
+  effectPrefab: {fileID: 2597667926259362999, guid: dfdd0d1fb8e3a5d4b8121bcdbf2cbd13, type: 3}
+  requiresUpgradableSkill: 0
+  repeatOfferWeights: []
+  upgradeOfferWeight: 1
+  requiresAnyOf: []

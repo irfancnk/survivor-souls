@@ -1,0 +1,58 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1fe610960d6a34b01a28534f0f33effb, type: 3}
+  m_Name: Skill_RearArrow
+  m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Skills.SkillDefinition
+  id: rear_arrow
+  displayName: Rear Arrow +1
+  description: +1 bolt behind you, 60% damage
+  icon: {fileID: 2800000, guid: 5de92648e4c847dc90633083ee77f4fe, type: 3}
+  rarity: 2
+  maxStack: 3
+  weight: 1
+  modifiers:
+  - stat: 51
+    kind: 0
+    value: 1
+  - stat: 52
+    kind: 0
+    value: 0.6
+  levels:
+  - description: +1 bolt behind you, 60% damage
+    modifiers:
+    - stat: 51
+      kind: 0
+      value: 1
+    - stat: 52
+      kind: 0
+      value: 0.6
+  - description: +1 bolt behind you, 80% damage
+    modifiers:
+    - stat: 51
+      kind: 0
+      value: 1
+    - stat: 52
+      kind: 0
+      value: 0.8
+  - description: +1 bolt behind you, full damage
+    modifiers:
+    - stat: 51
+      kind: 0
+      value: 1
+    - stat: 52
+      kind: 0
+      value: 1
+  effectPrefab: {fileID: 0}
+  requiresUpgradableSkill: 0
+  repeatOfferWeights: []
+  upgradeOfferWeight: 1
+  requiresAnyOf: []

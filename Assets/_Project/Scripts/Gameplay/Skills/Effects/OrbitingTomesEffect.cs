@@ -124,6 +124,7 @@ namespace SurvivorSouls.Gameplay.Skills.Effects
             Vector3 centre = Context?.Player != null ? Context.Player.position : transform.position;
             float a = _angle + index * Mathf.PI * 2f / Mathf.Max(1, count);
             float r = Radius;
+            EclipseFormation.Apply(index, count, 0, ref a, ref r); // KAN-246 Eclipse Crown bends the books into its formation
             return centre + new Vector3(Mathf.Cos(a) * r, height, Mathf.Sin(a) * r);
         }
 

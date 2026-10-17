@@ -15,8 +15,8 @@ MonoBehaviour:
   id: soul_burst
   displayName: Soul Burst
   description: 'Kills burst: 50% damage in 2.6 m'
-  icon: {fileID: 2800000, guid: c1d6a866a6c5e4e1994deb935f510b7d, type: 3}
-  rarity: 3
+  icon: {fileID: 2800000, guid: afeb797ba473457c91e786a7f7604fd5, type: 3}
+  rarity: 2
   maxStack: 7
   weight: 1
   modifiers:
@@ -75,3 +75,7 @@ MonoBehaviour:
       kind: 0
       value: 1.8
   effectPrefab: {fileID: 4695268960383152797, guid: 4b0fc9585433544fa82b3d9e5861c229, type: 3}
+  requiresUpgradableSkill: 0
+  repeatOfferWeights: []
+  upgradeOfferWeight: 1
+  requiresAnyOf: []

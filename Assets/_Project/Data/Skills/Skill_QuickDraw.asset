@@ -15,7 +15,7 @@ MonoBehaviour:
   id: quick_draw
   displayName: Quick Draw
   description: +15% attack speed
-  icon: {fileID: 2800000, guid: 80dc2c78bbbb54792aeeeda7bf713228, type: 3}
+  icon: {fileID: 2800000, guid: cc6fa88e895045a1a9c93fe7b4ae9395, type: 3}
   rarity: 0
   maxStack: 8
   weight: 1
@@ -65,3 +65,7 @@ MonoBehaviour:
       kind: 1
       value: 1.2
   effectPrefab: {fileID: 0}
+  requiresUpgradableSkill: 0
+  repeatOfferWeights: []
+  upgradeOfferWeight: 1
+  requiresAnyOf: []

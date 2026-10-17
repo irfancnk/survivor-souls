@@ -1,0 +1,52 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1fe610960d6a34b01a28534f0f33effb, type: 3}
+  m_Name: Skill_AshenHeart
+  m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Skills.SkillDefinition
+  id: ashen_heart
+  displayName: Ashen Heart
+  description: Health pickups heal 30% more
+  icon: {fileID: 2800000, guid: c3032d4213004e00b3d0afe3cc6a74fd, type: 3}
+  rarity: 1
+  maxStack: 3
+  weight: 0.5
+  modifiers:
+  - stat: 80
+    kind: 1
+    value: 0.3
+  levels:
+  - description: Health pickups heal 30% more
+    modifiers:
+    - stat: 80
+      kind: 1
+      value: 0.3
+  - description: +30% heal, hearts drop sooner
+    modifiers:
+    - stat: 80
+      kind: 1
+      value: 0.3
+    - stat: 81
+      kind: 1
+      value: 0.15
+  - description: +60% heal, hearts drop sooner
+    modifiers:
+    - stat: 80
+      kind: 1
+      value: 0.6
+    - stat: 81
+      kind: 1
+      value: 0.15
+  effectPrefab: {fileID: 0}
+  requiresUpgradableSkill: 0
+  repeatOfferWeights: []
+  upgradeOfferWeight: 1
+  requiresAnyOf: []

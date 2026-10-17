@@ -149,7 +149,17 @@ namespace SurvivorSouls.Gameplay.Skills
         /// still level up, since its chests would have nothing to upgrade. Forced offers (dev) skip the gate.
         /// </summary>
         public bool CanOffer(SkillDefinition skill) =>
-            CanTake(skill) && (!skill.RequiresUpgradableSkill || GetLevel(skill) > 0 || HasUpgradableSkill(skill));
+            CanTake(skill) && (!skill.RequiresUpgradableSkill || GetLevel(skill) > 0 || HasUpgradableSkill(skill))
+            && (GetLevel(skill) > 0 || OwnsAnyOf(skill.RequiresAnyOf)); // KAN-246: Eclipse Crown waits for an orbital
+
+        /// <summary>True when <paramref name="skills"/> is empty or one of them is owned (KAN-246 offer gate).</summary>
+        public bool OwnsAnyOf(SkillDefinition[] skills)
+        {
+            if (skills == null || skills.Length == 0) return true;
+            for (int i = 0; i < skills.Length; i++)
+                if (skills[i] != null && GetLevel(skills[i]) > 0) return true;
+            return false;
+        }
 
         /// <summary>True when an owned skill other than <paramref name="except"/> is below its max level.</summary>
         public bool HasUpgradableSkill(SkillDefinition except = null)

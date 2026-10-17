@@ -129,13 +129,14 @@ namespace SurvivorSouls.Tests
             new object[] { "Ricochet", 5, new[] { "Ricochet+=3", "Damage%=0.25" } }, // KAN-220: 7 levels
             new object[] { "Ricochet", 6, new[] { "Ricochet+=4", "Damage%=0.25" } },
             new object[] { "Ricochet", 7, new[] { "Ricochet+=4", "Damage%=0.35", "BounceFalloff+=-0.15" } },
-            new object[] { "EmberBolts", 1, new[] { "BurnDps+=25", "BurnSlow+=0.15", "IgniteStun+=0.2" } }, // KAN-134 slow + flinch
-            new object[] { "EmberBolts", 2, new[] { "BurnDps+=40", "BurnSlow+=0.18", "IgniteStun+=0.2" } },
-            new object[] { "EmberBolts", 3, new[] { "BurnDps+=55", "BurnDuration+=1", "BurnSpread+=1", "BurnSlow+=0.21", "IgniteStun+=0.2" } }, // KAN-77 perks
-            new object[] { "EmberBolts", 4, new[] { "BurnDps+=75", "BurnDuration+=2", "BurnSpread+=1", "BurnDeathBlast+=0.6", "BurnSlow+=0.25", "IgniteStun+=0.2" } },
-            new object[] { "EmberBolts", 5, new[] { "BurnDps+=90", "BurnDuration+=2", "BurnSpread+=1", "BurnDeathBlast+=0.7", "BurnSlow+=0.26", "IgniteStun+=0.2" } }, // KAN-220
-            new object[] { "EmberBolts", 6, new[] { "BurnDps+=105", "BurnDuration+=3", "BurnSpread+=1", "BurnDeathBlast+=0.8", "BurnSlow+=0.28", "IgniteStun+=0.2" } },
-            new object[] { "EmberBolts", 7, new[] { "BurnDps+=130", "BurnDuration+=3", "BurnSpread+=2", "BurnDeathBlast+=1", "BurnSlow+=0.3", "IgniteStun+=0.2" } },
+            // KAN-246 Ember Boons: burn only (the KAN-77 / KAN-134 slow, ignite stun, spread and death blast are gone).
+            new object[] { "EmberBolts", 1, new[] { "BurnDps+=25" } },
+            new object[] { "EmberBolts", 2, new[] { "BurnDps+=40" } },
+            new object[] { "EmberBolts", 3, new[] { "BurnDps+=55", "BurnDuration+=1" } },
+            new object[] { "EmberBolts", 4, new[] { "BurnDps+=75", "BurnDuration+=2" } },
+            new object[] { "EmberBolts", 5, new[] { "BurnDps+=90", "BurnDuration+=2" } }, // KAN-220: 7 levels
+            new object[] { "EmberBolts", 6, new[] { "BurnDps+=105", "BurnDuration+=3" } },
+            new object[] { "EmberBolts", 7, new[] { "BurnDps+=130", "BurnDuration+=3" } },
             new object[] { "BloodCovenant", 1, new[] { "LifeSteal+=0.05" } },
             new object[] { "BloodCovenant", 2, new[] { "LifeSteal+=0.07" } },
             new object[] { "BloodCovenant", 3, new[] { "LifeSteal+=0.09" } },
@@ -180,6 +181,64 @@ namespace SurvivorSouls.Tests
             new object[] { "HolyTomes", 6, new[] { "TomeCount+=4", "TomeRadius+=3", "TomeSpin+=1.5", "TomeDamage+=0.8" } },
             new object[] { "HolyTomes", 7, new[] { "TomeCount+=4", "TomeRadius+=3.2", "TomeSpin+=1.4", "TomeDamage+=0.9", "TomeKnockback+=3" } },
             new object[] { "HolyTomes", 8, new[] { "TomeCount+=5", "TomeRadius+=3.4", "TomeSpin+=1.3", "TomeDamage+=1", "TomeKnockback+=3", "TomeFlash+=1.3" } },
+            // KAN-246 Ember Boons: the 19 new skills, 3 levels each (Docs/skills/ember-boons.json upgrade_direction).
+            new object[] { "VenomBolts", 1, new[] { "PoisonDps+=12", "PoisonDuration+=5", "PoisonStacks+=2" } },
+            new object[] { "VenomBolts", 2, new[] { "PoisonDps+=18", "PoisonDuration+=5", "PoisonStacks+=2" } },
+            new object[] { "VenomBolts", 3, new[] { "PoisonDps+=18", "PoisonDuration+=6", "PoisonStacks+=3" } },
+            new object[] { "StormTouch", 1, new[] { "ArcTargets+=1", "ArcDamage+=0.35" } },
+            new object[] { "StormTouch", 2, new[] { "ArcTargets+=1", "ArcDamage+=0.55" } },
+            new object[] { "StormTouch", 3, new[] { "ArcTargets+=2", "ArcDamage+=0.55" } },
+            new object[] { "AshenHeart", 1, new[] { "PickupHeal%=0.3" } },
+            new object[] { "AshenHeart", 2, new[] { "PickupHeal%=0.3", "PickupDrop%=0.15" } },
+            new object[] { "AshenHeart", 3, new[] { "PickupHeal%=0.6", "PickupDrop%=0.15" } },
+            new object[] { "RepellingBolts", 1, new[] { "KnockEvery+=4", "KnockForce+=6" } },
+            new object[] { "RepellingBolts", 2, new[] { "KnockEvery+=3", "KnockForce+=6" } },
+            new object[] { "RepellingBolts", 3, new[] { "KnockEvery+=3", "KnockForce+=8" } },
+            new object[] { "Stormshock", 1, new[] { "ShockTargets+=3", "ShockDamage+=0.6" } },
+            new object[] { "Stormshock", 2, new[] { "ShockTargets+=4", "ShockDamage+=0.7" } },
+            new object[] { "Stormshock", 3, new[] { "ShockTargets+=5", "ShockDamage+=0.8" } },
+            new object[] { "FrontArrow", 1, new[] { "FrontLanes+=1", "FrontDamage+=-0.25" } },
+            new object[] { "FrontArrow", 2, new[] { "FrontLanes+=1", "FrontDamage+=-0.15" } },
+            new object[] { "FrontArrow", 3, new[] { "FrontLanes+=1", "FrontDamage+=-0.05" } },
+            new object[] { "BouncyWall", 1, new[] { "WallBounces+=1" } },
+            new object[] { "BouncyWall", 2, new[] { "WallBounces+=1", "WallDamage+=0.2" } },
+            new object[] { "BouncyWall", 3, new[] { "WallBounces+=2", "WallDamage+=0.2" } },
+            new object[] { "RearArrow", 1, new[] { "RearArrows+=1", "RearDamage+=0.6" } },
+            new object[] { "RearArrow", 2, new[] { "RearArrows+=1", "RearDamage+=0.8" } },
+            new object[] { "RearArrow", 3, new[] { "RearArrows+=1", "RearDamage+=1" } },
+            new object[] { "EmberWheel", 1, new[] { "WheelCount+=2", "WheelSpin+=2.2", "WheelBurn+=20" } },
+            new object[] { "EmberWheel", 2, new[] { "WheelCount+=2", "WheelSpin+=1.6", "WheelBurn+=20" } },
+            new object[] { "EmberWheel", 3, new[] { "WheelCount+=2", "WheelSpin+=1.6", "WheelBurn+=35" } },
+            new object[] { "RimeBlades", 1, new[] { "RimeCount+=2", "RimeSlow+=1.2" } },
+            new object[] { "RimeBlades", 2, new[] { "RimeCount+=2", "RimeSlow+=2" } },
+            new object[] { "RimeBlades", 3, new[] { "RimeCount+=3", "RimeSlow+=2" } },
+            new object[] { "StormSatellites", 1, new[] { "SatelliteCount+=2" } },
+            new object[] { "StormSatellites", 2, new[] { "SatelliteCount+=2", "SatelliteInterval+=-0.5" } },
+            new object[] { "StormSatellites", 3, new[] { "SatelliteCount+=2", "SatelliteInterval+=-0.5", "SatelliteArc+=1" } },
+            new object[] { "ReaperScythes", 1, new[] { "ScytheCount+=2", "ScytheDamage+=1.2" } },
+            new object[] { "ReaperScythes", 2, new[] { "ScytheCount+=2", "ScytheDamage+=1.6" } },
+            new object[] { "ReaperScythes", 3, new[] { "ScytheCount+=2", "ScytheDamage+=1.6", "ScytheSize+=0.25" } },
+            new object[] { "SentinelHalo", 1, new[] { "HaloCount+=2" } },
+            new object[] { "SentinelHalo", 2, new[] { "HaloCount+=2", "HaloReach+=0.3" } },
+            new object[] { "SentinelHalo", 3, new[] { "HaloCount+=3", "HaloReach+=0.3" } },
+            new object[] { "SecondDawn", 1, new[] { "ReviveHealth+=0.4" } },
+            new object[] { "SecondDawn", 2, new[] { "ReviveHealth+=0.6" } },
+            new object[] { "SecondDawn", 3, new[] { "ReviveHealth+=0.6", "ReviveRadius+=1.5" } },
+            new object[] { "EclipseCrown", 1, new[] { "EclipsePulse+=1.5" } },
+            new object[] { "EclipseCrown", 2, new[] { "EclipsePulse+=1.5", "EclipseRadius+=1.5" } },
+            new object[] { "EclipseCrown", 3, new[] { "EclipsePulse+=1.5", "EclipseRadius+=1.5", "EclipseCooldown+=-4" } },
+            new object[] { "GraveChoir", 1, new[] { "ChoirChance+=0.15", "ChoirDamage+=0.5" } },
+            new object[] { "GraveChoir", 2, new[] { "ChoirChance+=0.15", "ChoirDamage+=0.5", "ChoirDuration+=3" } },
+            new object[] { "GraveChoir", 3, new[] { "ChoirChance+=0.15", "ChoirDamage+=0.8", "ChoirDuration+=3" } },
+            new object[] { "LastOath", 1, new[] { "OathDamage+=0.6" } },
+            new object[] { "LastOath", 2, new[] { "OathDamage+=0.9" } },
+            new object[] { "LastOath", 3, new[] { "OathDamage+=0.9", "OathCooldown+=-15" } },
+            new object[] { "StolenMoment", 1, new[] { "EchoDamage+=0.6" } },
+            new object[] { "StolenMoment", 2, new[] { "EchoDamage+=0.8" } },
+            new object[] { "StolenMoment", 3, new[] { "EchoDamage+=0.8", "EchoVolleys+=-2" } },
+            new object[] { "SovereignsFall", 1, new[] { "SwordDamage+=4" } },
+            new object[] { "SovereignsFall", 2, new[] { "SwordDamage+=6" } },
+            new object[] { "SovereignsFall", 3, new[] { "SwordDamage+=6", "SwordRadius+=1" } },
         };
 
         [TestCaseSource(nameof(Sheet))]
@@ -214,7 +273,7 @@ namespace SurvivorSouls.Tests
         {
             var rows = Sheet.Cast<object[]>().Select(r => ((string)r[0], (int)r[1])).ToList();
             var skills = Shipped().ToList();
-            Assert.That(skills.Count, Is.EqualTo(17)); // 12 KAN-19 skills + Reliquary Hunter (KAN-72) + Double Shot (KAN-83) + Hallowed Shield (KAN-93) + Freeze Arrow (KAN-91) + Holy Tomes (KAN-123)
+            Assert.That(skills.Count, Is.EqualTo(36)); // 12 KAN-19 skills + Reliquary Hunter (KAN-72) + Double Shot (KAN-83) + Hallowed Shield (KAN-93) + Freeze Arrow (KAN-91) + Holy Tomes (KAN-123) + 19 Ember Boons (KAN-246)
             foreach (var s in skills)
             {
                 string file = s.name.Substring("Skill_".Length);
@@ -235,6 +294,21 @@ namespace SurvivorSouls.Tests
 
         /// <summary>KAN-221 (KAN-124.3): multi-bolt skills with 5 levels; levels 4-5 add damage, never more bolts.</summary>
         private static readonly string[] FiveLevelBoltSkills = { "multishot", "double_shot" };
+
+        /// <summary>KAN-246 Ember Boons: the 19 new skills ship with the 3 levels of the catalog (KAN-124 may deepen them later).</summary>
+        private static readonly string[] ThreeLevelBoons =
+        {
+            "venom_bolts", "storm_touch", "ashen_heart", "repelling_bolts", "stormshock", "front_arrow", "bouncy_wall", "rear_arrow",
+            "ember_wheel", "rime_blades", "storm_satellites", "reaper_scythes", "sentinel_halo", "second_dawn", "eclipse_crown",
+            "grave_choir", "last_oath", "stolen_moment", "sovereigns_fall",
+        };
+
+        /// <summary>Stats where a lower number is the stronger skill (every Nth hit, cooldowns, volleys needed).</summary>
+        private static readonly StatId[] LowerIsBetter =
+        {
+            StatId.FreezeEvery, StatId.WardCooldown, StatId.KnockEvery, StatId.SatelliteInterval, StatId.EclipseCooldown,
+            StatId.OathCooldown, StatId.EchoVolleys,
+        };
 
         [Test]
         public void BoltSkills_HaveFiveLevels_LevelsFourAndFiveAddDamageNotBolts()
@@ -303,7 +377,7 @@ namespace SurvivorSouls.Tests
                 Shipped().Single(k => k.Id == id).Levels[level - 1].modifiers.Where(m => m.stat == stat).Sum(m => m.value);
             for (int level = 1; level <= 7; level++)
             {
-                Assert.That(Stat("ember_bolts", level, StatId.BurnSpread), Is.EqualTo(level >= 7 ? 2f : level >= 3 ? 1f : 0f), $"Ember L{level} spread");
+                Assert.That(Stat("ember_bolts", level, StatId.BurnSpread), Is.EqualTo(0f), $"Ember L{level}: no spread (KAN-246 burn only)");
                 Assert.That(Stat("piercing_bolts", level, StatId.PierceFalloff) < 0f, Is.EqualTo(level == 7), $"Pierce L{level} falloff perk");
                 Assert.That(Stat("ricochet", level, StatId.BounceFalloff) < 0f, Is.EqualTo(level == 7), $"Ricochet L{level} falloff perk");
             }
@@ -373,7 +447,7 @@ namespace SurvivorSouls.Tests
                 // Spread Shot (Rare) + Double Shot (Epic): KAN-221 (KAN-124.3) asks for 5, levels 4-5 add damage, not bolts.
                 bool deep = s.Id == "holy_tomes" || System.Array.IndexOf(EightLevelStatSkills, s.Id) >= 0;
                 bool seven = System.Array.IndexOf(SevenLevelEffectSkills, s.Id) >= 0;
-                var (min, max) = s.Id == "reliquary_hunter" ? (5, 5) : System.Array.IndexOf(FiveLevelBoltSkills, s.Id) >= 0 ? (5, 5) : deep ? (8, 8) : seven ? (7, 7) : s.Rarity switch
+                var (min, max) = System.Array.IndexOf(ThreeLevelBoons, s.Id) >= 0 ? (3, 3) : s.Id == "reliquary_hunter" ? (5, 5) : System.Array.IndexOf(FiveLevelBoltSkills, s.Id) >= 0 ? (5, 5) : deep ? (8, 8) : seven ? (7, 7) : s.Rarity switch
                 {
                     SkillRarity.Common => (5, 6),
                     SkillRarity.Rare => (4, 5),
@@ -401,7 +475,10 @@ namespace SurvivorSouls.Tests
                 float Total(int level, StatId id) => s.Levels[level - 1].modifiers.Where(m => m.stat == id).Sum(m => m.value);
                 for (int level = 2; level <= s.MaxLevel; level++)
                 {
-                    Assert.That(Total(level, primary), Is.GreaterThanOrEqualTo(Total(level - 1, primary)), $"{s.Id} L{level} {primary}");
+                    if (System.Array.IndexOf(LowerIsBetter, primary) >= 0) // KAN-246: every Nth hit, cooldowns
+                        Assert.That(Total(level, primary), Is.LessThanOrEqualTo(Total(level - 1, primary)), $"{s.Id} L{level} {primary}");
+                    else
+                        Assert.That(Total(level, primary), Is.GreaterThanOrEqualTo(Total(level - 1, primary)), $"{s.Id} L{level} {primary}");
                     var before = s.Levels[level - 2].modifiers;
                     var now = s.Levels[level - 1].modifiers;
                     Assert.That(now.SequenceEqual(before), Is.False, $"{s.Id} L{level} must change something");

@@ -343,11 +343,11 @@ namespace SurvivorSouls.Tests
             Assert.That(Load("KeenEye").Rarity, Is.EqualTo(SkillRarity.Rare));
             Assert.That(Load("PiercingBolts").Rarity, Is.EqualTo(SkillRarity.Rare));
             Assert.That(Load("BloodCovenant").Rarity, Is.EqualTo(SkillRarity.Epic));
-            Assert.That(Load("Multishot").Rarity, Is.EqualTo(SkillRarity.Rare), "Spread Shot (KAN-83)");
-            Assert.That(Load("DoubleShot").Rarity, Is.EqualTo(SkillRarity.Epic));
+            Assert.That(Load("Multishot").Rarity, Is.EqualTo(SkillRarity.Epic), "Spread Shot (KAN-83; Epic since KAN-246)");
+            Assert.That(Load("DoubleShot").Rarity, Is.EqualTo(SkillRarity.Legendary), "Multishot (KAN-246)");
             Assert.That(Load("TemporaryShield").Rarity, Is.EqualTo(SkillRarity.Epic), "Hallowed Shield (KAN-93)");
-            Assert.That(Load("EmberBolts").Rarity, Is.EqualTo(SkillRarity.Legendary));
-            Assert.That(Load("SoulBurst").Rarity, Is.EqualTo(SkillRarity.Legendary));
+            Assert.That(Load("EmberBolts").Rarity, Is.EqualTo(SkillRarity.Rare), "KAN-246: burn only");
+            Assert.That(Load("SoulBurst").Rarity, Is.EqualTo(SkillRarity.Epic), "KAN-246");
 
             var table = UnityEditor.AssetDatabase.LoadAssetAtPath<SkillProgression>("Assets/_Project/Data/Skills/SkillProgression_Run.asset");
             Assert.That(table.PityOffers, Is.EqualTo(3));

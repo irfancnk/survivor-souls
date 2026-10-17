@@ -1,0 +1,58 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1fe610960d6a34b01a28534f0f33effb, type: 3}
+  m_Name: Skill_RepellingBolts
+  m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Skills.SkillDefinition
+  id: repelling_bolts
+  displayName: Repelling Bolts
+  description: Every 4th hit knocks a foe back
+  icon: {fileID: 2800000, guid: 720e6d97b1ec4ba88c4c73cdfd7d00b2, type: 3}
+  rarity: 1
+  maxStack: 3
+  weight: 1
+  modifiers:
+  - stat: 43
+    kind: 0
+    value: 4
+  - stat: 44
+    kind: 0
+    value: 6
+  levels:
+  - description: Every 4th hit knocks a foe back
+    modifiers:
+    - stat: 43
+      kind: 0
+      value: 4
+    - stat: 44
+      kind: 0
+      value: 6
+  - description: Every 3rd hit knocks a foe back
+    modifiers:
+    - stat: 43
+      kind: 0
+      value: 3
+    - stat: 44
+      kind: 0
+      value: 6
+  - description: Every 3rd hit, harder knockback
+    modifiers:
+    - stat: 43
+      kind: 0
+      value: 3
+    - stat: 44
+      kind: 0
+      value: 8
+  effectPrefab: {fileID: 6529025148838728039, guid: 7bb4b694d43c3ee428aa2fffcb80bc63, type: 3}
+  requiresUpgradableSkill: 0
+  repeatOfferWeights: []
+  upgradeOfferWeight: 1
+  requiresAnyOf: []

@@ -14,45 +14,27 @@ MonoBehaviour:
   m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Skills.SkillDefinition
   id: ember_bolts
   displayName: Ember Bolts
-  description: Bolts set foes ablaze, slow 15%
-  icon: {fileID: 2800000, guid: d77f8799bb3134fb28e6b70fb005cdef, type: 3}
-  rarity: 3
+  description: Bolts set foes ablaze, 25/s
+  icon: {fileID: 2800000, guid: e3df260d0c2d4f38b37ed8e2f2c6048c, type: 3}
+  rarity: 1
   maxStack: 7
   weight: 1
   modifiers:
   - stat: 9
     kind: 0
     value: 25
-  - stat: 26
-    kind: 0
-    value: 0.15
-  - stat: 27
-    kind: 0
-    value: 0.2
   levels:
-  - description: Bolts set foes ablaze, slow 15%
+  - description: Bolts set foes ablaze, 25/s
     modifiers:
     - stat: 9
       kind: 0
       value: 25
-    - stat: 26
-      kind: 0
-      value: 0.15
-    - stat: 27
-      kind: 0
-      value: 0.2
-  - description: Fire 40/s for 3 s, slows 18%
+  - description: Fire 40/s for 3 s
     modifiers:
     - stat: 9
       kind: 0
       value: 40
-    - stat: 26
-      kind: 0
-      value: 0.18
-    - stat: 27
-      kind: 0
-      value: 0.2
-  - description: Fire 55/s 4 s, spreads, slow 21%
+  - description: Fire 55/s for 4 s
     modifiers:
     - stat: 9
       kind: 0
@@ -60,16 +42,7 @@ MonoBehaviour:
     - stat: 13
       kind: 0
       value: 1
-    - stat: 22
-      kind: 0
-      value: 1
-    - stat: 26
-      kind: 0
-      value: 0.21
-    - stat: 27
-      kind: 0
-      value: 0.2
-  - description: Fire 75/s 5 s, 60% blast, slow 25%
+  - description: Fire 75/s for 5 s
     modifiers:
     - stat: 9
       kind: 0
@@ -77,19 +50,7 @@ MonoBehaviour:
     - stat: 13
       kind: 0
       value: 2
-    - stat: 22
-      kind: 0
-      value: 1
-    - stat: 23
-      kind: 0
-      value: 0.6
-    - stat: 26
-      kind: 0
-      value: 0.25
-    - stat: 27
-      kind: 0
-      value: 0.2
-  - description: Fire 90/s 5 s, 70% blast, slow 26%
+  - description: Fire 90/s for 5 s
     modifiers:
     - stat: 9
       kind: 0
@@ -97,19 +58,7 @@ MonoBehaviour:
     - stat: 13
       kind: 0
       value: 2
-    - stat: 22
-      kind: 0
-      value: 1
-    - stat: 23
-      kind: 0
-      value: 0.7
-    - stat: 26
-      kind: 0
-      value: 0.26
-    - stat: 27
-      kind: 0
-      value: 0.2
-  - description: Fire 105/s 6 s, 80% blast, slow 28%
+  - description: Fire 105/s for 6 s
     modifiers:
     - stat: 9
       kind: 0
@@ -117,19 +66,7 @@ MonoBehaviour:
     - stat: 13
       kind: 0
       value: 3
-    - stat: 22
-      kind: 0
-      value: 1
-    - stat: 23
-      kind: 0
-      value: 0.8
-    - stat: 26
-      kind: 0
-      value: 0.28
-    - stat: 27
-      kind: 0
-      value: 0.2
-  - description: Fire 130/s, spreads x2, 100% blast
+  - description: Fire 130/s for 6 s
     modifiers:
     - stat: 9
       kind: 0
@@ -137,16 +74,8 @@ MonoBehaviour:
     - stat: 13
       kind: 0
       value: 3
-    - stat: 22
-      kind: 0
-      value: 2
-    - stat: 23
-      kind: 0
-      value: 1
-    - stat: 26
-      kind: 0
-      value: 0.3
-    - stat: 27
-      kind: 0
-      value: 0.2
   effectPrefab: {fileID: 8373298847089911843, guid: 43a86f129c1e64b03be3a8acbaf44c79, type: 3}
+  requiresUpgradableSkill: 0
+  repeatOfferWeights: []
+  upgradeOfferWeight: 1
+  requiresAnyOf: []

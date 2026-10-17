@@ -369,7 +369,7 @@ namespace SurvivorSouls.Tests
             var only = Track(ScriptableObject.CreateInstance<SkillProgression>());
             only.Configure(new[]
             {
-                new SkillProgression.Tier { fromLevel = 2, common = 0f, rare = 0f, epic = 100f, unlocks = new[] { ds } },
+                new SkillProgression.Tier { fromLevel = 2, common = 0f, rare = 0f, epic = 0f, legendary = 100f, unlocks = new[] { ds } }, // KAN-246: Multishot is Legendary
             }, new[] { new SkillProgression.Guarantee { level = 3, skill = ds } }, pity: 1);
             _manager.Setup(only, _stats, _shooter, null, _player.transform, rngSeed: 5);
             var offer = new List<SkillDefinition>();
@@ -385,10 +385,10 @@ namespace SurvivorSouls.Tests
             Assert.That(shown, Is.EqualTo(400), "alone in the pool it still shows (weight > 0, never 0)");
 
             var other = Track(ScriptableObject.CreateInstance<SkillDefinition>())
-                .Configure("other", "Other", "other", SkillRarity.Epic, 5, new StatModifier(StatId.Damage, ModifierKind.Percent, 0.1f));
+                .Configure("other", "Other", "other", SkillRarity.Legendary, 5, new StatModifier(StatId.Damage, ModifierKind.Percent, 0.1f));
             only.Configure(new[]
             {
-                new SkillProgression.Tier { fromLevel = 2, common = 0f, rare = 0f, epic = 100f, unlocks = new[] { ds, other } },
+                new SkillProgression.Tier { fromLevel = 2, common = 0f, rare = 0f, epic = 0f, legendary = 100f, unlocks = new[] { ds, other } },
             }, new[] { new SkillProgression.Guarantee { level = 3, skill = ds } }, pity: 1);
             shown = 0;
             for (int i = 0; i < 400; i++)
@@ -420,12 +420,13 @@ namespace SurvivorSouls.Tests
             var spread = Load("Multishot");
             Assert.That(spread.Id, Is.EqualTo("multishot"), "same id: saves and debug configs load");
             Assert.That(spread.DisplayName, Is.EqualTo("Spread Shot"));
-            Assert.That(spread.Rarity, Is.EqualTo(SkillRarity.Rare));
+            Assert.That(spread.Rarity, Is.EqualTo(SkillRarity.Epic), "KAN-246 Ember Boons: Epic");
             Assert.That(spread.MaxLevel, Is.EqualTo(5), "KAN-221: 5 levels, levels 4-5 add damage");
 
             var ds = Load("DoubleShot");
             Assert.That(ds.Id, Is.EqualTo("double_shot"));
-            Assert.That(ds.Rarity, Is.EqualTo(SkillRarity.Epic));
+            Assert.That(ds.Rarity, Is.EqualTo(SkillRarity.Legendary), "KAN-246 Ember Boons: Multishot, Legendary");
+            Assert.That(ds.DisplayName, Is.EqualTo("Multishot"), "KAN-246: Double Shot renamed, same id");
             Assert.That(ds.MaxLevel, Is.EqualTo(5), "KAN-221: 5 levels, levels 4-5 add damage");
             Assert.That(ds.Icon, Is.Not.Null);
 

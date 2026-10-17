@@ -80,7 +80,7 @@ namespace SurvivorSouls.UI.Hud
             label.text = crit ? Mathf.CeilToInt(deducted) + "!" : "-" + Mathf.CeilToInt(deducted);
             label.EnableInClassList(NumberKillClass, killed);
             label.EnableInClassList(NumberCritClass, crit);
-            label.EnableInClassList(NumberBurnClass, kind == DamageKind.Burn);
+            label.EnableInClassList(NumberBurnClass, kind == DamageKind.Burn || kind == DamageKind.Poison); // KAN-246: poison ticks look like burn ticks
             label.EnableInClassList(NumberBurstClass, kind == DamageKind.Burst);
             label.EnableInClassList(NumberGemsClass, false);
             label.style.display = DisplayStyle.Flex;

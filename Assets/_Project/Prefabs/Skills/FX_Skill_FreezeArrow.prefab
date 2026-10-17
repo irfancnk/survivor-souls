@@ -2348,6 +2348,7 @@ MonoBehaviour:
   eliteMinXp: 25
   refreezeDelay: 1
   bossRefreezeScale: 4
+  bossSlow: 0.4
   frost: {fileID: 7790133619272161374}
   burstShards: 12
   burstMist: 6

@@ -1,0 +1,64 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1fe610960d6a34b01a28534f0f33effb, type: 3}
+  m_Name: Skill_GraveChoir
+  m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Skills.SkillDefinition
+  id: grave_choir
+  displayName: Grave Choir
+  description: Kills may raise a ghost archer
+  icon: {fileID: 2800000, guid: 96c64d4c47f84371bda147d9f4843216, type: 3}
+  rarity: 3
+  maxStack: 3
+  weight: 1
+  modifiers:
+  - stat: 71
+    kind: 0
+    value: 0.15
+  - stat: 73
+    kind: 0
+    value: 0.5
+  levels:
+  - description: Kills may raise a ghost archer
+    modifiers:
+    - stat: 71
+      kind: 0
+      value: 0.15
+    - stat: 73
+      kind: 0
+      value: 0.5
+  - description: Ghost archers stay 9 s
+    modifiers:
+    - stat: 71
+      kind: 0
+      value: 0.15
+    - stat: 73
+      kind: 0
+      value: 0.5
+    - stat: 72
+      kind: 0
+      value: 3
+  - description: Ghost archers hit for 80%
+    modifiers:
+    - stat: 71
+      kind: 0
+      value: 0.15
+    - stat: 73
+      kind: 0
+      value: 0.8
+    - stat: 72
+      kind: 0
+      value: 3
+  effectPrefab: {fileID: 7178027397108673585, guid: de34aeb826d403c448694a03b2b66b3f, type: 3}
+  requiresUpgradableSkill: 0
+  repeatOfferWeights: []
+  upgradeOfferWeight: 1
+  requiresAnyOf: []

@@ -1,0 +1,49 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1fe610960d6a34b01a28534f0f33effb, type: 3}
+  m_Name: Skill_LastOath
+  m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Skills.SkillDefinition
+  id: last_oath
+  displayName: Last Oath
+  description: 'Under 30% HP: +60% damage surge'
+  icon: {fileID: 2800000, guid: afa55161b9794736aef7c26e90e9f2d3, type: 3}
+  rarity: 3
+  maxStack: 3
+  weight: 1
+  modifiers:
+  - stat: 74
+    kind: 0
+    value: 0.6
+  levels:
+  - description: 'Under 30% HP: +60% damage surge'
+    modifiers:
+    - stat: 74
+      kind: 0
+      value: 0.6
+  - description: 'Under 30% HP: +90% damage surge'
+    modifiers:
+    - stat: 74
+      kind: 0
+      value: 0.9
+  - description: Surge returns sooner (30 s)
+    modifiers:
+    - stat: 74
+      kind: 0
+      value: 0.9
+    - stat: 75
+      kind: 0
+      value: -15
+  effectPrefab: {fileID: 6941370495540313437, guid: 43666eb6b8d52b8489594262d22af190, type: 3}
+  requiresUpgradableSkill: 0
+  repeatOfferWeights: []
+  upgradeOfferWeight: 1
+  requiresAnyOf: []

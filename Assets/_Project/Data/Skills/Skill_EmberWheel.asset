@@ -1,0 +1,70 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1fe610960d6a34b01a28534f0f33effb, type: 3}
+  m_Name: Skill_EmberWheel
+  m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Skills.SkillDefinition
+  id: ember_wheel
+  displayName: Ember Wheel
+  description: 2 firebrands orbit, burn 20/s
+  icon: {fileID: 2800000, guid: c97ec53cbbac4c3eb416b5f4605d54f2, type: 3}
+  rarity: 2
+  maxStack: 3
+  weight: 1
+  modifiers:
+  - stat: 53
+    kind: 0
+    value: 2
+  - stat: 54
+    kind: 0
+    value: 2.2
+  - stat: 55
+    kind: 0
+    value: 20
+  levels:
+  - description: 2 firebrands orbit, burn 20/s
+    modifiers:
+    - stat: 53
+      kind: 0
+      value: 2
+    - stat: 54
+      kind: 0
+      value: 2.2
+    - stat: 55
+      kind: 0
+      value: 20
+  - description: 2 faster firebrands, burn 20/s
+    modifiers:
+    - stat: 53
+      kind: 0
+      value: 2
+    - stat: 54
+      kind: 0
+      value: 1.6
+    - stat: 55
+      kind: 0
+      value: 20
+  - description: 2 fast firebrands, burn 35/s
+    modifiers:
+    - stat: 53
+      kind: 0
+      value: 2
+    - stat: 54
+      kind: 0
+      value: 1.6
+    - stat: 55
+      kind: 0
+      value: 35
+  effectPrefab: {fileID: 6454990470528312714, guid: b0469b3bbd2b4954b9f9a48d46d5b7f0, type: 3}
+  requiresUpgradableSkill: 0
+  repeatOfferWeights: []
+  upgradeOfferWeight: 1
+  requiresAnyOf: []

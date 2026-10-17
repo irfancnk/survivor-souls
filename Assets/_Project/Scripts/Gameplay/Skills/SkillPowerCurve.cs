@@ -50,7 +50,7 @@ namespace SurvivorSouls.Gameplay.Skills
     /// neighbours, and burning deaths blast (<see cref="BlastFactor"/>). Single target has no neighbours (a boss).
     /// An index for comparing builds and levels, not a fight simulation.
     /// </summary>
-    public struct PowerSnapshot
+    public partial struct PowerSnapshot
     {
         public float BoltDamage, ShotsPerSecond, CritChance, CritMultiplier, Bolts, Pierce, Ricochet, BurnDps, KillBurst,
             LifeSteal, MaxHealth, MoveSpeed, Skills, Chain, SpreadDamage, ChainDamage, PierceFalloff, BounceFalloff;
@@ -109,9 +109,9 @@ namespace SurvivorSouls.Gameplay.Skills
         public float BlastFactor => BurnDps > 0f && HitsToKill > 0f
             ? Mathf.Max(0f, BurnDeathBlast) * Mathf.Max(0f, BlastFoes) / HitsToKill
             : 0f;
-        public float SingleTargetDps => BoltDamage * ShotsPerSecond * CritFactor * ChainFactor + BurnDps + TomeDps;
+        public float SingleTargetDps => BoltDamage * ShotsPerSecond * CritFactor * ChainFactor + BurnDps + TomeDps + BoonSingleDps;
         public float CrowdDps => (BoltDamage * ShotsPerSecond * CritFactor + BurnDps + SpreadBurnDps) * VolleyFactor * HitFactor *
-                                 (1f + BlastFactor) + TomeDps * Mathf.Max(0f, TomeFoes);
+                                 (1f + BlastFactor) + TomeDps * Mathf.Max(0f, TomeFoes) + BoonCrowdDps;
 
         /// <summary>c + c^2 + ... + c^n (n may be fractional); n when c = 1.</summary>
         private static float Geometric(float c, float n)
@@ -132,6 +132,7 @@ namespace SurvivorSouls.Gameplay.Skills
             s.TomeDps = s.Tomes > 0f && s.TomeSpin > 0f
                 ? s.BoltDamage * s.TomeShare * s.Tomes / s.TomeSpin * Mathf.Max(0f, b.TomeContact)
                 : 0f;
+            s.MeasureBoons(stats, b, permanentOnly); // KAN-246 (SkillPowerCurve.EmberBoons.cs)
             return s;
         }
 
@@ -176,6 +177,7 @@ namespace SurvivorSouls.Gameplay.Skills
             BurnSpread += o.BurnSpread * w; SpreadBurn += o.SpreadBurn * w; BurnDeathBlast += o.BurnDeathBlast * w; SpreadFoes += o.SpreadFoes * w;
             BlastFoes += o.BlastFoes * w; HitsToKill += o.HitsToKill * w;
             Tomes += o.Tomes * w; TomeShare += o.TomeShare * w; TomeSpin += o.TomeSpin * w; TomeDps += o.TomeDps * w; TomeFoes += o.TomeFoes * w;
+            BoonSingleDps += o.BoonSingleDps * w; BoonCrowdDps += o.BoonCrowdDps * w; // KAN-246
         }
     }
 

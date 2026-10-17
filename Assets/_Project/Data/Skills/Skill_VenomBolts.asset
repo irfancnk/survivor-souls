@@ -1,0 +1,70 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1fe610960d6a34b01a28534f0f33effb, type: 3}
+  m_Name: Skill_VenomBolts
+  m_EditorClassIdentifier: SurvivorSouls.Runtime::SurvivorSouls.Gameplay.Skills.SkillDefinition
+  id: venom_bolts
+  displayName: Venom Bolts
+  description: Poison 12/s for 5 s, 2 stacks
+  icon: {fileID: 2800000, guid: 07c5c12aef5f4e83b4958e3f167662de, type: 3}
+  rarity: 1
+  maxStack: 3
+  weight: 1
+  modifiers:
+  - stat: 38
+    kind: 0
+    value: 12
+  - stat: 39
+    kind: 0
+    value: 5
+  - stat: 40
+    kind: 0
+    value: 2
+  levels:
+  - description: Poison 12/s for 5 s, 2 stacks
+    modifiers:
+    - stat: 38
+      kind: 0
+      value: 12
+    - stat: 39
+      kind: 0
+      value: 5
+    - stat: 40
+      kind: 0
+      value: 2
+  - description: Poison 18/s for 5 s, 2 stacks
+    modifiers:
+    - stat: 38
+      kind: 0
+      value: 18
+    - stat: 39
+      kind: 0
+      value: 5
+    - stat: 40
+      kind: 0
+      value: 2
+  - description: Poison 18/s for 6 s, 3 stacks
+    modifiers:
+    - stat: 38
+      kind: 0
+      value: 18
+    - stat: 39
+      kind: 0
+      value: 6
+    - stat: 40
+      kind: 0
+      value: 3
+  effectPrefab: {fileID: 676950834536431453, guid: 973a375e12949094f8b82dda73a198fb, type: 3}
+  requiresUpgradableSkill: 0
+  repeatOfferWeights: []
+  upgradeOfferWeight: 1
+  requiresAnyOf: []

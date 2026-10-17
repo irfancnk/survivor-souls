@@ -34,6 +34,10 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 272fcb888b88d4fa2bd771a01cadce8f, type: 2}
     - {fileID: 11400000, guid: d2cc63eeccaea43d79166f9293666d39, type: 2}
     - {fileID: 11400000, guid: fce2297e3cef345ff8af363d54f4a936, type: 2}
+    - {fileID: 11400000, guid: 7efd11d8417682442a7a9736c2421d13, type: 2}
+    - {fileID: 11400000, guid: 09470ba17c103fe4bb6c2b03106ac1b7, type: 2}
+    - {fileID: 11400000, guid: 47f26f26a9deae347a27722625ec15f9, type: 2}
+    - {fileID: 11400000, guid: 8d185378b41d7f643a1b3a7ad9babc22, type: 2}
     common: 55
     rare: 30
     epic: 12
@@ -43,6 +47,15 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 5f5d24c2799bd49a98022b32c4ed4fea, type: 2}
     - {fileID: 11400000, guid: f22d698f6e5d04d73b1c58cab2fdcae6, type: 2}
     - {fileID: 11400000, guid: dc43435509d8c4e9fb5cf98cdd629d52, type: 2}
+    - {fileID: 11400000, guid: e205e3dbe525b4e4cb4d71baa8e88775, type: 2}
+    - {fileID: 11400000, guid: 8abf6a99f2ea2ac4fa17138c02c7134d, type: 2}
+    - {fileID: 11400000, guid: 867558c5727961c4792561b491f7c5a8, type: 2}
+    - {fileID: 11400000, guid: 5003063168bcafb4b866549d8bf83d3f, type: 2}
+    - {fileID: 11400000, guid: 27b9bdfbf1357dd4a9bb81cfddd8fe0a, type: 2}
+    - {fileID: 11400000, guid: 069f15cf37017cc4da84e1820f385ce3, type: 2}
+    - {fileID: 11400000, guid: 74f7be254c3406743a30fef31d57a70c, type: 2}
+    - {fileID: 11400000, guid: 229cb82862f291f469c324efc026591e, type: 2}
+    - {fileID: 11400000, guid: 4f9137fd8d569514d890def57778f0e4, type: 2}
     common: 45
     rare: 32
     epic: 16
@@ -50,6 +63,12 @@ MonoBehaviour:
   - fromLevel: 10
     unlocks:
     - {fileID: 11400000, guid: 647412f3c29ff49ea9b5703e7d8e5aed, type: 2}
+    - {fileID: 11400000, guid: 68dbbf23cb20c754090e7bfe88a56041, type: 2}
+    - {fileID: 11400000, guid: 48ae30fedb9fb604ba8868f084676edb, type: 2}
+    - {fileID: 11400000, guid: d9185d23a8a676f4b9bfba0114df2153, type: 2}
+    - {fileID: 11400000, guid: 1f1be9962035e3d4684f6b757ff5f7dc, type: 2}
+    - {fileID: 11400000, guid: e27e5a9496dbba3409068949c48d3c33, type: 2}
+    - {fileID: 11400000, guid: 3d89e2cbef5e6e7419c1d5812a39a85f, type: 2}
     common: 38
     rare: 32
     epic: 20

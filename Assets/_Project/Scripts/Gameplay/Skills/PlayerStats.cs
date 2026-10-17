@@ -71,6 +71,96 @@ namespace SurvivorSouls.Gameplay.Skills
         PierceFalloff,
         /// <summary>KAN-220 Ricochet level 7: flat change of the damage share a bolt loses per bounce (-0.15 = 30 % to 15 %).</summary>
         BounceFalloff,
+
+        // ---- KAN-246 Ember Boons (append only) ----
+        /// <summary>Venom Bolts: poison damage per second per stack.</summary>
+        PoisonDps,
+        /// <summary>Venom Bolts: poison length in seconds.</summary>
+        PoisonDuration,
+        /// <summary>Venom Bolts: most poison stacks on one foe.</summary>
+        PoisonStacks,
+        /// <summary>Storm Touch: foes one weapon hit arcs to (0 = none).</summary>
+        ArcTargets,
+        /// <summary>Storm Touch: arc damage as a share of the bolt damage.</summary>
+        ArcDamage,
+        /// <summary>Repelling Bolts: every Nth weapon hit knocks the foe back (0 = never).</summary>
+        KnockEvery,
+        /// <summary>Repelling Bolts: knockback speed in m/s.</summary>
+        KnockForce,
+        /// <summary>Stormshock: zombies one chain strikes, the struck one included (0 = no chain).</summary>
+        ShockTargets,
+        /// <summary>Stormshock: chain damage per zombie as a share of the bolt damage.</summary>
+        ShockDamage,
+        /// <summary>Front Arrow +1: extra parallel forward bolts per volley.</summary>
+        FrontLanes,
+        /// <summary>Front Arrow +1: damage share of every forward-lane bolt (base 1, levels subtract less).</summary>
+        FrontDamage,
+        /// <summary>Bouncy Wall: wall rebounds per bolt.</summary>
+        WallBounces,
+        /// <summary>Bouncy Wall: damage share a bolt keeps after a rebound (base 0, levels add).</summary>
+        WallDamage,
+        /// <summary>Rear Arrow +1: bolts fired behind the hero per volley.</summary>
+        RearArrows,
+        /// <summary>Rear Arrow +1: damage share of a rear bolt.</summary>
+        RearDamage,
+        /// <summary>Ember Wheel: firebrands orbiting the hero.</summary>
+        WheelCount,
+        /// <summary>Ember Wheel: seconds per turn (lower = faster).</summary>
+        WheelSpin,
+        /// <summary>Ember Wheel: burn damage per second a contact sets.</summary>
+        WheelBurn,
+        /// <summary>Rime Blades: ice blades orbiting the hero.</summary>
+        RimeCount,
+        /// <summary>Rime Blades: contact slow length in seconds.</summary>
+        RimeSlow,
+        /// <summary>Storm Satellites: charged orbs orbiting the hero.</summary>
+        SatelliteCount,
+        /// <summary>Storm Satellites: seconds between two discharges (base from the effect, levels subtract).</summary>
+        SatelliteInterval,
+        /// <summary>Storm Satellites: secondary arcs per discharge.</summary>
+        SatelliteArc,
+        /// <summary>Reaper Scythes: scythes on the wide orbit.</summary>
+        ScytheCount,
+        /// <summary>Reaper Scythes: damage per sweep as a share of the bolt damage.</summary>
+        ScytheDamage,
+        /// <summary>Reaper Scythes: size multiplier add (0.2 = +20 %).</summary>
+        ScytheSize,
+        /// <summary>Sentinel Halo: shield fragments orbiting the hero.</summary>
+        HaloCount,
+        /// <summary>Sentinel Halo: block reach add per fragment in metres (angular coverage).</summary>
+        HaloReach,
+        /// <summary>Second Dawn: health share restored by the revive (0 = no revive).</summary>
+        ReviveHealth,
+        /// <summary>Second Dawn: shockwave radius add in metres.</summary>
+        ReviveRadius,
+        /// <summary>Eclipse Crown: dark pulse damage as a share of the bolt damage (0 = none).</summary>
+        EclipsePulse,
+        /// <summary>Eclipse Crown: pulse radius add in metres.</summary>
+        EclipseRadius,
+        /// <summary>Eclipse Crown: formation cooldown change in seconds (levels subtract).</summary>
+        EclipseCooldown,
+        /// <summary>Grave Choir: chance (0..1) that a weapon kill raises a spectral archer.</summary>
+        ChoirChance,
+        /// <summary>Grave Choir: archer lifetime add in seconds.</summary>
+        ChoirDuration,
+        /// <summary>Grave Choir: archer bolt damage as a share of the bolt damage.</summary>
+        ChoirDamage,
+        /// <summary>Last Oath: weapon damage bonus while the surge runs (0 = no surge).</summary>
+        OathDamage,
+        /// <summary>Last Oath: surge cooldown change in seconds (levels subtract).</summary>
+        OathCooldown,
+        /// <summary>Stolen Moment: echo volley damage share (0 = no echo).</summary>
+        EchoDamage,
+        /// <summary>Stolen Moment: change of the volleys needed for an echo (levels subtract).</summary>
+        EchoVolleys,
+        /// <summary>Sovereign's Fall: sword impact damage as a share of the bolt damage (0 = none).</summary>
+        SwordDamage,
+        /// <summary>Sovereign's Fall: impact radius add in metres.</summary>
+        SwordRadius,
+        /// <summary>Ashen Heart: healing of health pickups (Percent: 0.3 = +30 %).</summary>
+        PickupHeal,
+        /// <summary>Ashen Heart: health pickup drop rate (Percent: 0.15 = +15 %).</summary>
+        PickupDrop,
     }
 
     /// <summary>Flat adds to the base value; Percent scales it (0.2 = +20 %). Percents from all sources add up.</summary>

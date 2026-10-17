@@ -35,10 +35,19 @@ namespace SurvivorSouls.Gameplay.Combat
         /// = the part of the path behind the shooter's root. Cleared by the first hit. 0 = none (the struct default).
         /// </summary>
         public float Guard;
+        /// <summary>Bouncy Wall (KAN-246): rebounds off walls left. 0 = the bolt flies through walls as before.</summary>
+        public int WallBounces;
+        /// <summary>Bouncy Wall: damage share the bolt keeps after each rebound (0.6 = 60 %).</summary>
+        public float WallKeep;
 
         /// <summary>Shipped falloffs (KAN-86): AutoShooter defaults and the power curve base.</summary>
         public const float DefaultPierceFalloff = 0.33f;
         public const float DefaultBounceFalloff = 0.3f;
+        /// <summary>
+        /// Shared hit budget (KAN-246): pierces + ricochet bounces of one bolt never exceed this, so the two skills together
+        /// cannot make a bolt hit a whole horde.
+        /// </summary>
+        public const int MaxExtraHits = 8;
     }
 
     /// <summary>One enemy hit by a bolt, reported to the shooter (life steal, burn and other on-hit skills listen).</summary>
@@ -59,6 +68,10 @@ namespace SurvivorSouls.Gameplay.Combat
     /// has not hit yet (<see cref="BoltShot.Ricochet"/>), else returns to its pool. Never hits the same enemy twice.
     /// Each pierce and bounce lowers the damage for the next enemy (<see cref="BoltShot.PierceFalloff"/>, KAN-86).
     /// Pooled by <see cref="AutoShooter"/>. The model child spins around the flight axis (rifled bolt look).
+    /// Hit budget (KAN-246): Ricochet goes first when a living foe not hit yet is within reach, else the bolt pierces on;
+    /// pierces + bounces share one budget (<see cref="BoltShot.MaxExtraHits"/>, capped by the shooter). Bouncy Wall
+    /// (<see cref="BoltShot.WallBounces"/>): a bolt that meets a wall (<see cref="Enemy.Walkability"/>) rebounds with
+    /// <see cref="BoltShot.WallKeep"/> of its damage and may hit the foes it hit before again.
     /// Blazing look (KAN-200): a shot with <see cref="BoltShot.Heat"/> above 0 shows the hot head child, swaps the trail to
     /// the fire material, a longer, wider fire gradient (hotter = whiter core, longer, wider) and lists the bolt in
     /// <see cref="Blazing"/> while it flies (the shared spark system reads it). A pooled bolt changes its look only when the
@@ -68,6 +81,11 @@ namespace SurvivorSouls.Gameplay.Combat
     {
         /// <summary>Raised when a bolt hits an enemy: hit point, flight direction. Impact FX and audio listen.</summary>
         public static event Action<Vector3, Vector3> Hit;
+        /// <summary>Bouncy Wall (KAN-246): a bolt rebounded off a wall: point, new flight direction.</summary>
+        public static event Action<Vector3, Vector3> Rebounded;
+
+        /// <summary>Wall test radius of a rebounding bolt (m).</summary>
+        private const float WallProbe = 0.12f;
 
         private const int MaxTracked = 16;
 
@@ -248,6 +266,10 @@ namespace SurvivorSouls.Gameplay.Combat
                 if (!gameObject.activeSelf) return; // bolt spent
                 transform.position = point; // carry on from the body, so an enemy right behind is not skipped
             }
+            else if (_shot.WallBounces > 0 && Enemy.Walkability != null && Enemy.Walkability.IsBlocked(to, WallProbe))
+            {
+                Rebound(from, to); // KAN-246 Bouncy Wall: stays at the wall face this step, flies back next step
+            }
             else
             {
                 transform.position = to;
@@ -272,19 +294,49 @@ namespace SurvivorSouls.Gameplay.Combat
                 Enemy = enemy, Point = point, Direction = dir, Damage = deducted, Crit = crit, Killed = !enemy.IsAlive,
             });
 
-            if (_shot.Pierce > 0)
-            {
-                _shot.Pierce--;
-                _shot.Damage *= 1f - Mathf.Clamp01(_shot.PierceFalloff);
-                return;
-            }
+            // KAN-246 shared hit budget: Ricochet first when a valid new target is near, else pierce on.
             if (_shot.Ricochet > 0 && Bounce(point))
             {
                 _shot.Ricochet--;
                 _shot.Damage *= 1f - Mathf.Clamp01(_shot.BounceFalloff);
                 return;
             }
+            if (_shot.Pierce > 0)
+            {
+                _shot.Pierce--;
+                _shot.Damage *= 1f - Mathf.Clamp01(_shot.PierceFalloff);
+                return;
+            }
             Finish();
+        }
+
+        /// <summary>
+        /// Bouncy Wall (KAN-246): mirrors the flight off the wall between <paramref name="from"/> and <paramref name="to"/>
+        /// (the blocked axis flips; a corner flips both), keeps <see cref="BoltShot.WallKeep"/> of the damage and forgets the
+        /// foes hit so far (the returning bolt may hit them again). A bolt that starts inside a wall just flies on.
+        /// </summary>
+        private void Rebound(Vector3 from, Vector3 to)
+        {
+            var walk = Enemy.Walkability;
+            if (walk.IsBlocked(from, WallProbe))
+            {
+                transform.position = to;
+                return;
+            }
+            bool blockX = walk.IsBlocked(new Vector3(to.x, to.y, from.z), WallProbe);
+            bool blockZ = walk.IsBlocked(new Vector3(from.x, to.y, to.z), WallProbe);
+            if (!blockX && !blockZ) blockX = blockZ = true; // corner: straight back
+            if (blockX) _velocity.x = -_velocity.x;
+            if (blockZ) _velocity.z = -_velocity.z;
+            _shot.WallBounces--;
+            _shot.Damage *= Mathf.Clamp01(_shot.WallKeep);
+            _guard = 0f;
+            Array.Clear(_hitEnemies, 0, _hitCount);
+            _hitCount = 0;
+            _life = Mathf.Max(_life, 0.6f);
+            Vector3 dir = _velocity.normalized;
+            transform.SetPositionAndRotation(from, Quaternion.LookRotation(dir));
+            Rebounded?.Invoke(from, dir);
         }
 
         /// <summary>Turns toward the nearest living enemy not hit yet within ricochet range. False when none.</summary>
