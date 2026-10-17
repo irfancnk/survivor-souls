@@ -259,9 +259,9 @@ namespace SurvivorSouls.Tests
         public void Heartbeat_BelowLowHealth_FasterWhenCritical_OwnSetting()
         {
             var feel = new HealthBarFeel();
-            Assert.That(HurtSounds.HeartState(0.29f, feel.lowShare, feel.criticalShare), Is.EqualTo(1), "same thresholds as the bar");
-            Assert.That(HurtSounds.HeartState(0.14f, feel.lowShare, feel.criticalShare), Is.EqualTo(2));
-            Assert.That(HurtSounds.HeartState(0.5f, feel.lowShare, feel.criticalShare), Is.EqualTo(0));
+            Assert.That(HurtSounds.HeartState(0.29f, feel.lowShare, feel.redBelow), Is.EqualTo(1), "same thresholds as the bar");
+            Assert.That(HurtSounds.HeartState(0.19f, feel.lowShare, feel.redBelow), Is.EqualTo(2), "critical = red bar (KAN-243)");
+            Assert.That(HurtSounds.HeartState(0.5f, feel.lowShare, feel.redBelow), Is.EqualTo(0));
 
             for (int i = 0; i < 300; i++) _sounds.Tick(Frame);
             Assert.That(_sounds.Beats, Is.Zero, "full health: silent");

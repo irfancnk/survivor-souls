@@ -23,6 +23,8 @@ namespace SurvivorSouls.Editor.Hud
         public const string GlassPath = Dir + "/T_UI_BarGlass.png";
         public const string FillGoldPath = Dir + "/T_UI_BarFillGold.png";
         public const string FillCrimsonPath = Dir + "/T_UI_BarFillCrimson.png";
+        /// <summary>KAN-243: grey version of the crimson fill; the health bar tints it green / orange / red in code.</summary>
+        public const string FillNeutralPath = Dir + "/T_UI_BarFillNeutral.png";
         public const string RunesPath = Dir + "/T_UI_BarRunes.png";
         public const string ShinePath = Dir + "/T_UI_BarShine.png";
         public const string ShieldPath = Dir + "/T_UI_LevelShield.png";
@@ -48,7 +50,7 @@ namespace SurvivorSouls.Editor.Hud
         /// <summary>Every generated texture (tests check they exist and stay small).</summary>
         public static readonly string[] All =
         {
-            RimPath, GlassPath, FillGoldPath, FillCrimsonPath, RunesPath, ShinePath, ShieldPath, SparkPath, HeartPath, CracksPath,
+            RimPath, GlassPath, FillGoldPath, FillCrimsonPath, FillNeutralPath, RunesPath, ShinePath, ShieldPath, SparkPath, HeartPath, CracksPath,
             SlotFramePaths[0], SlotFramePaths[1], SlotFramePaths[2], SlotFramePaths[3],
             SlotInlayPaths[0], SlotInlayPaths[1], SlotInlayPaths[2], SlotInlayPaths[3],
         };
@@ -83,6 +85,7 @@ namespace SurvivorSouls.Editor.Hud
                 (0.62f, new Color(0.78f, 0.12f, 0.08f)), (0.74f, new Color(0.98f, 0.45f, 0.36f)),
                 (0.82f, new Color(0.8f, 0.14f, 0.1f)), (1f, new Color(0.48f, 0.05f, 0.04f)),
             });
+            WriteNeutralFill();
             WriteRunes();
             WriteShine();
             WriteShield();
@@ -164,6 +167,25 @@ namespace SurvivorSouls.Editor.Hud
         }
 
         // ------------------------------------------------------------ Fills, runes, shine, spark
+
+        /// <summary>
+        /// KAN-243: the crimson fill's light curve in grey (dark base, bright band, glossy line), brightest = white, so a
+        /// tint gives any colour the same medieval shading. Batch: <c>-executeMethod ...HudBarArtBuilder.BuildNeutralFill -quit</c>.
+        /// </summary>
+        public static void BuildNeutralFill()
+        {
+            WriteNeutralFill();
+            AssetDatabase.SaveAssets();
+            AssetDatabase.ImportAsset(UssPath, ImportAssetOptions.ForceUpdate);
+            Debug.Log($"[HudBarArt] wrote {FillNeutralPath}");
+        }
+
+        private static void WriteNeutralFill() => WriteFill(FillNeutralPath, new[]
+        {
+            (0f, new Color(0.3f, 0.3f, 0.3f)), (0.35f, new Color(0.62f, 0.62f, 0.62f)),
+            (0.62f, new Color(0.86f, 0.86f, 0.86f)), (0.74f, new Color(1f, 1f, 1f)),
+            (0.82f, new Color(0.88f, 0.88f, 0.88f)), (1f, new Color(0.56f, 0.56f, 0.56f)),
+        });
 
         /// <summary>Vertical gradient (bottom to top stops) with a glossy highlight line; stretched to the fill.</summary>
         private static void WriteFill(string path, (float at, Color color)[] stops)

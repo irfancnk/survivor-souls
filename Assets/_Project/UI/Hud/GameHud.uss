@@ -254,17 +254,16 @@
 .hud-hp__trail,
 .hud-hp__heal,
 .hud-hp__shield,
-.hud-hp__lost,
 .hud-hp__grow {
     position: absolute;
     left: 0; top: 0; bottom: 0;
     width: 0;
 }
 
-/* Souls-style ghost trail: pale ember, drains after a short delay. */
+/* KAN-243 white damage chunk: the health a hit took, behind the fill; holds 0.35 s, then drains (HealthBarView). */
 .hud-hp__trail {
     width: 100%;
-    background-color: rgb(244, 200, 150);
+    background-color: rgb(255, 252, 246);
 }
 
 /* Heal glow: green-gold, fills ahead of the red; opacity set in code. */
@@ -285,12 +284,6 @@
     border-left-width: 2px;
     border-right-width: 2px;
     border-color: rgb(236, 248, 255);
-}
-
-/* White flash on the part a hit took off. */
-.hud-hp__lost {
-    background-color: rgb(255, 250, 240);
-    opacity: 0;
 }
 
 /* Gold glow on the part a max health raise added. */
@@ -462,7 +455,7 @@
 .hud-overhead__fill {
     height: 100%;
     width: 100%;
-    background-image: url("project://database/Assets/_Project/Art/UI/HudBars/T_UI_BarFillCrimson.png");
+    background-image: url("project://database/Assets/_Project/Art/UI/HudBars/T_UI_BarFillNeutral.png"); /* tinted like the top bar (KAN-243) */
     -unity-background-scale-mode: stretch-to-fill;
 }
 
@@ -642,6 +635,11 @@
 
 .ss-bar__fill--crimson {
     background-image: url("project://database/Assets/_Project/Art/UI/HudBars/T_UI_BarFillCrimson.png");
+}
+
+/* KAN-243: grey fill, tinted green / orange / red by HealthBarView (player bar) and PlayerHealthHud (overhead bar). */
+.ss-bar__fill--neutral {
+    background-image: url("project://database/Assets/_Project/Art/UI/HudBars/T_UI_BarFillNeutral.png");
 }
 
 /* Rune strip: 256 x 32 tile drawn 192 px wide (HudBarFx.runeTile), etched dark amber into the gold. */

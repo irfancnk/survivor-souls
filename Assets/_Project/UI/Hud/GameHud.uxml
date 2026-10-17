@@ -78,11 +78,10 @@
                     <ui:VisualElement class="ss-bar__clip" picking-mode="Ignore">
                         <ui:VisualElement name="player-hp-heal" class="hud-hp__heal" picking-mode="Ignore" />
                         <ui:VisualElement name="player-hp-trail" class="hud-hp__trail" picking-mode="Ignore" />
-                        <ui:VisualElement name="player-hp-fill" class="hud-hp__fill ss-bar__fill ss-bar__fill--crimson" picking-mode="Ignore">
+                        <ui:VisualElement name="player-hp-fill" class="hud-hp__fill ss-bar__fill ss-bar__fill--neutral" picking-mode="Ignore">
                             <ui:VisualElement class="ss-bar__shine" picking-mode="Ignore" />
                         </ui:VisualElement>
                         <ui:VisualElement name="player-hp-shield" class="hud-hp__shield" picking-mode="Ignore" />
-                        <ui:VisualElement name="player-hp-lost" class="hud-hp__lost" picking-mode="Ignore" />
                         <ui:VisualElement name="player-hp-grow" class="hud-hp__grow" picking-mode="Ignore" />
                         <ui:VisualElement class="hud-hp__tick hud-hp__tick--25" picking-mode="Ignore" />
                         <ui:VisualElement class="hud-hp__tick hud-hp__tick--50" picking-mode="Ignore" />

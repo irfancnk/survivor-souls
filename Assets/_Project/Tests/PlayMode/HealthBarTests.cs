@@ -13,11 +13,12 @@ using Object = UnityEngine.Object;
 namespace SurvivorSouls.Tests
 {
     /// <summary>
-    /// KAN-82 medieval health bar on the real HUD document (<see cref="HealthBarView"/>): a hit flashes the lost part,
-    /// pops "-N", cracks off shards (more for bigger hits), shakes, and the ghost trail drains only after its delay;
+    /// KAN-82 medieval health bar on the real HUD document (<see cref="HealthBarView"/>): a hit drops the fill at once
+    /// and shows the lost part as a white chunk that drains after its hold (KAN-243), pops "-N", cracks off shards (more
+    /// for bigger hits), shakes;
     /// horde contact gathers into few pulses (pools never overflow); a heal glows and pops "+N"; a max raise grows the
     /// frame and glows gold without a heal pop; low / critical health beat and light the cracks; "Reduce screen effects"
-    /// keeps the number but drops shake, shards and flash; shield segment and death. PlayerHealth shield absorbs first.
+    /// keeps the number and the chunk but drops shake and shards; shield segment and death. PlayerHealth shield absorbs first.
     /// </summary>
     public sealed class HealthBarTests
     {
@@ -79,7 +80,7 @@ namespace SurvivorSouls.Tests
         }
 
         [Test]
-        public void Hit_FlashesLostPart_PopsNumber_Shards_Shake_TrailWaitsThenDrains()
+        public void Hit_DropsFillAtOnce_WhiteChunkHoldsThenDrains_PopsNumber_Shards_Shake()
         {
             Hit(300f, 100f);
             float maxShake = 0f;
@@ -92,20 +93,19 @@ namespace SurvivorSouls.Tests
             Assert.That(_bar.LastPopText, Is.EqualTo("-100"));
             Assert.That(_bar.PopsAlive, Is.EqualTo(1));
             Assert.That(_bar.ShardsAlive, Is.EqualTo(4), "a quarter of max health: 4 shards");
-            Assert.That(_bar.Text, Is.Not.EqualTo("300 / 400"), "the number counts down with the fill");
-            Assert.That(_bar.LostFlash, Is.GreaterThan(0.3f), "white flash on the lost part");
-            Assert.That(maxShake, Is.GreaterThan(1f), "bar shakes");
+            Assert.That(_bar.Shown, Is.EqualTo(0.75f).Within(1e-4f), "KAN-243: the fill drops at once");
+            Assert.That(_bar.Text, Is.EqualTo("300 / 400"));
+            Assert.That(_bar.Chunk, Is.EqualTo(0.25f).Within(1e-4f), "white chunk = the health the hit took");
+            Assert.That(maxShake, Is.GreaterThan(5f), "bar shakes (big hit: up to 12 px)");
 
-            Run(0.25f);
-            Assert.That(_bar.TrailShown, Is.EqualTo(1f).Within(0.001f), "ghost trail waits");
-            Assert.That(_bar.Shown, Is.LessThan(0.8f), "fill already eased down");
+            Run(0.15f);
+            Assert.That(_bar.TrailShown, Is.EqualTo(1f).Within(0.001f), "the chunk holds");
 
             Run(2f);
-            Assert.That(_bar.TrailShown, Is.EqualTo(0.75f).Within(0.002f), "trail drained to the fill");
-            Assert.That(_bar.Text, Is.EqualTo("300 / 400"));
+            Assert.That(_bar.TrailShown, Is.EqualTo(0.75f).Within(0.002f), "the chunk drained to the fill");
+            Assert.That(_bar.Chunk, Is.Zero);
             Assert.That(_bar.ShardsAlive, Is.Zero);
             Assert.That(_bar.PopsAlive, Is.Zero);
-            Assert.That(_bar.LostFlash, Is.Zero);
             Assert.That(_bar.ShakeOffset, Is.Zero);
         }
 
@@ -192,7 +192,7 @@ namespace SurvivorSouls.Tests
         }
 
         [Test]
-        public void ReduceEffects_KeepsNumber_NoShakeShardsFlash()
+        public void ReduceEffects_KeepsNumberAndChunk_NoShakeShards()
         {
             _bar.ReduceEffects = true;
             Hit(300f, 100f);
@@ -205,7 +205,8 @@ namespace SurvivorSouls.Tests
             Assert.That(_bar.LastPopText, Is.EqualTo("-100"));
             Assert.That(_bar.ShardsAlive, Is.Zero);
             Assert.That(maxShake, Is.Zero);
-            Assert.That(_bar.LostFlash, Is.Zero);
+            Assert.That(_bar.ShakeAmplitude, Is.Zero);
+            Assert.That(_bar.Chunk, Is.EqualTo(0.25f).Within(1e-4f), "KAN-243: the white chunk is information: it stays");
         }
 
         [Test]

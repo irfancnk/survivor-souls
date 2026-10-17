@@ -8,9 +8,9 @@ using UnityEngine.UIElements;
 namespace SurvivorSouls.UI.Hud
 {
     /// <summary>
-    /// Player health on the HUD document: the medieval top bar (<see cref="HealthBarView"/>, KAN-82: fill, ghost trail,
-    /// heal glow, shield, shards, "-24" / "+12" pops, heart medallion, low-health heartbeat), a small bar over the Knight
-    /// (shown ~2 s after a change and at low health), a red screen-edge vignette on every hurt pulse (plus a heartbeat at
+    /// Player health on the HUD document: the medieval top bar (<see cref="HealthBarView"/>, KAN-82: fill, heal glow,
+    /// shield, shards, "-24" / "+12" pops, heart medallion, low-health heartbeat; KAN-243: green / orange / red fill, white
+    /// damage chunk, hit shake), a small bar over the Knight in the same colour (shown ~2 s after a change and at low health), a red screen-edge vignette on every hurt pulse (plus a heartbeat at
     /// low health, faster when critical; softer with "Reduce screen effects"), and the "YOU DIED" screen with the run counters (souls, kills, Chamber; KAN-51), the
     /// banked souls + wallet line (KAN-96) and Retry / Menu once <see cref="PlayerDeath.Finished"/>.
     /// Nothing here blocks touches except the death screen buttons. Element names are constants below; keep them in
@@ -75,11 +75,14 @@ namespace SurvivorSouls.UI.Hud
         private Texture2D _vignetteTexture;
         private HealthBarView _bar;
         private float _shown = 1f, _drawnShown = -1f;
+        private Color _drawnColour = new Color(-1f, -1f, -1f, -1f);
         private float _lastChange = float.NegativeInfinity, _drawnOverhead = -1f;
         private float _hurt, _beat;
         private bool _reduceEffects;
         private bool _leaving;
 
+        /// <summary>Overhead bar tint written now (KAN-243: same colour as the top bar).</summary>
+        public Color OverheadColour => _drawnColour;
         /// <summary>The top bar (tests, dev shots).</summary>
         public HealthBarView Bar => _bar;
 
@@ -169,6 +172,12 @@ namespace SurvivorSouls.UI.Hud
                 // Only touch styles when a value moved: an idle bar costs no layout work.
                 _drawnShown = _shown;
                 _overheadFill.style.width = Length.Percent(_shown * 100f);
+            }
+            var colour = _bar.FillColour; // KAN-243: the overhead bar takes the top bar's green / orange / red
+            if (colour != _drawnColour)
+            {
+                _drawnColour = colour;
+                _overheadFill.style.unityBackgroundImageTintColor = colour;
             }
             UpdateOverheadOpacity(target);
             UpdateVignette(dt, target);

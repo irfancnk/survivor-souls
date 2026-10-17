@@ -4,35 +4,65 @@ using UnityEngine.UIElements;
 
 namespace SurvivorSouls.UI.Hud
 {
+    /// <summary>Health bar colour by health share (KAN-243).</summary>
+    public enum HealthColour
+    {
+        Green,
+        Orange,
+        Red,
+    }
+
     /// <summary>
-    /// Timings, sizes and thresholds of the medieval health bar (KAN-82). Serialized on <see cref="PlayerHealthHud"/>, so
-    /// they can be tuned in the scene; colours live in GameHud.uss (<c>.hud-hp*</c>).
+    /// Timings, sizes and thresholds of the medieval health bar (KAN-82, colours + chunk + shake KAN-243). Serialized on
+    /// <see cref="PlayerHealthHud"/>, so they can be tuned in the scene. Fields added after the Game scene was built take
+    /// these defaults until the next scene rebuild writes them.
     /// </summary>
     [Serializable]
     public sealed class HealthBarFeel
     {
-        [Tooltip("How fast the fill eases to the real value (1/s, exponential). The number counts with it.")]
+        [Tooltip("How fast the fill eases up on a heal (1/s, exponential). Damage drops the fill at once (KAN-243).")]
         [Min(1f)] public float fillSharpness = 14f;
-        [Tooltip("Seconds after the last damage before the ghost trail starts to drain.")]
-        [Min(0f)] public float trailDelay = 0.4f;
-        [Tooltip("Ghost trail drain speed (fraction of the bar per second).")]
-        [Min(0.05f)] public float trailSpeed = 0.7f;
         [Tooltip("Damage is gathered into one feedback pulse per this many seconds (number, shards, shake): horde contact never spams.")]
         [Min(0.05f)] public float pulseInterval = 0.25f;
         [Tooltip("Heals are gathered into one '+N' per this many seconds (life steal hits often).")]
         [Min(0.05f)] public float healInterval = 0.4f;
-        [Tooltip("Bar shake amplitude (px) and time (s) on a damage pulse.")]
-        public float shakePixels = 4f;
-        [Min(0.01f)] public float shakeTime = 0.15f;
-        [Tooltip("White flash on the lost part (s).")]
-        [Min(0.01f)] public float lostFlashTime = 0.3f;
+
+        [Header("Colour by health (KAN-243)")]
+        [Tooltip("Below this share the fill turns from green to orange.")]
+        [Range(0f, 1f)] public float orangeBelow = 0.5f;
+        [Tooltip("Below this share the fill turns red, and the heartbeat is the fast, strong one (critical).")]
+        [Range(0f, 1f)] public float redBelow = 0.2f;
+        [Tooltip("Hysteresis band (share of max health): a threshold is crossed back only this far past it, so horde contact never flickers the colour.")]
+        [Range(0f, 0.2f)] public float colourHysteresis = 0.02f;
+        [Tooltip("Seconds of the colour blend when the state changes.")]
+        [Min(0.01f)] public float colourBlendTime = 0.15f;
+        public Color green = new Color(0.36f, 0.84f, 0.38f);
+        public Color orange = new Color(1f, 0.58f, 0.14f);
+        public Color red = new Color(0.95f, 0.16f, 0.11f);
+
+        [Header("Damage chunk (KAN-243)")]
+        [Tooltip("Seconds the white chunk (the health a hit took) holds before it drains. A new hit restarts the hold.")]
+        [Min(0f)] public float chunkHold = 0.35f;
+        [Tooltip("Seconds the white chunk takes to drain to the fill (ease-out).")]
+        [Min(0.05f)] public float chunkDrain = 0.3f;
+
+        [Header("Hit shake (KAN-243)")]
+        [Tooltip("Bar shake (px) for a small hit (share <= shards3Share) and a big hit (share >= shards4Share); lerp between.")]
+        public float shakeSmall = 6f;
+        public float shakeBig = 12f;
+        [Tooltip("Vertical part of the shake (px at full strength).")]
+        public float shakeVertical = 2f;
+        [Tooltip("Seconds the shake decays over.")]
+        [Min(0.01f)] public float hitShakeTime = 0.25f;
+
+        [Header("Pops, shards, glows")]
         [Tooltip("Damage / heal number life (s) and drift (px, + = down).")]
         [Min(0.1f)] public float popTime = 0.6f;
         public float popDrift = 26f;
         [Tooltip("Shard life (s), gravity (px/s²); a pulse cracks off 2..4 shards, more for bigger hits.")]
         [Min(0.1f)] public float shardTime = 0.7f;
         public float shardGravity = 900f;
-        [Tooltip("Damage share of max health for 3 shards / 4 shards.")]
+        [Tooltip("Damage share of max health for 3 shards / 4 shards (also the small / big hit shake).")]
         [Range(0f, 1f)] public float shards3Share = 0.05f;
         [Range(0f, 1f)] public float shards4Share = 0.12f;
         [Tooltip("Emblem pulse on a hit or heal (scale peak, seconds).")]
@@ -49,9 +79,8 @@ namespace SurvivorSouls.UI.Hud
         [Min(1.01f)] public float fullWidthAt = 1.5f;
         [Tooltip("Bar width ease (1/s).")]
         [Min(0.5f)] public float widthSharpness = 6f;
-        [Tooltip("Below this share: low health (heartbeat pulse, cracks glow). Below the critical share: faster, stronger.")]
+        [Tooltip("Below this share: low health (heartbeat pulse, cracks glow). Below redBelow: critical (faster, stronger).")]
         [Range(0f, 1f)] public float lowShare = 0.3f;
-        [Range(0f, 1f)] public float criticalShare = 0.15f;
         [Min(0.1f)] public float heartbeatHz = 1.1f;
         [Min(0.1f)] public float criticalHeartbeatHz = 2f;
         [Tooltip("Track scale peak per heartbeat (low / critical).")]
@@ -59,16 +88,29 @@ namespace SurvivorSouls.UI.Hud
         public float criticalBeatScale = 0.045f;
         [Tooltip("Last flash on death (s).")]
         [Min(0.05f)] public float deathFlashTime = 0.6f;
+
+        /// <summary>The colour of <paramref name="state"/>.</summary>
+        public Color ColourOf(HealthColour state) => state switch
+        {
+            HealthColour.Green => green,
+            HealthColour.Orange => orange,
+            _ => red,
+        };
     }
 
     /// <summary>
-    /// The medieval player health bar (KAN-82) on the HUD document: crimson fill easing to the value with the number
-    /// counting along ("180 / 240"), a pale ghost trail that drains after <see cref="HealthBarFeel.trailDelay"/>, a
-    /// green-gold heal glow that fills ahead, a silver-blue shield segment, a white flash on the lost part, quarter ticks,
-    /// red shards that crack off (pooled, max <see cref="MaxShards"/>), "-24" / "+12" pops (pooled), a bar shake and a
-    /// heart medallion pulse. Damage is gathered into pulses (<see cref="HealthBarFeel.pulseInterval"/>), so horde
-    /// contact never spams. Low / critical health: heartbeat pulse + glowing emblem cracks. Max health raise: the frame
-    /// grows and the new part glows gold. Death: drains dark with a last flash.
+    /// The medieval player health bar (KAN-82) on the HUD document. KAN-243: the fill is green above
+    /// <see cref="HealthBarFeel.orangeBelow"/>, orange down to <see cref="HealthBarFeel.redBelow"/>, red below (a neutral
+    /// gradient tinted in code, blended over <see cref="HealthBarFeel.colourBlendTime"/>, with a hysteresis band so horde
+    /// contact never flickers it); a hit drops the fill at once and the health it took shows as a solid white chunk that
+    /// holds <see cref="HealthBarFeel.chunkHold"/> s, then drains to the fill (a new hit restarts the hold, the chunk never
+    /// jumps back right); every damage pulse shakes the bar, 6 px for a small hit up to 12 px for a big one. Kept from
+    /// KAN-82: the number counting with the fill ("180 / 240"), the green-gold heal glow that fills ahead, the silver-blue
+    /// shield segment, quarter ticks, red shards that crack off (pooled, max <see cref="MaxShards"/>), "-24" / "+12" pops
+    /// (pooled), the heart medallion pulse, low / critical heartbeat + glowing emblem cracks (critical = red), the gold
+    /// grow glow on a max raise and the dark death drain. Damage is gathered into pulses
+    /// (<see cref="HealthBarFeel.pulseInterval"/>), so horde contact never spams. "Reduce screen effects": no shake,
+    /// shards, death flash or heartbeat scale; the white chunk stays (it is information).
     /// Plain class: <see cref="PlayerHealthHud"/> feeds it events and calls <see cref="Tick"/>; tests drive it directly.
     /// Styles are written only while something moves; no allocation per frame (number strings cached per max health).
     /// </summary>
@@ -80,7 +122,6 @@ namespace SurvivorSouls.UI.Hud
         public const string TrailName = "player-hp-trail";
         public const string HealName = "player-hp-heal";
         public const string ShieldName = "player-hp-shield";
-        public const string LostName = "player-hp-lost";
         public const string GrowName = "player-hp-grow";
         public const string FlashName = "player-hp-flash";
         public const string ValueName = "player-hp-value";
@@ -93,11 +134,13 @@ namespace SurvivorSouls.UI.Hud
         public const string LowClass = "hud-hp--low";
         public const string CriticalClass = "hud-hp--critical";
         public const string DeadClass = "hud-hp--dead";
+        /// <summary>Colour state classes on the root (KAN-243), index = <see cref="HealthColour"/>.</summary>
+        public static readonly string[] ColourClasses = { "hud-hp--green", "hud-hp--orange", "hud-hp--red" };
         public const int MaxShards = 6;
         public const int MaxPops = 4;
 
         private readonly HealthBarFeel _feel;
-        private readonly VisualElement _root, _track, _fill, _trail, _heal, _shield, _lost, _grow, _flash, _fx, _emblem, _cracks;
+        private readonly VisualElement _root, _track, _fill, _trail, _heal, _shield, _grow, _flash, _fx, _emblem, _cracks;
         private readonly Label _value;
         private readonly Shard[] _shards = new Shard[MaxShards];
         private readonly Pop[] _pops = new Pop[MaxPops];
@@ -105,20 +148,26 @@ namespace SurvivorSouls.UI.Hud
 
         private float _current, _max = 1f, _baseMax = 1f, _shieldValue;
         private float _shown = 1f, _trailShown = 1f, _healTarget = -1f, _healGlow;
-        private float _time, _lastDamage = float.NegativeInfinity;
+        private float _time, _lastDamage = float.NegativeInfinity, _drainT = -1f, _drainFrom;
         private float _pending, _pendingFrom, _nextPulse;
         private float _pendingHeal, _nextHeal;
-        private float _shake, _lostFlash, _lostFrom, _lostTo, _emblemPop, _growGlow, _growFrom, _deathFlash;
+        private float _shake, _shakeAmp, _emblemPop, _growGlow, _growFrom, _deathFlash;
         private float _width = -1f, _beatPhase;
+        private HealthColour _colourState;
+        private bool _colourSet;
+        private Color _colour, _colourFrom;
+        private float _colourBlend = 1f;
         private bool _dead;
         private int _nextShard, _nextPop;
         private string[] _numbers = Array.Empty<string>();
         private int _numbersMax = -1, _lastNumber = int.MinValue;
         // Last written values: an idle bar touches no style.
         private float _drawnFill = -1f, _drawnTrail = -1f, _drawnHeal = -1f, _drawnHealOpacity = -1f, _drawnShield = -1f;
-        private float _drawnWidth = -1f, _drawnCracks = -1f, _drawnScale = -1f, _drawnEmblem = -1f, _drawnShake = float.NaN;
-        private float _drawnLost = -1f, _drawnGrow = -1f, _drawnFlash = -1f;
-        private int _drawnState = -1;
+        private float _drawnWidth = -1f, _drawnCracks = -1f, _drawnScale = -1f, _drawnEmblem = -1f;
+        private Vector2 _drawnShake = new Vector2(float.NaN, float.NaN);
+        private float _drawnGrow = -1f, _drawnFlash = -1f;
+        private Color _drawnColour = new Color(-1f, -1f, -1f, -1f);
+        private int _drawnState = -1, _drawnColourState = -1;
 
         private struct Shard
         {
@@ -134,12 +183,16 @@ namespace SurvivorSouls.UI.Hud
             public bool Alive;
         }
 
-        /// <summary>Reduce screen effects (GameSettings, accessibility): no shake, shards, white flash or heartbeat scale.</summary>
+        /// <summary>Reduce screen effects (GameSettings, accessibility): no shake, shards, death flash or heartbeat scale. The white chunk stays.</summary>
         public bool ReduceEffects { get; set; }
-        /// <summary>Fill fraction drawn now (eases to the value).</summary>
+        /// <summary>Fill fraction drawn now (drops at once on damage, eases up on a heal).</summary>
         public float Shown => _shown;
-        /// <summary>Ghost trail fraction drawn now.</summary>
+        /// <summary>Right edge of the white chunk now (fraction of the bar); equals <see cref="Shown"/> when there is no chunk.</summary>
         public float TrailShown => _trailShown;
+        /// <summary>Width of the white chunk now (fraction of the bar): the health the last hits took, before it drains.</summary>
+        public float Chunk => Mathf.Max(0f, _trailShown - _shown);
+        /// <summary>True while the chunk drains (its hold is over).</summary>
+        public bool ChunkDraining => _drainT >= 0f;
         /// <summary>Text on the bar now ("180 / 240").</summary>
         public string Text => _value?.text;
         /// <summary>Shards / pops alive now (tests).</summary>
@@ -151,16 +204,21 @@ namespace SurvivorSouls.UI.Hud
         public int Pulses { get; private set; }
         /// <summary>Bar max width written now (px).</summary>
         public float Width => _width;
-        /// <summary>Opacity of the white lost-part flash, the gold grow glow and the emblem cracks now.</summary>
-        public float LostFlash => _drawnLost;
+        /// <summary>Opacity of the gold grow glow and the emblem cracks now.</summary>
         public float GrowGlow => _drawnGrow;
         public float Cracks => _drawnCracks;
         /// <summary>Heal glow opacity written now.</summary>
         public float HealGlow => Mathf.Max(0f, _drawnHealOpacity);
         /// <summary>Shield segment width written now (fraction of the bar).</summary>
         public float ShieldShown => _drawnShield;
-        /// <summary>Current bar shake offset (px).</summary>
-        public float ShakeOffset => float.IsNaN(_drawnShake) ? 0f : _drawnShake;
+        /// <summary>Current horizontal bar shake offset (px).</summary>
+        public float ShakeOffset => float.IsNaN(_drawnShake.x) ? 0f : _drawnShake.x;
+        /// <summary>Peak shake (px) of the last damage pulse (6 small .. 12 big; 0 with Reduce Effects).</summary>
+        public float ShakeAmplitude => _shakeAmp;
+        /// <summary>Colour state now (with hysteresis).</summary>
+        public HealthColour ColourState => _colourState;
+        /// <summary>Fill tint written now (blends between the state colours).</summary>
+        public Color FillColour => _colour;
         public bool IsLow => _drawnState >= 1;
         public bool IsCritical => _drawnState >= 2;
 
@@ -173,7 +231,6 @@ namespace SurvivorSouls.UI.Hud
             _trail = document.Q(TrailName);
             _heal = document.Q(HealName);
             _shield = document.Q(ShieldName);
-            _lost = document.Q(LostName);
             _grow = document.Q(GrowName);
             _flash = document.Q(FlashName);
             _value = document.Q<Label>(ValueName);
@@ -209,9 +266,12 @@ namespace SurvivorSouls.UI.Hud
             _baseMax = Mathf.Max(1f, baseMax);
             _shieldValue = Mathf.Max(0f, shield);
             _shown = _trailShown = Mathf.Clamp01(_current / _max);
+            _drainT = -1f;
             _healTarget = -1f;
             _width = TargetWidth();
             _pending = _pendingHeal = 0f;
+            _colourSet = false;
+            UpdateColour(0f, _shown); // the right colour from the first frame, no blend
         }
 
         /// <summary>Health or max health changed (PlayerHealth.OnHealthChanged). Heals and max raises start their effects
@@ -227,6 +287,7 @@ namespace SurvivorSouls.UI.Hud
                 _growGlow = 1f;
                 _shown *= _max / max; // the old fill keeps its pixel length while the frame grows
                 _trailShown *= _max / max;
+                _drainFrom *= _max / max;
                 delta -= maxGain; // Archero rule: the gain also heals; that is not a heal tick
             }
             _current = current;
@@ -243,7 +304,8 @@ namespace SurvivorSouls.UI.Hud
         public void Damaged(float amount)
         {
             if (amount <= 0f) return;
-            _lastDamage = _time;
+            _lastDamage = _time; // the chunk holds again (it never jumps back right: it keeps its edge)
+            _drainT = -1f;
             if (_pending <= 0f) _pendingFrom = Mathf.Clamp01((_current + amount) / _max);
             _pending += amount;
             if (_time >= _nextPulse) FirePulse(); // the first hit pulses at once
@@ -270,12 +332,14 @@ namespace SurvivorSouls.UI.Hud
             if (_pending > 0f && _time >= _nextPulse) FirePulse();
             if (_pendingHeal > 0f && _time >= _nextHeal) FireHeal();
 
-            // Fill + trail + heal glow.
-            _shown += (target - _shown) * (1f - Mathf.Exp(-_feel.fillSharpness * dt));
-            if (Mathf.Abs(target - _shown) < 0.0005f) _shown = target;
-            if (_trailShown < _shown) _trailShown = _shown; // healing: the trail rides up with the fill
-            else if (_time - _lastDamage > _feel.trailDelay)
-                _trailShown = Mathf.MoveTowards(_trailShown, _shown, _feel.trailSpeed * dt);
+            // Fill: damage drops at once (the chunk shows what went), a heal eases up.
+            if (target < _shown) _shown = target;
+            else
+            {
+                _shown += (target - _shown) * (1f - Mathf.Exp(-_feel.fillSharpness * dt));
+                if (Mathf.Abs(target - _shown) < 0.0005f) _shown = target;
+            }
+            UpdateChunk(dt);
             if (_healTarget >= 0f)
             {
                 if (_shown >= _healTarget - 0.002f || target < _healTarget - 0.002f)
@@ -290,7 +354,7 @@ namespace SurvivorSouls.UI.Hud
             SetWidth(_heal, ref _drawnHeal, healWidth);
             SetOpacity(_heal, ref _drawnHealOpacity, healOpacity);
 
-            // Shield segment: on top of the red, clamped inside the bar.
+            // Shield segment: on top of the fill, clamped inside the bar.
             float shieldShare = Mathf.Clamp01(_shieldValue / _max);
             if (shieldShare != _drawnShield && _shield != null)
             {
@@ -300,12 +364,91 @@ namespace SurvivorSouls.UI.Hud
                 _shield.style.width = Length.Percent(shieldShare * 100f);
             }
 
+            UpdateColour(dt, target);
             UpdateNumber();
             UpdateWidth(dt);
             UpdateFlashes(dt);
             UpdateHeartbeat(dt, target);
             UpdateShards(dt);
             UpdatePops(dt);
+        }
+
+        /// <summary>
+        /// White chunk = the trail element behind the fill, from the fill to <see cref="TrailShown"/>. It holds
+        /// <see cref="HealthBarFeel.chunkHold"/> s after the last hit, then drains to the fill in
+        /// <see cref="HealthBarFeel.chunkDrain"/> s (ease-out). A heal makes it ride up with the fill.
+        /// </summary>
+        private void UpdateChunk(float dt)
+        {
+            if (_trailShown <= _shown)
+            {
+                _trailShown = _shown;
+                _drainT = -1f;
+                return;
+            }
+            if (_time - _lastDamage < _feel.chunkHold) return;
+            if (_drainT < 0f)
+            {
+                _drainT = 0f;
+                _drainFrom = _trailShown;
+            }
+            _drainT = Mathf.Min(1f, _drainT + dt / _feel.chunkDrain);
+            float k = 1f - (1f - _drainT) * (1f - _drainT);
+            _trailShown = Mathf.Max(_shown, Mathf.Lerp(_drainFrom, _shown, k));
+            if (_drainT >= 1f)
+            {
+                _trailShown = _shown;
+                _drainT = -1f;
+            }
+        }
+
+        /// <summary>Green / orange / red with a hysteresis band at each threshold; the tint blends to the new colour.</summary>
+        private void UpdateColour(float dt, float share)
+        {
+            var state = ColourFor(share, _colourSet ? _colourState : (HealthColour?)null, _feel);
+            if (!_colourSet)
+            {
+                _colourSet = true;
+                _colourState = state;
+                _colour = _feel.ColourOf(state);
+                _colourBlend = 1f;
+            }
+            else if (state != _colourState)
+            {
+                _colourState = state;
+                _colourFrom = _colour;
+                _colourBlend = 0f;
+            }
+            if (_colourBlend < 1f)
+            {
+                _colourBlend = Mathf.Min(1f, _colourBlend + dt / _feel.colourBlendTime);
+                _colour = Color.Lerp(_colourFrom, _feel.ColourOf(_colourState), _colourBlend);
+            }
+            else _colour = _feel.ColourOf(_colourState);
+            if (_colour != _drawnColour && _fill != null)
+            {
+                _drawnColour = _colour;
+                _fill.style.unityBackgroundImageTintColor = _colour;
+            }
+            if ((int)_colourState != _drawnColourState && _root != null)
+            {
+                _drawnColourState = (int)_colourState;
+                for (int i = 0; i < ColourClasses.Length; i++) _root.EnableInClassList(ColourClasses[i], i == _drawnColourState);
+            }
+        }
+
+        /// <summary>
+        /// Colour for <paramref name="share"/>: green above <see cref="HealthBarFeel.orangeBelow"/>, orange down to
+        /// <see cref="HealthBarFeel.redBelow"/>, red below. With a <paramref name="current"/> state, a threshold counts
+        /// half the hysteresis band further away from it (drop below it by that much, or climb back above it by that much).
+        /// </summary>
+        public static HealthColour ColourFor(float share, HealthColour? current, HealthBarFeel feel)
+        {
+            float h = current.HasValue ? feel.colourHysteresis * 0.5f : 0f;
+            int now = current.HasValue ? (int)current.Value : -1;
+            float orangeEdge = feel.orangeBelow + (now < 0 ? 0f : now == 0 ? -h : h);
+            float redEdge = feel.redBelow + (now < 0 ? 0f : now <= 1 ? -h : h);
+            return share < redEdge ? HealthColour.Red : share < orangeEdge ? HealthColour.Orange : HealthColour.Green;
         }
 
         private void FirePulse()
@@ -317,14 +460,18 @@ namespace SurvivorSouls.UI.Hud
             float from = _pendingFrom, to = Mathf.Clamp01(_current / _max);
             ShowPop(-Mathf.Max(1, Mathf.RoundToInt(lost)), false);
             _emblemPop = 1f;
-            if (ReduceEffects) return;
-            _shake = 1f;
-            _lostFrom = to;
-            _lostTo = Mathf.Max(from, to);
-            _lostFlash = 1f;
             float share = lost / _max;
+            if (ReduceEffects)
+            {
+                _shakeAmp = 0f;
+                return;
+            }
+            float big = Mathf.InverseLerp(_feel.shards3Share, Mathf.Max(_feel.shards3Share + 1e-4f, _feel.shards4Share), share);
+            _shakeAmp = Mathf.Lerp(_feel.shakeSmall, _feel.shakeBig, big);
+            _shake = 1f;
             int count = share >= _feel.shards4Share ? 4 : share >= _feel.shards3Share ? 3 : 2;
-            for (int i = 0; i < count; i++) SpawnShard(Mathf.Lerp(to, _lostTo, (i + 0.5f) / count));
+            float top = Mathf.Max(from, to);
+            for (int i = 0; i < count; i++) SpawnShard(Mathf.Lerp(to, top, (i + 0.5f) / count));
         }
 
         private void FireHeal()
@@ -420,15 +567,6 @@ namespace SurvivorSouls.UI.Hud
 
         private void UpdateFlashes(float dt)
         {
-            // White flash on the lost part.
-            _lostFlash = Mathf.MoveTowards(_lostFlash, 0f, dt / _feel.lostFlashTime);
-            if (_lostFlash > 0f && _lost != null)
-            {
-                _lost.style.left = Length.Percent(_lostFrom * 100f);
-                _lost.style.width = Length.Percent(Mathf.Max(0f, _lostTo - _lostFrom) * 100f);
-            }
-            SetOpacity(_lost, ref _drawnLost, _lostFlash * _lostFlash);
-
             // Gold glow on the part a max raise added.
             _growGlow = Mathf.MoveTowards(_growGlow, 0f, dt / _feel.growGlowTime);
             if (_growGlow > 0f && _grow != null)
@@ -442,13 +580,15 @@ namespace SurvivorSouls.UI.Hud
             _deathFlash = Mathf.MoveTowards(_deathFlash, 0f, dt / _feel.deathFlashTime);
             SetOpacity(_flash, ref _drawnFlash, ReduceEffects ? 0f : _deathFlash);
 
-            // Shake (horizontal, decaying).
-            _shake = Mathf.MoveTowards(_shake, 0f, dt / _feel.shakeTime);
-            float offset = _shake > 0f ? Mathf.Sin(_time * 90f) * _feel.shakePixels * _shake : 0f;
-            if (offset != _drawnShake && _root != null)
+            // Shake: decaying, mostly sideways with a little vertical (KAN-243: 6..12 px by hit size).
+            _shake = Mathf.MoveTowards(_shake, 0f, dt / _feel.hitShakeTime);
+            var offset = _shake > 0f
+                ? new Vector2(Mathf.Sin(_time * 90f) * _shakeAmp * _shake, Mathf.Sin(_time * 67f + 1.3f) * _feel.shakeVertical * _shake)
+                : Vector2.zero;
+            if ((offset.x != _drawnShake.x || offset.y != _drawnShake.y) && _root != null) // exact: Vector2 == is approximate
             {
                 _drawnShake = offset;
-                _root.style.translate = new Translate(offset, 0f);
+                _root.style.translate = new Translate(offset.x, offset.y);
             }
 
             // Emblem pulse.
@@ -463,7 +603,7 @@ namespace SurvivorSouls.UI.Hud
 
         private void UpdateHeartbeat(float dt, float share)
         {
-            int state = _dead ? 3 : share < _feel.criticalShare ? 2 : share < _feel.lowShare ? 1 : 0;
+            int state = _dead ? 3 : share < _feel.redBelow ? 2 : share < _feel.lowShare ? 1 : 0;
             if (state != _drawnState && _root != null)
             {
                 _drawnState = state;
@@ -478,7 +618,7 @@ namespace SurvivorSouls.UI.Hud
                 _beatPhase = (_beatPhase + dt * hz) % 1f;
                 // Lub-dub: two short bumps per beat.
                 float beat = Bump(_beatPhase, 0.08f, 0.07f) + 0.6f * Bump(_beatPhase, 0.3f, 0.07f);
-                float depth = state == 2 ? 1f : Mathf.Clamp01(1f - (share - _feel.criticalShare) / Mathf.Max(0.01f, _feel.lowShare - _feel.criticalShare)) * 0.6f + 0.4f;
+                float depth = state == 2 ? 1f : Mathf.Clamp01(1f - (share - _feel.redBelow) / Mathf.Max(0.01f, _feel.lowShare - _feel.redBelow)) * 0.6f + 0.4f;
                 cracks = Mathf.Clamp01(depth * (0.45f + 0.55f * beat));
                 if (!ReduceEffects) scale = 1f + beat * (state == 2 ? _feel.criticalBeatScale : _feel.beatScale);
             }

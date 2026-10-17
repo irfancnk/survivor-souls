@@ -9,7 +9,8 @@ namespace SurvivorSouls.Audio
     /// special) plays a dull body thud + short grunt (SfxBuilder <c>sfx_knight_grunt_*</c>), louder for bigger hits; the
     /// plain contact pulse keeps <see cref="GameAudio"/>'s impact, so a horde does not grunt. Below
     /// <see cref="lowShare"/> health a quiet slow heartbeat (lub-dub, <c>sfx_heartbeat_01</c>) beats, faster below
-    /// <see cref="criticalShare"/> (same thresholds as the health bar, <see cref="SurvivorSouls.UI.Hud.HealthBarFeel"/>).
+    /// <see cref="criticalBelow"/> (same thresholds as the health bar, <see cref="SurvivorSouls.UI.Hud.HealthBarFeel"/>:
+    /// critical = the red bar, KAN-243).
     /// The heartbeat has its own setting (<see cref="GameSettings.HeartbeatSound"/>), runs on scaled time (silent under a
     /// pause) and stops on death. Two voices, never more. Volumes follow <see cref="GameSettings.SfxVolume"/>.
     /// </summary>
@@ -33,8 +34,8 @@ namespace SurvivorSouls.Audio
         [Header("Heartbeat")]
         [Tooltip("Below this health share: slow heartbeat. Keep equal to HealthBarFeel.lowShare.")]
         [SerializeField, Range(0f, 1f)] private float lowShare = 0.3f;
-        [Tooltip("Below this health share: faster, a bit louder. Keep equal to HealthBarFeel.criticalShare.")]
-        [SerializeField, Range(0f, 1f)] private float criticalShare = 0.15f;
+        [Tooltip("Below this health share: faster, a bit louder. Keep equal to HealthBarFeel.redBelow (KAN-243: was 0.15).")]
+        [SerializeField, Range(0f, 1f)] private float criticalBelow = 0.2f;
         [SerializeField, Min(0.1f)] private float beatsPerSecond = 1.1f;
         [SerializeField, Min(0.1f)] private float criticalBeatsPerSecond = 1.9f;
         [SerializeField, Range(0f, 1f)] private float heartbeatVolume = 0.32f;
@@ -118,7 +119,7 @@ namespace SurvivorSouls.Audio
                 if (health == null || health.IsDead) _beatIn = 0f;
                 return;
             }
-            int state = HeartState(health.Normalized, lowShare, criticalShare);
+            int state = HeartState(health.Normalized, lowShare, criticalBelow);
             if (state == 0)
             {
                 _beatIn = 0f; // the first beat comes at once when health drops again
