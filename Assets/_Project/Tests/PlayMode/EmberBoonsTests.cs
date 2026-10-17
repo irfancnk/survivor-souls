@@ -187,7 +187,7 @@ namespace SurvivorSouls.Tests
             var ember = Shipped("ember_bolts");
             foreach (var row in ember.Levels)
             foreach (var m in row.modifiers)
-                Assert.That(m.stat, Is.AnyOf(StatId.BurnDps, StatId.BurnDuration), "Ember Bolts: burn only");
+                Assert.That(m.stat == StatId.BurnDps || m.stat == StatId.BurnDuration, Is.True, $"Ember Bolts: burn only ({m.stat})");
             var eclipse = Shipped("eclipse_crown");
             Assert.That(eclipse.RequiresAnyOf.Select(s => s.Id), Is.EquivalentTo(new[]
                 { "holy_tomes", "ember_wheel", "rime_blades", "storm_satellites", "reaper_scythes", "sentinel_halo" }));
