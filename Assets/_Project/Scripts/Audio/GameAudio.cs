@@ -43,6 +43,8 @@ namespace SurvivorSouls.Audio
         [SerializeField] private SkillHud skillHud;
         [Tooltip("Zombie deaths (KAN-234): set = enemy kills play there; the deaths clips below stay for the player death and the boss groans.")]
         [SerializeField] private ZombieDeathSounds zombieDeaths;
+        [Tooltip("Shot channel (KAN-236): set = the Knight's shots and Double Shot follow-ups play there (8 variants, voice cap, gap); boss volleys keep the shots below.")]
+        [SerializeField] private ShotSounds shotChannel;
 
         [Header("Clips")]
         [SerializeField] private AudioClip[] shots;
@@ -302,11 +304,22 @@ namespace SurvivorSouls.Audio
         public AudioClip[] PlayerShots => _heroShots != null && _heroShots.Length > 0 ? _heroShots : shots;
 
         /// <summary>Hero shot clips (null / empty = back to the crossbow shots).</summary>
-        public void SetPlayerShots(AudioClip[] clips) => _heroShots = clips;
+        public void SetPlayerShots(AudioClip[] clips)
+        {
+            _heroShots = clips;
+            if (shotChannel != null) shotChannel.SetHeroClips(clips); // KAN-236
+        }
 
-        private void OnFired(Vector3 muzzle, Vector3 direction) => Play(PlayerShots, shotVolume, 0.06f);
-        private void OnFollowUpFired(Vector3 muzzle, Vector3 direction) =>
-            Play(PlayerShots, shotVolume * followUpShotShare, 0.04f, followUpShotPitch);
+        // KAN-236: with a shot channel the shots play there (it listens to the shooter itself).
+        private void OnFired(Vector3 muzzle, Vector3 direction)
+        {
+            if (shotChannel == null) Play(PlayerShots, shotVolume, 0.06f);
+        }
+
+        private void OnFollowUpFired(Vector3 muzzle, Vector3 direction)
+        {
+            if (shotChannel == null) Play(PlayerShots, shotVolume * followUpShotShare, 0.04f, followUpShotPitch);
+        }
         private void OnHit(Vector3 point, Vector3 direction) => Play(impacts, impactVolume, 0.1f);
 
         private void OnDamaged(Enemy enemy, float amount, bool killed)

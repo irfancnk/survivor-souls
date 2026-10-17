@@ -69,6 +69,24 @@ namespace SurvivorSouls.Gameplay.Boss
     /// <see cref="burnDps"/> above 0 leaves a burning ground patch (shared <see cref="SurvivorSouls.Gameplay.Combat.GroundHazards"/>
     /// pool, fire look) where each hit lands: the slam circle centre, every meteor circle. It hurts only while the Knight stands
     /// in it and goes out after its life (the Pyre Lord's flame circle and meteor rain).
+    /// KAN-239 movers (warned by red lanes like the fan; one volley / cast hits once):
+    /// <list type="bullet">
+    /// <item><b>Boomerang</b>: <see cref="count"/> blades over <see cref="spread"/> degrees, launched at <see cref="speed"/>
+    /// m/s, they slow to a stop at <see cref="length"/> m and fly back to where they left (4 x length / speed s), bowing
+    /// <see cref="wave"/> m sideways (at most half the lane <see cref="width"/>); hit radius <see cref="radius"/>.</item>
+    /// <item><b>Sine</b>: <see cref="count"/> bolts over <see cref="spread"/> degrees that weave <see cref="wave"/> m to each
+    /// side (at most half the lane <see cref="width"/>), one wave per <see cref="wavelength"/> m; <see cref="speed"/>,
+    /// <see cref="length"/>, hit radius <see cref="radius"/>. Neighbour bolts weave in opposite phase.</item>
+    /// <item><b>Bounce</b>: <see cref="count"/> rolling bolts over <see cref="spread"/> degrees; a pillar or the ring wall turns
+    /// one up to <see cref="bounces"/> times; <see cref="length"/> m of path in all; hit radius <see cref="radius"/>.</item>
+    /// <item><b>Wall</b>: a row of bolts <see cref="width"/> m wide across the aim, moving at <see cref="speed"/> m/s for
+    /// <see cref="length"/> m, with one gap whose clear width (where the Knight's centre is safe) is <see cref="gap"/> m,
+    /// never below <see cref="BossFight.MinWallGap"/> (1.5 x the Knight's body width), placed off the Knight's line. The
+    /// lanes warn every part of the row but the gap. Hit radius <see cref="radius"/>.</item>
+    /// <item><b>Spikes</b>: <see cref="count"/> ground lines over <see cref="spread"/> degrees (<see cref="length"/> x
+    /// <see cref="width"/>, a pillar shortens a line), warned at least <see cref="BossData.MinTelegraph"/> s, then spikes
+    /// burst out of every line at once. The whole cast hits once.</item>
+    /// </list>
     /// KAN-111: an entry with <see cref="every"/> above 0 is <b>timed</b>: it is never picked by score; it comes at the first
     /// free pick once <see cref="every"/> s of fight time have passed since it last started (or since its phase began), ahead
     /// of every other band, range permitting (the Bone Matriarch teleports every 8 s in phase 2).
@@ -125,6 +143,14 @@ namespace SurvivorSouls.Gameplay.Boss
         [Tooltip("KAN-111: > 0 = timed: it comes every this many seconds (at the next free pick, before other attacks), " +
                  "counted from its last start or the start of its phase. Never picked by score.")]
         [Min(0f)] public float every;
+        [Tooltip("KAN-239 Boomerang: sideways bow (m). Sine: amplitude to each side (m). Capped at half the lane width.")]
+        [Min(0f)] public float wave;
+        [Tooltip("KAN-239 Sine: metres per full wave.")]
+        [Min(0f)] public float wavelength;
+        [Tooltip("KAN-239 Bounce: turns off pillars / the ring wall before a bolt breaks.")]
+        [Min(0)] public int bounces;
+        [Tooltip("KAN-239 Wall: clear width of the gap (m) where the Knight's centre is safe. Floor: 1.5 x the Knight's body width.")]
+        [Min(0f)] public float gap;
 
         public bool InPhase(int phase) => (phases & (phase >= 2 ? BossPhases.Phase2 : BossPhases.Phase1)) != 0;
 
@@ -305,6 +331,65 @@ namespace SurvivorSouls.Gameplay.Boss
                 clip = clip,
             };
 
+        /// <summary>KAN-239: blades that fly out over the spread, stop at <paramref name="distance"/> m and come back.</summary>
+        public static BossAttack Boomerang(string label, BossPhases phases, float minRange, float maxRange, int blades,
+            float spread, float telegraph, float speed, float distance, float bend, float laneWidth, float hitRadius,
+            float damage, float recover, float cooldown, int priority = 0, float weight = 1f, string clip = null) =>
+            new BossAttack
+            {
+                label = label, type = BossFight.Move.Boomerang, phases = phases, priority = priority, weight = weight,
+                minRange = minRange, maxRange = maxRange, count = blades, spread = spread, telegraph = telegraph, speed = speed,
+                length = distance, wave = bend, width = laneWidth, radius = hitRadius, damage = damage, recover = recover,
+                cooldown = cooldown, clip = clip,
+            };
+
+        /// <summary>KAN-239: bolts that weave across their lanes (amplitude, metres per wave).</summary>
+        public static BossAttack Sine(string label, BossPhases phases, float minRange, float maxRange, int bolts, float spread,
+            float telegraph, float speed, float distance, float amplitude, float wavelength, float laneWidth, float hitRadius,
+            float damage, float recover, float cooldown, int priority = 0, float weight = 1f, string clip = null) =>
+            new BossAttack
+            {
+                label = label, type = BossFight.Move.Sine, phases = phases, priority = priority, weight = weight,
+                minRange = minRange, maxRange = maxRange, count = bolts, spread = spread, telegraph = telegraph, speed = speed,
+                length = distance, wave = amplitude, wavelength = wavelength, width = laneWidth, radius = hitRadius,
+                damage = damage, recover = recover, cooldown = cooldown, clip = clip,
+            };
+
+        /// <summary>KAN-239: rolling bolts that turn off pillars and the ring wall <paramref name="bounceCount"/> times.</summary>
+        public static BossAttack Bounce(string label, BossPhases phases, float minRange, float maxRange, int bolts, float spread,
+            float telegraph, float speed, float distance, int bounceCount, float laneWidth, float hitRadius, float damage,
+            float recover, float cooldown, int priority = 0, float weight = 1f, string clip = null) =>
+            new BossAttack
+            {
+                label = label, type = BossFight.Move.Bounce, phases = phases, priority = priority, weight = weight,
+                minRange = minRange, maxRange = maxRange, count = bolts, spread = spread, telegraph = telegraph, speed = speed,
+                length = distance, bounces = bounceCount, width = laneWidth, radius = hitRadius, damage = damage,
+                recover = recover, cooldown = cooldown, clip = clip,
+            };
+
+        /// <summary>KAN-239: a row of bolts across the aim with one gap (clear width <paramref name="gapWidth"/> m).</summary>
+        public static BossAttack Wall(string label, BossPhases phases, float minRange, float maxRange, float wallWidth,
+            float gapWidth, float telegraph, float speed, float distance, float hitRadius, float damage, float recover,
+            float cooldown, int priority = 0, float weight = 1f, string clip = null) =>
+            new BossAttack
+            {
+                label = label, type = BossFight.Move.Wall, phases = phases, priority = priority, weight = weight,
+                minRange = minRange, maxRange = maxRange, width = wallWidth, gap = gapWidth, telegraph = telegraph,
+                speed = speed, length = distance, radius = hitRadius, damage = damage, recover = recover, cooldown = cooldown,
+                clip = clip,
+            };
+
+        /// <summary>KAN-239: ground lines over the spread that burst into spikes after the warning.</summary>
+        public static BossAttack Spikes(string label, BossPhases phases, float minRange, float maxRange, int lines, float spread,
+            float length, float width, float telegraph, float damage, float recover, float cooldown, int priority = 0,
+            float weight = 1f, string clip = null) =>
+            new BossAttack
+            {
+                label = label, type = BossFight.Move.Spikes, phases = phases, priority = priority, weight = weight,
+                minRange = minRange, maxRange = maxRange, count = lines, spread = spread, length = length, width = width,
+                telegraph = telegraph, damage = damage, recover = recover, cooldown = cooldown, clip = clip,
+            };
+
         /// <summary>
         /// KAN-174: a side cast (see <see cref="BossFight.Move.Barrage"/>): every <paramref name="interval"/> s one lobbed shot
         /// to a random point <paramref name="minOffset"/>..<paramref name="maxOffset"/> m from the Knight, flight
@@ -368,6 +453,25 @@ namespace SurvivorSouls.Gameplay.Boss
                         cooldown: 2.5f);
                 case BossFight.Move.Barrage:
                     return BlackFireballs();
+                // KAN-239: first numbers for the new movers (KAN-240 tunes the per-boss sets; damage = KAN-163 shares).
+                case BossFight.Move.Boomerang:
+                    return Boomerang("Cleaver Toss", BossPhases.Both, 0f, 12f, blades: 3, spread: 50f, telegraph: 0.9f,
+                        speed: 12f, distance: 9f, bend: 0.6f, laneWidth: 1.4f, hitRadius: 0.55f, damage: 0.25f, recover: 0.6f,
+                        cooldown: 3f);
+                case BossFight.Move.Sine:
+                    return Sine("Serpent Flames", BossPhases.Both, 0f, 14f, bolts: 5, spread: 60f, telegraph: 0.9f, speed: 7f,
+                        distance: 14f, amplitude: 0.7f, wavelength: 4f, laneWidth: 1.6f, hitRadius: 0.5f, damage: 0.22f,
+                        recover: 0.7f, cooldown: 3f);
+                case BossFight.Move.Bounce:
+                    return Bounce("Rolling Boulders", BossPhases.Both, 0f, 14f, bolts: 3, spread: 40f, telegraph: 1f, speed: 6f,
+                        distance: 24f, bounceCount: 2, laneWidth: 1.4f, hitRadius: 0.7f, damage: 0.29f, recover: 0.8f,
+                        cooldown: 3.5f);
+                case BossFight.Move.Wall:
+                    return Wall("Bone Wall", BossPhases.Both, 0f, 14f, wallWidth: 12f, gapWidth: 1.5f, telegraph: 1f, speed: 5f,
+                        distance: 16f, hitRadius: 0.5f, damage: 0.25f, recover: 0.8f, cooldown: 3.5f);
+                case BossFight.Move.Spikes:
+                    return Spikes("Spike Lines", BossPhases.Both, 0f, 12f, lines: 5, spread: 80f, length: 11f, width: 1.1f,
+                        telegraph: 0.9f, damage: 0.27f, recover: 0.8f, cooldown: 3f);
                 case BossFight.Move.Beams:
                     return Beams("Cross Beams", BossPhases.Phase2, 0f, 30f, lanes: 4, length: 9f, width: 0.9f, turnSpeed: 45f,
                         duration: 4f, telegraph: 1f, damage: 0.34f, recover: 0.8f, cooldown: 3f);

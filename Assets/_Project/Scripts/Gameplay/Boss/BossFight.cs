@@ -127,6 +127,16 @@ namespace SurvivorSouls.Gameplay.Boss
             /// point near the Knight (the Butcher's black fireballs). Never picked by score; never stops the chase.
             /// </summary>
             Barrage = 14,
+            /// <summary>KAN-239: blades that fly out, stop and come back.</summary>
+            Boomerang = 15,
+            /// <summary>KAN-239: bolts that weave across their lanes.</summary>
+            Sine = 16,
+            /// <summary>KAN-239: rolling bolts that turn off pillars and the ring wall.</summary>
+            Bounce = 17,
+            /// <summary>KAN-239: a row of bolts across the aim with one gap.</summary>
+            Wall = 18,
+            /// <summary>KAN-239: ground lines that burst into spikes.</summary>
+            Spikes = 19,
         }
 
         private const float SpawnClearRadius = 1.4f; // free ground the boss body needs
@@ -467,6 +477,7 @@ namespace SurvivorSouls.Gameplay.Boss
             _picks = 0;
             _index = -1;
             ResetAggression(); // KAN-164.2
+            if (projectiles != null) projectiles.SetLook(data.BoltLook); // KAN-239
             if (timer != null && bossRules != null) timer.UseRules(bossRules);
             if (spawner != null)
                 spawner.SetDifficulty(plan.CapMultiplier * data.HordeCap, plan.IntervalMultiplier * data.HordeInterval, plan.HealthMultiplier);
@@ -711,6 +722,11 @@ namespace SurvivorSouls.Gameplay.Boss
                 case Move.Shockwave: ReleaseShockwave(); break;
                 case Move.Homing: ReleaseHoming(); break;
                 case Move.Beams: BeginBeams(); break;
+                case Move.Boomerang:
+                case Move.Sine:
+                case Move.Bounce: ReleaseMovers(); break; // KAN-239
+                case Move.Wall: ReleaseWall(); break;
+                case Move.Spikes: StrikeSpikes(); break;
             }
         }
 
@@ -784,6 +800,11 @@ namespace SurvivorSouls.Gameplay.Boss
                 case Move.Barrage:
                     var barragePool = RainPool;
                     return Shots != null && barragePool != null && barragePool.FreeCircles() > 0;
+                case Move.Boomerang:
+                case Move.Sine:
+                case Move.Bounce: return a.count > 0 && lines != null && projectiles != null; // KAN-239
+                case Move.Wall: return lines != null && lines.Capacity >= 2 && projectiles != null;
+                case Move.Spikes: return a.count > 0 && lines != null;
                 default: return true;
             }
         }
@@ -812,6 +833,11 @@ namespace SurvivorSouls.Gameplay.Boss
                 case Move.Shockwave: BeginShockwave(index); break;
                 case Move.Homing: BeginCastWindUp(index); break;
                 case Move.Beams: BeginBeamsWindUp(index); break;
+                case Move.Boomerang:
+                case Move.Sine:
+                case Move.Bounce: BeginFan(index); break; // KAN-239: the fan's lanes warn the movers too
+                case Move.Wall: BeginWall(index); break;
+                case Move.Spikes: BeginSpikes(index); break;
                 default: return false;
             }
             return true;
