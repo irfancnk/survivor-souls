@@ -1,5 +1,5 @@
 ---
-name: survivor-souls-jira-ticket
+name: ss-create-jira
 description: Write and create best-practice Jira tickets for the Survivor Souls game (project KAN on survivorsouls.atlassian.net). Use whenever the user mentions "ticket", "tickets", "create a ticket", "add to Jira", "backlog", or lists features / bugs / ideas for the game to track. In this project "ticket" always means a KAN Jira issue. Covers duplicate check, code grounding, the ticket template, fields, and the report back.
 ---
 
