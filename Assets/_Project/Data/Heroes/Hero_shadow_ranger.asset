@@ -46,3 +46,5 @@ MonoBehaviour:
   - {fileID: 8300000, guid: 40a54b976462b4a8993334984833eb32, type: 3}
   aimTurnSpeed: 1200
   aimTurnSmoothing: 0.09
+  tauntClips:
+  - {fileID: 8300000, guid: 517476fc902154416ac404230c268670, type: 3}

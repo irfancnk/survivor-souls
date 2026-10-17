@@ -94,6 +94,10 @@ namespace SurvivorSouls.Editor.Characters
                 EditorUtility.SetDirty(ranger);
             }
 
+            // KAN-244 hero page taunt: the Knight's war grunt + crossbow cock, the Ranger's bow twang.
+            SetTaunt(knight, "sfx_knight_grunt_01", "sfx_crossbow_seat_01");
+            SetTaunt(ranger, "sfx_bow_twang_02");
+
             var roster = AssetDatabase.LoadAssetAtPath<HeroRoster>(RosterPath);
             if (roster == null)
             {
@@ -116,6 +120,15 @@ namespace SurvivorSouls.Editor.Characters
         {
             if (Mathf.Approximately(hero.AimTurnSpeed, speed) && Mathf.Approximately(hero.AimTurnSmoothing, smoothing)) return;
             hero.SetAimTurn(speed, smoothing);
+            EditorUtility.SetDirty(hero);
+        }
+
+        /// <summary>Hero page taunt sounds (KAN-244), builder-owned (written when they differ). Missing files are skipped.</summary>
+        private static void SetTaunt(HeroDefinition hero, params string[] names)
+        {
+            var clips = names.Select(n => AssetDatabase.LoadAssetAtPath<AudioClip>($"{SfxBuilder.Dir}/{n}.wav")).Where(c => c != null).ToArray();
+            if (hero.TauntClips.SequenceEqual(clips)) return;
+            hero.SetTauntClips(clips);
             EditorUtility.SetDirty(hero);
         }
 

@@ -51,6 +51,8 @@ namespace SurvivorSouls.Gameplay.Heroes
         [SerializeField, Min(0f)] private float aimTurnSpeed;
         [Tooltip("Aim turn smoothing (s): > 0 eases in and out (smooth damp) instead of a constant-rate turn. Used when aimTurnSpeed > 0.")]
         [SerializeField, Min(0f)] private float aimTurnSmoothing;
+        [Tooltip("Sounds of the hero page pick taunt (KAN-244), played together. Empty = silent taunt.")]
+        [SerializeField] private AudioClip[] tauntClips = Array.Empty<AudioClip>();
 
         public string Id => id;
         public string DisplayName => displayName;
@@ -73,6 +75,8 @@ namespace SurvivorSouls.Gameplay.Heroes
         public float AimTurnSpeed => aimTurnSpeed;
         /// <summary>Own aim turn smoothing (s), used with <see cref="AimTurnSpeed"/>.</summary>
         public float AimTurnSmoothing => aimTurnSmoothing;
+        /// <summary>Hero page pick taunt sounds (KAN-244); empty = silent.</summary>
+        public AudioClip[] TauntClips => tauntClips ?? Array.Empty<AudioClip>();
 
         /// <summary>Final value of <paramref name="stat"/> for a base value, with this profile only (card numbers, tests).</summary>
         public float Apply(StatId stat, float baseValue)
@@ -116,7 +120,9 @@ namespace SurvivorSouls.Gameplay.Heroes
 
         public void SetModel(GameObject prefab) => modelPrefab = prefab;
 
-        /// <summary>Own projectile + shot sounds (null / empty = the scene defaults). Builder and tests.</summary>
+        /// <summary>Hero page taunt sounds (KAN-244). Builder and tests.</summary>
+        public void SetTauntClips(AudioClip[] clips) => tauntClips = clips ?? Array.Empty<AudioClip>();
+
         /// <summary>Own aim turn (0 speed = scene default). Builder and tests.</summary>
         public void SetAimTurn(float degreesPerSecond, float smoothing)
         {
@@ -124,6 +130,7 @@ namespace SurvivorSouls.Gameplay.Heroes
             aimTurnSmoothing = Mathf.Max(0f, smoothing);
         }
 
+        /// <summary>Own projectile + shot sounds (null / empty = the scene defaults). Builder and tests.</summary>
         public void SetShot(Bolt prefab, AudioClip[] clips)
         {
             projectile = prefab;

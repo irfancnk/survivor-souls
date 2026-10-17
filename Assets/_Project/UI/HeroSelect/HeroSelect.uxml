@@ -1,11 +1,16 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
     <Style src="HeroSelect.uss" />
-    <!-- Hero page (KAN-153, first slice of the KAN-100 roster). Instanced by MainMenu.uxml, driven by HeroSelectScreen.
-         Hero cards are built in code from the HeroRoster asset (classes hs-card*). -->
+    <!-- Hero page (KAN-153, KAN-244). Instanced by MainMenu.uxml, driven by HeroSelectScreen. One hero at a time on the 3D
+         hero stage (HeroStage renders into hs-stage); his text floats over it, no cards or boxes. -->
     <ui:VisualElement name="hs-screen" class="hs-screen hs-screen--closed ss-hidden">
+        <!-- 3D stage (render texture) + drag area: drag turns the hero, a swipe from the outer edges changes him. -->
+        <ui:VisualElement name="hs-stage" class="hs-stage" />
+        <ui:VisualElement class="hs-shade hs-shade--top" picking-mode="Ignore" />
+        <ui:VisualElement class="hs-shade hs-shade--bottom" picking-mode="Ignore" />
+
         <ui:VisualElement name="hs-safe" class="hs-safe" picking-mode="Ignore">
-            <ui:VisualElement class="hs-header">
-                <ui:VisualElement class="hs-header__bar">
+            <ui:VisualElement class="hs-header" picking-mode="Ignore">
+                <ui:VisualElement class="hs-header__bar" picking-mode="Ignore">
                     <ui:Button name="hs-back" text="BACK" class="hs-back" />
                     <ui:VisualElement class="hs-pills" picking-mode="Ignore">
                         <ui:VisualElement name="hs-souls-pill" class="ss-wallet hs-pill" picking-mode="Ignore">
@@ -18,14 +23,39 @@
                         </ui:VisualElement>
                     </ui:VisualElement>
                 </ui:VisualElement>
-                <ui:Label text="HEROES" class="hs-title" />
-                <ui:Label text="Choose who walks into the dark." class="hs-subtitle" />
-                <ui:Label name="hs-test-note" text="TEST MODE: every hero is free." class="hs-test-note ss-hidden" />
+                <ui:Label text="HEROES" class="hs-title" picking-mode="Ignore" />
+                <ui:Label name="hs-test-note" text="TEST MODE: every hero is free." class="hs-test-note ss-hidden" picking-mode="Ignore" />
             </ui:VisualElement>
 
-            <ui:ScrollView name="hs-list" mode="Vertical" horizontal-scroller-visibility="Hidden" vertical-scroller-visibility="Hidden" class="hs-list">
-                <ui:VisualElement name="hs-cards" class="hs-cards" />
-            </ui:ScrollView>
+            <ui:Button name="hs-prev" text="" class="hs-arrow hs-arrow--prev">
+                <ui:VisualElement class="hs-arrow__chevron" picking-mode="Ignore" />
+            </ui:Button>
+            <ui:Button name="hs-next" text="" class="hs-arrow hs-arrow--next">
+                <ui:VisualElement class="hs-arrow__chevron" picking-mode="Ignore" />
+            </ui:Button>
+
+            <!-- Hero text: built for the viewed hero by HeroSelectScreen (name, tagline, strengths, weaknesses). -->
+            <ui:VisualElement name="hs-info" class="hs-info" picking-mode="Ignore">
+                <ui:VisualElement name="hs-dots" class="hs-dots" picking-mode="Ignore" />
+                <ui:Label name="hs-badge" text="IN USE" class="hs-badge ss-hidden" picking-mode="Ignore" />
+                <ui:Label name="hs-name" text="" class="hs-name" picking-mode="Ignore" />
+                <ui:Label name="hs-tagline" text="" class="hs-tagline" picking-mode="Ignore" />
+                <ui:VisualElement name="hs-traits" class="hs-traits" picking-mode="Ignore">
+                    <ui:VisualElement name="hs-pros" class="hs-traits__col" picking-mode="Ignore" />
+                    <ui:VisualElement name="hs-cons" class="hs-traits__col hs-traits__col--cons" picking-mode="Ignore" />
+                </ui:VisualElement>
+                <ui:VisualElement name="hs-action-row" class="hs-action-row" picking-mode="Ignore">
+                    <ui:VisualElement name="hs-price" class="hs-price" picking-mode="Ignore">
+                        <ui:VisualElement name="hs-lock" class="hs-lock ss-hidden" picking-mode="Ignore">
+                            <ui:VisualElement class="hs-lock__shackle" picking-mode="Ignore" />
+                            <ui:VisualElement class="hs-lock__body" picking-mode="Ignore" />
+                        </ui:VisualElement>
+                        <ui:VisualElement name="hs-price-gem" class="hs-price__gem" picking-mode="Ignore" />
+                        <ui:Label name="hs-price-value" text="" class="hs-price__value" picking-mode="Ignore" />
+                    </ui:VisualElement>
+                    <ui:Button name="hs-action" text="" class="hs-action" />
+                </ui:VisualElement>
+            </ui:VisualElement>
 
             <ui:Label name="hs-toast" text="" class="hs-toast ss-hidden" picking-mode="Ignore" />
         </ui:VisualElement>

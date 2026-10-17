@@ -31,3 +31,6 @@ MonoBehaviour:
   shotClips: []
   aimTurnSpeed: 840
   aimTurnSmoothing: 0.12
+  tauntClips:
+  - {fileID: 8300000, guid: 5f4db233a8a4c4cdbb6e8a001500bdfb, type: 3}
+  - {fileID: 8300000, guid: ed23775048bc64d0bb1711bac03c6383, type: 3}

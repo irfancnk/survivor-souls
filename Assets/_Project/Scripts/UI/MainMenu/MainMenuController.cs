@@ -17,7 +17,7 @@ namespace SurvivorSouls.UI.MainMenu
     /// Realm. Without a catalog PLAY starts Realm 1 at once. SOUL TREE opens the soul tree page (KAN-98,
     /// <see cref="SoulTreeScreen"/>); without a tree asset the button is hidden. STORE opens the store page (KAN-99,
     /// <see cref="StoreScreen"/>, Ember Shard packs through <see cref="StoreProvider"/> + shard offers); without a catalog
-    /// the button is hidden. HEROES opens the hero page (KAN-153, <see cref="HeroSelectScreen"/>: pick, buy, pros / cons);
+    /// the button is hidden. HEROES opens the hero page (KAN-153, <see cref="HeroSelectScreen"/>: pick, buy, pros / cons; 3D hero stage KAN-244);
     /// without a roster the button is hidden. Back / Esc closes the top layer (sheet, page, settings).
     /// Test Mode (KAN-144): a settings row (dev builds, or after 7 taps on the settings title: <see cref="TestModeReveal"/>)
     /// switches <see cref="TestMode"/>; a "TEST MODE" tag shows top left while it is on.
@@ -63,6 +63,8 @@ namespace SurvivorSouls.UI.MainMenu
         [SerializeField] private StoreCatalog storeCatalog;
         [Tooltip("Hero page (Data/Heroes/HeroRoster.asset, KAN-153). Null = no HEROES button.")]
         [SerializeField] private HeroRoster heroRoster;
+        [Tooltip("3D hero stage of the hero page (KAN-244). Null = flat page.")]
+        [SerializeField] private HeroStage heroStage;
 
         private UIDocument _document;
         private SafeAreaPadding _safeArea;
@@ -120,9 +122,10 @@ namespace SurvivorSouls.UI.MainMenu
 
         /// <summary>Wiring for tests and code-built menus (call before the object is enabled).</summary>
         public void Setup(RealmCatalog catalog, GemRewardConfig gemRewards = null, SoulTree tree = null, StoreCatalog store = null,
-            HeroRoster heroes = null)
+            HeroRoster heroes = null, HeroStage stage = null)
         {
             heroRoster = heroes;
+            heroStage = stage;
             realms = catalog;
             gems = gemRewards;
             soulTree = tree;
@@ -200,7 +203,7 @@ namespace SurvivorSouls.UI.MainMenu
                 else storeButton.AddToClassList(HiddenClass);
             }
             _heroScreen = heroRoster != null && root.Q(HeroSelectScreen.ScreenName) != null
-                ? new HeroSelectScreen(root, heroRoster)
+                ? new HeroSelectScreen(root, heroRoster, heroStage)
                 : null;
             var heroesButton = root.Q<Button>(HeroesButtonName);
             if (heroesButton != null)
@@ -255,6 +258,12 @@ namespace SurvivorSouls.UI.MainMenu
             _heroSafeArea?.Refresh();
             // Esc on desktop; Android's back button arrives as Escape too.
             if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame) Back();
+            // Hero page (KAN-244): arrow keys change the hero on desktop.
+            if (Keyboard.current != null && _heroScreen != null && _heroScreen.IsOpen && !SettingsOpen)
+            {
+                if (Keyboard.current.leftArrowKey.wasPressedThisFrame) _heroScreen.Step(-1);
+                else if (Keyboard.current.rightArrowKey.wasPressedThisFrame) _heroScreen.Step(1);
+            }
         }
 
         /// <summary>Closes the top layer: Realm sheet / page, soul tree sheet / page, store sheet / page, then settings. False when nothing was open.</summary>
@@ -303,7 +312,7 @@ namespace SurvivorSouls.UI.MainMenu
         public void OpenHeroes()
         {
             if (_heroScreen == null) return;
-            _heroSafeArea ??= new SafeAreaPadding(_heroScreen.Page);
+            _heroSafeArea ??= new SafeAreaPadding(_heroScreen.SafeRoot); // the 3D stage stays full screen
             _heroScreen.Open();
             _heroSafeArea.Refresh(force: true);
         }

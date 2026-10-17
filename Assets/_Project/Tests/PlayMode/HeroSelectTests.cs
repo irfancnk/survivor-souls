@@ -19,8 +19,8 @@ using TestMode = SurvivorSouls.Core.TestMode;
 namespace SurvivorSouls.Tests
 {
     /// <summary>
-    /// KAN-153 in play mode: the hero page on the real MainMenu.uxml (one card per hero with portrait, pros / cons and
-    /// price; the Knight starts picked; a locked hero says how much is missing, buys on the second tap only, then is
+    /// KAN-153 in play mode: the hero page on the real MainMenu.uxml (one hero at a time since KAN-244: name, tagline,
+    /// pros / cons and price over the stage, no boxes; arrows / Step change the hero and wrap; the Knight starts picked; a locked hero says how much is missing, buys on the second tap only, then is
     /// picked; Test Mode makes every hero free with a note and charges nothing), the menu's HEROES button (opens the page;
     /// hidden without a roster), both scenes wired to the shipped roster, and the Game scene spawning the picked Shadow
     /// Ranger with his model (Knight model off, bow muzzle, crossbow parts off, death clip) and his stats (max health,
@@ -83,11 +83,6 @@ namespace SurvivorSouls.Tests
             button.SendEvent(e);
         }
 
-        private static IEnumerable<string> Texts(VisualElement card, string className)
-        {
-            foreach (var l in card.Query<Label>(className: className).ToList()) yield return l.text;
-        }
-
         [UnityTest]
         public IEnumerator Page_KnightPicked_RangerLocked_PoorThenConfirmBuy_ThenPicked()
         {
@@ -101,18 +96,29 @@ namespace SurvivorSouls.Tests
             Assert.That(page.IsOpen, Is.True);
             Assert.That(page.TestNoteVisible, Is.False);
 
-            var knightCard = page.CardOf("knight");
-            var rangerCard = page.CardOf("shadow_ranger");
-            Assert.That(knightCard, Is.Not.Null);
-            Assert.That(rangerCard, Is.Not.Null);
-            Assert.That(rangerCard.Q(className: "hs-portrait").resolvedStyle.backgroundImage.texture, Is.Not.Null, "portrait");
-            Assert.That(Texts(rangerCard, "hs-trait__text"), Is.EquivalentTo(new[] { "+30% attack speed", "+18% move speed", "-25% max health", "-20% arrow damage" }));
-            Assert.That(rangerCard.Query(className: "hs-trait--pro").ToList().Count, Is.EqualTo(2));
-            Assert.That(rangerCard.Query(className: "hs-trait--con").ToList().Count, Is.EqualTo(2));
+            // One hero at a time: the page opens on the picked Knight; the Ranger is one step away.
+            Assert.That(page.Viewed.Id, Is.EqualTo("knight"), "opens on the picked hero");
+            Assert.That(page.NameText, Is.EqualTo("The Knight"));
             Assert.That(page.StateOf("knight"), Is.EqualTo(HeroCardState.Current));
-            Assert.That(knightCard.ClassListContains("hs-card--selected"), Is.True);
-            Assert.That(page.ActionOf("knight").text, Is.EqualTo("SELECTED"));
-            Assert.That(page.PriceTextOf("shadow_ranger"), Is.EqualTo("1,000"), "price shown");
+            Assert.That(page.ActionButton.text, Is.EqualTo("SELECTED"));
+            Assert.That(page.LockVisible, Is.False);
+            Assert.That(root.Q(HeroSelectScreen.PrevName).ClassListContains("ss-hidden"), Is.False, "arrows with 2+ heroes");
+            page.Step(1);
+            Assert.That(page.Viewed.Id, Is.EqualTo("shadow_ranger"));
+            Assert.That(page.NameText, Is.EqualTo("The Shadow Ranger"));
+            Assert.That(page.TaglineText, Is.EqualTo(_roster.Find("shadow_ranger").Tagline));
+            Assert.That(page.ProLines, Is.EqualTo(new[] { "+30% attack speed", "+18% move speed" }));
+            Assert.That(page.ConLines, Is.EqualTo(new[] { "-25% max health", "-20% arrow damage" }));
+            Assert.That(root.Q(className: "hs-trait--pro"), Is.Not.Null);
+            Assert.That(root.Q(className: "hs-trait--con"), Is.Not.Null);
+            Assert.That(page.LockVisible, Is.True, "locked hero: lock mark by the price");
+            Assert.That(page.PriceText, Is.EqualTo("1,000"), "price shown");
+            Assert.That(page.PriceTextOf("shadow_ranger"), Is.EqualTo("1,000"));
+            Assert.That(root.Q("hs-info").resolvedStyle.backgroundColor.a, Is.EqualTo(0f), "hero text has no box");
+            page.Step(1);
+            Assert.That(page.Viewed.Id, Is.EqualTo("knight"), "wraps round");
+            page.Step(-1);
+            Assert.That(page.Viewed.Id, Is.EqualTo("shadow_ranger"));
 
             // Not enough shards: says what is missing, nothing changes.
             GemWallet.Earn(400);
@@ -138,11 +144,14 @@ namespace SurvivorSouls.Tests
             Assert.That(page.Current.Id, Is.EqualTo("shadow_ranger"), "bought hero is picked");
             Assert.That(page.ActionOf("shadow_ranger").text, Is.EqualTo("SELECTED"));
             Assert.That(page.PriceTextOf("shadow_ranger"), Is.EqualTo("OWNED"));
+            Assert.That(page.PriceText, Is.EqualTo("OWNED"));
+            Assert.That(page.LockVisible, Is.False, "owned: no lock");
             Assert.That(page.ToastText, Is.EqualTo("The Shadow Ranger joins you."));
 
             // Back to the Knight: a plain select.
             Assert.That(page.StateOf("knight"), Is.EqualTo(HeroCardState.Select));
             Press(page.ActionOf("knight"));
+            Assert.That(page.Viewed.Id, Is.EqualTo("knight"));
             Assert.That(page.Current.Id, Is.EqualTo("knight"));
             Assert.That(GemWallet.Balance, Is.EqualTo(200));
 

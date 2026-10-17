@@ -40,6 +40,27 @@ namespace SurvivorSouls.Editor
         }
 
         /// <summary>
+        /// Windows dev player (KAN-244: dev screenshots on the Windows PC), same as <see cref="BuildMacDev"/>:
+        /// <c>-buildTarget Win64 -executeMethod SurvivorSouls.Editor.DevBuildTools.BuildWindowsDev -ss-out &lt;dir&gt;</c>.
+        /// Run it portrait with <c>-screen-width 540 -screen-height 1170 -screen-fullscreen 0</c> plus the DevScreenshot args.
+        /// </summary>
+        public static void BuildWindowsDev()
+        {
+            string outDir = GetArg("-ss-out") ?? "Builds/WindowsDev";
+            var options = new BuildPlayerOptions
+            {
+                scenes = EditorBuildSettings.scenes.Where(s => s.enabled).Select(s => s.path).ToArray(),
+                locationPathName = Path.Combine(outDir, "SurvivorSouls.exe"),
+                target = BuildTarget.StandaloneWindows64,
+                options = BuildOptions.Development,
+            };
+            BuildReport report = null;
+            WithQualityLevelOnStandalone(MobileQuality, () => report = Build(options));
+            Debug.Log($"[DevBuildTools] {report.summary.result} errors={report.summary.totalErrors} -> {options.locationPathName}");
+            EditorApplication.Exit(report.summary.result == BuildResult.Succeeded ? 0 : 1);
+        }
+
+        /// <summary>
         /// Runs <paramref name="action"/> with the named quality level enabled for Standalone, then puts the
         /// exclusion back and restores QualitySettings.asset on disk (no ProjectSettings diff after a dev build).
         /// Unknown level = runs the action unchanged.

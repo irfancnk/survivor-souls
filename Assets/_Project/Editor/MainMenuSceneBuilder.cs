@@ -57,12 +57,13 @@ namespace SurvivorSouls.Editor
 
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             SetupEnvironment();
-            CreateCamera();
+            var menuCamera = CreateCamera();
             CreateMoonLight();
             CreateGround(materials);
             CreateBonfire(materials);
             CreateRuins(materials);
-            CreateUi(panelSettings, realmCatalog);
+            var stage = CreateHeroStage(materials, menuCamera);
+            CreateUi(panelSettings, realmCatalog, stage);
 
             StableAssetWriter.Remember(ScenePath);
             EditorSceneManager.SaveScene(scene, ScenePath);
@@ -91,7 +92,7 @@ namespace SurvivorSouls.Editor
 
         private sealed class MenuMaterials
         {
-            public Material Ground, Stone, Wood, Metal, Ruin, Flame, Ember;
+            public Material Ground, Stone, Wood, Metal, Ruin, Flame, Ember, StageFloor, StageGlow, Dust;
         }
 
         private static MenuMaterials CreateMaterials()
@@ -107,6 +108,10 @@ namespace SurvivorSouls.Editor
                 Ruin = LitMaterial("M_Menu_Ruin", new Color(0.2f, 0.21f, 0.24f), 0.05f),
                 Flame = AdditiveParticleMaterial("M_Menu_Flame", softDot),
                 Ember = AdditiveParticleMaterial("M_Menu_Ember", softDot),
+                // Hero stage (KAN-244).
+                StageFloor = LitMaterial("M_Menu_StageFloor", new Color(0.2f, 0.195f, 0.19f), 0.12f),
+                StageGlow = TintedAdditive("M_Menu_StageGlow", softDot, new Color(0.2f, 0.25f, 0.36f)),
+                Dust = TintedAdditive("M_Menu_StageDust", softDot, new Color(0.55f, 0.55f, 0.6f)),
             };
         }
 
@@ -136,6 +141,14 @@ namespace SurvivorSouls.Editor
             mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
             mat.renderQueue = (int)RenderQueue.Transparent;
             mat.SetOverrideTag("RenderType", "Transparent");
+            EditorUtility.SetDirty(mat);
+            return mat;
+        }
+
+        private static Material TintedAdditive(string name, Texture2D texture, Color tint)
+        {
+            var mat = AdditiveParticleMaterial(name, texture);
+            mat.SetColor("_BaseColor", tint);
             EditorUtility.SetDirty(mat);
             return mat;
         }
@@ -246,7 +259,7 @@ namespace SurvivorSouls.Editor
             RenderSettings.fogColor = DuskColor;
         }
 
-        private static void CreateCamera()
+        private static Camera CreateCamera()
         {
             var go = new GameObject("Main Camera") { tag = "MainCamera" };
             // Portrait framing: fire spans ~33%-57% of screen height, between title and buttons.
@@ -262,6 +275,7 @@ namespace SurvivorSouls.Editor
 
             go.AddComponent<AudioListener>();
             go.AddComponent<CameraDrift>();
+            return cam;
         }
 
         private static void CreateMoonLight()
@@ -443,7 +457,7 @@ namespace SurvivorSouls.Editor
             }
         }
 
-        private static void CreateUi(PanelSettings panelSettings, RealmCatalog realmCatalog)
+        private static void CreateUi(PanelSettings panelSettings, RealmCatalog realmCatalog, HeroStage stage)
         {
             var go = new GameObject("Main Menu UI");
             var doc = go.AddComponent<UIDocument>();
@@ -454,7 +468,215 @@ namespace SurvivorSouls.Editor
                 Economy.EconomyBuilder.LoadOrCreateGemRewards(), // welcome shards (KAN-97)
                 Economy.EconomyBuilder.LoadOrCreateSoulTree(), // soul tree page (KAN-98)
                 Economy.EconomyBuilder.LoadOrCreateStoreCatalog(), // store page (KAN-99)
-                Characters.HeroBuilder.LoadOrCreateRoster()); // hero page (KAN-153)
+                Characters.HeroBuilder.LoadOrCreateRoster(), // hero page (KAN-153)
+                stage); // 3D hero stage (KAN-244)
+        }
+
+        // ---------------------------------------------------------------- Hero stage (KAN-244)
+
+        /// <summary>Far from the bonfire (menu camera far clip 60 m): the bonfire camera never sees it.</summary>
+        private static readonly Vector3 StagePos = new Vector3(200f, 0f, 0f);
+
+        /// <summary>
+        /// The hero page's 3D stage: a stone floor disc in a ruined hall (pillars and a broken arch fading into fog), torch
+        /// key light front left, cool rim light behind right, soft fill from the camera, a gold flare over the hero for the
+        /// taunt, a cold glow behind him (silhouette), a brazier, embers and dust. Camera: 5 m away, below the chest and
+        /// looking up a little, 40.8 deg vertical FOV, so a 1.8 m hero stands in the middle band of a 9:16 screen (feet at
+        /// ~65 %, head at ~17 %) and the page text fits under him. Inactive: HeroStage turns it on with the page.
+        /// </summary>
+        private static HeroStage CreateHeroStage(MenuMaterials m, Camera menuCamera)
+        {
+            var root = new GameObject("Hero Stage");
+            root.transform.position = StagePos;
+            var t = root.transform;
+
+            var anchor = new GameObject("Hero Anchor").transform;
+            anchor.SetParent(t, false);
+
+            var camGo = new GameObject("Hero Stage Camera");
+            camGo.transform.SetParent(t, false);
+            camGo.transform.localPosition = new Vector3(0f, 0.5f, -5f);
+            camGo.transform.LookAt(StagePos + new Vector3(0f, 0.56f, 0f));
+            var cam = camGo.AddComponent<Camera>();
+            cam.clearFlags = CameraClearFlags.SolidColor;
+            cam.backgroundColor = new Color(0.06f, 0.075f, 0.105f);
+            cam.fieldOfView = 40.8f;
+            cam.nearClipPlane = 0.3f;
+            cam.farClipPlane = 40f;
+            cam.allowMSAA = true;
+            cam.allowHDR = false;
+            cam.enabled = false; // HeroStage turns it on with the page
+
+            // Floor: a low stone disc on a dark ground that runs into the fog.
+            var floor = Primitive(PrimitiveType.Cylinder, "Floor Disc", t, m.StageFloor);
+            floor.transform.localPosition = new Vector3(0f, -0.05f, 0f);
+            floor.transform.localScale = new Vector3(3.4f, 0.05f, 3.4f);
+            var ground = Primitive(PrimitiveType.Plane, "Stage Ground", t, m.Ground);
+            ground.transform.localPosition = new Vector3(0f, -0.06f, 6f);
+            ground.transform.localScale = new Vector3(5f, 1f, 4f);
+            var rng = new System.Random(244);
+            for (int i = 0; i < 7; i++)
+            {
+                float a = Mathf.Lerp(0.15f, Mathf.PI - 0.15f, i / 6f); // back half only: none between the hero and the camera
+                var s = Primitive(PrimitiveType.Cube, $"Rim Stone {i}", t, m.Stone);
+                s.transform.localPosition = new Vector3(Mathf.Cos(a) * 1.78f, 0.02f, Mathf.Sin(a) * 1.78f);
+                s.transform.localRotation = Quaternion.Euler(Range(rng, -8, 8), a * Mathf.Rad2Deg + Range(rng, -10, 10), Range(rng, -6, 6));
+                s.transform.localScale = new Vector3(Range(rng, 0.42f, 0.6f), Range(rng, 0.1f, 0.16f), Range(rng, 0.2f, 0.28f));
+            }
+
+            // Ruined hall behind the hero.
+            (Vector3 pos, Vector3 scale, float tilt)[] pillars =
+            {
+                (new Vector3(-2.5f, 0f, 4.5f), new Vector3(0.75f, 6f, 0.75f), 0f),
+                (new Vector3(2.7f, 0f, 5.2f), new Vector3(0.75f, 5.2f, 0.75f), 3f),
+                (new Vector3(-5.2f, 0f, 8.5f), new Vector3(0.9f, 8f, 0.9f), -2f),
+                (new Vector3(5.6f, 0f, 9.5f), new Vector3(0.9f, 7.4f, 0.9f), 4f),
+                (new Vector3(-1.2f, 0f, 13f), new Vector3(1.1f, 11f, 1.1f), 0f),
+                (new Vector3(3.2f, 0f, 15f), new Vector3(1.2f, 12f, 1.2f), 0f),
+                (new Vector3(-3.6f, 0f, 3.2f), new Vector3(0.6f, 1.6f, 0.6f), 12f), // broken stump
+            };
+            for (int i = 0; i < pillars.Length; i++)
+            {
+                var (pos, scale, tilt) = pillars[i];
+                var p = Primitive(PrimitiveType.Cube, $"Hall Pillar {i}", t, m.Ruin);
+                p.transform.localPosition = pos + Vector3.up * scale.y * 0.5f;
+                p.transform.localRotation = Quaternion.Euler(0f, 14f * i, tilt);
+                p.transform.localScale = scale;
+            }
+            var arch = Primitive(PrimitiveType.Cube, "Broken Arch", t, m.Ruin);
+            arch.transform.localPosition = new Vector3(0.3f, 5.6f, 5f);
+            arch.transform.localRotation = Quaternion.Euler(0f, 6f, -5f);
+            arch.transform.localScale = new Vector3(5.8f, 0.6f, 0.8f);
+
+            // Cold glow behind the hero: his outline reads against the dark hall.
+            var glow = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            glow.name = "Back Glow";
+            glow.transform.SetParent(t, false);
+            Object.DestroyImmediate(glow.GetComponent<Collider>());
+            glow.transform.localPosition = new Vector3(0f, 1.25f, 2.6f);
+            glow.transform.localScale = new Vector3(5.2f, 5.2f, 1f);
+            var glowRenderer = glow.GetComponent<MeshRenderer>();
+            glowRenderer.sharedMaterial = m.StageGlow;
+            glowRenderer.shadowCastingMode = ShadowCastingMode.Off;
+            glowRenderer.receiveShadows = false;
+            glowRenderer.lightProbeUsage = LightProbeUsage.Off;
+            glowRenderer.reflectionProbeUsage = ReflectionProbeUsage.Off;
+
+            // Brazier in the hall (its flicker light reaches the floor behind the hero, not the hero).
+            var brazier = new GameObject("Brazier").transform;
+            brazier.SetParent(t, false);
+            brazier.localPosition = new Vector3(-1.75f, 0f, 6.5f); // deep in the hall, at the left edge of the frame
+            var bowl = Primitive(PrimitiveType.Cylinder, "Bowl", brazier, m.Metal);
+            bowl.transform.localPosition = new Vector3(0f, 1.3f, 0f);
+            bowl.transform.localScale = new Vector3(0.36f, 0.07f, 0.36f);
+            var post = Primitive(PrimitiveType.Cylinder, "Post", brazier, m.Wood);
+            post.transform.localPosition = new Vector3(0f, 0.62f, 0f);
+            post.transform.localScale = new Vector3(0.07f, 0.62f, 0.07f);
+            var flames = NewParticleSystem("Brazier Flames", brazier, m.Flame, new Vector3(0f, 1.36f, 0f));
+            var fm = flames.main;
+            fm.startLifetime = new ParticleSystem.MinMaxCurve(0.35f, 0.65f);
+            fm.startSpeed = new ParticleSystem.MinMaxCurve(0.35f, 0.8f);
+            fm.startSize = new ParticleSystem.MinMaxCurve(0.12f, 0.26f);
+            fm.startColor = new ParticleSystem.MinMaxGradient(new Color(1f, 0.62f, 0.22f), new Color(1f, 0.38f, 0.1f));
+            fm.maxParticles = 30;
+            var fe = flames.emission;
+            fe.rateOverTime = 26f;
+            var fs = flames.shape;
+            fs.shapeType = ParticleSystemShapeType.Cone;
+            fs.angle = 8f;
+            fs.radius = 0.09f;
+            var fc = flames.colorOverLifetime;
+            fc.enabled = true;
+            fc.color = Gradient(
+                new[] { (new Color(1f, 0.9f, 0.6f), 0f), (new Color(1f, 0.5f, 0.15f), 0.4f), (new Color(0.6f, 0.12f, 0.04f), 1f) },
+                new[] { (0f, 0f), (0.9f, 0.12f), (0.6f, 0.5f), (0f, 1f) });
+            var brazierLight = new GameObject("Brazier Light");
+            brazierLight.transform.SetParent(brazier, false);
+            brazierLight.transform.localPosition = new Vector3(0f, 1.7f, 0f);
+            var bl = brazierLight.AddComponent<Light>();
+            bl.type = LightType.Point;
+            bl.color = FireLightColor;
+            bl.shadows = LightShadows.None;
+            brazierLight.AddComponent<LightFlicker>().Configure(intensity: 2.2f, intensityAmp: 0.6f, range: 3.2f, rangeAmp: 0.3f);
+
+            // Embers drifting up over the floor, dust in the light.
+            var embers = NewParticleSystem("Stage Embers", t, m.Ember, new Vector3(0f, 0.05f, 0.4f));
+            var em = embers.main;
+            em.startLifetime = new ParticleSystem.MinMaxCurve(3f, 5f);
+            em.startSpeed = new ParticleSystem.MinMaxCurve(0.15f, 0.45f);
+            em.startSize = new ParticleSystem.MinMaxCurve(0.02f, 0.05f);
+            em.startColor = new ParticleSystem.MinMaxGradient(new Color(1f, 0.75f, 0.35f), new Color(1f, 0.42f, 0.12f));
+            em.gravityModifier = -0.02f;
+            em.maxParticles = 40;
+            var ee = embers.emission;
+            ee.rateOverTime = 7f;
+            var es = embers.shape;
+            es.shapeType = ParticleSystemShapeType.Circle;
+            es.radius = 2.2f;
+            var en = embers.noise;
+            en.enabled = true;
+            en.strength = 0.35f;
+            en.frequency = 0.5f;
+            en.quality = ParticleSystemNoiseQuality.Low;
+            var ec = embers.colorOverLifetime;
+            ec.enabled = true;
+            ec.color = Gradient(new[] { (Color.white, 0f), (Color.white, 1f) }, new[] { (0f, 0f), (1f, 0.15f), (0.7f, 0.7f), (0f, 1f) });
+
+            var dust = NewParticleSystem("Stage Dust", t, m.Dust, new Vector3(0f, 1.2f, 0.6f));
+            dust.transform.localRotation = Quaternion.identity;
+            var dm = dust.main;
+            dm.startLifetime = new ParticleSystem.MinMaxCurve(5f, 8f);
+            dm.startSpeed = new ParticleSystem.MinMaxCurve(0.02f, 0.08f);
+            dm.startSize = new ParticleSystem.MinMaxCurve(0.015f, 0.035f);
+            dm.startColor = new ParticleSystem.MinMaxGradient(new Color(1f, 1f, 1f, 0.35f), new Color(1f, 1f, 1f, 0.15f));
+            dm.maxParticles = 40;
+            var de = dust.emission;
+            de.rateOverTime = 5f;
+            var ds = dust.shape;
+            ds.shapeType = ParticleSystemShapeType.Box;
+            ds.scale = new Vector3(3.2f, 2.2f, 1.6f);
+            var dn = dust.noise;
+            dn.enabled = true;
+            dn.strength = 0.08f;
+            dn.frequency = 0.3f;
+            dn.quality = ParticleSystemNoiseQuality.Low;
+            var dc = dust.colorOverLifetime;
+            dc.enabled = true;
+            dc.color = Gradient(new[] { (Color.white, 0f), (Color.white, 1f) }, new[] { (0f, 0f), (1f, 0.3f), (1f, 0.7f), (0f, 1f) });
+
+            // Lights: torch key (warm, front left high), rim (cool, behind right), fill (from the camera), taunt flare.
+            var key = StageLight(t, "Key Light", new Vector3(-1.7f, 2.5f, -1.9f), new Color(1f, 0.72f, 0.46f), 3.4f, 8f);
+            var rim = StageLight(t, "Rim Light", new Vector3(1.5f, 2.7f, 1.7f), new Color(0.55f, 0.68f, 1f), 4f, 5.5f);
+            var fill = StageLight(t, "Fill Light", new Vector3(0.9f, 1.3f, -3.6f), new Color(0.75f, 0.78f, 0.9f), 0.9f, 8f);
+            var flare = StageLight(t, "Flare Light", new Vector3(0f, 2.9f, -0.9f), new Color(1f, 0.8f, 0.45f), 0f, 5f);
+            flare.enabled = false;
+
+            var voiceGo = new GameObject("Hero Voice");
+            voiceGo.transform.SetParent(t, false);
+            var voice = voiceGo.AddComponent<AudioSource>();
+            voice.playOnAwake = false;
+            voice.spatialBlend = 0f;
+
+            var stage = root.AddComponent<HeroStage>();
+            var knight = AssetDatabase.LoadAssetAtPath<GameObject>(Characters.MeshyCharacterImporter.PrefabPath);
+            if (knight == null) Debug.LogWarning("[MainMenuSceneBuilder] Knight prefab missing: the Knight has no model on the hero stage");
+            stage.Setup(cam, menuCamera, anchor, key, rim, fill, flare, voice, knight);
+            root.SetActive(false);
+            return stage;
+        }
+
+        private static Light StageLight(Transform parent, string name, Vector3 localPos, Color color, float intensity, float range)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = localPos;
+            var light = go.AddComponent<Light>();
+            light.type = LightType.Point;
+            light.color = color;
+            light.intensity = intensity;
+            light.range = range;
+            light.shadows = LightShadows.None;
+            return light;
         }
 
         // ---------------------------------------------------------------- Realms (KAN-20)
