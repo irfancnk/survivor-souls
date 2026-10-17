@@ -155,7 +155,15 @@ namespace SurvivorSouls.Tests
             Assert.That(maxChest, Is.GreaterThan(3f), "the chest moves with the flinch");
             Assert.That(_stance.Weight, Is.EqualTo(1f), "the stance itself stays up (target still there)");
 
-            yield return Wait(HitClipLength(_animator) + 0.6f);
+            float inHit = 0.5f;
+            while (InHit() && inHit < 3f)
+            {
+                yield return null;
+                inHit += Time.deltaTime;
+            }
+            Debug.Log($"[PlayerHitReactionTests] flinch over after {inHit:F2} s");
+            Assert.That(inHit, Is.LessThan(1.1f), "a short beat (0.7 s + 0.2 s blend), not the full 1.67 s stagger");
+            yield return Wait(0.5f);
             Assert.That(InHit(), Is.False, "the clip is over");
             Assert.That(_stance.HitBlend, Is.EqualTo(0f), "flinch blend back to 0");
             Assert.That(_animator.GetLayerWeight(_stance.Layer), Is.EqualTo(1f), "full aim layer again");

@@ -10,7 +10,8 @@ namespace SurvivorSouls.Gameplay.Player
     /// flashed. While aiming, <see cref="Combat.CrossbowStance"/> dips the upper-body layer during the clip so the flinch
     /// shows on the chest and arms.
     /// The clip plays on the base layer, so a running Knight gets no clip (no foot slide); if the Knight starts to run
-    /// during the clip, it blends back to locomotion at once. No clip on the killing blow (<see cref="PlayerDeath"/> owns
+    /// during the clip, it blends back to locomotion at once. The Knight's Hit_Reaction clip is 1.67 s: it is cut after
+    /// <see cref="maxHitTime"/> so the flinch is a short beat, not a long stagger. No clip on the killing blow (<see cref="PlayerDeath"/> owns
     /// that). No allocation per hit or per frame.
     /// </summary>
     [RequireComponent(typeof(PlayerHealth))]
@@ -31,6 +32,10 @@ namespace SurvivorSouls.Gameplay.Player
         [SerializeField, Min(0f)] private float cancelSpeed = 1f;
         [Tooltip("Blend (s) from the Hit clip back to locomotion when the Knight starts to run.")]
         [SerializeField, Min(0f)] private float cancelBlend = 0.12f;
+        [Tooltip("Seconds of the Hit clip to play before blending back to locomotion (the full clip is a long stagger).")]
+        [SerializeField, Min(0.1f)] private float maxHitTime = 0.7f;
+        [Tooltip("Blend (s) from the Hit clip back to locomotion at maxHitTime.")]
+        [SerializeField, Min(0f)] private float endBlend = 0.2f;
 
         private PlayerHealth _health;
         private Vector3 _lastPosition;
@@ -74,15 +79,26 @@ namespace SurvivorSouls.Gameplay.Player
             delta.y = 0f;
             _speed = delta.magnitude / dt;
 
-            if (_speed <= cancelSpeed || _health.IsDead || driver == null || !driver.isActiveAndEnabled) return;
+            if (_health.IsDead || driver == null || !driver.isActiveAndEnabled) return;
             var animator = driver.Animator;
             if (animator == null || !animator.isActiveAndEnabled) return;
+            bool running = _speed > cancelSpeed;
             if (animator.IsInTransition(0))
             {
-                // Blending into Hit: cut it. Blending out of Hit (or our own cancel blend): let it finish.
-                if (animator.GetNextAnimatorStateInfo(0).shortNameHash != HitStateHash) return;
+                // Blending into Hit while running: cut it. Blending out of Hit (or our own blend back): let it finish.
+                if (!running || animator.GetNextAnimatorStateInfo(0).shortNameHash != HitStateHash) return;
             }
-            else if (animator.GetCurrentAnimatorStateInfo(0).shortNameHash != HitStateHash) return;
+            else
+            {
+                var state = animator.GetCurrentAnimatorStateInfo(0);
+                if (state.shortNameHash != HitStateHash) return;
+                if (!running)
+                {
+                    if (state.normalizedTime * state.length < maxHitTime) return;
+                    animator.CrossFadeInFixedTime(LocomotionStateHash, endBlend, 0); // short beat, not the full stagger
+                    return;
+                }
+            }
             animator.ResetTrigger(LocomotionAnimatorDriver.HitId);
             animator.CrossFadeInFixedTime(LocomotionStateHash, cancelBlend, 0);
             Cancels++;
